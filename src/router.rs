@@ -141,7 +141,10 @@ impl CommandHandler for RunHandler {
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
         // Build and execute the process
-        let result = ProcessBuilder::new(&input.command).args(&input.args).run();
+        let result = ProcessBuilder::new(&input.command)
+            .args(&input.args)
+            .capture_stdout(input.capture_stdout)
+            .run();
 
         match result {
             Ok(output) => {
@@ -214,13 +217,15 @@ impl CommandHandler for RunHandler {
 pub struct RunInput {
     pub command: String,
     pub args: Vec<String>,
+    pub capture_stdout: bool,
 }
 
-impl From<(&String, &Vec<String>)> for RunInput {
-    fn from((command, args): (&String, &Vec<String>)) -> Self {
+impl From<(&String, &Vec<String>, bool)> for RunInput {
+    fn from((command, args, capture_stdout): (&String, &Vec<String>, bool)) -> Self {
         Self {
             command: command.clone(),
             args: args.clone(),
+            capture_stdout,
         }
     }
 }
@@ -548,8 +553,12 @@ impl Router {
     /// Route a command to its handler and execute it.
     pub fn route(&self, command: &Commands, ctx: &CommandContext) -> CommandResult {
         match command {
-            Commands::Run { command, args } => {
-                let input = RunInput::from((command, args));
+            Commands::Run {
+                command,
+                args,
+                capture_stdout,
+            } => {
+                let input = RunInput::from((command, args, capture_stdout.unwrap_or(true)));
                 self.run_handler.execute(&input, ctx)
             }
             Commands::Search {
@@ -714,6 +723,7 @@ mod tests {
         let input = RunInput {
             command: "echo".to_string(),
             args: vec!["hello".to_string()],
+            capture_stdout: true,
         };
 
         let result = handler.execute(&input, &ctx);
@@ -732,6 +742,7 @@ mod tests {
         let input = RunInput {
             command: "nonexistent_command_xyz123".to_string(),
             args: vec![],
+            capture_stdout: true,
         };
 
         let result = handler.execute(&input, &ctx);
@@ -751,6 +762,7 @@ mod tests {
         let input = RunInput {
             command: "false".to_string(),
             args: vec![],
+            capture_stdout: true,
         };
 
         let result = handler.execute(&input, &ctx);
@@ -770,8 +782,28 @@ mod tests {
         let input = RunInput {
             command: "echo".to_string(),
             args: vec!["test".to_string()],
+            capture_stdout: true,
         };
 
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_run_handler_no_capture_stdout() {
+        let handler = RunHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let input = RunInput {
+            command: "echo".to_string(),
+            args: vec!["test".to_string()],
+            capture_stdout: false,
+        };
+
+        // When stdout is not captured, the command should still succeed
         let result = handler.execute(&input, &ctx);
         assert!(result.is_ok());
     }
@@ -933,6 +965,7 @@ mod tests {
         let command = Commands::Run {
             command: "echo".to_string(),
             args: vec!["test".to_string()],
+            capture_stdout: Some(true),
         };
 
         let result = router.route(&command, &ctx);
@@ -951,6 +984,7 @@ mod tests {
         let command = Commands::Run {
             command: "false".to_string(),
             args: vec![],
+            capture_stdout: Some(true),
         };
 
         let result = router.route(&command, &ctx);

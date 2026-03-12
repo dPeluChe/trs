@@ -218,6 +218,10 @@ pub enum Commands {
         /// Arguments to pass to the command
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
+
+        /// Capture stdout (default: true, set --no-capture-stdout to inherit)
+        #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
+        capture_stdout: Option<bool>,
     },
 
     /// Parse structured input from stdin or file

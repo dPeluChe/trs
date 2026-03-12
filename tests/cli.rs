@@ -500,6 +500,32 @@ fn test_run_command_json_output() {
         .stdout(predicate::str::contains("stdout"));
 }
 
+#[test]
+fn test_run_command_no_capture_stdout() {
+    // When --capture-stdout=false, stdout goes directly to terminal
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("echo")
+        .arg("hello")
+        .arg("--capture-stdout=false")
+        .assert()
+        .success();
+    // Note: stdout goes directly to terminal when not captured,
+    // so the CLI output won't contain it
+}
+
+#[test]
+fn test_run_command_capture_stdout_default() {
+    // By default, stdout is captured
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("echo")
+        .arg("captured_output")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("captured_output"));
+}
+
 // ============================================================
 // Command Routing Tests
 // ============================================================
