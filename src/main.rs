@@ -363,7 +363,10 @@ fn main() {
             output,
             metadata,
         } => {
-            eprintln!("Html2md: {:?} -> {:?} (metadata: {})", input, output, metadata);
+            eprintln!(
+                "Html2md: {:?} -> {:?} (metadata: {})",
+                input, output, metadata
+            );
             // TODO: Implement html2md
             println!("HTML to Markdown conversion not yet implemented");
         }
@@ -666,8 +669,14 @@ mod tests {
 
     #[test]
     fn test_txt2md_command() {
-        let cli =
-            Cli::try_parse_from(["trs", "txt2md", "--input", "input.txt", "--output", "out.md"]);
+        let cli = Cli::try_parse_from([
+            "trs",
+            "txt2md",
+            "--input",
+            "input.txt",
+            "--output",
+            "out.md",
+        ]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
         match cli.command {

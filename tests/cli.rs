@@ -222,28 +222,19 @@ fn test_parse_git_status() {
 #[test]
 fn test_parse_git_diff() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("git-diff")
-        .assert()
-        .success();
+    cmd.arg("parse").arg("git-diff").assert().success();
 }
 
 #[test]
 fn test_parse_ls() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("ls")
-        .assert()
-        .success();
+    cmd.arg("parse").arg("ls").assert().success();
 }
 
 #[test]
 fn test_parse_grep() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("grep")
-        .assert()
-        .success();
+    cmd.arg("parse").arg("grep").assert().success();
 }
 
 #[test]
@@ -260,10 +251,7 @@ fn test_parse_test() {
 #[test]
 fn test_parse_logs() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("logs")
-        .assert()
-        .success();
+    cmd.arg("parse").arg("logs").assert().success();
 }
 
 #[test]
