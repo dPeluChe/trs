@@ -1,13 +1,16 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
+mod help;
+
 /// TARS CLI - Transform noisy terminal output into compact, structured signal
 ///
 /// A CLI toolkit for developers, automation pipelines, and AI agents.
 #[derive(Parser)]
 #[command(name = "trs", bin_name = "trs")]
-#[command(version, about, long_about = None)]
+#[command(version, about, long_about = Some(help::LONG_ABOUT))]
 #[command(propagate_version = true)]
+#[command(next_display_order = None)]
 pub struct Cli {
     /// Output raw, unprocessed input
     #[arg(long, global = true)]
@@ -201,6 +204,14 @@ impl Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Execute a command and process its output
+    ///
+    /// Runs a system command and processes its output through TARS reducers
+    /// for cleaner, more structured output.
+    ///
+    /// Examples:
+    ///   trs run ls -la
+    ///   trs --json run git status
+    ///   trs run npm test
     #[command(allow_external_subcommands = true)]
     Run {
         /// The command to execute
@@ -213,12 +224,28 @@ pub enum Commands {
     },
 
     /// Parse structured input from stdin or file
+    ///
+    /// Transforms output from common CLI tools into structured formats.
+    /// Supports parsers for git, ls, grep, test runners, and logs.
+    ///
+    /// Examples:
+    ///   git status | trs parse git-status
+    ///   trs parse git-diff -f changes.diff
+    ///   pytest | trs --json parse test --runner pytest
     Parse {
         #[command(subcommand)]
         parser: ParseCommands,
     },
 
-    /// Search for patterns in files
+    /// Search for patterns in files (ripgrep-powered)
+    ///
+    /// Fast, intelligent pattern matching with support for regular expressions
+    /// and various output formats.
+    ///
+    /// Examples:
+    ///   trs search . "TODO" -e rs
+    ///   trs search src "error" -i -C 2
+    ///   trs --json search . "fn main" --limit 50
     Search {
         /// Path to search in
         path: PathBuf,
@@ -244,6 +271,14 @@ pub enum Commands {
     },
 
     /// Search and replace patterns in files
+    ///
+    /// Finds patterns in files and replaces them with a new string.
+    /// Use --dry-run to preview changes before applying them.
+    ///
+    /// Examples:
+    ///   trs replace . "foo" "bar"
+    ///   trs replace ./src "old" "new" -e ts --dry-run
+    ///   trs --json replace . "TODO" "DONE"
     Replace {
         /// Path to search in
         path: PathBuf,
@@ -264,6 +299,14 @@ pub enum Commands {
     },
 
     /// Tail a file with compact log output
+    ///
+    /// Reads the last lines of a file and can optionally filter
+    /// for error lines or follow the file for new content.
+    ///
+    /// Examples:
+    ///   trs tail /var/log/app.log -n 20
+    ///   trs tail /var/log/app.log --errors
+    ///   trs tail /var/log/app.log --follow
     Tail {
         /// File to tail
         file: PathBuf,
@@ -282,6 +325,13 @@ pub enum Commands {
     },
 
     /// Clean and format text output
+    ///
+    /// Processes text input to remove noise and normalize formatting.
+    /// Reads from stdin by default.
+    ///
+    /// Examples:
+    ///   some-command | trs clean --no-ansi --trim
+    ///   trs clean -f app.log --collapse-blanks
     Clean {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
@@ -305,6 +355,13 @@ pub enum Commands {
     },
 
     /// Convert HTML to Markdown
+    ///
+    /// Converts HTML content (from a file or URL) to clean Markdown.
+    ///
+    /// Examples:
+    ///   trs html2md https://example.com
+    ///   trs html2md https://example.com -o page.md
+    ///   trs html2md index.html -o index.md
     Html2md {
         /// Input HTML file or URL
         input: String,
@@ -319,6 +376,13 @@ pub enum Commands {
     },
 
     /// Convert plain text to Markdown
+    ///
+    /// Converts plain text to Markdown format, detecting patterns
+    /// like headings and lists.
+    ///
+    /// Examples:
+    ///   cat notes.txt | trs txt2md
+    ///   trs txt2md -i notes.txt -o notes.md
     Txt2md {
         /// Input text file (stdin if not specified)
         #[arg(short, long)]
@@ -333,6 +397,11 @@ pub enum Commands {
 #[derive(Debug, Subcommand)]
 pub enum ParseCommands {
     /// Parse git status output
+    ///
+    /// Transforms git status output into structured format showing
+    /// branch info, staged/unstaged files, and untracked files.
+    ///
+    /// Example: git status | trs parse git-status
     GitStatus {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
@@ -340,6 +409,11 @@ pub enum ParseCommands {
     },
 
     /// Parse git diff output
+    ///
+    /// Transforms git diff output into structured format showing
+    /// changed files and summary statistics.
+    ///
+    /// Example: git diff | trs parse git-diff
     GitDiff {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
@@ -347,6 +421,11 @@ pub enum ParseCommands {
     },
 
     /// Parse ls output
+    ///
+    /// Transforms ls output into structured format separating
+    /// directories, files, and hidden items.
+    ///
+    /// Example: ls -la | trs parse ls
     Ls {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
@@ -354,6 +433,11 @@ pub enum ParseCommands {
     },
 
     /// Parse grep output
+    ///
+    /// Transforms grep results into structured format grouping
+    /// matches by file with line numbers.
+    ///
+    /// Example: grep -rn "pattern" . | trs parse grep
     Grep {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
@@ -361,8 +445,15 @@ pub enum ParseCommands {
     },
 
     /// Parse test runner output
+    ///
+    /// Transforms test runner output into structured format showing
+    /// passed/failed/skipped counts and execution time.
+    ///
+    /// Supported runners: pytest, jest, vitest, npm, pnpm, bun
+    ///
+    /// Example: pytest | trs parse test --runner pytest
     Test {
-        /// Test runner type
+        /// Test runner type (pytest, jest, vitest, npm, pnpm, bun)
         #[arg(short = 't', long, value_enum)]
         runner: Option<TestRunner>,
 
@@ -372,6 +463,11 @@ pub enum ParseCommands {
     },
 
     /// Parse log/tail output
+    ///
+    /// Transforms log streams into structured format detecting
+    /// repeated lines and error/warning levels.
+    ///
+    /// Example: tail -f /var/log/app.log | trs parse logs
     Logs {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
