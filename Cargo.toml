@@ -5,6 +5,10 @@ edition = "2024"
 description = "TARS CLI tool"
 license = "MIT"
 
+[[bin]]
+name = "trs"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 

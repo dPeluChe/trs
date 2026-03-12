@@ -3,7 +3,7 @@ use predicates::prelude::*;
 
 #[test]
 fn test_hello_default() {
-    let mut cmd = Command::cargo_bin("tars-cli").unwrap();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("hello")
         .assert()
         .success()
@@ -12,7 +12,7 @@ fn test_hello_default() {
 
 #[test]
 fn test_hello_custom_name() {
-    let mut cmd = Command::cargo_bin("tars-cli").unwrap();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("hello")
         .arg("--name")
         .arg("TARS")
@@ -23,7 +23,7 @@ fn test_hello_custom_name() {
 
 #[test]
 fn test_version() {
-    let mut cmd = Command::cargo_bin("tars-cli").unwrap();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("version")
         .assert()
         .success()
@@ -32,7 +32,7 @@ fn test_version() {
 
 #[test]
 fn test_help() {
-    let mut cmd = Command::cargo_bin("tars-cli").unwrap();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--help")
         .assert()
         .success()
@@ -41,7 +41,7 @@ fn test_help() {
 
 #[test]
 fn test_hello_help() {
-    let mut cmd = Command::cargo_bin("tars-cli").unwrap();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("hello")
         .arg("--help")
         .assert()
