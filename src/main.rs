@@ -2,6 +2,9 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 mod help;
+mod router;
+
+use router::{CommandContext, Router};
 
 /// TARS CLI - Transform noisy terminal output into compact, structured signal
 ///
@@ -442,100 +445,12 @@ pub enum TestRunner {
 fn main() {
     let cli = Cli::parse();
 
-    // For now, just acknowledge the parsed command
-    // Actual command execution will be implemented later
-    let format = cli.output_format();
+    // Create command context from global CLI options
+    let ctx = CommandContext::from_cli(&cli);
 
-    if cli.stats {
-        eprintln!("Stats: enabled");
-    }
-    eprintln!("Output format: {:?}", format);
-
-    match &cli.command {
-        Commands::Run { command, args } => {
-            eprintln!("Command: {} {:?}", command, args);
-            // TODO: Implement command execution
-            println!("Command execution not yet implemented");
-        }
-        Commands::Parse { parser } => {
-            eprintln!("Parser: {:?}", parser);
-            // TODO: Implement parsers
-            println!("Parsing not yet implemented");
-        }
-        Commands::Search {
-            path,
-            query,
-            extension,
-            ignore_case,
-            context,
-            limit,
-        } => {
-            eprintln!(
-                "Search: {:?} in {:?} (ext: {:?}, case: {}, context: {:?}, limit: {:?})",
-                query, path, extension, !ignore_case, context, limit
-            );
-            // TODO: Implement search
-            println!("Search not yet implemented");
-        }
-        Commands::Replace {
-            path,
-            search,
-            replace,
-            extension,
-            dry_run,
-        } => {
-            eprintln!(
-                "Replace: '{}' with '{}' in {:?} (ext: {:?}, dry_run: {})",
-                search, replace, path, extension, dry_run
-            );
-            // TODO: Implement replace
-            println!("Replace not yet implemented");
-        }
-        Commands::Tail {
-            file,
-            lines,
-            errors,
-            follow,
-        } => {
-            eprintln!(
-                "Tail: {:?} ({} lines, errors: {}, follow: {})",
-                file, lines, errors, follow
-            );
-            // TODO: Implement tail
-            println!("Tail not yet implemented");
-        }
-        Commands::Clean {
-            file,
-            no_ansi,
-            collapse_blanks,
-            collapse_repeats,
-            trim,
-        } => {
-            eprintln!(
-                "Clean: {:?} (no_ansi: {}, collapse_blanks: {}, collapse_repeats: {}, trim: {})",
-                file, no_ansi, collapse_blanks, collapse_repeats, trim
-            );
-            // TODO: Implement clean
-            println!("Clean not yet implemented");
-        }
-        Commands::Html2md {
-            input,
-            output,
-            metadata,
-        } => {
-            eprintln!(
-                "Html2md: {:?} -> {:?} (metadata: {})",
-                input, output, metadata
-            );
-            // TODO: Implement html2md
-            println!("HTML to Markdown conversion not yet implemented");
-        }
-        Commands::Txt2md { input, output } => {
-            eprintln!("Txt2md: {:?} -> {:?}", input, output);
-            // TODO: Implement txt2md
-            println!("Text to Markdown conversion not yet implemented");
-        }
-    }
+    // Create router and execute the command
+    let router = Router::new();
+    router.execute_and_print(&cli.command, &ctx);
 }
 
 #[cfg(test)]

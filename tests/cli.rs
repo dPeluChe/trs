@@ -457,3 +457,164 @@ fn test_run_command_basic() {
         .success()
         .stdout(predicate::str::contains("not yet implemented"));
 }
+
+// ============================================================
+// Command Routing Tests
+// ============================================================
+
+#[test]
+fn test_router_search_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("search")
+        .arg(".")
+        .arg("pattern")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Search:"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+#[test]
+fn test_router_replace_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("replace")
+        .arg(".")
+        .arg("old")
+        .arg("new")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Replace:"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+#[test]
+fn test_router_tail_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("tail")
+        .arg("/var/log/test.log")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Tail:"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+#[test]
+fn test_router_clean_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Clean:"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+#[test]
+fn test_router_html2md_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("html2md")
+        .arg("https://example.com")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Html2md:"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+#[test]
+fn test_router_txt2md_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Txt2md:"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+#[test]
+fn test_router_parse_git_status_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-status")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("git-status"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+#[test]
+fn test_router_parse_test_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pytest")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("test"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+#[test]
+fn test_router_run_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("ls")
+        .arg("-la")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Command:"))
+        .stdout(predicate::str::contains("not yet implemented"));
+}
+
+// ============================================================
+// Context and Format Routing Tests
+// ============================================================
+
+#[test]
+fn test_context_json_format_routing() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("search")
+        .arg(".")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Output format: Json"));
+}
+
+#[test]
+fn test_context_agent_format_routing() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--agent")
+        .arg("search")
+        .arg(".")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Output format: Agent"));
+}
+
+#[test]
+fn test_context_stats_routing() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("search")
+        .arg(".")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Stats: enabled"));
+}
+
+#[test]
+fn test_context_combined_flags_routing() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("--stats")
+        .arg("search")
+        .arg(".")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Output format: Json"))
+        .stderr(predicate::str::contains("Stats: enabled"));
+}
