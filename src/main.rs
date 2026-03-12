@@ -41,10 +41,109 @@ pub struct Cli {
     pub command: Commands,
 }
 
+/// Output format options with defined precedence rules.
+///
+/// # Precedence Order (highest to lowest)
+///
+/// When multiple output format flags are specified, the following precedence order applies:
+///
+/// 1. **JSON** (`--json`) - Highest priority, most structured format
+/// 2. **CSV** (`--csv`) - Structured tabular format
+/// 3. **TSV** (`--tsv`) - Tab-separated structured format
+/// 4. **Agent** (`--agent`) - AI-optimized structured format
+/// 5. **Compact** (`--compact`) - Reduced human-readable format
+/// 6. **Raw** (`--raw`) - Unprocessed output
+/// 7. **Default** - Falls back to Compact when no flags are specified
+///
+/// # Examples
+///
+/// ```ignore
+/// // JSON wins over all other formats
+/// trs --json --csv --agent search . "pattern"
+///
+/// // CSV wins over TSV, Agent, Compact, and Raw
+/// trs --csv --tsv --compact search . "pattern"
+///
+/// // TSV wins over Agent, Compact, and Raw
+/// trs --tsv --agent --raw search . "pattern"
+///
+/// // Agent wins over Compact and Raw
+/// trs --agent --compact --raw search . "pattern"
+///
+/// // Compact wins over Raw
+/// trs --compact --raw search . "pattern"
+///
+/// // Raw when only --raw is specified
+/// trs --raw search . "pattern"
+///
+/// // Default (Compact) when no format flags are specified
+/// trs search . "pattern"
+/// ```
+///
+/// # Rationale
+///
+/// The precedence order is designed with the following principles:
+///
+/// - **Structured formats take priority**: JSON, CSV, and TSV provide machine-readable
+///   structured output, which is more specific than human-readable formats.
+/// - **JSON is most expressive**: JSON supports nested structures and complex data,
+///   making it the highest priority structured format.
+/// - **Agent format for AI**: The agent format is optimized for AI consumption and
+///   takes precedence over general compact output.
+/// - **Raw is the fallback for debugging**: When explicitly requested, raw output
+///   provides unprocessed data for debugging purposes.
+/// - **Compact is the default**: When no format is specified, compact output provides
+///   a balance of information density and readability.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
+pub enum OutputFormat {
+    /// Raw, unprocessed output (lowest precedence among explicit flags)
+    Raw,
+    /// Compact, summarized output (default when no format flags specified)
+    #[default]
+    Compact,
+    /// JSON structured output (highest precedence)
+    Json,
+    /// CSV formatted output (second highest precedence)
+    Csv,
+    /// TSV formatted output (third highest precedence)
+    Tsv,
+    /// Agent-optimized format for AI consumption
+    Agent,
+}
+
+/// Precedence rank for output formats (higher number = higher precedence)
+const fn format_precedence(format: OutputFormat) -> u8 {
+    match format {
+        OutputFormat::Json => 6,
+        OutputFormat::Csv => 5,
+        OutputFormat::Tsv => 4,
+        OutputFormat::Agent => 3,
+        OutputFormat::Compact => 2,
+        OutputFormat::Raw => 1,
+    }
+}
+
 impl Cli {
+    /// Returns the precedence order for output formats as a slice.
+    ///
+    /// The order is from highest to lowest precedence.
+    pub fn output_format_precedence() -> &'static [OutputFormat] {
+        &[
+            OutputFormat::Json,
+            OutputFormat::Csv,
+            OutputFormat::Tsv,
+            OutputFormat::Agent,
+            OutputFormat::Compact,
+            OutputFormat::Raw,
+        ]
+    }
+
     /// Determine the output format based on flag precedence.
-    /// Precedence: json > csv > tsv > agent > compact > raw > default
+    ///
+    /// Uses the defined precedence order: json > csv > tsv > agent > compact > raw
+    /// If no format flags are specified, returns the default format (Compact).
     pub fn output_format(&self) -> OutputFormat {
+        // Check formats in precedence order (highest to lowest)
         if self.json {
             OutputFormat::Json
         } else if self.csv {
@@ -61,24 +160,42 @@ impl Cli {
             OutputFormat::default()
         }
     }
-}
 
-/// Output format options with precedence rules
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
-pub enum OutputFormat {
-    /// Raw, unprocessed output
-    Raw,
-    /// Compact, summarized output
-    #[default]
-    Compact,
-    /// JSON structured output
-    Json,
-    /// CSV formatted output
-    Csv,
-    /// TSV formatted output
-    Tsv,
-    /// Agent-optimized format for AI consumption
-    Agent,
+    /// Returns a list of all enabled output format flags.
+    ///
+    /// Useful for debugging or warning users about conflicting flags.
+    pub fn enabled_format_flags(&self) -> Vec<OutputFormat> {
+        let mut enabled = Vec::new();
+        if self.json {
+            enabled.push(OutputFormat::Json);
+        }
+        if self.csv {
+            enabled.push(OutputFormat::Csv);
+        }
+        if self.tsv {
+            enabled.push(OutputFormat::Tsv);
+        }
+        if self.agent {
+            enabled.push(OutputFormat::Agent);
+        }
+        if self.compact {
+            enabled.push(OutputFormat::Compact);
+        }
+        if self.raw {
+            enabled.push(OutputFormat::Raw);
+        }
+        enabled
+    }
+
+    /// Returns true if multiple format flags are enabled (potential conflict).
+    pub fn has_conflicting_format_flags(&self) -> bool {
+        self.enabled_format_flags().len() > 1
+    }
+
+    /// Returns the precedence rank of the currently selected format.
+    pub fn current_format_precedence(&self) -> u8 {
+        format_precedence(self.output_format())
+    }
 }
 
 #[derive(Subcommand)]
@@ -686,5 +803,342 @@ mod tests {
             }
             _ => panic!("Expected Txt2md command"),
         }
+    }
+
+    // ============================================================
+    // Output Format Precedence Tests
+    // ============================================================
+
+    #[test]
+    fn test_precedence_order() {
+        let precedence = Cli::output_format_precedence();
+        assert_eq!(precedence.len(), 6, "Should have 6 output formats");
+        assert_eq!(
+            precedence[0],
+            OutputFormat::Json,
+            "JSON should have highest precedence"
+        );
+        assert_eq!(
+            precedence[1],
+            OutputFormat::Csv,
+            "CSV should have second highest precedence"
+        );
+        assert_eq!(
+            precedence[2],
+            OutputFormat::Tsv,
+            "TSV should have third highest precedence"
+        );
+        assert_eq!(
+            precedence[3],
+            OutputFormat::Agent,
+            "Agent should have fourth highest precedence"
+        );
+        assert_eq!(
+            precedence[4],
+            OutputFormat::Compact,
+            "Compact should have fifth highest precedence"
+        );
+        assert_eq!(
+            precedence[5],
+            OutputFormat::Raw,
+            "Raw should have lowest precedence"
+        );
+    }
+
+    #[test]
+    fn test_format_precedence_values() {
+        assert_eq!(format_precedence(OutputFormat::Json), 6);
+        assert_eq!(format_precedence(OutputFormat::Csv), 5);
+        assert_eq!(format_precedence(OutputFormat::Tsv), 4);
+        assert_eq!(format_precedence(OutputFormat::Agent), 3);
+        assert_eq!(format_precedence(OutputFormat::Compact), 2);
+        assert_eq!(format_precedence(OutputFormat::Raw), 1);
+    }
+
+    #[test]
+    fn test_current_format_precedence() {
+        let cli = Cli::try_parse_from(["trs", "--json", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.current_format_precedence(), 6);
+
+        let cli = Cli::try_parse_from(["trs", "--csv", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.current_format_precedence(), 5);
+
+        let cli = Cli::try_parse_from(["trs", "--tsv", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.current_format_precedence(), 4);
+
+        let cli = Cli::try_parse_from(["trs", "--agent", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.current_format_precedence(), 3);
+
+        let cli = Cli::try_parse_from(["trs", "--compact", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.current_format_precedence(), 2);
+
+        let cli = Cli::try_parse_from(["trs", "--raw", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.current_format_precedence(), 1);
+
+        // Default (no flags) should be Compact with precedence 2
+        let cli = Cli::try_parse_from(["trs", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.current_format_precedence(), 2);
+    }
+
+    #[test]
+    fn test_enabled_format_flags_single() {
+        let cli = Cli::try_parse_from(["trs", "--json", "search", ".", "test"]).unwrap();
+        let enabled = cli.enabled_format_flags();
+        assert_eq!(enabled.len(), 1);
+        assert_eq!(enabled[0], OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_enabled_format_flags_multiple() {
+        let cli = Cli::try_parse_from(["trs", "--json", "--csv", "--raw", "search", ".", "test"])
+            .unwrap();
+        let enabled = cli.enabled_format_flags();
+        assert_eq!(enabled.len(), 3);
+        assert!(enabled.contains(&OutputFormat::Json));
+        assert!(enabled.contains(&OutputFormat::Csv));
+        assert!(enabled.contains(&OutputFormat::Raw));
+    }
+
+    #[test]
+    fn test_enabled_format_flags_none() {
+        let cli = Cli::try_parse_from(["trs", "search", ".", "test"]).unwrap();
+        let enabled = cli.enabled_format_flags();
+        assert!(enabled.is_empty());
+    }
+
+    #[test]
+    fn test_has_conflicting_format_flags_true() {
+        let cli = Cli::try_parse_from(["trs", "--json", "--csv", "search", ".", "test"]).unwrap();
+        assert!(cli.has_conflicting_format_flags());
+    }
+
+    #[test]
+    fn test_has_conflicting_format_flags_false_single() {
+        let cli = Cli::try_parse_from(["trs", "--json", "search", ".", "test"]).unwrap();
+        assert!(!cli.has_conflicting_format_flags());
+    }
+
+    #[test]
+    fn test_has_conflicting_format_flags_false_none() {
+        let cli = Cli::try_parse_from(["trs", "search", ".", "test"]).unwrap();
+        assert!(!cli.has_conflicting_format_flags());
+    }
+
+    // ============================================================
+    // All precedence combinations tests
+    // ============================================================
+
+    #[test]
+    fn test_precedence_json_over_all() {
+        // JSON should win over all other formats
+        let cli = Cli::try_parse_from([
+            "trs",
+            "--json",
+            "--csv",
+            "--tsv",
+            "--agent",
+            "--compact",
+            "--raw",
+            "search",
+            ".",
+            "test",
+        ])
+        .unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_precedence_csv_over_all_except_json() {
+        // CSV should win over all except JSON
+        let cli = Cli::try_parse_from([
+            "trs",
+            "--csv",
+            "--tsv",
+            "--agent",
+            "--compact",
+            "--raw",
+            "search",
+            ".",
+            "test",
+        ])
+        .unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Csv);
+    }
+
+    #[test]
+    fn test_precedence_tsv_over_all_except_json_csv() {
+        // TSV should win over all except JSON and CSV
+        let cli = Cli::try_parse_from([
+            "trs",
+            "--tsv",
+            "--agent",
+            "--compact",
+            "--raw",
+            "search",
+            ".",
+            "test",
+        ])
+        .unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Tsv);
+    }
+
+    #[test]
+    fn test_precedence_agent_over_compact_raw() {
+        // Agent should win over Compact and Raw
+        let cli = Cli::try_parse_from([
+            "trs",
+            "--agent",
+            "--compact",
+            "--raw",
+            "search",
+            ".",
+            "test",
+        ])
+        .unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Agent);
+    }
+
+    #[test]
+    fn test_precedence_compact_over_raw() {
+        // Compact should win over Raw
+        let cli =
+            Cli::try_parse_from(["trs", "--compact", "--raw", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Compact);
+    }
+
+    #[test]
+    fn test_precedence_json_over_csv() {
+        let cli = Cli::try_parse_from(["trs", "--json", "--csv", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_precedence_json_over_tsv() {
+        let cli = Cli::try_parse_from(["trs", "--json", "--tsv", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_precedence_json_over_agent() {
+        let cli = Cli::try_parse_from(["trs", "--json", "--agent", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_precedence_json_over_compact() {
+        let cli =
+            Cli::try_parse_from(["trs", "--json", "--compact", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_precedence_json_over_raw() {
+        let cli = Cli::try_parse_from(["trs", "--json", "--raw", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_precedence_csv_over_tsv() {
+        let cli = Cli::try_parse_from(["trs", "--csv", "--tsv", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Csv);
+    }
+
+    #[test]
+    fn test_precedence_csv_over_agent() {
+        let cli = Cli::try_parse_from(["trs", "--csv", "--agent", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Csv);
+    }
+
+    #[test]
+    fn test_precedence_csv_over_compact() {
+        let cli =
+            Cli::try_parse_from(["trs", "--csv", "--compact", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Csv);
+    }
+
+    #[test]
+    fn test_precedence_csv_over_raw() {
+        let cli = Cli::try_parse_from(["trs", "--csv", "--raw", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Csv);
+    }
+
+    #[test]
+    fn test_precedence_tsv_over_agent() {
+        let cli = Cli::try_parse_from(["trs", "--tsv", "--agent", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Tsv);
+    }
+
+    #[test]
+    fn test_precedence_tsv_over_compact() {
+        let cli =
+            Cli::try_parse_from(["trs", "--tsv", "--compact", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Tsv);
+    }
+
+    #[test]
+    fn test_precedence_tsv_over_raw() {
+        let cli = Cli::try_parse_from(["trs", "--tsv", "--raw", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Tsv);
+    }
+
+    #[test]
+    fn test_precedence_agent_over_compact() {
+        let cli =
+            Cli::try_parse_from(["trs", "--agent", "--compact", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Agent);
+    }
+
+    #[test]
+    fn test_precedence_agent_over_raw() {
+        let cli = Cli::try_parse_from(["trs", "--agent", "--raw", "search", ".", "test"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Agent);
+    }
+
+    // ============================================================
+    // Tests with different commands (ensure global flags work)
+    // ============================================================
+
+    #[test]
+    fn test_precedence_with_run_command() {
+        let cli = Cli::try_parse_from(["trs", "--json", "--csv", "run", "echo", "hello"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn test_precedence_with_parse_command() {
+        let cli = Cli::try_parse_from(["trs", "--csv", "--tsv", "parse", "git-status"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Csv);
+    }
+
+    #[test]
+    fn test_precedence_with_replace_command() {
+        let cli =
+            Cli::try_parse_from(["trs", "--tsv", "--agent", "replace", ".", "old", "new"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Tsv);
+    }
+
+    #[test]
+    fn test_precedence_with_tail_command() {
+        let cli = Cli::try_parse_from(["trs", "--agent", "--compact", "tail", "/var/log/test.log"])
+            .unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Agent);
+    }
+
+    #[test]
+    fn test_precedence_with_clean_command() {
+        let cli = Cli::try_parse_from(["trs", "--compact", "--raw", "clean"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Compact);
+    }
+
+    #[test]
+    fn test_precedence_with_html2md_command() {
+        let cli = Cli::try_parse_from(["trs", "--raw", "html2md", "https://example.com"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Raw);
+    }
+
+    #[test]
+    fn test_precedence_with_txt2md_command() {
+        let cli = Cli::try_parse_from(["trs", "--json", "txt2md"]).unwrap();
+        assert_eq!(cli.output_format(), OutputFormat::Json);
     }
 }
