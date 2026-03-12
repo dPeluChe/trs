@@ -526,6 +526,48 @@ fn test_run_command_capture_stdout_default() {
         .stdout(predicate::str::contains("captured_output"));
 }
 
+#[test]
+fn test_run_command_no_capture_stderr() {
+    // When --capture-stderr=false, stderr goes directly to terminal
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo stderr_test >&2")
+        .arg("--capture-stderr=false")
+        .assert()
+        .success();
+    // Note: stderr goes directly to terminal when not captured,
+    // so the CLI output won't contain it
+}
+
+#[test]
+fn test_run_command_capture_stderr_default() {
+    // By default, stderr is captured
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo captured_stderr >&2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("captured_stderr"));
+}
+
+#[test]
+fn test_run_command_no_capture_both() {
+    // When both are not captured, both go directly to terminal
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo stdout_test && echo stderr_test >&2")
+        .arg("--capture-stdout=false")
+        .arg("--capture-stderr=false")
+        .assert()
+        .success();
+}
+
 // ============================================================
 // Command Routing Tests
 // ============================================================

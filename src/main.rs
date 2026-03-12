@@ -222,6 +222,10 @@ pub enum Commands {
         /// Capture stdout (default: true, set --no-capture-stdout to inherit)
         #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
         capture_stdout: Option<bool>,
+
+        /// Capture stderr (default: true, set --no-capture-stderr to inherit)
+        #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
+        capture_stderr: Option<bool>,
     },
 
     /// Parse structured input from stdin or file
