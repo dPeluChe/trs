@@ -104,7 +104,7 @@ fn test_search_help() {
         .stdout(predicate::str::contains("--ignore-case"))
         .stdout(predicate::str::contains("--context"))
         .stdout(predicate::str::contains("--limit"))
-        .stdout(predicate::str::contains("Examples:"));
+        .stdout(predicate::str::contains("EXAMPLES:"));
 }
 
 #[test]
@@ -116,7 +116,7 @@ fn test_replace_help() {
         .success()
         .stdout(predicate::str::contains("Search and replace"))
         .stdout(predicate::str::contains("--dry-run"))
-        .stdout(predicate::str::contains("Examples:"));
+        .stdout(predicate::str::contains("EXAMPLES:"));
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn test_tail_help() {
         .stdout(predicate::str::contains("Tail a file"))
         .stdout(predicate::str::contains("--errors"))
         .stdout(predicate::str::contains("--follow"))
-        .stdout(predicate::str::contains("Examples:"));
+        .stdout(predicate::str::contains("EXAMPLES:"));
 }
 
 #[test]
@@ -142,7 +142,7 @@ fn test_clean_help() {
         .stdout(predicate::str::contains("Clean and format"))
         .stdout(predicate::str::contains("--no-ansi"))
         .stdout(predicate::str::contains("--collapse-blanks"))
-        .stdout(predicate::str::contains("Examples:"));
+        .stdout(predicate::str::contains("EXAMPLES:"));
 }
 
 #[test]
@@ -159,7 +159,7 @@ fn test_parse_help() {
         .stdout(predicate::str::contains("grep"))
         .stdout(predicate::str::contains("test"))
         .stdout(predicate::str::contains("logs"))
-        .stdout(predicate::str::contains("Examples:"));
+        .stdout(predicate::str::contains("EXAMPLES:"));
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn test_html2md_help() {
         .success()
         .stdout(predicate::str::contains("Convert HTML to Markdown"))
         .stdout(predicate::str::contains("--metadata"))
-        .stdout(predicate::str::contains("Examples:"));
+        .stdout(predicate::str::contains("EXAMPLES:"));
 }
 
 #[test]
@@ -182,7 +182,7 @@ fn test_txt2md_help() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Convert plain text to Markdown"))
-        .stdout(predicate::str::contains("Examples:"));
+        .stdout(predicate::str::contains("EXAMPLES:"));
 }
 
 #[test]
@@ -193,7 +193,7 @@ fn test_run_help() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Execute a command"))
-        .stdout(predicate::str::contains("Examples:"));
+        .stdout(predicate::str::contains("EXAMPLES:"));
 }
 
 // ============================================================

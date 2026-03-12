@@ -204,14 +204,7 @@ impl Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Execute a command and process its output
-    ///
-    /// Runs a system command and processes its output through TARS reducers
-    /// for cleaner, more structured output.
-    ///
-    /// Examples:
-    ///   trs run ls -la
-    ///   trs --json run git status
-    ///   trs run npm test
+    #[command(long_about = help::RUN_HELP)]
     #[command(allow_external_subcommands = true)]
     Run {
         /// The command to execute
@@ -224,28 +217,14 @@ pub enum Commands {
     },
 
     /// Parse structured input from stdin or file
-    ///
-    /// Transforms output from common CLI tools into structured formats.
-    /// Supports parsers for git, ls, grep, test runners, and logs.
-    ///
-    /// Examples:
-    ///   git status | trs parse git-status
-    ///   trs parse git-diff -f changes.diff
-    ///   pytest | trs --json parse test --runner pytest
+    #[command(long_about = help::PARSE_HELP)]
     Parse {
         #[command(subcommand)]
         parser: ParseCommands,
     },
 
     /// Search for patterns in files (ripgrep-powered)
-    ///
-    /// Fast, intelligent pattern matching with support for regular expressions
-    /// and various output formats.
-    ///
-    /// Examples:
-    ///   trs search . "TODO" -e rs
-    ///   trs search src "error" -i -C 2
-    ///   trs --json search . "fn main" --limit 50
+    #[command(long_about = help::SEARCH_HELP)]
     Search {
         /// Path to search in
         path: PathBuf,
@@ -271,14 +250,7 @@ pub enum Commands {
     },
 
     /// Search and replace patterns in files
-    ///
-    /// Finds patterns in files and replaces them with a new string.
-    /// Use --dry-run to preview changes before applying them.
-    ///
-    /// Examples:
-    ///   trs replace . "foo" "bar"
-    ///   trs replace ./src "old" "new" -e ts --dry-run
-    ///   trs --json replace . "TODO" "DONE"
+    #[command(long_about = help::REPLACE_HELP)]
     Replace {
         /// Path to search in
         path: PathBuf,
@@ -299,14 +271,7 @@ pub enum Commands {
     },
 
     /// Tail a file with compact log output
-    ///
-    /// Reads the last lines of a file and can optionally filter
-    /// for error lines or follow the file for new content.
-    ///
-    /// Examples:
-    ///   trs tail /var/log/app.log -n 20
-    ///   trs tail /var/log/app.log --errors
-    ///   trs tail /var/log/app.log --follow
+    #[command(long_about = help::TAIL_HELP)]
     Tail {
         /// File to tail
         file: PathBuf,
@@ -325,13 +290,7 @@ pub enum Commands {
     },
 
     /// Clean and format text output
-    ///
-    /// Processes text input to remove noise and normalize formatting.
-    /// Reads from stdin by default.
-    ///
-    /// Examples:
-    ///   some-command | trs clean --no-ansi --trim
-    ///   trs clean -f app.log --collapse-blanks
+    #[command(long_about = help::CLEAN_HELP)]
     Clean {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
@@ -355,13 +314,7 @@ pub enum Commands {
     },
 
     /// Convert HTML to Markdown
-    ///
-    /// Converts HTML content (from a file or URL) to clean Markdown.
-    ///
-    /// Examples:
-    ///   trs html2md https://example.com
-    ///   trs html2md https://example.com -o page.md
-    ///   trs html2md index.html -o index.md
+    #[command(long_about = help::HTML2MD_HELP)]
     Html2md {
         /// Input HTML file or URL
         input: String,
@@ -376,13 +329,7 @@ pub enum Commands {
     },
 
     /// Convert plain text to Markdown
-    ///
-    /// Converts plain text to Markdown format, detecting patterns
-    /// like headings and lists.
-    ///
-    /// Examples:
-    ///   cat notes.txt | trs txt2md
-    ///   trs txt2md -i notes.txt -o notes.md
+    #[command(long_about = help::TXT2MD_HELP)]
     Txt2md {
         /// Input text file (stdin if not specified)
         #[arg(short, long)]
