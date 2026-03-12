@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 mod help;
+mod process;
 mod router;
 
 use router::{CommandContext, Router};

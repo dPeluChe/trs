@@ -4,6 +4,7 @@
 //! to their respective handlers. Each command has a dedicated handler that
 //! implements the `CommandHandler` trait.
 
+use crate::process::{ProcessBuilder, ProcessError, ProcessOutput};
 use crate::{Cli, Commands, OutputFormat, ParseCommands};
 
 /// Context passed to command handlers containing global CLI options.
@@ -76,20 +77,135 @@ pub trait CommandHandler {
 /// Handler for the `run` command.
 pub struct RunHandler;
 
+impl RunHandler {
+    /// Format output based on the specified format.
+    fn format_output(output: &ProcessOutput, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => {
+                // JSON output includes all fields
+                serde_json::json!({
+                    "command": output.command,
+                    "args": output.args,
+                    "stdout": output.stdout,
+                    "stderr": output.stderr,
+                    "exit_code": output.exit_code,
+                    "duration_ms": output.duration.as_millis(),
+                    "timed_out": output.timed_out,
+                })
+                .to_string()
+            }
+            OutputFormat::Compact | OutputFormat::Agent => {
+                // Compact output shows essential info
+                let mut result = String::new();
+                if output.has_stdout() {
+                    result.push_str(&output.stdout);
+                    if !result.ends_with('\n') && !result.is_empty() {
+                        result.push('\n');
+                    }
+                }
+                if output.has_stderr() {
+                    result.push_str(&output.stderr);
+                }
+                result
+            }
+            _ => {
+                // Raw and other formats: just stdout
+                let mut result = output.stdout.clone();
+                if output.has_stderr() && !output.stderr.is_empty() {
+                    result.push_str(&output.stderr);
+                }
+                result
+            }
+        }
+    }
+
+    /// Format error message based on format.
+    fn format_error(error: &ProcessError, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => serde_json::json!({
+                "error": true,
+                "message": error.to_string(),
+                "exit_code": error.exit_code(),
+                "is_timeout": error.is_timeout(),
+                "is_command_not_found": error.is_command_not_found(),
+                "is_permission_denied": error.is_permission_denied(),
+            })
+            .to_string(),
+            _ => format!("Error: {}", error),
+        }
+    }
+}
+
 impl CommandHandler for RunHandler {
     type Input = RunInput;
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-        eprintln!("Output format: {:?}", ctx.format);
-        eprintln!("Command: {} {:?}", input.command, input.args);
+        // Build and execute the process
+        let result = ProcessBuilder::new(&input.command).args(&input.args).run();
 
-        // TODO: Implement actual command execution
-        Err(CommandError::NotImplemented(
-            "run command execution".to_string(),
-        ))
+        match result {
+            Ok(output) => {
+                // Print stats if requested
+                if ctx.stats {
+                    eprintln!("Stats:");
+                    eprintln!("  Command: {} {:?}", output.command, output.args);
+                    eprintln!("  Exit code: {:?}", output.exit_code);
+                    eprintln!("  Duration: {:.2}s", output.duration.as_secs_f64());
+                    eprintln!("  Stdout bytes: {}", output.stdout.len());
+                    eprintln!("  Stderr bytes: {}", output.stderr.len());
+                }
+
+                // Format and print output
+                let formatted = Self::format_output(&output, ctx.format);
+                print!("{}", formatted);
+
+                // Propagate exit code
+                if !output.success() {
+                    return Err(CommandError::ExecutionError(format!(
+                        "Command exited with code {}",
+                        output.code()
+                    )));
+                }
+
+                Ok(())
+            }
+            Err(error) => {
+                // Print stats if requested
+                if ctx.stats {
+                    eprintln!("Stats:");
+                    eprintln!("  Command failed: {}", error);
+                }
+
+                // Format and print error
+                let formatted = Self::format_error(&error, ctx.format);
+                eprintln!("{}", formatted);
+
+                // Return appropriate error type
+                Err(match &error {
+                    ProcessError::CommandNotFound { command } => {
+                        CommandError::ExecutionError(format!("Command not found: {}", command))
+                    }
+                    ProcessError::PermissionDenied { command } => {
+                        CommandError::ExecutionError(format!("Permission denied: {}", command))
+                    }
+                    ProcessError::Timeout {
+                        command, duration, ..
+                    } => CommandError::ExecutionError(format!(
+                        "Command '{}' timed out after {:.2}s",
+                        command,
+                        duration.as_secs_f64()
+                    )),
+                    ProcessError::NonZeroExit { output } => CommandError::ExecutionError(format!(
+                        "Command exited with code {}",
+                        output.code()
+                    )),
+                    ProcessError::IoError { message, .. } => CommandError::IoError(message.clone()),
+                    ProcessError::SpawnFailed { message, .. } => {
+                        CommandError::ExecutionError(message.clone())
+                    }
+                })
+            }
+        }
     }
 }
 
@@ -588,7 +704,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_handler() {
+    fn test_run_handler_success() {
         let handler = RunHandler;
         let ctx = CommandContext {
             format: OutputFormat::Compact,
@@ -601,7 +717,63 @@ mod tests {
         };
 
         let result = handler.execute(&input, &ctx);
-        assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+        // echo should succeed
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_run_handler_command_not_found() {
+        let handler = RunHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let input = RunInput {
+            command: "nonexistent_command_xyz123".to_string(),
+            args: vec![],
+        };
+
+        let result = handler.execute(&input, &ctx);
+        // Should return an error for command not found
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CommandError::ExecutionError(_))));
+    }
+
+    #[test]
+    fn test_run_handler_non_zero_exit() {
+        let handler = RunHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let input = RunInput {
+            command: "false".to_string(),
+            args: vec![],
+        };
+
+        let result = handler.execute(&input, &ctx);
+        // false always exits with 1
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CommandError::ExecutionError(_))));
+    }
+
+    #[test]
+    fn test_run_handler_json_format() {
+        let handler = RunHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Json,
+            stats: false,
+            enabled_formats: vec![OutputFormat::Json],
+        };
+        let input = RunInput {
+            command: "echo".to_string(),
+            args: vec!["test".to_string()],
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -751,7 +923,7 @@ mod tests {
     }
 
     #[test]
-    fn test_router_creation() {
+    fn test_router_run_command_success() {
         let router = Router::new();
         let ctx = CommandContext {
             format: OutputFormat::Compact,
@@ -764,7 +936,26 @@ mod tests {
         };
 
         let result = router.route(&command, &ctx);
-        assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+        // echo should succeed
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_router_run_command_failure() {
+        let router = Router::new();
+        let ctx = CommandContext {
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let command = Commands::Run {
+            command: "false".to_string(),
+            args: vec![],
+        };
+
+        let result = router.route(&command, &ctx);
+        // false exits with 1
+        assert!(result.is_err());
     }
 
     #[test]

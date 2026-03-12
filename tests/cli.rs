@@ -455,7 +455,49 @@ fn test_run_command_basic() {
         .arg("hello")
         .assert()
         .success()
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("hello"));
+}
+
+#[test]
+fn test_run_command_with_args() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("echo")
+        .arg("test")
+        .arg("message")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test"))
+        .stdout(predicate::str::contains("message"));
+}
+
+#[test]
+fn test_run_command_failure() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run").arg("false").assert().code(1);
+}
+
+#[test]
+fn test_run_command_not_found() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("nonexistent_command_xyz123")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Command not found"));
+}
+
+#[test]
+fn test_run_command_json_output() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("hello")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("exit_code"))
+        .stdout(predicate::str::contains("stdout"));
 }
 
 // ============================================================
@@ -556,13 +598,20 @@ fn test_router_parse_test_command() {
 #[test]
 fn test_router_run_command() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("ls")
-        .arg("-la")
+    cmd.arg("run").arg("ls").assert().success();
+}
+
+#[test]
+fn test_router_run_command_with_stats() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Command:"))
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stderr(predicate::str::contains("Stats:"))
+        .stderr(predicate::str::contains("Duration:"));
 }
 
 // ============================================================
@@ -617,4 +666,333 @@ fn test_context_combined_flags_routing() {
         .success()
         .stderr(predicate::str::contains("Output format: Json"))
         .stderr(predicate::str::contains("Stats: enabled"));
+}
+
+// ============================================================
+// System Command Execution Tests
+// ============================================================
+
+#[test]
+fn test_run_pwd_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("pwd")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("/"));
+}
+
+#[test]
+fn test_run_whoami_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run").arg("whoami").assert().success();
+}
+
+#[test]
+fn test_run_date_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run").arg("date").assert().success();
+}
+
+#[test]
+fn test_run_uname_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("uname")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Darwin").or(predicate::str::contains("Linux")));
+}
+
+#[test]
+fn test_run_shell_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo shell_test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("shell_test"));
+}
+
+#[test]
+fn test_run_bash_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("bash")
+        .arg("-c")
+        .arg("echo bash_test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("bash_test"));
+}
+
+#[test]
+fn test_run_command_with_multiple_args() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("echo")
+        .arg("arg1")
+        .arg("arg2")
+        .arg("arg3")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("arg1"))
+        .stdout(predicate::str::contains("arg2"))
+        .stdout(predicate::str::contains("arg3"));
+}
+
+#[test]
+fn test_run_command_with_stderr() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo stderr_test >&2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("stderr_test"));
+}
+
+#[test]
+fn test_run_command_with_stdout_and_stderr() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo stdout_test && echo stderr_test >&2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("stdout_test"))
+        .stdout(predicate::str::contains("stderr_test"));
+}
+
+#[test]
+fn test_run_cat_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("cat")
+        .arg("/etc/hosts")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("localhost"));
+}
+
+#[test]
+fn test_run_ls_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run").arg("ls").arg("/tmp").assert().success();
+}
+
+#[test]
+fn test_run_env_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run").arg("env").assert().success();
+}
+
+#[test]
+fn test_run_true_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run").arg("true").assert().success();
+}
+
+#[test]
+fn test_run_exit_code_propagation() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("exit 42")
+        .assert()
+        .code(1); // CLI returns 1 for non-zero exit codes
+}
+
+// ============================================================
+// JSON Output Tests for Command Execution
+// ============================================================
+
+#[test]
+fn test_run_json_output_has_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#""command":"echo"#));
+}
+
+#[test]
+fn test_run_json_output_has_args() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("arg1")
+        .arg("arg2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#""args":["#));
+}
+
+#[test]
+fn test_run_json_output_has_exit_code() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#""exit_code":0"#));
+}
+
+#[test]
+fn test_run_json_output_has_stdout() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("hello_world")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#""stdout":"hello_world\n"#));
+}
+
+#[test]
+fn test_run_json_output_has_duration() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#""duration_ms"#));
+}
+
+#[test]
+fn test_run_json_output_has_stderr() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo test_stderr >&2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#""stderr":"test_stderr\n"#));
+}
+
+#[test]
+fn test_run_json_output_timed_out() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(r#""timed_out":false"#));
+}
+
+#[test]
+fn test_run_json_parsable() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    // Verify it's valid JSON
+    assert!(serde_json::from_str::<serde_json::Value>(&stdout).is_ok());
+}
+
+// ============================================================
+// Stats Output Tests for Command Execution
+// ============================================================
+
+#[test]
+fn test_run_stats_shows_command() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Command:"));
+}
+
+#[test]
+fn test_run_stats_shows_exit_code() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Exit code:"));
+}
+
+#[test]
+fn test_run_stats_shows_duration() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Duration:"));
+}
+
+#[test]
+fn test_run_stats_shows_stdout_bytes() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Stdout bytes:"));
+}
+
+#[test]
+fn test_run_stats_shows_stderr_bytes() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Stderr bytes:"));
+}
+
+// ============================================================
+// Error Handling Tests for Command Execution
+// ============================================================
+
+#[test]
+fn test_run_permission_denied() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    // /etc is a directory, trying to execute it should fail
+    cmd.arg("run").arg("/etc").assert().failure().stderr(
+        predicate::str::contains("Permission denied").or(predicate::str::contains("Error")),
+    );
+}
+
+#[test]
+fn test_run_empty_args() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    // echo with no args just prints a newline
+    cmd.arg("run").arg("echo").assert().success();
 }
