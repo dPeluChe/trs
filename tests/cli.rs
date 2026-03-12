@@ -354,13 +354,31 @@ fn test_parse_git_status() {
         .arg("git-status")
         .assert()
         .success()
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("status: clean"));
 }
 
 #[test]
 fn test_parse_git_diff() {
+    let diff_input = r#"diff --git a/src/main.rs b/src/main.rs
+index 1234567..abcdefg 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -10,6 +10,8 @@ fn main() {
+     println!("Hello");
++    let x = 1;
++    let y = 2;
+ }
+"#;
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse").arg("git-diff").assert().success();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(diff_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("main.rs"))
+        .stdout(predicate::str::contains("+2"));
 }
 
 #[test]
@@ -483,7 +501,7 @@ fn test_run_command_not_found() {
     cmd.arg("run")
         .arg("nonexistent_command_xyz123")
         .assert()
-        .failure()
+        .code(127) // Standard "command not found" exit code
         .stderr(predicate::str::contains("Command not found"));
 }
 
@@ -568,6 +586,111 @@ fn test_run_command_no_capture_both() {
         .success();
 }
 
+#[test]
+fn test_run_command_capture_exit_code_default() {
+    // By default, exit code is captured
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("--capture-exit-code=true")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"exit_code\":0"));
+}
+
+#[test]
+fn test_run_command_no_capture_exit_code() {
+    // When --capture-exit-code=false, exit_code is null in JSON output
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("--capture-exit-code=false")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"exit_code\":null"));
+}
+
+#[test]
+fn test_run_command_no_capture_exit_code_non_zero() {
+    // When exit code is not captured, even non-zero exit commands show null
+    // and the command succeeds (error is not propagated)
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("--capture-exit-code=false")
+        .arg("sh")
+        .arg("-c")
+        .arg("exit 42")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"exit_code\":null"));
+}
+
+#[test]
+fn test_run_command_capture_exit_code_non_zero() {
+    // When exit code is captured, non-zero exit code is visible
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("--capture-exit-code=true")
+        .arg("sh")
+        .arg("-c")
+        .arg("exit 42")
+        .assert()
+        .code(42) // Exit code 42 is now propagated correctly
+        .stderr(predicate::str::contains("exited with code 42"));
+}
+
+#[test]
+fn test_run_command_capture_duration_default() {
+    // By default, duration is captured
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("duration_ms"));
+}
+
+#[test]
+fn test_run_command_no_capture_duration() {
+    // When --capture-duration=false, duration_ms should be 0
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("run")
+        .arg("--capture-duration=false")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"duration_ms\":0"));
+}
+
+#[test]
+fn test_run_command_capture_duration_true() {
+    // When --capture-duration=true, duration_ms should be greater than 0
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("run")
+        .arg("--capture-duration=true")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    // Parse JSON and check duration_ms > 0
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    let duration_ms = json["duration_ms"].as_u64().unwrap();
+    assert!(duration_ms > 0);
+}
+
 // ============================================================
 // Command Routing Tests
 // ============================================================
@@ -646,8 +769,7 @@ fn test_router_parse_git_status_command() {
         .arg("git-status")
         .assert()
         .success()
-        .stderr(predicate::str::contains("git-status"))
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("status: clean"));
 }
 
 #[test]
@@ -873,7 +995,7 @@ fn test_run_exit_code_propagation() {
         .arg("-c")
         .arg("exit 42")
         .assert()
-        .code(1); // CLI returns 1 for non-zero exit codes
+        .code(42); // Exit code 42 is now propagated correctly
 }
 
 // ============================================================
@@ -1063,4 +1185,92 @@ fn test_run_empty_args() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // echo with no args just prints a newline
     cmd.arg("run").arg("echo").assert().success();
+}
+
+// ============================================================
+// Exit Code Propagation Tests
+// ============================================================
+
+#[test]
+fn test_exit_code_zero_success() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run").arg("true").assert().success().code(0);
+}
+
+#[test]
+fn test_exit_code_one_propagated() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run").arg("false").assert().code(1);
+}
+
+#[test]
+fn test_exit_code_42_propagated() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("exit 42")
+        .assert()
+        .code(42);
+}
+
+#[test]
+fn test_exit_code_255_propagated() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("exit 255")
+        .assert()
+        .code(255);
+}
+
+#[test]
+fn test_exit_code_command_not_found_is_127() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("nonexistent_command_xyz123")
+        .assert()
+        .code(127) // Standard "command not found" exit code
+        .stderr(predicate::str::contains("Command not found"));
+}
+
+#[test]
+fn test_command_not_found_json_output() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("run")
+        .arg("nonexistent_command_xyz123")
+        .assert()
+        .code(127);
+
+    // Error output goes to stderr when using JSON format
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json: serde_json::Value = serde_json::from_str(&stderr).unwrap();
+
+    assert_eq!(json["error"], true);
+    assert_eq!(json["exit_code"], 127);
+    assert!(json["message"].as_str().unwrap().contains("Command not found"));
+}
+
+#[test]
+fn test_exit_code_permission_denied_is_126() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("/etc/passwd") // A file that exists but isn't executable
+        .assert()
+        .code(126); // Standard "permission denied" exit code
+}
+
+#[test]
+fn test_exit_code_no_capture_still_propagates() {
+    // Even when exit code is not captured, the CLI should still fail
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("false")
+        .arg("--capture-stdout=false")
+        .arg("--capture-stderr=false")
+        .assert()
+        .code(1);
 }
