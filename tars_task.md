@@ -28,97 +28,97 @@ The project includes three functional layers:
 
 # Command Execution Layer
 
-- [ ] implement process execution module
-- [ ] support executing real system commands
-- [ ] capture `stdout`
-- [ ] capture `stderr`
-- [ ] capture exit code
-- [ ] capture execution duration
-- [ ] propagate exit codes correctly
-- [ ] support passing command arguments safely
-- [ ] handle command not found errors
-- [ ] handle permission errors
-- [ ] implement optional timeout handling
+- [x] implement process execution module
+- [x] support executing real system commands
+- [x] capture `stdout`
+- [x] capture `stderr`
+- [x] capture exit code
+- [x] capture execution duration
+- [x] propagate exit codes correctly
+- [x] support passing command arguments safely
+- [x] handle command not found errors
+- [x] handle permission errors
+- [x] implement optional timeout handling
 
 ---
 
 # Command Classifier
 
-- [ ] implement command classifier module
-- [ ] detect `git status`
-- [ ] detect `git diff`
-- [ ] detect `ls`
-- [ ] detect `find`
-- [ ] detect `grep`
-- [ ] detect test runners (`pytest`, `jest`, `vitest`, `npm test`, `pnpm test`, `bun test`)
-- [ ] detect log/tail style output
-- [ ] implement fallback passthrough for unsupported commands
+- [x] implement command classifier module
+- [x] detect `git status`
+- [x] detect `git diff`
+- [x] detect `ls`
+- [x] detect `find`
+- [x] detect `grep`
+- [x] detect test runners (`pytest`, `jest`, `vitest`, `npm test`, `pnpm test`, `bun test`)
+- [x] detect log/tail style output
+- [x] implement fallback passthrough for unsupported commands
 
 ---
 
 # Reducer Framework
 
-- [ ] define reducer interface
-- [ ] implement reducer input structure
-- [ ] implement reducer output structure
-- [ ] support compact output
-- [ ] support structured output
-- [ ] support truncation detection
-- [ ] ensure reducers never hide errors
-- [ ] ensure reducers preserve exit codes
+- [x] define reducer interface
+- [x] implement reducer input structure
+- [x] implement reducer output structure
+- [x] support compact output
+- [x] support structured output
+- [x] support truncation detection
+- [x] ensure reducers never hide errors
+- [x] ensure reducers preserve exit codes
 
 ---
 
 # Git Status Reducer
 
-- [ ] parse `git status` output
-- [ ] extract branch name
-- [ ] extract ahead/behind counts
-- [ ] extract staged file count
-- [ ] extract unstaged file count
-- [ ] extract untracked file count
-- [ ] detect clean repository state
-- [ ] detect dirty repository state
-- [ ] group modified file paths
-- [ ] implement compact output
-- [ ] implement JSON output
-- [ ] handle detached HEAD state
+- [x] parse `git status` output
+- [x] extract branch name
+- [x] extract ahead/behind counts
+- [x] extract staged file count
+- [x] extract unstaged file count
+- [x] extract untracked file count
+- [x] detect clean repository state
+- [x] detect dirty repository state
+- [x] group modified file paths
+- [x] implement compact output
+- [x] implement JSON output
+- [x] handle detached HEAD state
 
 ---
 
 # Git Diff Reducer
 
-- [ ] parse `git diff` output
-- [ ] extract changed file list
-- [ ] extract insertions and deletions summary
-- [ ] group diff results by file
-- [ ] implement compact summary
-- [ ] implement JSON structured output
-- [ ] implement truncation for very large diffs
+- [x] parse `git diff` output
+- [x] extract changed file list
+- [x] extract insertions and deletions summary
+- [x] group diff results by file
+- [x] implement compact summary
+- [x] implement JSON structured output
+- [x] implement truncation for very large diffs
 
 ---
 
 # LS Reducer
 
-- [ ] parse `ls` output
-- [ ] separate directories from files
-- [ ] detect hidden files
-- [ ] group common generated directories
-- [ ] implement compact output
-- [ ] implement JSON output
-- [ ] handle symbolic links
-- [ ] handle permission denied entries
+- [x] parse `ls` output
+- [x] separate directories from files
+- [x] detect hidden files
+- [x] group common generated directories
+- [x] implement compact output
+- [x] implement JSON output
+- [x] handle symbolic links
+- [x] handle permission denied entries
 
 ---
 
 # Grep Reducer
 
-- [ ] parse grep results
-- [ ] group matches by file
+- [x] parse grep results
+- [x] group matches by file
 - [ ] preserve line numbers
 - [ ] collapse repeated context lines
 - [ ] implement compact summary
-- [ ] implement JSON output
+- [x] implement JSON output
 - [ ] support truncation for large result sets
 
 ---
