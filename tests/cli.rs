@@ -2184,6 +2184,110 @@ fn test_exit_code_no_capture_still_propagates() {
 }
 
 // ============================================================
+// Find Parser: Permission Denied Tests
+// ============================================================
+
+#[test]
+fn test_parse_find_permission_denied() {
+    // Test that permission denied entries are detected and not treated as files
+    let find_input =
+        "./src/main.rs\nfind: '/root': Permission denied\n./src/lib.rs\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("find")
+        .write_stdin(find_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("error:"))
+        .stdout(predicate::str::contains("Permission denied"))
+        .stdout(predicate::str::contains("total: 2"))
+        .stdout(predicate::str::contains("files (2):"));
+}
+
+#[test]
+fn test_parse_find_permission_denied_json() {
+    // Test JSON output includes errors array
+    let find_input = "./file.txt\nfind: '/secure': Permission denied\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("find")
+        .write_stdin(find_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"errors\":"))
+        .stdout(predicate::str::contains("Permission denied"));
+}
+
+#[test]
+fn test_parse_find_only_errors() {
+    // Test when all output is errors - still shows total: 0 with errors
+    let find_input = "find: '.': Permission denied\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("find")
+        .write_stdin(find_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("error:"))
+        .stdout(predicate::str::contains("Permission denied"));
+}
+
+#[test]
+fn test_parse_find_no_such_file() {
+    // Test "No such file or directory" error handling
+    let find_input =
+        "./exists.txt\nfind: 'missing': No such file or directory\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("find")
+        .write_stdin(find_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("error:"))
+        .stdout(predicate::str::contains("No such file or directory"))
+        .stdout(predicate::str::contains("total: 1"));
+}
+
+#[test]
+fn test_parse_find_cannot_open_directory() {
+    // Test "cannot open directory" error handling
+    let find_input =
+        "./file.rs\nfind: cannot open directory '/root': Permission denied\n./another.rs\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("find")
+        .write_stdin(find_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("error:"))
+        .stdout(predicate::str::contains("cannot open directory"))
+        .stdout(predicate::str::contains("total: 2"));
+}
+
+#[test]
+fn test_parse_find_multiple_errors() {
+    // Test multiple error messages
+    let find_input = "find: '/root': Permission denied\n./file.txt\nfind: '/var': Permission denied\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("find")
+        .write_stdin(find_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("error:"))
+        .stdout(predicate::str::contains("/root"))
+        .stdout(predicate::str::contains("/var"))
+        .stdout(predicate::str::contains("total: 1"));
+}
+
+// ============================================================
 // IsClean Command Tests
 // ============================================================
 

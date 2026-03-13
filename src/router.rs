@@ -254,6 +254,15 @@ struct FindEntry {
     depth: usize,
 }
 
+/// A permission denied or error entry from find output.
+#[derive(Debug, Clone, Default)]
+struct FindError {
+    /// The path that was denied access.
+    path: String,
+    /// The error message.
+    message: String,
+}
+
 /// Parsed find output.
 #[derive(Debug, Clone, Default)]
 struct FindOutput {
@@ -267,7 +276,9 @@ struct FindOutput {
     hidden: Vec<String>,
     /// File extensions with counts.
     extensions: std::collections::HashMap<String, usize>,
-    /// Total count of entries.
+    /// Permission denied or error entries.
+    errors: Vec<FindError>,
+    /// Total count of entries (excluding errors).
     total_count: usize,
     /// Whether the output is empty.
     is_empty: bool,
@@ -2469,6 +2480,16 @@ impl ParseHandler {
                 continue;
             }
 
+            // Check for permission denied or other error messages
+            // Format: "find: '/path': Permission denied"
+            // or: "find: cannot open directory '/path': Permission denied"
+            // or: "find: 'path': No such file or directory"
+            if line.starts_with("find: ") && line.contains(':') {
+                let error = Self::parse_find_error(line);
+                find_output.errors.push(error);
+                continue;
+            }
+
             // Each line is a file path
             let path = line.to_string();
             let is_directory = path.ends_with('/');
@@ -2505,10 +2526,33 @@ impl ParseHandler {
             }
         }
 
-        // Check if empty
+        // Check if empty (considering both entries and errors)
         find_output.is_empty = find_output.entries.is_empty();
 
         Ok(find_output)
+    }
+
+    /// Parse a find error message.
+    fn parse_find_error(line: &str) -> FindError {
+        // Format: "find: '/path': Permission denied"
+        // or: "find: cannot open directory '/path': Permission denied"
+        // or: "find: 'path': No such file or directory"
+
+        // Try to extract the path (usually in quotes)
+        let path = if let Some(start) = line.find('\'') {
+            if let Some(end) = line[start + 1..].find('\'') {
+                line[start + 1..start + 1 + end].to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        FindError {
+            path,
+            message: line.to_string(),
+        }
     }
 
     /// Extract file extension from path.
@@ -2556,6 +2600,10 @@ impl ParseHandler {
             "files": find_output.files,
             "hidden": find_output.hidden,
             "extensions": find_output.extensions,
+            "errors": find_output.errors.iter().map(|e| serde_json::json!({
+                "path": e.path,
+                "message": e.message,
+            })).collect::<Vec<_>>(),
         })
         .to_string()
     }
@@ -2564,12 +2612,21 @@ impl ParseHandler {
     fn format_find_compact(find_output: &FindOutput) -> String {
         let mut output = String::new();
 
-        if find_output.is_empty {
+        // Show errors first (if any)
+        if !find_output.errors.is_empty() {
+            for error in &find_output.errors {
+                output.push_str(&format!("error: {}\n", error.message));
+            }
+        }
+
+        if find_output.is_empty && find_output.errors.is_empty() {
             output.push_str("find: empty\n");
             return output;
         }
 
-        output.push_str(&format!("total: {}\n", find_output.total_count));
+        if !find_output.is_empty {
+            output.push_str(&format!("total: {}\n", find_output.total_count));
+        }
 
         if !find_output.directories.is_empty() {
             output.push_str(&format!(
