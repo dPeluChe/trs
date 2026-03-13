@@ -3543,19 +3543,22 @@ Ran 2 tests in 1.44ms"#;
 }
 
 #[test]
-fn test_parse_logs_json_output_not_implemented() {
+fn test_parse_logs_json_output() {
+    let log_input = "[INFO] Starting application\n[ERROR] Something went wrong\n[WARN] Warning message";
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
         .arg("parse")
         .arg("logs")
+        .write_stdin(log_input)
         .assert()
         .success();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-    let json_line = stderr.lines().last().unwrap_or("");
-    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
-    assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("logs parsing"));
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["total_lines"], 3);
+    assert_eq!(json["level_counts"]["info"], 1);
+    assert_eq!(json["level_counts"]["error"], 1);
+    assert_eq!(json["level_counts"]["warning"], 1);
 }
 
 // ============================================================
