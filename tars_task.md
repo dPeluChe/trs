@@ -134,22 +134,22 @@ The project includes three functional layers:
 - [x] extract passed test count
 - [x] extract failed test count
 - [x] extract skipped test count
-- [ ] extract execution duration
-- [ ] extract failing test identifiers
-- [ ] implement compact success summary
-- [ ] implement failure-focused summary
+- [x] extract execution duration
+- [x] extract failing test identifiers
+- [x] implement compact success summary
+- [x] implement failure-focused summary
 
 ---
 
 # Log / Tail Reducer
 
-- [ ] parse log streams
-- [ ] detect repeated log lines
-- [ ] collapse repeated entries
-- [ ] detect error/warning levels
-- [ ] maintain most recent critical lines
-- [ ] implement compact log output
-- [ ] implement JSON summary
+- [x] parse log streams
+- [x] detect repeated log lines
+- [x] collapse repeated entries
+- [x] detect error/warning levels
+- [x] maintain most recent critical lines
+- [x] implement compact log output
+- [x] implement JSON summary
 
 ---
 
