@@ -3121,7 +3121,13 @@ impl ParseHandler {
             grep_output.is_truncated = true;
             grep_output.files_shown = max_files;
             grep_output.files.truncate(max_files);
-        } else if grep_output.total_matches > grep_output.files.iter().map(|f| f.matches.len()).sum::<usize>() {
+        } else if grep_output.total_matches
+            > grep_output
+                .files
+                .iter()
+                .map(|f| f.matches.len())
+                .sum::<usize>()
+        {
             // Some matches were truncated per-file but not files
             grep_output.is_truncated = true;
             grep_output.files_shown = grep_output.files.len();
@@ -3347,9 +3353,7 @@ impl ParseHandler {
                 result.push_str(&format!(
                     "{},{},{},{},{}\n",
                     file.path,
-                    m.line_number
-                        .map(|n| n.to_string())
-                        .unwrap_or_default(),
+                    m.line_number.map(|n| n.to_string()).unwrap_or_default(),
                     m.column.map(|c| c.to_string()).unwrap_or_default(),
                     m.is_context,
                     line_escaped
@@ -3371,9 +3375,7 @@ impl ParseHandler {
                 result.push_str(&format!(
                     "{}\t{}\t{}\t{}\t{}\n",
                     file.path,
-                    m.line_number
-                        .map(|n| n.to_string())
-                        .unwrap_or_default(),
+                    m.line_number.map(|n| n.to_string()).unwrap_or_default(),
                     m.column.map(|c| c.to_string()).unwrap_or_default(),
                     m.is_context,
                     line_escaped
@@ -3490,13 +3492,14 @@ impl ParseHandler {
 
         // Show truncation warning if applicable
         if grep_output.is_truncated {
-            let hidden_files = grep_output.total_files.saturating_sub(grep_output.files_shown);
-            let hidden_matches = grep_output.total_matches.saturating_sub(grep_output.matches_shown);
+            let hidden_files = grep_output
+                .total_files
+                .saturating_sub(grep_output.files_shown);
+            let hidden_matches = grep_output
+                .total_matches
+                .saturating_sub(grep_output.matches_shown);
             if hidden_files > 0 {
-                output.push_str(&format!(
-                    "  ... {} more file(s) not shown\n",
-                    hidden_files
-                ));
+                output.push_str(&format!("  ... {} more file(s) not shown\n", hidden_files));
             }
             if hidden_matches > 0 && hidden_files == 0 {
                 output.push_str(&format!(
@@ -3534,13 +3537,14 @@ impl ParseHandler {
 
         // Show truncation warning if applicable
         if grep_output.is_truncated {
-            let hidden_files = grep_output.total_files.saturating_sub(grep_output.files_shown);
-            let hidden_matches = grep_output.total_matches.saturating_sub(grep_output.matches_shown);
+            let hidden_files = grep_output
+                .total_files
+                .saturating_sub(grep_output.files_shown);
+            let hidden_matches = grep_output
+                .total_matches
+                .saturating_sub(grep_output.matches_shown);
             if hidden_files > 0 {
-                output.push_str(&format!(
-                    "... {} more file(s) truncated\n",
-                    hidden_files
-                ));
+                output.push_str(&format!("... {} more file(s) truncated\n", hidden_files));
             }
             if hidden_matches > 0 && hidden_files == 0 {
                 output.push_str(&format!(
@@ -3725,11 +3729,21 @@ impl ParseHandler {
                     }
                     // Extract test name from error line
                     let name = if trimmed.starts_with("ERROR at setup of ") {
-                        trimmed.strip_prefix("ERROR at setup of ").unwrap_or("").to_string()
+                        trimmed
+                            .strip_prefix("ERROR at setup of ")
+                            .unwrap_or("")
+                            .to_string()
                     } else if trimmed.starts_with("ERROR at teardown of ") {
-                        trimmed.strip_prefix("ERROR at teardown of ").unwrap_or("").to_string()
+                        trimmed
+                            .strip_prefix("ERROR at teardown of ")
+                            .unwrap_or("")
+                            .to_string()
                     } else {
-                        trimmed.strip_prefix("ERROR:").unwrap_or("").trim().to_string()
+                        trimmed
+                            .strip_prefix("ERROR:")
+                            .unwrap_or("")
+                            .trim()
+                            .to_string()
                     };
                     current_failed_test_name = Some(name);
                     failure_buffer = String::new();
@@ -3792,9 +3806,8 @@ impl ParseHandler {
         }
 
         // Determine success
-        output.success = output.summary.failed == 0
-            && output.summary.errors == 0
-            && output.summary.total > 0;
+        output.success =
+            output.summary.failed == 0 && output.summary.errors == 0 && output.summary.total > 0;
         output.is_empty = output.tests.is_empty() && output.summary.total == 0;
 
         Ok(output)
@@ -4044,11 +4057,29 @@ impl ParseHandler {
             return result;
         }
 
-        // Summary line
-        let status = if output.success { "PASS" } else { "FAIL" };
+        // Compact success summary - minimal output when all tests pass
+        if output.success {
+            result.push_str(&format!("PASS: {} tests", output.summary.passed));
+            if output.summary.skipped > 0 {
+                result.push_str(&format!(", {} skipped", output.summary.skipped));
+            }
+            if output.summary.xfailed > 0 {
+                result.push_str(&format!(", {} xfailed", output.summary.xfailed));
+            }
+            if output.summary.xpassed > 0 {
+                result.push_str(&format!(", {} xpassed", output.summary.xpassed));
+            }
+            if let Some(duration) = output.summary.duration {
+                result.push_str(&format!(" [{:.2}s]", duration));
+            }
+            result.push('\n');
+            return result;
+        }
+
+        // Failure-focused summary - detailed output when tests fail
         result.push_str(&format!(
-            "{}: {} passed, {} failed",
-            status, output.summary.passed, output.summary.failed
+            "FAIL: {} passed, {} failed",
+            output.summary.passed, output.summary.failed
         ));
         if output.summary.skipped > 0 {
             result.push_str(&format!(", {} skipped", output.summary.skipped));
@@ -4354,7 +4385,8 @@ impl ParseHandler {
         let (test_name, duration) = if let Some(paren_pos) = trimmed.rfind('(') {
             let name_part = trimmed[..paren_pos].trim();
             let duration_part = &trimmed[paren_pos..];
-            let duration = Self::parse_jest_duration(duration_part.trim_matches(|c| c == '(' || c == ')'));
+            let duration =
+                Self::parse_jest_duration(duration_part.trim_matches(|c| c == '(' || c == ')'));
             (name_part.to_string(), duration)
         } else {
             (trimmed.to_string(), None)
@@ -4366,7 +4398,10 @@ impl ParseHandler {
             let delimiter = if test_name.contains('>') { ">" } else { "›" };
             let parts: Vec<&str> = test_name.split(delimiter).map(|s| s.trim()).collect();
             if parts.len() > 1 {
-                let ancestors: Vec<String> = parts[..parts.len() - 1].iter().map(|s| s.to_string()).collect();
+                let ancestors: Vec<String> = parts[..parts.len() - 1]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
                 let name = parts.last().unwrap_or(&"").to_string();
                 (ancestors, name)
             } else {
@@ -4390,7 +4425,10 @@ impl ParseHandler {
     fn parse_jest_duration(s: &str) -> Option<f64> {
         let s = s.trim();
         // Try to extract number and unit
-        let num_str: String = s.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
+        let num_str: String = s
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '.')
+            .collect();
         let num: f64 = num_str.parse().ok()?;
 
         // Convert to seconds based on unit
@@ -4547,11 +4585,28 @@ impl ParseHandler {
             return result;
         }
 
-        // Summary line
-        let status = if output.success { "PASS" } else { "FAIL" };
+        // Compact success summary - minimal output when all tests pass
+        if output.success {
+            result.push_str(&format!(
+                "PASS: {} suites, {} tests",
+                output.summary.suites_total, output.summary.tests_passed
+            ));
+            if output.summary.tests_skipped > 0 {
+                result.push_str(&format!(", {} skipped", output.summary.tests_skipped));
+            }
+            if output.summary.tests_todo > 0 {
+                result.push_str(&format!(", {} todo", output.summary.tests_todo));
+            }
+            if let Some(duration) = output.summary.duration {
+                result.push_str(&format!(" [{:.2}s]", duration));
+            }
+            result.push('\n');
+            return result;
+        }
+
+        // Failure-focused summary - detailed output when tests fail
         result.push_str(&format!(
-            "{}: {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
-            status,
+            "FAIL: {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
             output.summary.suites_total,
             output.summary.suites_passed,
             output.summary.suites_failed,
@@ -4571,17 +4626,17 @@ impl ParseHandler {
         result.push('\n');
 
         // List failed test suites
-        let failed_suites: Vec<_> = output
-            .test_suites
-            .iter()
-            .filter(|s| !s.passed)
-            .collect();
+        let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
 
         if !failed_suites.is_empty() {
             result.push_str(&format!("failed suites ({}):\n", failed_suites.len()));
             for suite in failed_suites {
                 result.push_str(&format!("  {}\n", suite.file));
-                let failed_tests: Vec<_> = suite.tests.iter().filter(|t| t.status == JestTestStatus::Failed).collect();
+                let failed_tests: Vec<_> = suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == JestTestStatus::Failed)
+                    .collect();
                 for test in failed_tests {
                     result.push_str(&format!("    ✕ {}\n", test.name));
                     if let Some(ref msg) = test.error_message {
@@ -4638,10 +4693,14 @@ impl ParseHandler {
 
         // Summary
         result.push_str("## Summary\n");
-        result.push_str(&format!("- Suites: {} passed, {} failed, {} total\n",
-            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total));
-        result.push_str(&format!("- Tests: {} passed, {} failed, {} total\n",
-            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total));
+        result.push_str(&format!(
+            "- Suites: {} passed, {} failed, {} total\n",
+            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total
+        ));
+        result.push_str(&format!(
+            "- Tests: {} passed, {} failed, {} total\n",
+            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total
+        ));
         if output.summary.tests_skipped > 0 {
             result.push_str(&format!("- Skipped: {}\n", output.summary.tests_skipped));
         }
@@ -4657,17 +4716,17 @@ impl ParseHandler {
         result.push('\n');
 
         // Failed tests with details
-        let failed_suites: Vec<_> = output
-            .test_suites
-            .iter()
-            .filter(|s| !s.passed)
-            .collect();
+        let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
 
         if !failed_suites.is_empty() {
             result.push_str("## Failed Test Suites\n\n");
             for suite in failed_suites {
                 result.push_str(&format!("### {}\n", suite.file));
-                let failed_tests: Vec<_> = suite.tests.iter().filter(|t| t.status == JestTestStatus::Failed).collect();
+                let failed_tests: Vec<_> = suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == JestTestStatus::Failed)
+                    .collect();
                 for test in failed_tests {
                     result.push_str(&format!("- {}", test.name));
                     if let Some(duration) = test.duration {
@@ -4778,7 +4837,12 @@ impl ParseHandler {
             }
 
             // Accumulate failure details
-            if in_failure_details && (trimmed.starts_with("at ") || trimmed.starts_with("expected") || trimmed.contains("to be") || failure_buffer.len() > 0) {
+            if in_failure_details
+                && (trimmed.starts_with("at ")
+                    || trimmed.starts_with("expected")
+                    || trimmed.contains("to be")
+                    || failure_buffer.len() > 0)
+            {
                 failure_buffer.push_str(line);
                 failure_buffer.push('\n');
                 continue;
@@ -4926,15 +4990,30 @@ impl ParseHandler {
         // Skip if doesn't start with proper prefix
         // Vitest uses: ✓ (passed), ✕/× (failed), ↩ (skipped), etc.
         let (status, remainder) = if line.starts_with('✓') {
-            (VitestTestStatus::Passed, line.strip_prefix('✓')?.trim_start())
+            (
+                VitestTestStatus::Passed,
+                line.strip_prefix('✓')?.trim_start(),
+            )
         } else if line.starts_with('✕') {
-            (VitestTestStatus::Failed, line.strip_prefix('✕')?.trim_start())
+            (
+                VitestTestStatus::Failed,
+                line.strip_prefix('✕')?.trim_start(),
+            )
         } else if line.starts_with('×') {
-            (VitestTestStatus::Failed, line.strip_prefix('×')?.trim_start())
+            (
+                VitestTestStatus::Failed,
+                line.strip_prefix('×')?.trim_start(),
+            )
         } else if line.starts_with('↩') {
-            (VitestTestStatus::Skipped, line.strip_prefix('↩')?.trim_start())
+            (
+                VitestTestStatus::Skipped,
+                line.strip_prefix('↩')?.trim_start(),
+            )
         } else if line.starts_with("↓") {
-            (VitestTestStatus::Skipped, line.strip_prefix("↓")?.trim_start())
+            (
+                VitestTestStatus::Skipped,
+                line.strip_prefix("↓")?.trim_start(),
+            )
         } else if line.contains("skipped") || line.contains("skip") {
             (VitestTestStatus::Skipped, line)
         } else if line.contains("todo") {
@@ -4950,7 +5029,8 @@ impl ParseHandler {
         let (test_name, duration) = if let Some(ms_pos) = trimmed.rfind("ms") {
             // Find the number before "ms"
             let before = &trimmed[..ms_pos];
-            let num_start = before.rfind(|c: char| !c.is_ascii_digit() && c != '.')
+            let num_start = before
+                .rfind(|c: char| !c.is_ascii_digit() && c != '.')
                 .map(|p| p + 1)
                 .unwrap_or(0);
             let name_part = before[..num_start].trim();
@@ -4961,7 +5041,8 @@ impl ParseHandler {
             // Check if it's a duration (not part of a word)
             let before = &trimmed[..s_pos];
             if before.ends_with(|c: char| c.is_ascii_digit()) {
-                let num_start = before.rfind(|c: char| !c.is_ascii_digit() && c != '.')
+                let num_start = before
+                    .rfind(|c: char| !c.is_ascii_digit() && c != '.')
                     .map(|p| p + 1)
                     .unwrap_or(0);
                 let name_part = before[..num_start].trim();
@@ -4981,7 +5062,10 @@ impl ParseHandler {
             let delimiter = if test_name.contains('>') { ">" } else { "›" };
             let parts: Vec<&str> = test_name.split(delimiter).map(|s| s.trim()).collect();
             if parts.len() > 1 {
-                let ancestors: Vec<String> = parts[..parts.len() - 1].iter().map(|s| s.to_string()).collect();
+                let ancestors: Vec<String> = parts[..parts.len() - 1]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
                 let name = parts.last().unwrap_or(&"").to_string();
                 (ancestors, name)
             } else {
@@ -5006,7 +5090,10 @@ impl ParseHandler {
         let s = s.trim();
 
         // Try to extract number and unit
-        let num_str: String = s.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
+        let num_str: String = s
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '.')
+            .collect();
         let num: f64 = num_str.parse().ok()?;
 
         // Convert to seconds based on unit
@@ -5167,11 +5254,28 @@ impl ParseHandler {
             return result;
         }
 
-        // Summary line
-        let status = if output.success { "PASS" } else { "FAIL" };
+        // Compact success summary - minimal output when all tests pass
+        if output.success {
+            result.push_str(&format!(
+                "PASS: {} test files, {} tests",
+                output.summary.suites_total, output.summary.tests_passed
+            ));
+            if output.summary.tests_skipped > 0 {
+                result.push_str(&format!(", {} skipped", output.summary.tests_skipped));
+            }
+            if output.summary.tests_todo > 0 {
+                result.push_str(&format!(", {} todo", output.summary.tests_todo));
+            }
+            if let Some(duration) = output.summary.duration {
+                result.push_str(&format!(" [{:.2}s]", duration));
+            }
+            result.push('\n');
+            return result;
+        }
+
+        // Failure-focused summary - detailed output when tests fail
         result.push_str(&format!(
-            "{}: {} test files ({} passed, {} failed), {} tests ({} passed, {} failed)",
-            status,
+            "FAIL: {} test files ({} passed, {} failed), {} tests ({} passed, {} failed)",
             output.summary.suites_total,
             output.summary.suites_passed,
             output.summary.suites_failed,
@@ -5191,17 +5295,17 @@ impl ParseHandler {
         result.push('\n');
 
         // List failed test suites
-        let failed_suites: Vec<_> = output
-            .test_suites
-            .iter()
-            .filter(|s| !s.passed)
-            .collect();
+        let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
 
         if !failed_suites.is_empty() {
             result.push_str(&format!("failed suites ({}):\n", failed_suites.len()));
             for suite in failed_suites {
                 result.push_str(&format!("  {}\n", suite.file));
-                let failed_tests: Vec<_> = suite.tests.iter().filter(|t| t.status == VitestTestStatus::Failed).collect();
+                let failed_tests: Vec<_> = suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == VitestTestStatus::Failed)
+                    .collect();
                 for test in failed_tests {
                     result.push_str(&format!("    ✕ {}\n", test.name));
                     if let Some(ref msg) = test.error_message {
@@ -5258,10 +5362,14 @@ impl ParseHandler {
 
         // Summary
         result.push_str("## Summary\n");
-        result.push_str(&format!("- Test Files: {} passed, {} failed, {} total\n",
-            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total));
-        result.push_str(&format!("- Tests: {} passed, {} failed, {} total\n",
-            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total));
+        result.push_str(&format!(
+            "- Test Files: {} passed, {} failed, {} total\n",
+            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total
+        ));
+        result.push_str(&format!(
+            "- Tests: {} passed, {} failed, {} total\n",
+            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total
+        ));
         if output.summary.tests_skipped > 0 {
             result.push_str(&format!("- Skipped: {}\n", output.summary.tests_skipped));
         }
@@ -5277,17 +5385,17 @@ impl ParseHandler {
         result.push('\n');
 
         // Failed tests with details
-        let failed_suites: Vec<_> = output
-            .test_suites
-            .iter()
-            .filter(|s| !s.passed)
-            .collect();
+        let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
 
         if !failed_suites.is_empty() {
             result.push_str("## Failed Test Files\n\n");
             for suite in failed_suites {
                 result.push_str(&format!("### {}\n", suite.file));
-                let failed_tests: Vec<_> = suite.tests.iter().filter(|t| t.status == VitestTestStatus::Failed).collect();
+                let failed_tests: Vec<_> = suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == VitestTestStatus::Failed)
+                    .collect();
                 for test in failed_tests {
                     result.push_str(&format!("- {}", test.name));
                     if let Some(duration) = test.duration {
@@ -5381,7 +5489,11 @@ impl ParseHandler {
                     output.test_suites.push(suite);
                 }
 
-                let file = trimmed.strip_prefix('▶').unwrap_or(trimmed).trim().to_string();
+                let file = trimmed
+                    .strip_prefix('▶')
+                    .unwrap_or(trimmed)
+                    .trim()
+                    .to_string();
                 current_suite = Some(NpmTestSuite {
                     file,
                     passed: true,
@@ -5410,7 +5522,10 @@ impl ParseHandler {
                 // Save the suite
                 if let Some(suite) = current_suite.take() {
                     // Update suite passed status based on tests
-                    let has_failures = suite.tests.iter().any(|t| t.status == NpmTestStatus::Failed);
+                    let has_failures = suite
+                        .tests
+                        .iter()
+                        .any(|t| t.status == NpmTestStatus::Failed);
                     let suite_to_save = NpmTestSuite {
                         passed: !has_failures,
                         ..suite
@@ -5440,7 +5555,11 @@ impl ParseHandler {
                 }
 
                 // Handle error details (indented more than test line, no marker)
-                if in_error_details && !trimmed.starts_with("✔") && !trimmed.starts_with("✖") && !trimmed.starts_with("ℹ") {
+                if in_error_details
+                    && !trimmed.starts_with("✔")
+                    && !trimmed.starts_with("✖")
+                    && !trimmed.starts_with("ℹ")
+                {
                     if let Some(ref mut test) = current_test {
                         if !error_buffer.is_empty() {
                             error_buffer.push('\n');
@@ -5491,7 +5610,10 @@ impl ParseHandler {
 
         // Save any pending suite
         if let Some(suite) = current_suite.take() {
-            let has_failures = suite.tests.iter().any(|t| t.status == NpmTestStatus::Failed);
+            let has_failures = suite
+                .tests
+                .iter()
+                .any(|t| t.status == NpmTestStatus::Failed);
             let suite_to_save = NpmTestSuite {
                 passed: !has_failures,
                 ..suite
@@ -5552,7 +5674,11 @@ impl ParseHandler {
         // Parse skipped test: "ℹ test name # SKIP"
         if line.starts_with("ℹ") && line.contains("# SKIP") {
             let rest = line.strip_prefix("ℹ").unwrap_or(line).trim();
-            let name = rest.strip_suffix("# SKIP").unwrap_or(rest).trim().to_string();
+            let name = rest
+                .strip_suffix("# SKIP")
+                .unwrap_or(rest)
+                .trim()
+                .to_string();
             return Some(NpmTest {
                 name: if ancestors.is_empty() {
                     name.clone()
@@ -5570,7 +5696,11 @@ impl ParseHandler {
         // Parse todo test: "ℹ test name # TODO"
         if line.starts_with("ℹ") && line.contains("# TODO") {
             let rest = line.strip_prefix("ℹ").unwrap_or(line).trim();
-            let name = rest.strip_suffix("# TODO").unwrap_or(rest).trim().to_string();
+            let name = rest
+                .strip_suffix("# TODO")
+                .unwrap_or(rest)
+                .trim()
+                .to_string();
             return Some(NpmTest {
                 name: if ancestors.is_empty() {
                     name.clone()
@@ -5595,7 +5725,7 @@ impl ParseHandler {
             let name_part = line[..paren_pos].trim();
             let duration_part = &line[paren_pos..];
             if duration_part.ends_with("ms)") || duration_part.ends_with("s)") {
-                let duration_str = &duration_part[1..duration_part.len()-1]; // Remove parens
+                let duration_str = &duration_part[1..duration_part.len() - 1]; // Remove parens
                 let duration = Self::parse_npm_duration(duration_str);
                 return (name_part.to_string(), duration);
             }
@@ -5607,10 +5737,10 @@ impl ParseHandler {
     fn parse_npm_duration(s: &str) -> Option<f64> {
         let s = s.trim();
         if s.ends_with("ms") {
-            let num_str = &s[..s.len()-2];
+            let num_str = &s[..s.len() - 2];
             num_str.parse::<f64>().ok().map(|n| n / 1000.0)
         } else if s.ends_with('s') {
-            let num_str = &s[..s.len()-1];
+            let num_str = &s[..s.len() - 1];
             num_str.parse::<f64>().ok()
         } else {
             None
@@ -5622,7 +5752,7 @@ impl ParseHandler {
         if let Some(paren_pos) = line.rfind('(') {
             let duration_part = &line[paren_pos..];
             if duration_part.ends_with("ms)") || duration_part.ends_with("s)") {
-                let duration_str = &duration_part[1..duration_part.len()-1];
+                let duration_str = &duration_part[1..duration_part.len() - 1];
                 return Self::parse_npm_duration(duration_str);
             }
         }
@@ -5633,32 +5763,63 @@ impl ParseHandler {
     fn parse_npm_test_summary_tests(line: &str, summary: &mut NpmTestSummary) {
         let line = line.trim_start_matches(|c| c == '✔' || c == '✖').trim();
         let line = line.strip_prefix("tests").unwrap_or("").trim();
-        Self::parse_npm_counts(line, &mut summary.tests_passed, &mut summary.tests_failed, &mut summary.tests_skipped, &mut summary.tests_total);
+        Self::parse_npm_counts(
+            line,
+            &mut summary.tests_passed,
+            &mut summary.tests_failed,
+            &mut summary.tests_skipped,
+            &mut summary.tests_total,
+        );
     }
 
     /// Parse npm test summary for test files: "✔ test files 2 passed (2)"
     fn parse_npm_test_summary_files(line: &str, summary: &mut NpmTestSummary) {
         let line = line.trim_start_matches(|c| c == '✔' || c == '✖').trim();
         let line = line.strip_prefix("test files").unwrap_or("").trim();
-        Self::parse_npm_counts(line, &mut summary.suites_passed, &mut summary.suites_failed, &mut summary.suites_skipped, &mut summary.suites_total);
+        Self::parse_npm_counts(
+            line,
+            &mut summary.suites_passed,
+            &mut summary.suites_failed,
+            &mut summary.suites_skipped,
+            &mut summary.suites_total,
+        );
     }
 
     /// Parse npm test summary for tests (info format): "ℹ tests 4 passed (4)"
     fn parse_npm_test_summary_tests_info(line: &str, summary: &mut NpmTestSummary) {
         let line = line.trim_start_matches('ℹ').trim();
         let line = line.strip_prefix("tests").unwrap_or("").trim();
-        Self::parse_npm_counts_with_todo(line, &mut summary.tests_passed, &mut summary.tests_failed, &mut summary.tests_skipped, &mut summary.tests_todo, &mut summary.tests_total);
+        Self::parse_npm_counts_with_todo(
+            line,
+            &mut summary.tests_passed,
+            &mut summary.tests_failed,
+            &mut summary.tests_skipped,
+            &mut summary.tests_todo,
+            &mut summary.tests_total,
+        );
     }
 
     /// Parse npm test summary for test files (info format): "ℹ test files 2 passed (2)"
     fn parse_npm_test_summary_files_info(line: &str, summary: &mut NpmTestSummary) {
         let line = line.trim_start_matches('ℹ').trim();
         let line = line.strip_prefix("test files").unwrap_or("").trim();
-        Self::parse_npm_counts(line, &mut summary.suites_passed, &mut summary.suites_failed, &mut summary.suites_skipped, &mut summary.suites_total);
+        Self::parse_npm_counts(
+            line,
+            &mut summary.suites_passed,
+            &mut summary.suites_failed,
+            &mut summary.suites_skipped,
+            &mut summary.suites_total,
+        );
     }
 
     /// Parse count pattern like "4 passed (4)" or "2 passed 1 failed (3)"
-    fn parse_npm_counts(line: &str, passed: &mut usize, failed: &mut usize, skipped: &mut usize, total: &mut usize) {
+    fn parse_npm_counts(
+        line: &str,
+        passed: &mut usize,
+        failed: &mut usize,
+        skipped: &mut usize,
+        total: &mut usize,
+    ) {
         let parts: Vec<&str> = line.split_whitespace().collect();
         let mut i = 0;
         while i < parts.len() {
@@ -5675,7 +5836,7 @@ impl ParseHandler {
                 }
             }
             if parts[i].starts_with('(') && parts[i].ends_with(')') {
-                let total_str = &parts[i][1..parts[i].len()-1];
+                let total_str = &parts[i][1..parts[i].len() - 1];
                 if let Ok(t) = total_str.parse::<usize>() {
                     *total = t;
                 }
@@ -5685,7 +5846,14 @@ impl ParseHandler {
     }
 
     /// Parse npm test summary line with todo support.
-    fn parse_npm_counts_with_todo(line: &str, passed: &mut usize, failed: &mut usize, skipped: &mut usize, todo: &mut usize, total: &mut usize) {
+    fn parse_npm_counts_with_todo(
+        line: &str,
+        passed: &mut usize,
+        failed: &mut usize,
+        skipped: &mut usize,
+        todo: &mut usize,
+        total: &mut usize,
+    ) {
         let parts: Vec<&str> = line.split_whitespace().collect();
         let mut i = 0;
         while i < parts.len() {
@@ -5703,7 +5871,7 @@ impl ParseHandler {
                 }
             }
             if parts[i].starts_with('(') && parts[i].ends_with(')') {
-                let total_str = &parts[i][1..parts[i].len()-1];
+                let total_str = &parts[i][1..parts[i].len() - 1];
                 if let Ok(t) = total_str.parse::<usize>() {
                     *total = t;
                 }
@@ -5811,15 +5979,34 @@ impl ParseHandler {
             return result;
         }
 
-        let status = if output.success { "PASS" } else { "FAIL" };
+        // Compact success summary - minimal output when all tests pass
+        if output.success {
+            result.push_str(&format!(
+                "PASS: {} suites, {} tests",
+                output.summary.suites_total, output.summary.tests_passed
+            ));
+            if output.summary.tests_skipped > 0 {
+                result.push_str(&format!(", {} skipped", output.summary.tests_skipped));
+            }
+            if let Some(duration) = output.summary.duration {
+                result.push_str(&format!(", {:.2}s", duration));
+            }
+            result.push('\n');
+            return result;
+        }
 
+        // Failure-focused summary - detailed output when tests fail
         // Group by passed/failed suites
         let passed_suites: Vec<_> = output.test_suites.iter().filter(|s| s.passed).collect();
         let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
 
         // Show failed suites first
         for suite in &failed_suites {
-            result.push_str(&format!("FAIL: {} ({} tests)\n", suite.file, suite.tests.len()));
+            result.push_str(&format!(
+                "FAIL: {} ({} tests)\n",
+                suite.file,
+                suite.tests.len()
+            ));
             for test in &suite.tests {
                 if test.status == NpmTestStatus::Failed {
                     result.push_str(&format!("  ✖ {}\n", test.test_name));
@@ -5829,15 +6016,16 @@ impl ParseHandler {
 
         // Show passed suites summary
         if !passed_suites.is_empty() {
-            result.push_str(&format!("PASS: {} suites, {} tests\n",
+            result.push_str(&format!(
+                "PASS: {} suites, {} tests\n",
                 passed_suites.len(),
-                passed_suites.iter().map(|s| s.tests.len()).sum::<usize>()));
+                passed_suites.iter().map(|s| s.tests.len()).sum::<usize>()
+            ));
         }
 
         // Summary line
         result.push_str(&format!(
-            "\n[{}] {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
-            status,
+            "\n[FAIL] {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
             output.summary.suites_total,
             output.summary.suites_passed,
             output.summary.suites_failed,
@@ -5897,10 +6085,14 @@ impl ParseHandler {
 
         // Summary
         result.push_str("## Summary\n");
-        result.push_str(&format!("- Test Files: {} passed, {} failed, {} total\n",
-            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total));
-        result.push_str(&format!("- Tests: {} passed, {} failed, {} total\n",
-            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total));
+        result.push_str(&format!(
+            "- Test Files: {} passed, {} failed, {} total\n",
+            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total
+        ));
+        result.push_str(&format!(
+            "- Tests: {} passed, {} failed, {} total\n",
+            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total
+        ));
         if output.summary.tests_skipped > 0 {
             result.push_str(&format!("- Skipped: {}\n", output.summary.tests_skipped));
         }
@@ -5913,17 +6105,17 @@ impl ParseHandler {
         result.push('\n');
 
         // Failed tests with details
-        let failed_suites: Vec<_> = output
-            .test_suites
-            .iter()
-            .filter(|s| !s.passed)
-            .collect();
+        let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
 
         if !failed_suites.is_empty() {
             result.push_str("## Failed Test Files\n\n");
             for suite in failed_suites {
                 result.push_str(&format!("### {}\n", suite.file));
-                let failed_tests: Vec<_> = suite.tests.iter().filter(|t| t.status == NpmTestStatus::Failed).collect();
+                let failed_tests: Vec<_> = suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == NpmTestStatus::Failed)
+                    .collect();
                 for test in failed_tests {
                     result.push_str(&format!("- {}", test.name));
                     if let Some(duration) = test.duration {
@@ -5947,7 +6139,7 @@ impl ParseHandler {
 
     /// Parse pnpm test output into structured data.
     /// pnpm test output format is identical to npm test (Node.js built-in test runner).
-    /// 
+    ///
     /// Expected format:
     /// ```text
     /// ▶ test/file.test.js
@@ -6025,7 +6217,11 @@ impl ParseHandler {
                     output.test_suites.push(suite);
                 }
 
-                let file = trimmed.strip_prefix('▶').unwrap_or(trimmed).trim().to_string();
+                let file = trimmed
+                    .strip_prefix('▶')
+                    .unwrap_or(trimmed)
+                    .trim()
+                    .to_string();
                 current_suite = Some(PnpmTestSuite {
                     file,
                     passed: true,
@@ -6054,7 +6250,10 @@ impl ParseHandler {
                 // Save the suite
                 if let Some(suite) = current_suite.take() {
                     // Update suite passed status based on tests
-                    let has_failures = suite.tests.iter().any(|t| t.status == PnpmTestStatus::Failed);
+                    let has_failures = suite
+                        .tests
+                        .iter()
+                        .any(|t| t.status == PnpmTestStatus::Failed);
                     let suite_to_save = PnpmTestSuite {
                         passed: !has_failures,
                         ..suite
@@ -6084,7 +6283,11 @@ impl ParseHandler {
                 }
 
                 // Handle error details (indented more than test line, no marker)
-                if in_error_details && !trimmed.starts_with("✔") && !trimmed.starts_with("✖") && !trimmed.starts_with("ℹ") {
+                if in_error_details
+                    && !trimmed.starts_with("✔")
+                    && !trimmed.starts_with("✖")
+                    && !trimmed.starts_with("ℹ")
+                {
                     if let Some(ref mut test) = current_test {
                         if !error_buffer.is_empty() {
                             error_buffer.push('\n');
@@ -6135,7 +6338,10 @@ impl ParseHandler {
 
         // Save any pending suite
         if let Some(suite) = current_suite.take() {
-            let has_failures = suite.tests.iter().any(|t| t.status == PnpmTestStatus::Failed);
+            let has_failures = suite
+                .tests
+                .iter()
+                .any(|t| t.status == PnpmTestStatus::Failed);
             let suite_to_save = PnpmTestSuite {
                 passed: !has_failures,
                 ..suite
@@ -6196,7 +6402,11 @@ impl ParseHandler {
         // Parse skipped test: "ℹ test name # SKIP"
         if line.starts_with("ℹ") && line.contains("# SKIP") {
             let rest = line.strip_prefix("ℹ").unwrap_or(line).trim();
-            let name = rest.strip_suffix("# SKIP").unwrap_or(rest).trim().to_string();
+            let name = rest
+                .strip_suffix("# SKIP")
+                .unwrap_or(rest)
+                .trim()
+                .to_string();
             return Some(PnpmTest {
                 name: if ancestors.is_empty() {
                     name.clone()
@@ -6214,7 +6424,11 @@ impl ParseHandler {
         // Parse todo test: "ℹ test name # TODO"
         if line.starts_with("ℹ") && line.contains("# TODO") {
             let rest = line.strip_prefix("ℹ").unwrap_or(line).trim();
-            let name = rest.strip_suffix("# TODO").unwrap_or(rest).trim().to_string();
+            let name = rest
+                .strip_suffix("# TODO")
+                .unwrap_or(rest)
+                .trim()
+                .to_string();
             return Some(PnpmTest {
                 name: if ancestors.is_empty() {
                     name.clone()
@@ -6275,32 +6489,63 @@ impl ParseHandler {
     fn parse_pnpm_test_summary_tests(line: &str, summary: &mut PnpmTestSummary) {
         let line = line.trim_start_matches(|c| c == '✔' || c == '✖').trim();
         let line = line.strip_prefix("tests").unwrap_or("").trim();
-        Self::parse_pnpm_counts(line, &mut summary.tests_passed, &mut summary.tests_failed, &mut summary.tests_skipped, &mut summary.tests_total);
+        Self::parse_pnpm_counts(
+            line,
+            &mut summary.tests_passed,
+            &mut summary.tests_failed,
+            &mut summary.tests_skipped,
+            &mut summary.tests_total,
+        );
     }
 
     /// Parse pnpm test summary for test files: "✔ test files 2 passed (2)"
     fn parse_pnpm_test_summary_files(line: &str, summary: &mut PnpmTestSummary) {
         let line = line.trim_start_matches(|c| c == '✔' || c == '✖').trim();
         let line = line.strip_prefix("test files").unwrap_or("").trim();
-        Self::parse_pnpm_counts(line, &mut summary.suites_passed, &mut summary.suites_failed, &mut summary.suites_skipped, &mut summary.suites_total);
+        Self::parse_pnpm_counts(
+            line,
+            &mut summary.suites_passed,
+            &mut summary.suites_failed,
+            &mut summary.suites_skipped,
+            &mut summary.suites_total,
+        );
     }
 
     /// Parse pnpm test summary for tests (info format): "ℹ tests 4 passed (4)"
     fn parse_pnpm_test_summary_tests_info(line: &str, summary: &mut PnpmTestSummary) {
         let line = line.trim_start_matches('ℹ').trim();
         let line = line.strip_prefix("tests").unwrap_or("").trim();
-        Self::parse_pnpm_counts_with_todo(line, &mut summary.tests_passed, &mut summary.tests_failed, &mut summary.tests_skipped, &mut summary.tests_todo, &mut summary.tests_total);
+        Self::parse_pnpm_counts_with_todo(
+            line,
+            &mut summary.tests_passed,
+            &mut summary.tests_failed,
+            &mut summary.tests_skipped,
+            &mut summary.tests_todo,
+            &mut summary.tests_total,
+        );
     }
 
     /// Parse pnpm test summary for test files (info format): "ℹ test files 2 passed (2)"
     fn parse_pnpm_test_summary_files_info(line: &str, summary: &mut PnpmTestSummary) {
         let line = line.trim_start_matches('ℹ').trim();
         let line = line.strip_prefix("test files").unwrap_or("").trim();
-        Self::parse_pnpm_counts(line, &mut summary.suites_passed, &mut summary.suites_failed, &mut summary.suites_skipped, &mut summary.suites_total);
+        Self::parse_pnpm_counts(
+            line,
+            &mut summary.suites_passed,
+            &mut summary.suites_failed,
+            &mut summary.suites_skipped,
+            &mut summary.suites_total,
+        );
     }
 
     /// Parse count pattern like "4 passed (4)" or "2 passed 1 failed (3)"
-    fn parse_pnpm_counts(line: &str, passed: &mut usize, failed: &mut usize, skipped: &mut usize, total: &mut usize) {
+    fn parse_pnpm_counts(
+        line: &str,
+        passed: &mut usize,
+        failed: &mut usize,
+        skipped: &mut usize,
+        total: &mut usize,
+    ) {
         let parts: Vec<&str> = line.split_whitespace().collect();
         let mut i = 0;
         while i < parts.len() {
@@ -6317,7 +6562,7 @@ impl ParseHandler {
                 }
             }
             if parts[i].starts_with('(') && parts[i].ends_with(')') {
-                let total_str = &parts[i][1..parts[i].len()-1];
+                let total_str = &parts[i][1..parts[i].len() - 1];
                 if let Ok(t) = total_str.parse::<usize>() {
                     *total = t;
                 }
@@ -6327,7 +6572,14 @@ impl ParseHandler {
     }
 
     /// Parse pnpm test summary line with todo support.
-    fn parse_pnpm_counts_with_todo(line: &str, passed: &mut usize, failed: &mut usize, skipped: &mut usize, todo: &mut usize, total: &mut usize) {
+    fn parse_pnpm_counts_with_todo(
+        line: &str,
+        passed: &mut usize,
+        failed: &mut usize,
+        skipped: &mut usize,
+        todo: &mut usize,
+        total: &mut usize,
+    ) {
         let parts: Vec<&str> = line.split_whitespace().collect();
         let mut i = 0;
         while i < parts.len() {
@@ -6345,7 +6597,7 @@ impl ParseHandler {
                 }
             }
             if parts[i].starts_with('(') && parts[i].ends_with(')') {
-                let total_str = &parts[i][1..parts[i].len()-1];
+                let total_str = &parts[i][1..parts[i].len() - 1];
                 if let Ok(t) = total_str.parse::<usize>() {
                     *total = t;
                 }
@@ -6453,15 +6705,34 @@ impl ParseHandler {
             return result;
         }
 
-        let status = if output.success { "PASS" } else { "FAIL" };
+        // Compact success summary - minimal output when all tests pass
+        if output.success {
+            result.push_str(&format!(
+                "PASS: {} suites, {} tests",
+                output.summary.suites_total, output.summary.tests_passed
+            ));
+            if output.summary.tests_skipped > 0 {
+                result.push_str(&format!(", {} skipped", output.summary.tests_skipped));
+            }
+            if let Some(duration) = output.summary.duration {
+                result.push_str(&format!(", {:.2}s", duration));
+            }
+            result.push('\n');
+            return result;
+        }
 
+        // Failure-focused summary - detailed output when tests fail
         // Group by passed/failed suites
         let passed_suites: Vec<_> = output.test_suites.iter().filter(|s| s.passed).collect();
         let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
 
         // Show failed suites first
         for suite in &failed_suites {
-            result.push_str(&format!("FAIL: {} ({} tests)\n", suite.file, suite.tests.len()));
+            result.push_str(&format!(
+                "FAIL: {} ({} tests)\n",
+                suite.file,
+                suite.tests.len()
+            ));
             for test in &suite.tests {
                 if test.status == PnpmTestStatus::Failed {
                     result.push_str(&format!("  ✖ {}\n", test.test_name));
@@ -6471,15 +6742,16 @@ impl ParseHandler {
 
         // Show passed suites summary
         if !passed_suites.is_empty() {
-            result.push_str(&format!("PASS: {} suites, {} tests\n",
+            result.push_str(&format!(
+                "PASS: {} suites, {} tests\n",
                 passed_suites.len(),
-                passed_suites.iter().map(|s| s.tests.len()).sum::<usize>()));
+                passed_suites.iter().map(|s| s.tests.len()).sum::<usize>()
+            ));
         }
 
         // Summary line
         result.push_str(&format!(
-            "\n[{}] {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
-            status,
+            "\n[FAIL] {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
             output.summary.suites_total,
             output.summary.suites_passed,
             output.summary.suites_failed,
@@ -6539,10 +6811,14 @@ impl ParseHandler {
 
         // Summary
         result.push_str("## Summary\n");
-        result.push_str(&format!("- Test Files: {} passed, {} failed, {} total\n",
-            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total));
-        result.push_str(&format!("- Tests: {} passed, {} failed, {} total\n",
-            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total));
+        result.push_str(&format!(
+            "- Test Files: {} passed, {} failed, {} total\n",
+            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total
+        ));
+        result.push_str(&format!(
+            "- Tests: {} passed, {} failed, {} total\n",
+            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total
+        ));
         if output.summary.tests_skipped > 0 {
             result.push_str(&format!("- Skipped: {}\n", output.summary.tests_skipped));
         }
@@ -6555,17 +6831,17 @@ impl ParseHandler {
         result.push('\n');
 
         // Failed tests with details
-        let failed_suites: Vec<_> = output
-            .test_suites
-            .iter()
-            .filter(|s| !s.passed)
-            .collect();
+        let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
 
         if !failed_suites.is_empty() {
             result.push_str("## Failed Test Files\n\n");
             for suite in failed_suites {
                 result.push_str(&format!("### {}\n", suite.file));
-                let failed_tests: Vec<_> = suite.tests.iter().filter(|t| t.status == PnpmTestStatus::Failed).collect();
+                let failed_tests: Vec<_> = suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == PnpmTestStatus::Failed)
+                    .collect();
                 for test in failed_tests {
                     result.push_str(&format!("- {}", test.name));
                     if let Some(duration) = test.duration {
@@ -6663,7 +6939,9 @@ impl ParseHandler {
             }
 
             // Check for test file header: "test/file.test.ts:" (ends with colon)
-            if trimmed.ends_with(':') && !trimmed.starts_with(|c| c == '✓' || c == '✗' || c == '×' || c == '(') {
+            if trimmed.ends_with(':')
+                && !trimmed.starts_with(|c| c == '✓' || c == '✗' || c == '×' || c == '(')
+            {
                 // Save any pending test
                 if let Some(test) = current_test.take() {
                     if let Some(ref mut suite) = current_suite {
@@ -6673,7 +6951,10 @@ impl ParseHandler {
 
                 // Save any pending suite
                 if let Some(suite) = current_suite.take() {
-                    let has_failures = suite.tests.iter().any(|t| t.status == BunTestStatus::Failed);
+                    let has_failures = suite
+                        .tests
+                        .iter()
+                        .any(|t| t.status == BunTestStatus::Failed);
                     let suite_to_save = BunTestSuite {
                         passed: !has_failures,
                         ..suite
@@ -6763,7 +7044,10 @@ impl ParseHandler {
 
         // Save any pending suite
         if let Some(suite) = current_suite.take() {
-            let has_failures = suite.tests.iter().any(|t| t.status == BunTestStatus::Failed);
+            let has_failures = suite
+                .tests
+                .iter()
+                .any(|t| t.status == BunTestStatus::Failed);
             let suite_to_save = BunTestSuite {
                 passed: !has_failures,
                 ..suite
@@ -6935,14 +7219,18 @@ impl ParseHandler {
         // These lines start with a number, not a test marker
         // Examples: " 4 pass", " 0 fail", " 4 expect() calls"
         // NOT: "✓ test pass" or "✗ should fail"
-        
+
         // First check if line starts with a number (possibly with leading spaces)
-        let starts_with_number = line.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false);
-        
+        let starts_with_number = line
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false);
+
         if !starts_with_number {
             return false;
         }
-        
+
         line.ends_with(" pass")
             || line.ends_with(" fail")
             || line.ends_with(" expect() calls")
@@ -7136,8 +7424,23 @@ impl ParseHandler {
             return result;
         }
 
-        let status = if output.success { "PASS" } else { "FAIL" };
+        // Compact success summary - minimal output when all tests pass
+        if output.success {
+            result.push_str(&format!(
+                "PASS: {} suites, {} tests",
+                output.summary.suites_total, output.summary.tests_passed
+            ));
+            if output.summary.tests_skipped > 0 {
+                result.push_str(&format!(", {} skipped", output.summary.tests_skipped));
+            }
+            if let Some(duration) = output.summary.duration {
+                result.push_str(&format!(", {:.2}s", duration));
+            }
+            result.push('\n');
+            return result;
+        }
 
+        // Failure-focused summary - detailed output when tests fail
         // Group by passed/failed suites
         let passed_suites: Vec<_> = output.test_suites.iter().filter(|s| s.passed).collect();
         let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
@@ -7167,8 +7470,7 @@ impl ParseHandler {
 
         // Summary line
         result.push_str(&format!(
-            "\n[{}] {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
-            status,
+            "\n[FAIL] {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
             output.summary.suites_total,
             output.summary.suites_passed,
             output.summary.suites_failed,
@@ -7230,15 +7532,11 @@ impl ParseHandler {
         result.push_str("## Summary\n");
         result.push_str(&format!(
             "- Test Files: {} passed, {} failed, {} total\n",
-            output.summary.suites_passed,
-            output.summary.suites_failed,
-            output.summary.suites_total
+            output.summary.suites_passed, output.summary.suites_failed, output.summary.suites_total
         ));
         result.push_str(&format!(
             "- Tests: {} passed, {} failed, {} total\n",
-            output.summary.tests_passed,
-            output.summary.tests_failed,
-            output.summary.tests_total
+            output.summary.tests_passed, output.summary.tests_failed, output.summary.tests_total
         ));
         if output.summary.tests_skipped > 0 {
             result.push_str(&format!("- Skipped: {}\n", output.summary.tests_skipped));
@@ -8177,8 +8475,7 @@ tests/test_main.py::test_expected_fail XFAIL
         assert_eq!(summary.passed, 2);
         assert_eq!(summary.failed, 1);
 
-        let summary =
-            ParseHandler::parse_pytest_summary("3 passed, 1 failed, 2 skipped in 1.23s");
+        let summary = ParseHandler::parse_pytest_summary("3 passed, 1 failed, 2 skipped in 1.23s");
         assert_eq!(summary.passed, 3);
         assert_eq!(summary.failed, 1);
         assert_eq!(summary.skipped, 2);
@@ -8188,35 +8485,35 @@ tests/test_main.py::test_expected_fail XFAIL
     #[test]
     fn test_is_pytest_summary_line() {
         assert!(ParseHandler::is_pytest_summary_line("2 passed in 0.01s"));
-        assert!(ParseHandler::is_pytest_summary_line("2 passed, 1 failed in 0.05s"));
+        assert!(ParseHandler::is_pytest_summary_line(
+            "2 passed, 1 failed in 0.05s"
+        ));
         assert!(ParseHandler::is_pytest_summary_line(
             "=== 2 passed in 0.01s ==="
         ));
-        assert!(ParseHandler::is_pytest_summary_line("1 failed, 2 passed in 0.05s"));
-        assert!(!ParseHandler::is_pytest_summary_line("test_file.py::test_name PASSED"));
+        assert!(ParseHandler::is_pytest_summary_line(
+            "1 failed, 2 passed in 0.05s"
+        ));
+        assert!(!ParseHandler::is_pytest_summary_line(
+            "test_file.py::test_name PASSED"
+        ));
         assert!(!ParseHandler::is_pytest_summary_line("PASSED"));
     }
 
     #[test]
     fn test_parse_pytest_test_line() {
-        let result = ParseHandler::parse_pytest_test_line(
-            "tests/test_main.py::test_add PASSED",
-        )
-        .unwrap();
+        let result =
+            ParseHandler::parse_pytest_test_line("tests/test_main.py::test_add PASSED").unwrap();
         assert_eq!(result.name, "tests/test_main.py::test_add");
         assert_eq!(result.status, TestStatus::Passed);
         assert_eq!(result.file, Some("tests/test_main.py".to_string()));
 
-        let result = ParseHandler::parse_pytest_test_line(
-            "tests/test_main.py::test_fail FAILED",
-        )
-        .unwrap();
+        let result =
+            ParseHandler::parse_pytest_test_line("tests/test_main.py::test_fail FAILED").unwrap();
         assert_eq!(result.status, TestStatus::Failed);
 
-        let result = ParseHandler::parse_pytest_test_line(
-            "tests/test_main.py::test_skip SKIPPED",
-        )
-        .unwrap();
+        let result =
+            ParseHandler::parse_pytest_test_line("tests/test_main.py::test_skip SKIPPED").unwrap();
         assert_eq!(result.status, TestStatus::Skipped);
     }
 
@@ -8260,7 +8557,8 @@ tests/test_main.py::test_expected_fail XFAIL
 
         let compact = ParseHandler::format_pytest_compact(&output);
         assert!(compact.contains("PASS:"));
-        assert!(compact.contains("1 passed"));
+        // Compact success summary shows "X tests" not "X passed"
+        assert!(compact.contains("1 tests"));
     }
 
     #[test]
@@ -8326,10 +8624,7 @@ tests/test_main.py::test_subtract PASSED
         assert!(result.success);
         assert_eq!(result.python_version, Some("3.12.0".to_string()));
         assert_eq!(result.pytest_version, Some("8.0.0".to_string()));
-        assert_eq!(
-            result.rootdir,
-            Some("/Users/user/project".to_string())
-        );
+        assert_eq!(result.rootdir, Some("/Users/user/project".to_string()));
     }
 
     #[test]
@@ -8494,7 +8789,8 @@ Tests:       2 passed, 1 skipped, 3 total"#;
 
     #[test]
     fn test_parse_jest_test_line() {
-        let result = ParseHandler::parse_jest_test_line("  ✓ should work correctly (5 ms)").unwrap();
+        let result =
+            ParseHandler::parse_jest_test_line("  ✓ should work correctly (5 ms)").unwrap();
         assert_eq!(result.status, JestTestStatus::Passed);
         assert_eq!(result.test_name, "should work correctly");
         assert!(result.duration.is_some());
@@ -8526,7 +8822,10 @@ Tests:       2 passed, 1 skipped, 3 total"#;
     #[test]
     fn test_parse_jest_tests_summary() {
         let mut summary = JestSummary::default();
-        ParseHandler::parse_jest_tests_summary("Tests:       5 passed, 2 failed, 1 skipped, 8 total", &mut summary);
+        ParseHandler::parse_jest_tests_summary(
+            "Tests:       5 passed, 2 failed, 1 skipped, 8 total",
+            &mut summary,
+        );
         assert_eq!(summary.tests_passed, 5);
         assert_eq!(summary.tests_failed, 2);
         assert_eq!(summary.tests_skipped, 1);
@@ -8664,12 +8963,14 @@ Tests:       2 passed, 1 skipped, 3 total"#;
     #[test]
     fn test_parse_jest_with_ancestors() {
         // Test with regular > separator
-        let result = ParseHandler::parse_jest_test_line("✓ describe block > test name (5 ms)").unwrap();
+        let result =
+            ParseHandler::parse_jest_test_line("✓ describe block > test name (5 ms)").unwrap();
         assert_eq!(result.test_name, "test name");
         assert_eq!(result.ancestors, vec!["describe block"]);
 
         // Test with fancy › separator (Unicode)
-        let result = ParseHandler::parse_jest_test_line("✓ describe block › test name (5 ms)").unwrap();
+        let result =
+            ParseHandler::parse_jest_test_line("✓ describe block › test name (5 ms)").unwrap();
         assert_eq!(result.test_name, "test name");
         assert_eq!(result.ancestors, vec!["describe block"]);
     }
@@ -9077,8 +9378,14 @@ Tests:       2 passed, 1 skipped, 3 total"#;
         assert_eq!(json["total_files"], 60);
         assert_eq!(json["files_shown"], 50);
         assert_eq!(json["truncation"]["hidden_files"], 10);
-        assert!(json["truncation"]["message"].as_str().unwrap().contains("60"));
-        assert!(json["truncation"]["message"].as_str().unwrap().contains("50"));
+        assert!(json["truncation"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("60"));
+        assert!(json["truncation"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("50"));
     }
 
     #[test]
@@ -9249,7 +9556,8 @@ Tests:       2 passed, 1 skipped, 3 total"#;
 
     #[test]
     fn test_parse_npm_test_line() {
-        let result = ParseHandler::parse_npm_test_line("✔ should work correctly (5.123ms)", &[]).unwrap();
+        let result =
+            ParseHandler::parse_npm_test_line("✔ should work correctly (5.123ms)", &[]).unwrap();
         assert_eq!(result.status, NpmTestStatus::Passed);
         assert_eq!(result.test_name, "should work correctly");
         assert!(result.duration.is_some());
@@ -9277,7 +9585,8 @@ Tests:       2 passed, 1 skipped, 3 total"#;
 
     #[test]
     fn test_split_npm_test_name_and_duration() {
-        let (name, duration) = ParseHandler::split_npm_test_name_and_duration("test name (5.123ms)");
+        let (name, duration) =
+            ParseHandler::split_npm_test_name_and_duration("test name (5.123ms)");
         assert_eq!(name, "test name");
         assert_eq!(duration, Some(0.005123));
 
@@ -9285,7 +9594,8 @@ Tests:       2 passed, 1 skipped, 3 total"#;
         assert_eq!(name, "test name");
         assert_eq!(duration, Some(1.234));
 
-        let (name, duration) = ParseHandler::split_npm_test_name_and_duration("test name without duration");
+        let (name, duration) =
+            ParseHandler::split_npm_test_name_and_duration("test name without duration");
         assert_eq!(name, "test name without duration");
         assert!(duration.is_none());
     }
@@ -9414,7 +9724,11 @@ Tests:       2 passed, 1 skipped, 3 total"#;
     #[test]
     fn test_parse_npm_test_with_ancestors() {
         // Test that nested tests track ancestor names
-        let result = ParseHandler::parse_npm_test_line("✔ nested test (5.123ms)", &["describe block".to_string()]).unwrap();
+        let result = ParseHandler::parse_npm_test_line(
+            "✔ nested test (5.123ms)",
+            &["describe block".to_string()],
+        )
+        .unwrap();
         assert_eq!(result.test_name, "nested test");
         assert_eq!(result.ancestors, vec!["describe block"]);
         assert_eq!(result.name, "describe block > nested test");
@@ -9540,7 +9854,8 @@ Tests:       2 passed, 1 skipped, 3 total"#;
 
     #[test]
     fn test_parse_pnpm_test_line() {
-        let result = ParseHandler::parse_pnpm_test_line("✔ should work correctly (5.123ms)", &[]).unwrap();
+        let result =
+            ParseHandler::parse_pnpm_test_line("✔ should work correctly (5.123ms)", &[]).unwrap();
         assert_eq!(result.status, PnpmTestStatus::Passed);
         assert_eq!(result.test_name, "should work correctly");
         assert!(result.duration.is_some());
@@ -9568,15 +9883,18 @@ Tests:       2 passed, 1 skipped, 3 total"#;
 
     #[test]
     fn test_split_pnpm_test_name_and_duration() {
-        let (name, duration) = ParseHandler::split_pnpm_test_name_and_duration("test name (5.123ms)");
+        let (name, duration) =
+            ParseHandler::split_pnpm_test_name_and_duration("test name (5.123ms)");
         assert_eq!(name, "test name");
         assert_eq!(duration, Some(0.005123));
 
-        let (name, duration) = ParseHandler::split_pnpm_test_name_and_duration("test name (1.234s)");
+        let (name, duration) =
+            ParseHandler::split_pnpm_test_name_and_duration("test name (1.234s)");
         assert_eq!(name, "test name");
         assert_eq!(duration, Some(1.234));
 
-        let (name, duration) = ParseHandler::split_pnpm_test_name_and_duration("test name without duration");
+        let (name, duration) =
+            ParseHandler::split_pnpm_test_name_and_duration("test name without duration");
         assert_eq!(name, "test name without duration");
         assert!(duration.is_none());
     }
@@ -9705,7 +10023,11 @@ Tests:       2 passed, 1 skipped, 3 total"#;
     #[test]
     fn test_parse_pnpm_test_with_ancestors() {
         // Test that nested tests track ancestor names
-        let result = ParseHandler::parse_pnpm_test_line("✔ nested test (5.123ms)", &["describe block".to_string()]).unwrap();
+        let result = ParseHandler::parse_pnpm_test_line(
+            "✔ nested test (5.123ms)",
+            &["describe block".to_string()],
+        )
+        .unwrap();
         assert_eq!(result.test_name, "nested test");
         assert_eq!(result.ancestors, vec!["describe block"]);
         assert_eq!(result.name, "describe block > nested test");
@@ -9805,7 +10127,8 @@ Ran 4 tests across 1 files. [0.66ms]"#;
     #[test]
     fn test_parse_bun_test_line() {
         // Test with checkmark
-        let result = ParseHandler::parse_bun_test_line("✓ should work correctly [5.123ms]", &[]).unwrap();
+        let result =
+            ParseHandler::parse_bun_test_line("✓ should work correctly [5.123ms]", &[]).unwrap();
         assert_eq!(result.status, BunTestStatus::Passed);
         assert_eq!(result.test_name, "should work correctly");
         assert_eq!(result.duration, Some(0.005123));
@@ -9820,7 +10143,8 @@ Ran 4 tests across 1 files. [0.66ms]"#;
         assert_eq!(result.status, BunTestStatus::Failed);
 
         // Test non-TTY pass format
-        let result = ParseHandler::parse_bun_test_line("(pass) should work [5.123ms]", &[]).unwrap();
+        let result =
+            ParseHandler::parse_bun_test_line("(pass) should work [5.123ms]", &[]).unwrap();
         assert_eq!(result.status, BunTestStatus::Passed);
 
         // Test non-TTY fail format
@@ -9838,7 +10162,8 @@ Ran 4 tests across 1 files. [0.66ms]"#;
 
     #[test]
     fn test_split_bun_test_name_and_duration() {
-        let (name, duration) = ParseHandler::split_bun_test_name_and_duration("test name [5.123ms]");
+        let (name, duration) =
+            ParseHandler::split_bun_test_name_and_duration("test name [5.123ms]");
         assert_eq!(name, "test name");
         assert_eq!(duration, Some(0.005123));
 
@@ -9846,7 +10171,8 @@ Ran 4 tests across 1 files. [0.66ms]"#;
         assert_eq!(name, "test name");
         assert_eq!(duration, Some(1.234));
 
-        let (name, duration) = ParseHandler::split_bun_test_name_and_duration("test name without duration");
+        let (name, duration) =
+            ParseHandler::split_bun_test_name_and_duration("test name without duration");
         assert_eq!(name, "test name without duration");
         assert_eq!(duration, None);
     }
@@ -10022,7 +10348,11 @@ Ran 4 tests across 1 files. [0.66ms]"#;
     #[test]
     fn test_parse_bun_test_with_ancestors() {
         // Test that nested tests track ancestor names
-        let result = ParseHandler::parse_bun_test_line("✓ nested test [5.123ms]", &["describe block".to_string()]).unwrap();
+        let result = ParseHandler::parse_bun_test_line(
+            "✓ nested test [5.123ms]",
+            &["describe block".to_string()],
+        )
+        .unwrap();
         assert_eq!(result.test_name, "nested test");
         assert_eq!(result.ancestors, vec!["describe block"]);
         assert_eq!(result.name, "describe block > nested test");

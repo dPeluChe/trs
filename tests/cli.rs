@@ -1323,7 +1323,10 @@ fn test_parse_grep_truncation_json_many_files() {
     assert_eq!(json["total_files"], 60);
     assert_eq!(json["files_shown"], 50);
     assert!(json["truncation"]["hidden_files"].as_u64().unwrap() > 0);
-    assert!(json["truncation"]["message"].as_str().unwrap().contains("60"));
+    assert!(json["truncation"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("60"));
 }
 
 #[test]
@@ -2830,7 +2833,11 @@ tests/test_main.py::test_subtract PASSED
     assert_eq!(json["summary"]["passed"], 2);
     // Verify duration is extracted and is approximately 1.23 seconds
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 1.23).abs() < 0.01, "Expected duration ~1.23s, got {}", duration);
+    assert!(
+        (duration - 1.23).abs() < 0.01,
+        "Expected duration ~1.23s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -2851,7 +2858,11 @@ fn test_parse_pytest_duration_in_milliseconds() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 0.05).abs() < 0.01, "Expected duration ~0.05s, got {}", duration);
+    assert!(
+        (duration - 0.05).abs() < 0.01,
+        "Expected duration ~0.05s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -2879,7 +2890,11 @@ Time:        1.5 s"#;
     assert_eq!(json["success"], true);
     // Verify duration is extracted
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 1.5).abs() < 0.1, "Expected duration ~1.5s, got {}", duration);
+    assert!(
+        (duration - 1.5).abs() < 0.1,
+        "Expected duration ~1.5s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -2905,7 +2920,11 @@ Time:        500 ms"#;
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     let duration = json["summary"]["duration"].as_f64().unwrap();
     // 500 ms = 0.5 s
-    assert!((duration - 0.5).abs() < 0.1, "Expected duration ~0.5s, got {}", duration);
+    assert!(
+        (duration - 0.5).abs() < 0.1,
+        "Expected duration ~0.5s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -2932,7 +2951,11 @@ fn test_parse_vitest_duration_extraction() {
     assert_eq!(json["success"], true);
     // Verify duration is extracted
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 2.50).abs() < 0.1, "Expected duration ~2.50s, got {}", duration);
+    assert!(
+        (duration - 2.50).abs() < 0.1,
+        "Expected duration ~2.50s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -2957,7 +2980,11 @@ fn test_parse_vitest_duration_in_ms() {
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     let duration = json["summary"]["duration"].as_f64().unwrap();
     // 150ms = 0.15s
-    assert!((duration - 0.15).abs() < 0.05, "Expected duration ~0.15s, got {}", duration);
+    assert!(
+        (duration - 0.15).abs() < 0.05,
+        "Expected duration ~0.15s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -2986,7 +3013,11 @@ fn test_parse_npm_test_duration_extraction() {
     assert_eq!(json["success"], true);
     // Verify duration is extracted (25.5ms = 0.0255s)
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 0.0255).abs() < 0.01, "Expected duration ~0.0255s, got {}", duration);
+    assert!(
+        (duration - 0.0255).abs() < 0.01,
+        "Expected duration ~0.0255s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -3012,7 +3043,11 @@ fn test_parse_npm_test_duration_in_seconds() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 2.5).abs() < 0.1, "Expected duration ~2.5s, got {}", duration);
+    assert!(
+        (duration - 2.5).abs() < 0.1,
+        "Expected duration ~2.5s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -3041,7 +3076,11 @@ fn test_parse_pnpm_test_duration_extraction() {
     assert_eq!(json["success"], true);
     // Verify duration is extracted (30.25ms = 0.03025s)
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 0.03025).abs() < 0.01, "Expected duration ~0.03025s, got {}", duration);
+    assert!(
+        (duration - 0.03025).abs() < 0.01,
+        "Expected duration ~0.03025s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -3067,7 +3106,11 @@ fn test_parse_pnpm_test_duration_in_seconds() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 1.25).abs() < 0.1, "Expected duration ~1.25s, got {}", duration);
+    assert!(
+        (duration - 1.25).abs() < 0.1,
+        "Expected duration ~1.25s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -3095,7 +3138,11 @@ Ran 1 tests in 150ms"#;
     assert_eq!(json["success"], true);
     // Verify duration is extracted (150ms = 0.15s)
     let duration = json["summary"]["duration"].as_f64().unwrap();
-    assert!((duration - 0.15).abs() < 0.05, "Expected duration ~0.15s, got {}", duration);
+    assert!(
+        (duration - 0.15).abs() < 0.05,
+        "Expected duration ~0.15s, got {}",
+        duration
+    );
 }
 
 #[test]
@@ -3121,7 +3168,11 @@ Ran 1 tests in 50ms"#;
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     let duration = json["summary"]["duration"].as_f64().unwrap();
     // 50ms = 0.05s
-    assert!((duration - 0.05).abs() < 0.02, "Expected duration ~0.05s, got {}", duration);
+    assert!(
+        (duration - 0.05).abs() < 0.02,
+        "Expected duration ~0.05s, got {}",
+        duration
+    );
 }
 
 // ============================================================
@@ -3204,9 +3255,15 @@ Tests:       1 passed, 2 failed, 3 total"#;
     let failed_tests = json["failed_tests"].as_array().unwrap();
     assert_eq!(failed_tests.len(), 2);
     // Failed tests should be in format: file::test_name
-    assert!(failed_tests.iter().any(|t| t.as_str().unwrap().contains("src/api.test.js")));
-    assert!(failed_tests.iter().any(|t| t.as_str().unwrap().contains("should fetch data")));
-    assert!(failed_tests.iter().any(|t| t.as_str().unwrap().contains("should post data")));
+    assert!(failed_tests
+        .iter()
+        .any(|t| t.as_str().unwrap().contains("src/api.test.js")));
+    assert!(failed_tests
+        .iter()
+        .any(|t| t.as_str().unwrap().contains("should fetch data")));
+    assert!(failed_tests
+        .iter()
+        .any(|t| t.as_str().unwrap().contains("should post data")));
 }
 
 #[test]
@@ -3265,7 +3322,9 @@ fn test_parse_vitest_failed_tests_identifiers() {
     let failed_tests = json["failed_tests"].as_array().unwrap();
     assert_eq!(failed_tests.len(), 2);
     // Failed tests should contain the file path
-    assert!(failed_tests.iter().all(|t| t.as_str().unwrap().contains("test/api.test.ts")));
+    assert!(failed_tests
+        .iter()
+        .all(|t| t.as_str().unwrap().contains("test/api.test.ts")));
 }
 
 #[test]
@@ -3324,7 +3383,9 @@ fn test_parse_npm_test_failed_tests_identifiers() {
     let failed_tests = json["failed_tests"].as_array().unwrap();
     assert_eq!(failed_tests.len(), 2);
     // Failed tests should contain the file path
-    assert!(failed_tests.iter().all(|t| t.as_str().unwrap().contains("test/api.test.js")));
+    assert!(failed_tests
+        .iter()
+        .all(|t| t.as_str().unwrap().contains("test/api.test.js")));
 }
 
 #[test]
@@ -3386,7 +3447,9 @@ fn test_parse_pnpm_test_failed_tests_identifiers() {
     let failed_tests = json["failed_tests"].as_array().unwrap();
     assert_eq!(failed_tests.len(), 2);
     // Failed tests should contain the file path
-    assert!(failed_tests.iter().all(|t| t.as_str().unwrap().contains("test/api.test.js")));
+    assert!(failed_tests
+        .iter()
+        .all(|t| t.as_str().unwrap().contains("test/api.test.js")));
 }
 
 #[test]
@@ -3447,7 +3510,9 @@ Ran 4 tests in 1.44ms"#;
     let failed_tests = json["failed_tests"].as_array().unwrap();
     assert_eq!(failed_tests.len(), 2);
     // Failed tests should contain the file path
-    assert!(failed_tests.iter().all(|t| t.as_str().unwrap().contains("test/api.test.ts")));
+    assert!(failed_tests
+        .iter()
+        .all(|t| t.as_str().unwrap().contains("test/api.test.ts")));
 }
 
 #[test]
@@ -3675,8 +3740,7 @@ fn test_exit_code_no_capture_still_propagates() {
 #[test]
 fn test_parse_find_permission_denied() {
     // Test that permission denied entries are detected and not treated as files
-    let find_input =
-        "./src/main.rs\nfind: '/root': Permission denied\n./src/lib.rs\n";
+    let find_input = "./src/main.rs\nfind: '/root': Permission denied\n./src/lib.rs\n";
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse")
@@ -3724,8 +3788,7 @@ fn test_parse_find_only_errors() {
 #[test]
 fn test_parse_find_no_such_file() {
     // Test "No such file or directory" error handling
-    let find_input =
-        "./exists.txt\nfind: 'missing': No such file or directory\n";
+    let find_input = "./exists.txt\nfind: 'missing': No such file or directory\n";
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse")
@@ -3758,7 +3821,8 @@ fn test_parse_find_cannot_open_directory() {
 #[test]
 fn test_parse_find_multiple_errors() {
     // Test multiple error messages
-    let find_input = "find: '/root': Permission denied\n./file.txt\nfind: '/var': Permission denied\n";
+    let find_input =
+        "find: '/root': Permission denied\n./file.txt\nfind: '/var': Permission denied\n";
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse")
@@ -3811,10 +3875,7 @@ fn test_is_clean_compact_format() {
         .arg("is-clean")
         .assert()
         // Compact should show either clean or dirty with counts
-        .stdout(
-            predicate::str::contains("clean")
-                .or(predicate::str::contains("dirty")),
-        );
+        .stdout(predicate::str::contains("clean").or(predicate::str::contains("dirty")));
 }
 
 #[test]
@@ -3825,8 +3886,307 @@ fn test_is_clean_raw_format() {
         .arg("is-clean")
         .assert()
         // Raw should show just clean or dirty
-        .stdout(
-            predicate::str::contains("clean")
-                .or(predicate::str::contains("dirty")),
-        );
+        .stdout(predicate::str::contains("clean").or(predicate::str::contains("dirty")));
+}
+
+// ============================================================
+// Compact Success Summary Tests
+// ============================================================
+
+#[test]
+fn test_parse_pytest_compact_success_summary() {
+    // Test that pytest shows compact summary when all tests pass
+    let pytest_input = r#"tests/test_main.py::test_add PASSED
+tests/test_main.py::test_subtract PASSED
+2 passed in 0.50s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pytest")
+        .write_stdin(pytest_input)
+        .assert()
+        .success()
+        // Should show minimal compact summary
+        .stdout(predicate::str::contains("PASS: 2 tests"))
+        .stdout(predicate::str::contains("[0.50s]"))
+        // Should NOT show detailed breakdown
+        .stdout(predicate::str::contains("passed,").not());
+}
+
+#[test]
+fn test_parse_pytest_compact_failure_summary() {
+    // Test that pytest shows detailed failure info when tests fail
+    let pytest_input = r#"tests/test_main.py::test_add PASSED
+tests/test_main.py::test_subtract FAILED
+1 passed, 1 failed in 1.23s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pytest")
+        .write_stdin(pytest_input)
+        .assert()
+        .success()
+        // Should show detailed failure info
+        .stdout(predicate::str::contains("FAIL:"))
+        .stdout(predicate::str::contains("1 passed, 1 failed"))
+        .stdout(predicate::str::contains("failed (1):"));
+}
+
+#[test]
+fn test_parse_jest_compact_success_summary() {
+    // Test that Jest shows compact summary when all tests pass
+    let jest_input = r#"PASS src/utils.test.js
+  ✓ should add numbers (5 ms)
+  ✓ should subtract numbers (2 ms)
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Time:        1.5 s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("jest")
+        .write_stdin(jest_input)
+        .assert()
+        .success()
+        // Should show minimal compact summary
+        .stdout(predicate::str::contains("PASS: 1 suites, 2 tests"))
+        .stdout(predicate::str::contains("[1.50s]"))
+        // Should NOT show detailed breakdown with passed/failed counts
+        .stdout(predicate::str::contains("passed, 0 failed").not());
+}
+
+#[test]
+fn test_parse_jest_compact_failure_summary() {
+    // Test that Jest shows detailed failure info when tests fail
+    let jest_input = r#"PASS src/utils.test.js
+  ✓ should add numbers (5 ms)
+FAIL src/api.test.js
+  ✕ should fetch data (10 ms)
+Test Suites: 1 passed, 1 failed, 2 total
+Tests:       1 passed, 1 failed, 2 total"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("jest")
+        .write_stdin(jest_input)
+        .assert()
+        .success()
+        // Should show detailed failure info
+        .stdout(predicate::str::contains("FAIL:"))
+        .stdout(predicate::str::contains("1 passed, 1 failed"))
+        .stdout(predicate::str::contains("failed suites (1):"));
+}
+
+#[test]
+fn test_parse_vitest_compact_success_summary() {
+    // Test that Vitest shows compact summary when all tests pass
+    let vitest_input = r#" ✓ src/utils.test.js (2 tests) 150ms
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  12:00:00
+   Duration  1.50s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("vitest")
+        .write_stdin(vitest_input)
+        .assert()
+        .success()
+        // Should show minimal compact summary
+        .stdout(predicate::str::contains("PASS: 1 test files, 2 tests"))
+        .stdout(predicate::str::contains("[1.50s]"));
+}
+
+#[test]
+fn test_parse_vitest_compact_failure_summary() {
+    // Test that Vitest shows detailed failure info when tests fail
+    let vitest_input = r#" ✓ src/utils.test.js (1 test) 100ms
+   ✓ should add numbers
+ ✗ src/api.test.js (1 test | 1 failed) 150ms
+   ✕ should fetch data
+ Test Files  1 passed, 1 failed (2)
+      Tests  1 passed, 1 failed (2)"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("vitest")
+        .write_stdin(vitest_input)
+        .assert()
+        .success()
+        // Should show detailed failure info
+        .stdout(predicate::str::contains("FAIL:"))
+        .stdout(predicate::str::contains("1 passed, 1 failed"))
+        .stdout(predicate::str::contains("failed suites (1):"));
+}
+
+#[test]
+fn test_parse_npm_test_compact_success_summary() {
+    // Test that npm test shows compact summary when all tests pass
+    let npm_input = r#"▶ test/utils.test.js
+  ✔ should add numbers (5.123ms)
+  ✔ should subtract numbers (2.456ms)
+▶ test/utils.test.js (10.579ms)
+ℹ tests 2 passed (2)
+ℹ test files 1 passed (1)
+ℹ duration 15ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("npm")
+        .write_stdin(npm_input)
+        .assert()
+        .success()
+        // Should show minimal compact summary
+        .stdout(predicate::str::contains("PASS: 1 suites, 2 tests"));
+}
+
+#[test]
+fn test_parse_npm_test_compact_failure_summary() {
+    // Test that npm test shows detailed failure info when tests fail
+    let npm_input = r#"▶ test/utils.test.js
+  ✔ should add numbers (5.123ms)
+▶ test/api.test.js
+  ✖ should fetch data
+ℹ tests 1 passed 1 failed (2)
+ℹ test files 1 failed (1)"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("npm")
+        .write_stdin(npm_input)
+        .assert()
+        .success()
+        // Should show detailed failure info
+        .stdout(predicate::str::contains("[FAIL]"))
+        .stdout(predicate::str::contains("1 passed, 1 failed"));
+}
+
+#[test]
+fn test_parse_pnpm_test_compact_success_summary() {
+    // Test that pnpm test shows compact summary when all tests pass
+    let pnpm_input = r#"▶ test/utils.test.js
+  ✔ should add numbers (5.123ms)
+  ✔ should subtract numbers (2.456ms)
+▶ test/utils.test.js (10.579ms)
+ℹ tests 2 passed (2)
+ℹ test files 1 passed (1)
+ℹ duration 15ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pnpm")
+        .write_stdin(pnpm_input)
+        .assert()
+        .success()
+        // Should show minimal compact summary
+        .stdout(predicate::str::contains("PASS: 1 suites, 2 tests"));
+}
+
+#[test]
+fn test_parse_pnpm_test_compact_failure_summary() {
+    // Test that pnpm test shows detailed failure info when tests fail
+    let pnpm_input = r#"▶ test/api.test.js
+  ✖ should fetch data
+    Error: network timeout
+  ✔ should create item (2.345ms)
+▶ test/api.test.js (8.123ms)
+ℹ tests 1 passed 1 failed (2)
+ℹ test files 1 failed (1)
+ℹ duration 12ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pnpm")
+        .write_stdin(pnpm_input)
+        .assert()
+        .success()
+        // Should show detailed failure info
+        .stdout(predicate::str::contains("[FAIL]"))
+        .stdout(predicate::str::contains("1 passed, 1 failed"));
+}
+
+#[test]
+fn test_parse_bun_test_compact_success_summary() {
+    // Test that Bun test shows compact summary when all tests pass
+    let bun_input = r#"test/utils.test.ts:
+✓ should add numbers [0.88ms]
+✓ should subtract numbers [0.45ms]
+ 2 pass
+ 0 fail
+Ran 2 tests in 1.50ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("bun")
+        .write_stdin(bun_input)
+        .assert()
+        .success()
+        // Should show minimal compact summary
+        .stdout(predicate::str::contains("PASS: 1 suites, 2 tests"));
+}
+
+#[test]
+fn test_parse_bun_test_compact_failure_summary() {
+    // Test that Bun test shows detailed failure info when tests fail
+    let bun_input = r#"test/utils.test.ts:
+✓ should add numbers [0.88ms]
+test/api.test.ts:
+✗ should fetch data
+✗ should post data
+ 1 pass
+ 2 fail
+Ran 3 tests in 1.44ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("bun")
+        .write_stdin(bun_input)
+        .assert()
+        .success()
+        // Should show detailed failure info
+        .stdout(predicate::str::contains("[FAIL]"))
+        .stdout(predicate::str::contains("1 passed, 2 failed"));
+}
+
+#[test]
+fn test_parse_pytest_compact_success_with_skipped() {
+    // Test that skipped tests are shown in compact success summary
+    let pytest_input = r#"tests/test_main.py::test_add PASSED
+tests/test_main.py::test_slow SKIPPED
+1 passed, 1 skipped in 0.50s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pytest")
+        .write_stdin(pytest_input)
+        .assert()
+        .success()
+        // Should show compact summary with skipped count
+        .stdout(predicate::str::contains("PASS: 1 tests, 1 skipped"));
 }
