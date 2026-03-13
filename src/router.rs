@@ -284,6 +284,43 @@ struct FindOutput {
     is_empty: bool,
 }
 
+// ============================================================
+// Grep Data Structures
+// ============================================================
+
+/// A single match in grep output.
+#[derive(Debug, Clone, Default)]
+struct GrepMatch {
+    /// Line number (if available with -n flag).
+    line_number: Option<usize>,
+    /// Column number (if available with --column flag).
+    column: Option<usize>,
+    /// The matched line content.
+    line: String,
+}
+
+/// A file with grep matches.
+#[derive(Debug, Clone, Default)]
+struct GrepFile {
+    /// Path to the file.
+    path: String,
+    /// List of matches in this file.
+    matches: Vec<GrepMatch>,
+}
+
+/// Parsed grep output.
+#[derive(Debug, Clone, Default)]
+struct GrepOutput {
+    /// List of files with matches.
+    files: Vec<GrepFile>,
+    /// Total number of files with matches.
+    file_count: usize,
+    /// Total number of matches across all files.
+    match_count: usize,
+    /// Whether the output is empty (no matches).
+    is_empty: bool,
+}
+
 /// Common generated directory names that are typically build artifacts or dependencies.
 const COMMON_GENERATED_DIRS: &[&str] = &[
     // JavaScript/TypeScript
@@ -2414,11 +2451,295 @@ impl ParseHandler {
         if ctx.stats {
             eprintln!("Stats: enabled");
         }
-        eprintln!("Output format: {:?}", ctx.format);
-        eprintln!("Parser: grep (file: {:?})", file);
 
-        // TODO: Implement actual grep parsing
-        Err(CommandError::NotImplemented("grep parsing".to_string()))
+        // Read input from file or stdin
+        let input = Self::read_input(file)?;
+
+        // Parse the grep output
+        let grep_output = Self::parse_grep(&input)?;
+
+        // Format output based on the requested format
+        let output = Self::format_grep(&grep_output, ctx.format);
+        print!("{}", output);
+
+        Ok(())
+    }
+
+    /// Parse grep output into structured data.
+    ///
+    /// Supports multiple grep output formats:
+    /// - Standard format: `filename:line_number:matched_line`
+    /// - Without line numbers: `filename:matched_line`
+    /// - With column: `filename:line_number:column:matched_line`
+    /// - Recursive format (ripgrep): `filename:line_number:matched_line`
+    fn parse_grep(input: &str) -> CommandResult<GrepOutput> {
+        let mut grep_output = GrepOutput::default();
+        let mut current_file: Option<GrepFile> = None;
+
+        for line in input.lines() {
+            let line = line.trim();
+
+            // Skip empty lines
+            if line.is_empty() {
+                continue;
+            }
+
+            // Skip grep summary lines (e.g., from ripgrep)
+            if line.starts_with("grep:") || line.contains("matched ") && line.ends_with(" files") {
+                continue;
+            }
+
+            // Try to parse the grep line
+            if let Some((path, grep_match)) = Self::parse_grep_line(line) {
+                // Check if this is the same file as the current one
+                if let Some(ref mut file) = current_file {
+                    if file.path == path {
+                        file.matches.push(grep_match);
+                        continue;
+                    } else {
+                        // Different file, save the current one
+                        grep_output.files.push(file.clone());
+                    }
+                }
+
+                // Start a new file
+                current_file = Some(GrepFile {
+                    path,
+                    matches: vec![grep_match],
+                });
+            }
+        }
+
+        // Don't forget the last file
+        if let Some(file) = current_file {
+            grep_output.files.push(file);
+        }
+
+        // Calculate totals
+        grep_output.file_count = grep_output.files.len();
+        for file in &grep_output.files {
+            grep_output.match_count += file.matches.len();
+        }
+
+        // Check if empty
+        grep_output.is_empty = grep_output.files.is_empty();
+
+        Ok(grep_output)
+    }
+
+    /// Parse a single grep line.
+    ///
+    /// Formats supported:
+    /// - `path:line_number:content` (standard with -n)
+    /// - `path:line_number:column:content` (with --column)
+    /// - `path:content` (without -n)
+    /// - Binary file matches: `Binary file path matches`
+    fn parse_grep_line(line: &str) -> Option<(String, GrepMatch)> {
+        // Handle "Binary file path matches" format
+        if line.starts_with("Binary file ") && line.ends_with(" matches") {
+            let path = line
+                .strip_prefix("Binary file ")
+                .unwrap_or("")
+                .strip_suffix(" matches")
+                .unwrap_or("");
+            if !path.is_empty() {
+                return Some((
+                    path.to_string(),
+                    GrepMatch {
+                        line_number: None,
+                        column: None,
+                        line: "[binary file]".to_string(),
+                    },
+                ));
+            }
+        }
+
+        // Find the first colon to get the path
+        let colon_pos = line.find(':')?;
+
+        // Check if this looks like a path (not a line that starts with a number)
+        let potential_path = &line[..colon_pos];
+
+        // If the path is empty or the rest doesn't have content, skip
+        if potential_path.is_empty() || line.len() <= colon_pos + 1 {
+            return None;
+        }
+
+        let rest = &line[colon_pos + 1..];
+
+        // Try to parse line number and optionally column
+        // Format: line_number:content OR line_number:column:content OR just content
+        let (line_number, column, content) = Self::parse_grep_line_content(rest);
+
+        Some((
+            potential_path.to_string(),
+            GrepMatch {
+                line_number,
+                column,
+                line: content.to_string(),
+            },
+        ))
+    }
+
+    /// Parse the content part of a grep line (after the path:).
+    fn parse_grep_line_content(rest: &str) -> (Option<usize>, Option<usize>, &str) {
+        // Try to find the first colon for line number
+        if let Some(colon_pos) = rest.find(':') {
+            let potential_line_num = &rest[..colon_pos];
+
+            // Check if it's a valid line number
+            if let Ok(line_number) = potential_line_num.parse::<usize>() {
+                let after_line = &rest[colon_pos + 1..];
+
+                // Try to parse column if present
+                if let Some(colon_pos2) = after_line.find(':') {
+                    let potential_column = &after_line[..colon_pos2];
+                    if let Ok(column) = potential_column.parse::<usize>() {
+                        return (
+                            Some(line_number),
+                            Some(column),
+                            &after_line[colon_pos2 + 1..],
+                        );
+                    }
+                }
+
+                // No column, just line number
+                return (Some(line_number), None, after_line);
+            }
+        }
+
+        // No line number, just content
+        (None, None, rest)
+    }
+
+    /// Format grep output for display.
+    fn format_grep(grep_output: &GrepOutput, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => Self::format_grep_json(grep_output),
+            OutputFormat::Csv => Self::format_grep_csv(grep_output),
+            OutputFormat::Tsv => Self::format_grep_tsv(grep_output),
+            OutputFormat::Compact | OutputFormat::Agent => Self::format_grep_compact(grep_output),
+            OutputFormat::Raw => Self::format_grep_raw(grep_output),
+        }
+    }
+
+    /// Format grep output as JSON.
+    fn format_grep_json(grep_output: &GrepOutput) -> String {
+        serde_json::json!({
+            "is_empty": grep_output.is_empty,
+            "file_count": grep_output.file_count,
+            "match_count": grep_output.match_count,
+            "files": grep_output.files.iter().map(|file| {
+                serde_json::json!({
+                    "path": file.path,
+                    "matches": file.matches.iter().map(|m| serde_json::json!({
+                        "line_number": m.line_number,
+                        "column": m.column,
+                        "line": m.line,
+                    })).collect::<Vec<_>>(),
+                })
+            }).collect::<Vec<_>>(),
+        })
+        .to_string()
+    }
+
+    /// Format grep output as CSV.
+    fn format_grep_csv(grep_output: &GrepOutput) -> String {
+        let mut result = String::new();
+        result.push_str("path,line_number,column,line\n");
+
+        for file in &grep_output.files {
+            for m in &file.matches {
+                let line_escaped = RunHandler::escape_csv_field(&m.line);
+                result.push_str(&format!(
+                    "{},{},{},{}\n",
+                    file.path,
+                    m.line_number
+                        .map(|n| n.to_string())
+                        .unwrap_or_default(),
+                    m.column.map(|c| c.to_string()).unwrap_or_default(),
+                    line_escaped
+                ));
+            }
+        }
+
+        result
+    }
+
+    /// Format grep output as TSV.
+    fn format_grep_tsv(grep_output: &GrepOutput) -> String {
+        let mut result = String::new();
+        result.push_str("path\tline_number\tcolumn\tline\n");
+
+        for file in &grep_output.files {
+            for m in &file.matches {
+                let line_escaped = RunHandler::escape_tsv_field(&m.line);
+                result.push_str(&format!(
+                    "{}\t{}\t{}\t{}\n",
+                    file.path,
+                    m.line_number
+                        .map(|n| n.to_string())
+                        .unwrap_or_default(),
+                    m.column.map(|c| c.to_string()).unwrap_or_default(),
+                    line_escaped
+                ));
+            }
+        }
+
+        result
+    }
+
+    /// Format grep output in compact format.
+    fn format_grep_compact(grep_output: &GrepOutput) -> String {
+        let mut output = String::new();
+
+        if grep_output.is_empty {
+            output.push_str("grep: no matches\n");
+            return output;
+        }
+
+        output.push_str(&format!(
+            "matches: {} files, {} results\n",
+            grep_output.file_count, grep_output.match_count
+        ));
+
+        for file in &grep_output.files {
+            output.push_str(&format!("{} ({}):\n", file.path, file.matches.len()));
+            for m in &file.matches {
+                if let Some(ln) = m.line_number {
+                    if let Some(col) = m.column {
+                        output.push_str(&format!("  {}:{}: {}\n", ln, col, m.line));
+                    } else {
+                        output.push_str(&format!("  {}: {}\n", ln, m.line));
+                    }
+                } else {
+                    output.push_str(&format!("  {}\n", m.line));
+                }
+            }
+        }
+
+        output
+    }
+
+    /// Format grep output as raw (original format).
+    fn format_grep_raw(grep_output: &GrepOutput) -> String {
+        let mut output = String::new();
+
+        for file in &grep_output.files {
+            for m in &file.matches {
+                if let Some(ln) = m.line_number {
+                    if let Some(col) = m.column {
+                        output.push_str(&format!("{}:{}:{}:{}\n", file.path, ln, col, m.line));
+                    } else {
+                        output.push_str(&format!("{}:{}:{}\n", file.path, ln, m.line));
+                    }
+                } else {
+                    output.push_str(&format!("{}:{}\n", file.path, m.line));
+                }
+            }
+        }
+
+        output
     }
 
     /// Handle the test subcommand.
@@ -3308,5 +3629,159 @@ mod tests {
 
         let result = router.route(&command, &ctx);
         assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+    }
+
+    // ============================================================
+    // Grep Parser Tests
+    // ============================================================
+
+    #[test]
+    fn test_parse_grep_empty() {
+        let result = ParseHandler::parse_grep("").unwrap();
+        assert!(result.is_empty);
+        assert_eq!(result.file_count, 0);
+        assert_eq!(result.match_count, 0);
+    }
+
+    #[test]
+    fn test_parse_grep_single_file_single_match() {
+        let input = "src/main.rs:42:fn main() {";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert!(!result.is_empty);
+        assert_eq!(result.file_count, 1);
+        assert_eq!(result.match_count, 1);
+        assert_eq!(result.files[0].path, "src/main.rs");
+        assert_eq!(result.files[0].matches[0].line_number, Some(42));
+        assert_eq!(result.files[0].matches[0].line, "fn main() {");
+    }
+
+    #[test]
+    fn test_parse_grep_single_file_multiple_matches() {
+        let input = "src/main.rs:42:fn main() {\nsrc/main.rs:45:    println!";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.file_count, 1);
+        assert_eq!(result.match_count, 2);
+        assert_eq!(result.files[0].matches.len(), 2);
+        assert_eq!(result.files[0].matches[0].line_number, Some(42));
+        assert_eq!(result.files[0].matches[1].line_number, Some(45));
+    }
+
+    #[test]
+    fn test_parse_grep_multiple_files() {
+        let input = "src/main.rs:42:fn main() {\nsrc/lib.rs:10:pub fn helper()";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.file_count, 2);
+        assert_eq!(result.match_count, 2);
+        assert_eq!(result.files[0].path, "src/main.rs");
+        assert_eq!(result.files[1].path, "src/lib.rs");
+    }
+
+    #[test]
+    fn test_parse_grep_with_column() {
+        let input = "src/main.rs:42:10:fn main() {";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.files[0].matches[0].line_number, Some(42));
+        assert_eq!(result.files[0].matches[0].column, Some(10));
+        assert_eq!(result.files[0].matches[0].line, "fn main() {");
+    }
+
+    #[test]
+    fn test_parse_grep_without_line_number() {
+        let input = "src/main.rs:fn main() {";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.files[0].matches[0].line_number, None);
+        assert_eq!(result.files[0].matches[0].line, "fn main() {");
+    }
+
+    #[test]
+    fn test_parse_grep_binary_file() {
+        let input = "Binary file target/debug binary matches";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.file_count, 1);
+        assert_eq!(result.files[0].path, "target/debug binary");
+        assert_eq!(result.files[0].matches[0].line, "[binary file]");
+    }
+
+    #[test]
+    fn test_parse_grep_format_compact() {
+        let input = "src/main.rs:42:fn main() {\nsrc/main.rs:45:    println!";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
+
+        assert!(output.contains("matches: 1 files, 2 results"));
+        assert!(output.contains("src/main.rs (2):"));
+        assert!(output.contains("42: fn main() {"));
+        assert!(output.contains("45:     println!"));
+    }
+
+    #[test]
+    fn test_parse_grep_format_json() {
+        let input = "src/main.rs:42:fn main() {";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Json);
+
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["file_count"], 1);
+        assert_eq!(json["match_count"], 1);
+        assert_eq!(json["files"][0]["path"], "src/main.rs");
+        assert_eq!(json["files"][0]["matches"][0]["line_number"], 42);
+        assert_eq!(json["files"][0]["matches"][0]["line"], "fn main() {");
+    }
+
+    #[test]
+    fn test_parse_grep_format_csv() {
+        let input = "src/main.rs:42:fn main() {";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Csv);
+
+        assert!(output.starts_with("path,line_number,column,line\n"));
+        assert!(output.contains("src/main.rs,42,,fn main() {"));
+    }
+
+    #[test]
+    fn test_parse_grep_format_tsv() {
+        let input = "src/main.rs:42:fn main() {";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Tsv);
+
+        assert!(output.starts_with("path\tline_number\tcolumn\tline\n"));
+        assert!(output.contains("src/main.rs\t42\t\tfn main() {"));
+    }
+
+    #[test]
+    fn test_parse_grep_format_raw() {
+        let input = "src/main.rs:42:fn main() {";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Raw);
+
+        assert!(output.contains("src/main.rs:42:fn main() {"));
+    }
+
+    #[test]
+    fn test_parse_grep_empty_compact() {
+        let mut result = GrepOutput::default();
+        result.is_empty = true;
+        let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
+
+        assert!(output.contains("grep: no matches"));
+    }
+
+    #[test]
+    fn test_parse_grep_line_with_colon_in_content() {
+        // Content containing colons should be handled correctly
+        let input = "src/main.rs:42:let x = \"http://example.com\";";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.files[0].matches[0].line_number, Some(42));
+        assert_eq!(
+            result.files[0].matches[0].line,
+            "let x = \"http://example.com\";"
+        );
     }
 }

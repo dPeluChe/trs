@@ -1134,8 +1134,110 @@ fn test_parse_ls_valid_symlink_not_marked_broken() {
 
 #[test]
 fn test_parse_grep() {
+    let grep_input = "src/main.rs:42:fn main() {";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse").arg("grep").assert().success();
+    cmd.arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("matches:"));
+}
+
+#[test]
+fn test_parse_grep_empty() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("grep")
+        .write_stdin("")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("grep: no matches"));
+}
+
+#[test]
+fn test_parse_grep_json() {
+    let grep_input = "src/main.rs:42:fn main() {";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"file_count\":1"))
+        .stdout(predicate::str::contains("\"match_count\":1"))
+        .stdout(predicate::str::contains("\"line_number\":42"))
+        .stdout(predicate::str::contains("\"line\":\"fn main() {\""));
+}
+
+#[test]
+fn test_parse_grep_compact() {
+    let grep_input = "src/main.rs:42:fn main() {\nsrc/main.rs:45:    println!";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("matches: 1 files, 2 results"))
+        .stdout(predicate::str::contains("src/main.rs (2):"));
+}
+
+#[test]
+fn test_parse_grep_csv() {
+    let grep_input = "src/main.rs:42:fn main() {";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--csv")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("path,line_number,column,line"))
+        .stdout(predicate::str::contains("src/main.rs,42,,"));
+}
+
+#[test]
+fn test_parse_grep_tsv() {
+    let grep_input = "src/main.rs:42:fn main() {";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--tsv")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("path\tline_number\tcolumn\tline"))
+        .stdout(predicate::str::contains("src/main.rs\t42\t\t"));
+}
+
+#[test]
+fn test_parse_grep_raw() {
+    let grep_input = "src/main.rs:42:fn main() {";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("src/main.rs:42:fn main() {"));
+}
+
+#[test]
+fn test_parse_grep_multiple_files() {
+    let grep_input = "src/main.rs:42:fn main() {\nsrc/lib.rs:10:pub fn helper()";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"file_count\":2"))
+        .stdout(predicate::str::contains("\"match_count\":2"));
 }
 
 #[test]
@@ -1961,19 +2063,21 @@ fn test_txt2md_json_output_not_implemented() {
 }
 
 #[test]
-fn test_parse_grep_json_output_not_implemented() {
+fn test_parse_grep_json_output() {
+    // Test that grep parser now works and produces valid JSON output
+    let grep_input = "src/main.rs:42:fn main() {";
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
         .arg("parse")
         .arg("grep")
+        .write_stdin(grep_input)
         .assert()
         .success();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-    let json_line = stderr.lines().last().unwrap_or("");
-    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
-    assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("grep parsing"));
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["file_count"], 1);
+    assert_eq!(json["match_count"], 1);
 }
 
 #[test]
