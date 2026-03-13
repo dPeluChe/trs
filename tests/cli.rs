@@ -391,7 +391,6 @@ fn test_parse_ls() {
 // LS Parser Tests
 // ============================================================
 
-    
 #[test]
 fn test_parse_ls_empty() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -402,11 +401,11 @@ fn test_parse_ls_empty() {
         .success()
         .stdout(predicate::str::contains("ls: empty"));
 }
-    
+
 #[test]
 fn test_parse_ls_simple_files() {
     let ls_input = "file1.txt\nfile2.txt\nfile3.txt\n";
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse")
         .arg("ls")
@@ -419,11 +418,11 @@ fn test_parse_ls_simple_files() {
         .stdout(predicate::str::contains("file2.txt"))
         .stdout(predicate::str::contains("file3.txt"));
 }
-    
+
 #[test]
 fn test_parse_ls_with_directories() {
     let ls_input = "file1.txt\ndir1\nfile2.txt\ndir2\n";
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse")
         .arg("ls")
@@ -436,7 +435,7 @@ fn test_parse_ls_with_directories() {
         .stdout(predicate::str::contains("dir1"))
         .stdout(predicate::str::contains("dir2"));
 }
-    
+
 #[test]
 fn test_parse_ls_with_hidden_files() {
     let ls_input = "file1.txt\n.hidden_file\n.visible_file\n";
@@ -629,7 +628,7 @@ fn test_parse_ls_no_hidden_files() {
 #[test]
 fn test_parse_ls_long_format() {
     let ls_input = "total 0\ndrwxr-xr-x  2 user  group  4096 Jan  1 12:34 dirname\n-rw-r--r--  1 user  group    42 Jan  1 12:34 file1.txt\n";
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse")
         .arg("ls")
@@ -642,11 +641,11 @@ fn test_parse_ls_long_format() {
         .stdout(predicate::str::contains("dirname"))
         .stdout(predicate::str::contains("file1.txt"));
 }
-    
+
 #[test]
 fn test_parse_ls_json_format() {
     let ls_input = "file1.txt\nfile2.txt\n";
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
         .arg("parse")
@@ -658,11 +657,11 @@ fn test_parse_ls_json_format() {
         .stdout(predicate::str::contains("\"name\":\"file1.txt\""))
         .stdout(predicate::str::contains("\"type\":\"file\""));
 }
-    
+
 #[test]
 fn test_parse_ls_raw_format() {
     let ls_input = "file1.txt\nfile2.txt\nfile3.txt\n";
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--raw")
         .arg("parse")
@@ -675,11 +674,11 @@ fn test_parse_ls_raw_format() {
         .stdout(predicate::str::contains("file3.txt"))
         .stdout(predicate::function(|x: &str| !x.contains("total:")));
 }
-    
+
 #[test]
 fn test_parse_ls_with_symlinks() {
     let ls_input = "file1.txt\nlrwxrwxrwx  1 user  group    10 Jan  1 12:34 link_to_file\n";
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse")
         .arg("ls")
@@ -689,16 +688,12 @@ fn test_parse_ls_with_symlinks() {
         .stdout(predicate::str::contains("symlink"))
         .stdout(predicate::str::contains("link_to_file"));
 }
-    
+
 #[test]
 fn test_parse_ls_with_file_from_stdin() {
     // Test that we can pipe ls output to the parser
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("ls")
-        .arg("/tmp")
-        .assert()
-        .success();
+    cmd.arg("run").arg("ls").arg("/tmp").assert().success();
 }
 
 // ============================================================
@@ -799,7 +794,9 @@ fn test_parse_ls_json_includes_generated() {
         .success()
         .stdout(predicate::str::contains("\"is_generated\":true"))
         .stdout(predicate::str::contains("\"is_generated\":false"))
-        .stdout(predicate::str::contains("\"generated\":[\"node_modules/\"]"));
+        .stdout(predicate::str::contains(
+            "\"generated\":[\"node_modules/\"]",
+        ));
 }
 
 #[test]
@@ -965,7 +962,9 @@ fn test_parse_ls_symlink_target_json() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"symlink_target\":\"destination\""))
+        .stdout(predicate::str::contains(
+            "\"symlink_target\":\"destination\"",
+        ))
         .stdout(predicate::str::contains("\"name\":\"mylink\""));
 }
 
@@ -998,6 +997,139 @@ fn test_parse_ls_symlink_no_target() {
         .success()
         .stdout(predicate::str::contains("symlinks (1):"))
         .stdout(predicate::str::contains("link_no_target"));
+}
+
+// ============================================================
+// LS Parser: Broken Symlink Tests
+// ============================================================
+
+#[test]
+fn test_parse_ls_broken_symlink_compact() {
+    // Test that broken symlinks are marked in compact output
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 broken_link -> /nonexistent\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("symlinks (1):"))
+        .stdout(predicate::str::contains(
+            "broken_link -> /nonexistent [broken]",
+        ));
+}
+
+#[test]
+fn test_parse_ls_broken_symlink_json() {
+    // Test that JSON output includes is_broken_symlink field
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 broken -> /nonexistent/path\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"is_broken_symlink\":true"))
+        .stdout(predicate::str::contains(
+            "\"symlink_target\":\"/nonexistent/path\"",
+        ))
+        .stdout(predicate::str::contains("\"broken_symlinks\":[\"broken\"]"));
+}
+
+#[test]
+fn test_parse_ls_circular_symlink() {
+    // Test circular symlinks (self-referencing)
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 circular -> circular\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("symlinks (1):"))
+        .stdout(predicate::str::contains("circular -> circular [broken]"));
+}
+
+#[test]
+fn test_parse_ls_circular_symlink_json() {
+    // Test circular symlinks in JSON
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 loop -> loop\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"is_broken_symlink\":true"))
+        .stdout(predicate::str::contains("\"symlink_target\":\"loop\""));
+}
+
+#[test]
+fn test_parse_ls_mixed_broken_and_valid_symlinks() {
+    // Test mix of broken and valid symlinks
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 good_link -> existing_file\nlrwxrwxrwx  1 user  group    10 Jan  1 12:34 bad_link -> /nonexistent\n-rw-r--r--  1 user  group   42 Jan  1 12:34 existing_file\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("symlinks (2):"))
+        .stdout(predicate::str::contains("good_link -> existing_file"))
+        .stdout(predicate::str::contains(
+            "bad_link -> /nonexistent [broken]",
+        ))
+        .stdout(predicate::function(|x: &str| {
+            // Check that good_link line does NOT contain [broken]
+            let lines: Vec<&str> = x.lines().collect();
+            let good_link_line = lines
+                .iter()
+                .find(|l| l.contains("good_link") && l.contains("->"));
+            match good_link_line {
+                Some(line) => !line.contains("[broken]"),
+                None => false,
+            }
+        }));
+}
+
+#[test]
+fn test_parse_ls_broken_symlink_json_has_broken_array() {
+    // Test that broken_symlinks array is populated in JSON
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 broken1 -> /nonexistent\nlrwxrwxrwx  1 user  group    10 Jan  1 12:34 broken2 -> nonexistent\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"broken_symlinks\":[\"broken1\",\"broken2\"]",
+        ));
+}
+
+#[test]
+fn test_parse_ls_valid_symlink_not_marked_broken() {
+    // Test that valid symlinks are NOT marked as broken
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 valid_link -> some_file\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"is_broken_symlink\":false"))
+        .stdout(predicate::function(|x: &str| !x.contains("[broken]")));
 }
 
 #[test]
@@ -1735,7 +1867,10 @@ fn test_search_json_output_not_implemented() {
     let json_line = stderr.lines().last().unwrap_or("");
     let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
     assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("search command execution"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("search command execution"));
 }
 
 #[test]
@@ -1753,7 +1888,10 @@ fn test_replace_json_output_not_implemented() {
     let json_line = stderr.lines().last().unwrap_or("");
     let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
     assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("replace command execution"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("replace command execution"));
 }
 
 #[test]
@@ -1769,22 +1907,24 @@ fn test_tail_json_output_not_implemented() {
     let json_line = stderr.lines().last().unwrap_or("");
     let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
     assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("tail command execution"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("tail command execution"));
 }
 
 #[test]
 fn test_clean_json_output_not_implemented() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
-        .arg("--json")
-        .arg("clean")
-        .assert()
-        .success();
+    let output = cmd.arg("--json").arg("clean").assert().success();
     let stderr = String::from_utf8_lossy(&output.get_output().stderr);
     let json_line = stderr.lines().last().unwrap_or("");
     let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
     assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("clean command execution"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("clean command execution"));
 }
 
 #[test]
@@ -1800,22 +1940,24 @@ fn test_html2md_json_output_not_implemented() {
     let json_line = stderr.lines().last().unwrap_or("");
     let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
     assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("html2md command execution"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("html2md command execution"));
 }
 
 #[test]
 fn test_txt2md_json_output_not_implemented() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
-        .arg("--json")
-        .arg("txt2md")
-        .assert()
-        .success();
+    let output = cmd.arg("--json").arg("txt2md").assert().success();
     let stderr = String::from_utf8_lossy(&output.get_output().stderr);
     let json_line = stderr.lines().last().unwrap_or("");
     let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
     assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("txt2md command execution"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("txt2md command execution"));
 }
 
 #[test]
@@ -2014,7 +2156,10 @@ fn test_command_not_found_json_output() {
 
     assert_eq!(json["error"], true);
     assert_eq!(json["exit_code"], 127);
-    assert!(json["message"].as_str().unwrap().contains("Command not found"));
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("Command not found"));
 }
 
 #[test]
@@ -2046,9 +2191,7 @@ fn test_exit_code_no_capture_still_propagates() {
 fn test_is_clean_in_git_repo() {
     // This test runs in the git repo, so it should be clean by default
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("is-clean")
-        .assert()
-        .code(0); // Exit 0 means clean
+    cmd.arg("is-clean").assert().code(0); // Exit 0 means clean
 }
 
 #[test]

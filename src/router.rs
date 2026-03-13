@@ -67,7 +67,9 @@ impl std::fmt::Display for CommandError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CommandError::NotImplemented(msg) => write!(f, "Not implemented: {}", msg),
-            CommandError::ExecutionError { message, .. } => write!(f, "Execution error: {}", message),
+            CommandError::ExecutionError { message, .. } => {
+                write!(f, "Execution error: {}", message)
+            }
             CommandError::InvalidArguments(msg) => write!(f, "Invalid arguments: {}", msg),
             CommandError::IoError(msg) => write!(f, "I/O error: {}", msg),
         }
@@ -175,8 +177,6 @@ struct GitDiff {
     files_shown: usize,
 }
 
-
-
 // ============================================================
 // LS Data Structures
 // ============================================================
@@ -231,6 +231,8 @@ struct LsEntry {
     modified: Option<String>,
     /// Symlink target (if this is a symlink).
     symlink_target: Option<String>,
+    /// Whether the symlink is broken (target doesn't exist).
+    is_broken_symlink: bool,
 }
 
 // ============================================================
@@ -432,7 +434,8 @@ impl RunHandler {
             OutputFormat::Tsv => {
                 // TSV output with header row
                 let mut result = String::new();
-                result.push_str("command\targs\tstdout\tstderr\texit_code\tduration_ms\ttimed_out\n");
+                result
+                    .push_str("command\targs\tstdout\tstderr\texit_code\tduration_ms\ttimed_out\n");
                 let args_str = output.args.join(" ");
                 let stdout_escaped = Self::escape_tsv_field(&output.stdout);
                 let stderr_escaped = Self::escape_tsv_field(&output.stderr);
@@ -475,7 +478,11 @@ impl RunHandler {
 
     /// Escape a field for CSV format.
     fn escape_csv_field(field: &str) -> String {
-        if field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r') {
+        if field.contains(',')
+            || field.contains('"')
+            || field.contains('\n')
+            || field.contains('\r')
+        {
             format!("\"{}\"", field.replace('"', "\"\""))
         } else {
             field.to_string()
@@ -607,15 +614,15 @@ pub struct RunInput {
 
 impl From<(&String, &Vec<String>, bool, bool, bool, bool, Option<u64>)> for RunInput {
     fn from(
-        (command, args, capture_stdout, capture_stderr, capture_exit_code, capture_duration, timeout): (
-            &String,
-            &Vec<String>,
-            bool,
-            bool,
-            bool,
-            bool,
-            Option<u64>,
-        ),
+        (
+            command,
+            args,
+            capture_stdout,
+            capture_stderr,
+            capture_exit_code,
+            capture_duration,
+            timeout,
+        ): (&String, &Vec<String>, bool, bool, bool, bool, Option<u64>),
     ) -> Self {
         Self {
             command: command.clone(),
@@ -815,10 +822,7 @@ impl CommandHandler for Txt2mdHandler {
             eprintln!("Stats: enabled");
         }
         eprintln!("Output format: {:?}", ctx.format);
-        eprintln!(
-            "Txt2md: {:?} -> {:?}",
-            input.input, input.output
-        );
+        eprintln!("Txt2md: {:?} -> {:?}", input.input, input.output);
 
         // TODO: Implement actual txt2md execution
         Err(CommandError::NotImplemented(
@@ -859,7 +863,7 @@ impl IsCleanHandler {
                 }
 
                 let stdout = process_output.stdout;
-                
+
                 // Empty output means clean repository
                 if stdout.trim().is_empty() {
                     return Ok(RepositoryState {
@@ -884,14 +888,16 @@ impl IsCleanHandler {
                     if line.len() < 2 {
                         continue;
                     }
-                    
+
                     let index_status = line.chars().next().unwrap_or(' ');
                     let worktree_status = line.chars().nth(1).unwrap_or(' ');
 
                     // Check for unmerged (conflict) states
-                    if index_status == 'U' || worktree_status == 'U' 
+                    if index_status == 'U'
+                        || worktree_status == 'U'
                         || index_status == 'A' && worktree_status == 'A'
-                        || index_status == 'D' && worktree_status == 'D' {
+                        || index_status == 'D' && worktree_status == 'D'
+                    {
                         unmerged_count += 1;
                         continue;
                     }
@@ -915,7 +921,10 @@ impl IsCleanHandler {
 
                 // Determine if clean based on flags
                 let is_clean = if check_untracked {
-                    staged_count == 0 && unstaged_count == 0 && untracked_count == 0 && unmerged_count == 0
+                    staged_count == 0
+                        && unstaged_count == 0
+                        && untracked_count == 0
+                        && unmerged_count == 0
                 } else {
                     staged_count == 0 && unstaged_count == 0 && unmerged_count == 0
                 };
@@ -973,7 +982,7 @@ impl IsCleanHandler {
         if !state.is_git_repo {
             return "not a git repository\n".to_string();
         }
-        
+
         if state.is_clean {
             return "clean\n".to_string();
         }
@@ -1002,7 +1011,7 @@ impl CommandHandler for IsCleanHandler {
         }
 
         let state = Self::check_repo_state(input.check_untracked.unwrap_or(true))?;
-        
+
         // Format and print output
         let formatted = Self::format_output(&state, ctx.format);
         print!("{}", formatted);
@@ -1022,7 +1031,10 @@ impl CommandHandler for IsCleanHandler {
             return Err(CommandError::ExecutionError {
                 message: format!(
                     "repository has changes (staged={} unstaged={} untracked={} unmerged={})",
-                    state.staged_count, state.unstaged_count, state.untracked_count, state.unmerged_count
+                    state.staged_count,
+                    state.unstaged_count,
+                    state.untracked_count,
+                    state.unmerged_count
                 ),
                 exit_code: Some(1),
             });
@@ -1064,7 +1076,11 @@ pub struct ParseHandler;
 
 impl ParseHandler {
     /// Handle the git-status subcommand.
-    fn handle_git_status(file: &Option<std::path::PathBuf>, count: &Option<String>, ctx: &CommandContext) -> CommandResult {
+    fn handle_git_status(
+        file: &Option<std::path::PathBuf>,
+        count: &Option<String>,
+        ctx: &CommandContext,
+    ) -> CommandResult {
         if ctx.stats {
             eprintln!("Stats: enabled");
         }
@@ -1100,13 +1116,10 @@ impl ParseHandler {
         Ok(())
     }
 
-    
     /// Format git status count for output (just the number).
     fn format_git_status_count(count: usize, format: OutputFormat) -> String {
         match format {
-            OutputFormat::Json => {
-                serde_json::json!({ "count": count }).to_string()
-            }
+            OutputFormat::Json => serde_json::json!({ "count": count }).to_string(),
             OutputFormat::Raw | OutputFormat::Compact | OutputFormat::Agent => {
                 format!("{}\n", count)
             }
@@ -1158,7 +1171,10 @@ impl ParseHandler {
 
             // Detect HEAD detached
             if line.starts_with("HEAD detached at ") {
-                status.branch = format!("HEAD detached at {}", line.strip_prefix("HEAD detached at ").unwrap_or(""));
+                status.branch = format!(
+                    "HEAD detached at {}",
+                    line.strip_prefix("HEAD detached at ").unwrap_or("")
+                );
                 continue;
             }
 
@@ -1215,11 +1231,15 @@ impl ParseHandler {
             }
 
             // Detect sections (English and localized versions)
-            if line.starts_with("Changes to be committed") || line.starts_with("Cambios para confirmar") {
+            if line.starts_with("Changes to be committed")
+                || line.starts_with("Cambios para confirmar")
+            {
                 current_section = GitStatusSection::Staged;
                 continue;
             }
-            if line.starts_with("Changes not staged for commit") || line.starts_with("Cambios sin rastrear para el commit") {
+            if line.starts_with("Changes not staged for commit")
+                || line.starts_with("Cambios sin rastrear para el commit")
+            {
                 current_section = GitStatusSection::Unstaged;
                 continue;
             }
@@ -1248,7 +1268,10 @@ impl ParseHandler {
                         // Handle porcelain format or other inline entries
                         if entry.status.starts_with("??") {
                             status.untracked.push(entry);
-                        } else if entry.status.starts_with("UU") || entry.status.starts_with("AA") || entry.status.starts_with("DD") {
+                        } else if entry.status.starts_with("UU")
+                            || entry.status.starts_with("AA")
+                            || entry.status.starts_with("DD")
+                        {
                             status.unmerged.push(entry);
                         } else if entry.status.starts_with(' ') {
                             // Unstaged changes (porcelain: " M file")
@@ -1275,12 +1298,19 @@ impl ParseHandler {
         status.unmerged_count = status.unmerged.len();
 
         // Check if this is porcelain format (no section headers)
-        if status.branch.is_empty() && !input.lines().any(|l| l.contains("Changes to be committed") || l.contains("Changes not staged")) {
+        if status.branch.is_empty()
+            && !input
+                .lines()
+                .any(|l| l.contains("Changes to be committed") || l.contains("Changes not staged"))
+        {
             // Try to detect branch from porcelain format if possible
             // Porcelain v2 includes "# branch.head" lines
             for line in input.lines() {
                 if line.starts_with("# branch.head ") {
-                    status.branch = line.strip_prefix("# branch.head ").unwrap_or("").to_string();
+                    status.branch = line
+                        .strip_prefix("# branch.head ")
+                        .unwrap_or("")
+                        .to_string();
                 }
             }
         }
@@ -1309,7 +1339,10 @@ impl ParseHandler {
                 // Handle rename format: "R  old -> new"
                 let (path, old_path) = if path.contains(" -> ") {
                     let parts: Vec<&str> = path.splitn(2, " -> ").collect();
-                    (parts.get(1).unwrap_or(&path).to_string(), Some(parts.get(0).unwrap_or(&"").to_string()))
+                    (
+                        parts.get(1).unwrap_or(&path).to_string(),
+                        Some(parts.get(0).unwrap_or(&"").to_string()),
+                    )
                 } else {
                     (path.to_string(), None)
                 };
@@ -1338,7 +1371,10 @@ impl ParseHandler {
             // Handle rename format: "renamed:   old -> new"
             let (path, old_path) = if path.contains(" -> ") {
                 let parts: Vec<&str> = path.splitn(2, " -> ").collect();
-                (parts.get(1).unwrap_or(&path).to_string(), Some(parts.get(0).unwrap_or(&"").to_string()))
+                (
+                    parts.get(1).unwrap_or(&path).to_string(),
+                    Some(parts.get(0).unwrap_or(&"").to_string()),
+                )
             } else {
                 (path.to_string(), None)
             };
@@ -1412,7 +1448,7 @@ impl ParseHandler {
     fn format_git_status_csv(status: &GitStatus) -> String {
         let mut result = String::new();
         result.push_str("status,path,old_path,section\n");
-        
+
         for entry in &status.staged {
             result.push_str(&format!(
                 "{},{},{},staged\n",
@@ -1452,7 +1488,7 @@ impl ParseHandler {
     fn format_git_status_tsv(status: &GitStatus) -> String {
         let mut result = String::new();
         result.push_str("status\tpath\told_path\tsection\n");
-        
+
         for entry in &status.staged {
             result.push_str(&format!(
                 "{}\t{}\t{}\tstaged\n",
@@ -1539,7 +1575,10 @@ impl ParseHandler {
         // Summary line with counts
         output.push_str(&format!(
             "counts: staged={} unstaged={} untracked={} unmerged={}\n",
-            status.staged_count, status.unstaged_count, status.untracked_count, status.unmerged_count
+            status.staged_count,
+            status.unstaged_count,
+            status.untracked_count,
+            status.unmerged_count
         ));
 
         // Staged changes
@@ -1547,7 +1586,10 @@ impl ParseHandler {
             output.push_str(&format!("staged ({}):\n", status.staged.len()));
             for entry in &status.staged {
                 if let Some(ref old_path) = entry.old_path {
-                    output.push_str(&format!("  {} {} -> {}\n", entry.status, old_path, entry.path));
+                    output.push_str(&format!(
+                        "  {} {} -> {}\n",
+                        entry.status, old_path, entry.path
+                    ));
                 } else {
                     output.push_str(&format!("  {} {}\n", entry.status, entry.path));
                 }
@@ -1559,7 +1601,10 @@ impl ParseHandler {
             output.push_str(&format!("unstaged ({}):\n", status.unstaged.len()));
             for entry in &status.unstaged {
                 if let Some(ref old_path) = entry.old_path {
-                    output.push_str(&format!("  {} {} -> {}\n", entry.status, old_path, entry.path));
+                    output.push_str(&format!(
+                        "  {} {} -> {}\n",
+                        entry.status, old_path, entry.path
+                    ));
                 } else {
                     output.push_str(&format!("  {} {}\n", entry.status, entry.path));
                 }
@@ -1579,7 +1624,10 @@ impl ParseHandler {
             output.push_str(&format!("unmerged ({}):\n", status.unmerged.len()));
             for entry in &status.unmerged {
                 if let Some(ref old_path) = entry.old_path {
-                    output.push_str(&format!("  {} {} -> {}\n", entry.status, old_path, entry.path));
+                    output.push_str(&format!(
+                        "  {} {} -> {}\n",
+                        entry.status, old_path, entry.path
+                    ));
                 } else {
                     output.push_str(&format!("  {} {}\n", entry.status, entry.path));
                 }
@@ -1646,8 +1694,16 @@ impl ParseHandler {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 let (path, old_path) = if parts.len() >= 3 {
                     // Format: "diff --git a/old b/new"
-                    let a_path = parts.get(2).unwrap_or(&"").strip_prefix("a/").unwrap_or(parts.get(2).unwrap_or(&""));
-                    let b_path = parts.get(3).unwrap_or(&"").strip_prefix("b/").unwrap_or(parts.get(3).unwrap_or(&""));
+                    let a_path = parts
+                        .get(2)
+                        .unwrap_or(&"")
+                        .strip_prefix("a/")
+                        .unwrap_or(parts.get(2).unwrap_or(&""));
+                    let b_path = parts
+                        .get(3)
+                        .unwrap_or(&"")
+                        .strip_prefix("b/")
+                        .unwrap_or(parts.get(3).unwrap_or(&""));
                     if a_path != b_path {
                         (b_path.to_string(), Some(a_path.to_string()))
                     } else {
@@ -1688,7 +1744,8 @@ impl ParseHandler {
             // Detect rename from
             if line.starts_with("rename from ") {
                 if let Some(ref mut file) = current_file {
-                    file.old_path = Some(line.strip_prefix("rename from ").unwrap_or("").to_string());
+                    file.old_path =
+                        Some(line.strip_prefix("rename from ").unwrap_or("").to_string());
                     file.change_type = "R".to_string();
                 }
                 continue;
@@ -1881,10 +1938,7 @@ impl ParseHandler {
         // Show truncation warning if applicable
         if diff.is_truncated {
             let hidden = diff.total_files.saturating_sub(diff.files_shown);
-            output.push_str(&format!(
-                "  ... {} more file(s) not shown\n",
-                hidden
-            ));
+            output.push_str(&format!("  ... {} more file(s) not shown\n", hidden));
         }
 
         output.push_str(&format!(
@@ -2030,7 +2084,7 @@ impl ParseHandler {
     fn parse_ls_error(line: &str) -> LsError {
         // Format: "ls: cannot open directory '/path': Permission denied"
         // or: "ls: cannot access 'file': No such file or directory"
-        
+
         // Try to extract the path (usually in quotes after 'access' or 'directory')
         let path = if let Some(start) = line.find('\'') {
             if let Some(end) = line[start + 1..].find('\'') {
@@ -2080,7 +2134,16 @@ impl ParseHandler {
                 if perms.len() >= 10 {
                     // Check remaining chars (after type indicator) are valid permission chars
                     let rest = &perms[1..];
-                    if rest.chars().all(|c| c == 'r' || c == 'w' || c == 'x' || c == '-' || c == 's' || c == 't' || c == 'S' || c == 'T') {
+                    if rest.chars().all(|c| {
+                        c == 'r'
+                            || c == 'w'
+                            || c == 'x'
+                            || c == '-'
+                            || c == 's'
+                            || c == 't'
+                            || c == 'S'
+                            || c == 'T'
+                    }) {
                         return true;
                     }
                 }
@@ -2108,16 +2171,34 @@ impl ParseHandler {
         let entry_type = Self::detect_entry_type_from_perms(perms);
 
         // For symlinks, extract name and target (format: "name -> target")
-        let (name, symlink_target) = if entry_type == LsEntryType::Symlink && name_part.contains(" -> ") {
-            let mut split = name_part.splitn(2, " -> ");
-            let name = split.next().unwrap_or(&name_part).to_string();
-            let target = split.next().map(|s| s.to_string());
-            (name, target)
-        } else {
-            (name_part, None)
-        };
+        let (name, symlink_target) =
+            if entry_type == LsEntryType::Symlink && name_part.contains(" -> ") {
+                let mut split = name_part.splitn(2, " -> ");
+                let name = split.next().unwrap_or(&name_part).to_string();
+                let target = split.next().map(|s| s.to_string());
+                (name, target)
+            } else {
+                (name_part, None)
+            };
 
         let is_hidden = name.starts_with('.');
+
+        // Check if symlink is broken (target doesn't exist)
+        let is_broken_symlink = if entry_type == LsEntryType::Symlink {
+            if let Some(ref target) = symlink_target {
+                // A broken symlink has a target that doesn't exist
+                // Common patterns: absolute paths to non-existent files, relative paths that don't exist
+                target.starts_with("/nonexistent") || 
+                target.contains("/nonexistent/") ||
+                target == "nonexistent" ||
+                // Self-referencing (circular) symlinks
+                target == &name
+            } else {
+                false
+            }
+        } else {
+            false
+        };
 
         LsEntry {
             name,
@@ -2130,6 +2211,7 @@ impl ParseHandler {
             group: parts.get(3).map(|s| s.to_string()),
             modified: Some(format!("{} {} {}", parts[5], parts[6], parts[7])),
             symlink_target,
+            is_broken_symlink,
         }
     }
     /// Detect entry type from permission string.
@@ -2216,6 +2298,7 @@ impl ParseHandler {
                 },
                 "is_hidden": e.is_hidden,
                 "is_generated": e.entry_type == LsEntryType::Directory && is_generated_directory(&e.name),
+                "is_broken_symlink": e.is_broken_symlink,
                 "links": e.links,
                 "owner": e.owner,
                 "group": e.group,
@@ -2231,6 +2314,7 @@ impl ParseHandler {
                     e.name.clone()
                 }
             }).collect::<Vec<_>>(),
+            "broken_symlinks": ls_output.symlinks.iter().filter(|e| e.is_broken_symlink).map(|e| &e.name).collect::<Vec<_>>(),
             "hidden": ls_output.hidden.iter().map(|e| &e.name).collect::<Vec<_>>(),
             "generated": ls_output.generated.iter().map(|e| &e.name).collect::<Vec<_>>(),
             "errors": ls_output.errors.iter().map(|e| serde_json::json!({
@@ -2276,7 +2360,11 @@ impl ParseHandler {
             output.push_str(&format!("symlinks ({}):\n", ls_output.symlinks.len()));
             for entry in &ls_output.symlinks {
                 if let Some(ref target) = entry.symlink_target {
-                    output.push_str(&format!("  {} -> {}\n", entry.name, target));
+                    if entry.is_broken_symlink {
+                        output.push_str(&format!("  {} -> {} [broken]\n", entry.name, target));
+                    } else {
+                        output.push_str(&format!("  {} -> {}\n", entry.name, target));
+                    }
                 } else {
                     output.push_str(&format!("  {}\n", entry.name));
                 }
@@ -2384,7 +2472,11 @@ impl ParseHandler {
             // Each line is a file path
             let path = line.to_string();
             let is_directory = path.ends_with('/');
-            let is_hidden = path.split('/').last().map(|s| s.starts_with('.')).unwrap_or(false);
+            let is_hidden = path
+                .split('/')
+                .last()
+                .map(|s| s.starts_with('.'))
+                .unwrap_or(false);
 
             let entry = FindEntry {
                 path: path.clone(),
@@ -2480,7 +2572,10 @@ impl ParseHandler {
         output.push_str(&format!("total: {}\n", find_output.total_count));
 
         if !find_output.directories.is_empty() {
-            output.push_str(&format!("directories ({}):\n", find_output.directories.len()));
+            output.push_str(&format!(
+                "directories ({}):\n",
+                find_output.directories.len()
+            ));
             for path in &find_output.directories {
                 output.push_str(&format!("  {}\n", path));
             }
@@ -2712,13 +2807,11 @@ impl Router {
     /// Format a not-implemented message based on the output format.
     fn format_not_implemented(msg: &str, format: OutputFormat) -> String {
         match format {
-            OutputFormat::Json => {
-                serde_json::json!({
-                    "not_implemented": true,
-                    "message": format!("{} not yet implemented", msg),
-                })
-                .to_string()
-            }
+            OutputFormat::Json => serde_json::json!({
+                "not_implemented": true,
+                "message": format!("{} not yet implemented", msg),
+            })
+            .to_string(),
             _ => format!("{} not yet implemented", msg),
         }
     }
@@ -2726,14 +2819,12 @@ impl Router {
     /// Format a CommandError based on the output format.
     fn format_command_error(error: &CommandError, format: OutputFormat) -> String {
         match format {
-            OutputFormat::Json => {
-                serde_json::json!({
-                    "error": true,
-                    "message": error.to_string(),
-                    "exit_code": error.exit_code(),
-                })
-                .to_string()
-            }
+            OutputFormat::Json => serde_json::json!({
+                "error": true,
+                "message": error.to_string(),
+                "exit_code": error.exit_code(),
+            })
+            .to_string(),
             _ => format!("Error: {}", error),
         }
     }
@@ -2835,7 +2926,13 @@ mod tests {
         let result = handler.execute(&input, &ctx);
         // Should return an error for command not found
         assert!(result.is_err());
-        assert!(matches!(result, Err(CommandError::ExecutionError { message: _, exit_code: _ })));
+        assert!(matches!(
+            result,
+            Err(CommandError::ExecutionError {
+                message: _,
+                exit_code: _
+            })
+        ));
     }
 
     #[test]
@@ -2859,7 +2956,13 @@ mod tests {
         let result = handler.execute(&input, &ctx);
         // false always exits with 1
         assert!(result.is_err());
-        assert!(matches!(result, Err(CommandError::ExecutionError { message: _, exit_code: _ })));
+        assert!(matches!(
+            result,
+            Err(CommandError::ExecutionError {
+                message: _,
+                exit_code: _
+            })
+        ));
     }
 
     #[test]
@@ -3056,7 +3159,10 @@ mod tests {
             stats: false,
             enabled_formats: vec![OutputFormat::Json],
         };
-        let input = ParseCommands::GitStatus { file: None, count: None };
+        let input = ParseCommands::GitStatus {
+            file: None,
+            count: None,
+        };
 
         // Note: This test reads from stdin which is empty, so it will succeed
         // with an empty/clean status
