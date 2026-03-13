@@ -2096,6 +2096,590 @@ impl CsvFormatter {
         }
         output
     }
+
+    // ============================================================
+    // Schema Formatting Methods
+    // ============================================================
+
+    /// Format a GitStatusSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::{GitStatusSchema, GitFileEntry};
+    /// let mut status = GitStatusSchema::new("main");
+    /// status.is_clean = true;
+    /// let output = CsvFormatter::format_git_status(&status);
+    /// assert!(output.contains("branch,is_clean"));
+    /// assert!(output.contains("main,true"));
+    /// ```
+    pub fn format_git_status(status: &crate::schema::GitStatusSchema) -> String {
+        let mut output = String::new();
+
+        // Header row
+        output.push_str("branch,is_clean,ahead,behind,staged,unstaged,untracked,unmerged\n");
+
+        // Data row with summary
+        output.push_str(&format!(
+            "{},{},{},{},{},{},{},{}\n",
+            Self::escape_field(&status.branch),
+            status.is_clean,
+            status.ahead.unwrap_or(0),
+            status.behind.unwrap_or(0),
+            status.counts.staged,
+            status.counts.unstaged,
+            status.counts.untracked,
+            status.counts.unmerged
+        ));
+
+        // If there are file entries, add them as separate rows
+        if !status.staged.is_empty()
+            || !status.unstaged.is_empty()
+            || !status.untracked.is_empty()
+            || !status.unmerged.is_empty()
+        {
+            output.push('\n');
+            output.push_str("section,status,path,old_path\n");
+
+            for entry in &status.staged {
+                output.push_str(&format!(
+                    "staged,{},{},{}\n",
+                    Self::escape_field(&entry.status),
+                    Self::escape_field(&entry.path),
+                    entry.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default()
+                ));
+            }
+
+            for entry in &status.unstaged {
+                output.push_str(&format!(
+                    "unstaged,{},{},{}\n",
+                    Self::escape_field(&entry.status),
+                    Self::escape_field(&entry.path),
+                    entry.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default()
+                ));
+            }
+
+            for entry in &status.untracked {
+                output.push_str(&format!(
+                    "untracked,{},{},{}\n",
+                    Self::escape_field(&entry.status),
+                    Self::escape_field(&entry.path),
+                    entry.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default()
+                ));
+            }
+
+            for entry in &status.unmerged {
+                output.push_str(&format!(
+                    "unmerged,{},{},{}\n",
+                    Self::escape_field(&entry.status),
+                    Self::escape_field(&entry.path),
+                    entry.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default()
+                ));
+            }
+        }
+
+        output
+    }
+
+    /// Format a GitDiffSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::GitDiffSchema;
+    /// let diff = GitDiffSchema::new();
+    /// let output = CsvFormatter::format_git_diff(&diff);
+    /// assert!(output.contains("is_empty"));
+    /// assert!(output.contains("true"));
+    /// ```
+    pub fn format_git_diff(diff: &crate::schema::GitDiffSchema) -> String {
+        if diff.is_empty {
+            return "is_empty\ntrue\n".to_string();
+        }
+
+        let mut output = String::new();
+
+        // Summary row
+        output.push_str("total_files,total_additions,total_deletions,is_truncated\n");
+        output.push_str(&format!(
+            "{},{},{},{}\n",
+            diff.counts.total_files,
+            diff.total_additions,
+            diff.total_deletions,
+            diff.is_truncated
+        ));
+
+        // File entries
+        if !diff.files.is_empty() {
+            output.push('\n');
+            output.push_str("path,old_path,change_type,additions,deletions,is_binary\n");
+
+            for file in &diff.files {
+                output.push_str(&format!(
+                    "{},{},{},{},{},{}\n",
+                    Self::escape_field(&file.path),
+                    file.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default(),
+                    Self::escape_field(&file.change_type),
+                    file.additions,
+                    file.deletions,
+                    file.is_binary
+                ));
+            }
+        }
+
+        output
+    }
+
+    /// Format a LsOutputSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::{LsOutputSchema, LsEntry, LsEntryType};
+    /// let mut ls = LsOutputSchema::new();
+    /// ls.is_empty = false;
+    /// ls.directories.push("src".to_string());
+    /// ls.counts.directories = 1;
+    /// ls.counts.total = 1;
+    /// let output = CsvFormatter::format_ls(&ls);
+    /// assert!(output.contains("is_empty"));
+    /// assert!(output.contains("false"));
+    /// ```
+    pub fn format_ls(ls: &crate::schema::LsOutputSchema) -> String {
+        if ls.is_empty {
+            return Self::format_empty();
+        }
+
+        let mut output = String::new();
+
+        // Summary row
+        output.push_str("total,directories,files,symlinks,hidden,generated\n");
+        output.push_str(&format!(
+            "{},{},{},{},{},{}\n",
+            ls.counts.total,
+            ls.counts.directories,
+            ls.counts.files,
+            ls.counts.symlinks,
+            ls.counts.hidden,
+            ls.counts.generated
+        ));
+
+        // Entries
+        if !ls.entries.is_empty() {
+            output.push('\n');
+            output.push_str("name,type,is_hidden,is_symlink,symlink_target,is_broken\n");
+
+            for entry in &ls.entries {
+                let type_str = match entry.entry_type {
+                    crate::schema::LsEntryType::File => "file",
+                    crate::schema::LsEntryType::Directory => "directory",
+                    crate::schema::LsEntryType::Symlink => "symlink",
+                    crate::schema::LsEntryType::BlockDevice => "block_device",
+                    crate::schema::LsEntryType::CharDevice => "char_device",
+                    crate::schema::LsEntryType::Socket => "socket",
+                    crate::schema::LsEntryType::Pipe => "pipe",
+                    crate::schema::LsEntryType::Other => "other",
+                };
+                output.push_str(&format!(
+                    "{},{},{},{},{},{}\n",
+                    Self::escape_field(&entry.name),
+                    type_str,
+                    entry.is_hidden,
+                    entry.is_symlink,
+                    entry.symlink_target.as_deref().map(|t| Self::escape_field(t)).unwrap_or_default(),
+                    entry.is_broken_symlink
+                ));
+            }
+        }
+
+        // Errors
+        if !ls.errors.is_empty() {
+            output.push('\n');
+            output.push_str("error_path,error_message\n");
+            for error in &ls.errors {
+                output.push_str(&format!(
+                    "{},{}\n",
+                    Self::escape_field(&error.path),
+                    Self::escape_field(&error.message)
+                ));
+            }
+        }
+
+        output
+    }
+
+    /// Format a GrepOutputSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::{GrepOutputSchema, GrepFile, GrepMatch};
+    /// let mut grep = GrepOutputSchema::new();
+    /// grep.is_empty = false;
+    /// let mut file = GrepFile::new("src/main.rs");
+    /// file.matches.push(GrepMatch::new("fn main()"));
+    /// grep.files.push(file);
+    /// grep.counts.files = 1;
+    /// grep.counts.matches = 1;
+    /// let output = CsvFormatter::format_grep(&grep);
+    /// assert!(output.contains("is_empty"));
+    /// assert!(output.contains("false"));
+    /// ```
+    pub fn format_grep(grep: &crate::schema::GrepOutputSchema) -> String {
+        if grep.is_empty {
+            return "is_empty\ntrue\n".to_string();
+        }
+
+        let mut output = String::new();
+
+        // Summary row
+        output.push_str("files,matches,total_files,is_truncated\n");
+        output.push_str(&format!(
+            "{},{},{},{}\n",
+            grep.counts.files,
+            grep.counts.matches,
+            grep.counts.total_files,
+            grep.is_truncated
+        ));
+
+        // Matches
+        output.push('\n');
+        output.push_str("file,line_number,column,content,is_context\n");
+
+        for file in &grep.files {
+            for m in &file.matches {
+                output.push_str(&format!(
+                    "{},{},{},{},{}\n",
+                    Self::escape_field(&file.path),
+                    m.line_number.unwrap_or(0),
+                    m.column.unwrap_or(0),
+                    Self::escape_field(m.line.trim()),
+                    m.is_context
+                ));
+            }
+        }
+
+        output
+    }
+
+    /// Format a FindOutputSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::{FindOutputSchema, FindEntry};
+    /// let mut find = FindOutputSchema::new();
+    /// find.is_empty = false;
+    /// find.files.push("./src/main.rs".to_string());
+    /// find.counts.files = 1;
+    /// find.counts.total = 1;
+    /// let output = CsvFormatter::format_find(&find);
+    /// assert!(output.contains("is_empty"));
+    /// assert!(output.contains("false"));
+    /// ```
+    pub fn format_find(find: &crate::schema::FindOutputSchema) -> String {
+        if find.is_empty {
+            return "is_empty\ntrue\n".to_string();
+        }
+
+        let mut output = String::new();
+
+        // Summary row
+        output.push_str("total,directories,files\n");
+        output.push_str(&format!(
+            "{},{},{}\n",
+            find.counts.total,
+            find.counts.directories,
+            find.counts.files
+        ));
+
+        // Entries
+        output.push('\n');
+        output.push_str("path,is_directory,is_hidden,extension,depth\n");
+
+        for entry in &find.entries {
+            output.push_str(&format!(
+                "{},{},{},{},{}\n",
+                Self::escape_field(&entry.path),
+                entry.is_directory,
+                entry.is_hidden,
+                entry.extension.as_deref().unwrap_or(""),
+                entry.depth
+            ));
+        }
+
+        // Errors
+        if !find.errors.is_empty() {
+            output.push('\n');
+            output.push_str("error_path,error_message\n");
+            for error in &find.errors {
+                output.push_str(&format!(
+                    "{},{}\n",
+                    Self::escape_field(&error.path),
+                    Self::escape_field(&error.message)
+                ));
+            }
+        }
+
+        output
+    }
+
+    /// Format a TestOutputSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::{TestOutputSchema, TestRunnerType};
+    /// let mut test = TestOutputSchema::new(TestRunnerType::Pytest);
+    /// test.is_empty = false;
+    /// test.summary.passed = 10;
+    /// test.summary.failed = 0;
+    /// test.summary.total = 10;
+    /// let output = CsvFormatter::format_test_output(&test);
+    /// assert!(output.contains("is_empty"));
+    /// assert!(output.contains("false"));
+    /// ```
+    pub fn format_test_output(test: &crate::schema::TestOutputSchema) -> String {
+        if test.is_empty {
+            return "is_empty\ntrue\n".to_string();
+        }
+
+        let mut output = String::new();
+
+        // Summary row
+        output.push_str("runner,success,total,passed,failed,skipped,duration_ms\n");
+        output.push_str(&format!(
+            "{},{},{},{},{},{},{}\n",
+            test.runner,
+            test.success,
+            test.summary.total,
+            test.summary.passed,
+            test.summary.failed,
+            test.summary.skipped,
+            test.summary.duration_ms.unwrap_or(0)
+        ));
+
+        // Test results
+        output.push('\n');
+        output.push_str("suite_file,test_name,status,duration_ms,error_message\n");
+
+        for suite in &test.test_suites {
+            for t in &suite.tests {
+                let status_str = match t.status {
+                    crate::schema::TestStatus::Passed => "passed",
+                    crate::schema::TestStatus::Failed => "failed",
+                    crate::schema::TestStatus::Skipped => "skipped",
+                    crate::schema::TestStatus::XFailed => "xfailed",
+                    crate::schema::TestStatus::XPassed => "xpassed",
+                    crate::schema::TestStatus::Error => "error",
+                    crate::schema::TestStatus::Todo => "todo",
+                };
+                output.push_str(&format!(
+                    "{},{},{},{},{}\n",
+                    Self::escape_field(&suite.file),
+                    Self::escape_field(&t.name),
+                    status_str,
+                    t.duration_ms.unwrap_or(0),
+                    t.error_message.as_deref().map(|e| Self::escape_field(e)).unwrap_or_default()
+                ));
+            }
+        }
+
+        output
+    }
+
+    /// Format a LogsOutputSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::{LogsOutputSchema, LogEntry, LogLevel};
+    /// let mut logs = LogsOutputSchema::new();
+    /// logs.is_empty = false;
+    /// logs.counts.total_lines = 10;
+    /// logs.counts.info = 8;
+    /// logs.counts.error = 2;
+    /// let output = CsvFormatter::format_logs(&logs);
+    /// assert!(output.contains("is_empty"));
+    /// assert!(output.contains("false"));
+    /// ```
+    pub fn format_logs(logs: &crate::schema::LogsOutputSchema) -> String {
+        if logs.is_empty {
+            return "is_empty\ntrue\n".to_string();
+        }
+
+        let mut output = String::new();
+
+        // Summary row
+        output.push_str("total_lines,debug,info,warning,error,fatal,unknown\n");
+        output.push_str(&format!(
+            "{},{},{},{},{},{},{}\n",
+            logs.counts.total_lines,
+            logs.counts.debug,
+            logs.counts.info,
+            logs.counts.warning,
+            logs.counts.error,
+            logs.counts.fatal,
+            logs.counts.unknown
+        ));
+
+        // Log entries
+        if !logs.entries.is_empty() {
+            output.push('\n');
+            output.push_str("line_number,level,timestamp,source,message\n");
+
+            for entry in &logs.entries {
+                let level_str = match entry.level {
+                    crate::schema::LogLevel::Debug => "debug",
+                    crate::schema::LogLevel::Info => "info",
+                    crate::schema::LogLevel::Warning => "warning",
+                    crate::schema::LogLevel::Error => "error",
+                    crate::schema::LogLevel::Fatal => "fatal",
+                    crate::schema::LogLevel::Unknown => "unknown",
+                };
+                output.push_str(&format!(
+                    "{},{},{},{},{}\n",
+                    entry.line_number,
+                    level_str,
+                    entry.timestamp.as_deref().unwrap_or(""),
+                    entry.source.as_deref().unwrap_or(""),
+                    Self::escape_field(&entry.message)
+                ));
+            }
+        }
+
+        // Recent critical
+        if !logs.recent_critical.is_empty() {
+            output.push('\n');
+            output.push_str("critical_line_number,critical_level,critical_message\n");
+            for entry in &logs.recent_critical {
+                let level_str = match entry.level {
+                    crate::schema::LogLevel::Error => "error",
+                    crate::schema::LogLevel::Fatal => "fatal",
+                    _ => "critical",
+                };
+                output.push_str(&format!(
+                    "{},{},{}\n",
+                    entry.line_number,
+                    level_str,
+                    Self::escape_field(&entry.message)
+                ));
+            }
+        }
+
+        output
+    }
+
+    /// Format a RepositoryStateSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::RepositoryStateSchema;
+    /// let mut state = RepositoryStateSchema::new();
+    /// state.branch = Some("main".to_string());
+    /// let output = CsvFormatter::format_repository_state(&state);
+    /// assert!(output.contains("is_git_repo"));
+    /// assert!(output.contains("true"));
+    /// ```
+    pub fn format_repository_state(state: &crate::schema::RepositoryStateSchema) -> String {
+        if !state.is_git_repo {
+            return "is_git_repo\nfalse\n".to_string();
+        }
+
+        let mut output = String::new();
+
+        output.push_str("is_git_repo,is_clean,is_detached,branch,staged,unstaged,untracked,unmerged\n");
+        output.push_str(&format!(
+            "{},{},{},{},{},{},{},{}\n",
+            state.is_git_repo,
+            state.is_clean,
+            state.is_detached,
+            state.branch.as_deref().unwrap_or(""),
+            state.counts.staged,
+            state.counts.unstaged,
+            state.counts.untracked,
+            state.counts.unmerged
+        ));
+
+        output
+    }
+
+    /// Format a ProcessOutputSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::ProcessOutputSchema;
+    /// let mut proc = ProcessOutputSchema::new("echo");
+    /// proc.stdout = "hello\n".to_string();
+    /// proc.success = true;
+    /// let output = CsvFormatter::format_process(&proc);
+    /// assert!(output.contains("success"));
+    /// assert!(output.contains("true"));
+    /// ```
+    pub fn format_process(process: &crate::schema::ProcessOutputSchema) -> String {
+        let mut output = String::new();
+
+        output.push_str("command,args,exit_code,duration_ms,timed_out,success\n");
+        output.push_str(&format!(
+            "{},{},{},{},{},{}\n",
+            Self::escape_field(&process.command),
+            Self::escape_field(&process.args.join(" ")),
+            process.exit_code.unwrap_or(-1),
+            process.duration_ms,
+            process.timed_out,
+            process.success
+        ));
+
+        // stdout and stderr as separate sections
+        if !process.stdout.is_empty() {
+            output.push('\n');
+            output.push_str("stdout\n");
+            output.push_str(&Self::escape_field(&process.stdout));
+            output.push('\n');
+        }
+
+        if !process.stderr.is_empty() {
+            output.push('\n');
+            output.push_str("stderr\n");
+            output.push_str(&Self::escape_field(&process.stderr));
+            output.push('\n');
+        }
+
+        output
+    }
+
+    /// Format an ErrorSchema into CSV output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::CsvFormatter;
+    /// use tars_cli::schema::ErrorSchema;
+    /// let error = ErrorSchema::new("Something went wrong");
+    /// let output = CsvFormatter::format_error_schema(&error);
+    /// assert!(output.contains("error"));
+    /// assert!(output.contains("message"));
+    /// assert!(output.contains("Something went wrong"));
+    /// ```
+    pub fn format_error_schema(error: &crate::schema::ErrorSchema) -> String {
+        format!(
+            "error,message,error_type,exit_code\ntrue,{},{},{}\n",
+            Self::escape_field(&error.message),
+            error.error_type.as_deref().unwrap_or(""),
+            error.exit_code.unwrap_or(-1)
+        )
+    }
 }
 
 // ============================================================
@@ -5594,6 +6178,306 @@ mod tests {
         let output = CsvFormatter::format_table(&["path", "status", "lines"], &items);
         assert!(output.contains("\"file,with,commas.rs\""));
         assert!(output.contains("\"file\"\"with\"\"quotes.rs\""));
+    }
+
+    // ============================================================
+    // CSV Formatter Schema Tests
+    // ============================================================
+
+    #[test]
+    fn test_csv_format_git_status_clean() {
+        use crate::schema::GitStatusSchema;
+        let mut status = GitStatusSchema::new("main");
+        status.is_clean = true;
+        let output = CsvFormatter::format_git_status(&status);
+        assert!(output.contains("branch,is_clean"));
+        assert!(output.contains("main,true"));
+    }
+
+    #[test]
+    fn test_csv_format_git_status_dirty() {
+        use crate::schema::{GitFileEntry, GitStatusSchema};
+        let mut status = GitStatusSchema::new("feature");
+        status.is_clean = false;
+        status.staged.push(GitFileEntry::new("M", "src/main.rs"));
+        status.counts.staged = 1;
+        let output = CsvFormatter::format_git_status(&status);
+        assert!(output.contains("feature,false"));
+        assert!(output.contains("section,status,path"));
+        assert!(output.contains("staged,M,src/main.rs"));
+    }
+
+    #[test]
+    fn test_csv_format_git_status_with_tracking() {
+        use crate::schema::GitStatusSchema;
+        let mut status = GitStatusSchema::new("main");
+        status.is_clean = true;
+        status.ahead = Some(3);
+        status.behind = Some(2);
+        let output = CsvFormatter::format_git_status(&status);
+        assert!(output.contains("main,true,3,2"));
+    }
+
+    #[test]
+    fn test_csv_format_git_diff_empty() {
+        use crate::schema::GitDiffSchema;
+        let diff = GitDiffSchema::new();
+        let output = CsvFormatter::format_git_diff(&diff);
+        assert_eq!(output, "is_empty\ntrue\n");
+    }
+
+    #[test]
+    fn test_csv_format_git_diff_with_files() {
+        use crate::schema::{GitDiffCounts, GitDiffEntry, GitDiffSchema};
+        let mut diff = GitDiffSchema::new();
+        diff.is_empty = false;
+        let mut entry = GitDiffEntry::new("src/main.rs", "M");
+        entry.additions = 10;
+        entry.deletions = 5;
+        diff.files.push(entry);
+        diff.total_additions = 10;
+        diff.total_deletions = 5;
+        diff.counts = GitDiffCounts {
+            total_files: 1,
+            files_shown: 1,
+        };
+        let output = CsvFormatter::format_git_diff(&diff);
+        assert!(output.contains("total_files,total_additions,total_deletions"));
+        assert!(output.contains("1,10,5"));
+        assert!(output.contains("path,old_path,change_type,additions,deletions,is_binary"));
+        assert!(output.contains("src/main.rs,,M,10,5,false"));
+    }
+
+    #[test]
+    fn test_csv_format_ls_empty() {
+        use crate::schema::LsOutputSchema;
+        let ls = LsOutputSchema::new();
+        let output = CsvFormatter::format_ls(&ls);
+        assert_eq!(output, "empty\ntrue\n");
+    }
+
+    #[test]
+    fn test_csv_format_ls_with_entries() {
+        use crate::schema::{LsCounts, LsEntry, LsEntryType, LsOutputSchema};
+        let mut ls = LsOutputSchema::new();
+        ls.is_empty = false;
+        ls.directories.push("src".to_string());
+        ls.files.push("main.rs".to_string());
+        let mut entry = LsEntry::new("src", LsEntryType::Directory);
+        ls.entries.push(entry);
+        let mut entry = LsEntry::new("main.rs", LsEntryType::File);
+        ls.entries.push(entry);
+        ls.counts = LsCounts {
+            total: 2,
+            directories: 1,
+            files: 1,
+            symlinks: 0,
+            hidden: 0,
+            generated: 0,
+        };
+        let output = CsvFormatter::format_ls(&ls);
+        assert!(output.contains("total,directories,files"));
+        assert!(output.contains("2,1,1"));
+        assert!(output.contains("name,type,is_hidden"));
+    }
+
+    #[test]
+    fn test_csv_format_grep_empty() {
+        use crate::schema::GrepOutputSchema;
+        let grep = GrepOutputSchema::new();
+        let output = CsvFormatter::format_grep(&grep);
+        assert_eq!(output, "is_empty\ntrue\n");
+    }
+
+    #[test]
+    fn test_csv_format_grep_with_matches() {
+        use crate::schema::{GrepCounts, GrepFile, GrepMatch, GrepOutputSchema};
+        let mut grep = GrepOutputSchema::new();
+        grep.is_empty = false;
+        let mut file = GrepFile::new("src/main.rs");
+        let mut m = GrepMatch::new("fn main()");
+        m.line_number = Some(10);
+        file.matches.push(m);
+        grep.files.push(file);
+        grep.counts = GrepCounts {
+            files: 1,
+            matches: 1,
+            total_files: 1,
+            total_matches: 1,
+            files_shown: 1,
+            matches_shown: 1,
+        };
+        let output = CsvFormatter::format_grep(&grep);
+        assert!(output.contains("files,matches,total_files"));
+        assert!(output.contains("1,1,1"));
+        assert!(output.contains("file,line_number,column,content"));
+        assert!(output.contains("src/main.rs,10,0,fn main()"));
+    }
+
+    #[test]
+    fn test_csv_format_find_empty() {
+        use crate::schema::FindOutputSchema;
+        let find = FindOutputSchema::new();
+        let output = CsvFormatter::format_find(&find);
+        assert_eq!(output, "is_empty\ntrue\n");
+    }
+
+    #[test]
+    fn test_csv_format_find_with_entries() {
+        use crate::schema::{FindCounts, FindEntry, FindOutputSchema};
+        let mut find = FindOutputSchema::new();
+        find.is_empty = false;
+        find.files.push("./main.rs".to_string());
+        let entry = FindEntry::new("./main.rs");
+        find.entries.push(entry);
+        find.counts = FindCounts {
+            total: 1,
+            directories: 0,
+            files: 1,
+        };
+        let output = CsvFormatter::format_find(&find);
+        assert!(output.contains("total,directories,files"));
+        assert!(output.contains("1,0,1"));
+        assert!(output.contains("path,is_directory,is_hidden"));
+    }
+
+    #[test]
+    fn test_csv_format_test_output_empty() {
+        use crate::schema::{TestOutputSchema, TestRunnerType};
+        let test = TestOutputSchema::new(TestRunnerType::Pytest);
+        let output = CsvFormatter::format_test_output(&test);
+        assert_eq!(output, "is_empty\ntrue\n");
+    }
+
+    #[test]
+    fn test_csv_format_test_output_with_tests() {
+        use crate::schema::{
+            TestOutputSchema, TestResult, TestRunnerType, TestStatus, TestSuite,
+        };
+        let mut test = TestOutputSchema::new(TestRunnerType::Pytest);
+        test.is_empty = false;
+        test.success = true;
+        test.summary.passed = 1;
+        test.summary.total = 1;
+        let mut suite = TestSuite::new("test_main.py");
+        suite.tests.push(TestResult::new("test_example", TestStatus::Passed));
+        test.test_suites.push(suite);
+        let output = CsvFormatter::format_test_output(&test);
+        assert!(output.contains("runner,success,total,passed"));
+        assert!(output.contains("pytest,true,1,1"));
+        assert!(output.contains("suite_file,test_name,status"));
+        assert!(output.contains("test_main.py,test_example,passed"));
+    }
+
+    #[test]
+    fn test_csv_format_logs_empty() {
+        use crate::schema::LogsOutputSchema;
+        let logs = LogsOutputSchema::new();
+        let output = CsvFormatter::format_logs(&logs);
+        assert_eq!(output, "is_empty\ntrue\n");
+    }
+
+    #[test]
+    fn test_csv_format_logs_with_entries() {
+        use crate::schema::{LogCounts, LogEntry, LogLevel, LogsOutputSchema};
+        let mut logs = LogsOutputSchema::new();
+        logs.is_empty = false;
+        logs.counts = LogCounts {
+            total_lines: 10,
+            debug: 2,
+            info: 5,
+            warning: 2,
+            error: 1,
+            fatal: 0,
+            unknown: 0,
+        };
+        let mut entry = LogEntry::new("Application started", 1);
+        entry.level = LogLevel::Info;
+        logs.entries.push(entry);
+        let output = CsvFormatter::format_logs(&logs);
+        assert!(output.contains("total_lines,debug,info,warning,error"));
+        assert!(output.contains("10,2,5,2,1"));
+        assert!(output.contains("line_number,level,timestamp,source,message"));
+    }
+
+    #[test]
+    fn test_csv_format_repository_state_not_git() {
+        use crate::schema::RepositoryStateSchema;
+        let mut state = RepositoryStateSchema::new();
+        state.is_git_repo = false;
+        let output = CsvFormatter::format_repository_state(&state);
+        assert_eq!(output, "is_git_repo\nfalse\n");
+    }
+
+    #[test]
+    fn test_csv_format_repository_state_clean() {
+        use crate::schema::RepositoryStateSchema;
+        let mut state = RepositoryStateSchema::new();
+        state.branch = Some("main".to_string());
+        state.is_clean = true;
+        let output = CsvFormatter::format_repository_state(&state);
+        assert!(output.contains("is_git_repo,is_clean,is_detached,branch"));
+        assert!(output.contains("true,true,false,main"));
+    }
+
+    #[test]
+    fn test_csv_format_repository_state_dirty() {
+        use crate::schema::RepositoryStateSchema;
+        let mut state = RepositoryStateSchema::new();
+        state.branch = Some("feature".to_string());
+        state.is_clean = false;
+        state.counts.staged = 1;
+        state.counts.unstaged = 2;
+        let output = CsvFormatter::format_repository_state(&state);
+        // is_git_repo=true, is_clean=false, is_detached=false, branch=feature, staged=1, unstaged=2, untracked=0, unmerged=0
+        assert!(output.contains("true,false,false,feature,1,2,0,0"));
+    }
+
+    #[test]
+    fn test_csv_format_process_success() {
+        use crate::schema::ProcessOutputSchema;
+        let mut proc = ProcessOutputSchema::new("echo");
+        proc.stdout = "hello\n".to_string();
+        proc.success = true;
+        proc.exit_code = Some(0);
+        let output = CsvFormatter::format_process(&proc);
+        assert!(output.contains("command,args,exit_code"));
+        assert!(output.contains("echo,,0"));
+        assert!(output.contains("stdout"));
+        assert!(output.contains("hello"));
+    }
+
+    #[test]
+    fn test_csv_format_process_failure() {
+        use crate::schema::ProcessOutputSchema;
+        let mut proc = ProcessOutputSchema::new("false");
+        proc.stderr = "error\n".to_string();
+        proc.success = false;
+        proc.exit_code = Some(1);
+        let output = CsvFormatter::format_process(&proc);
+        // command,args,exit_code,duration_ms,timed_out,success
+        assert!(output.contains("false,,1,0,false,false"));
+        assert!(output.contains("stderr"));
+        assert!(output.contains("error"));
+    }
+
+    #[test]
+    fn test_csv_format_error_schema() {
+        use crate::schema::ErrorSchema;
+        let error = ErrorSchema::new("Something went wrong");
+        let output = CsvFormatter::format_error_schema(&error);
+        assert!(output.contains("error,message,error_type,exit_code"));
+        assert!(output.contains("true,Something went wrong"));
+    }
+
+    #[test]
+    fn test_csv_format_error_schema_with_code() {
+        use crate::schema::ErrorSchema;
+        let mut error = ErrorSchema::new("Command failed");
+        error.exit_code = Some(1);
+        error.error_type = Some("command_error".to_string());
+        let output = CsvFormatter::format_error_schema(&error);
+        assert!(output.contains("true,Command failed,command_error,1"));
     }
 
     // ============================================================
