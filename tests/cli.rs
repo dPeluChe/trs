@@ -4190,3 +4190,68 @@ tests/test_main.py::test_slow SKIPPED
         // Should show compact summary with skipped count
         .stdout(predicate::str::contains("PASS: 1 tests, 1 skipped"));
 }
+
+#[test]
+fn test_parse_pytest_failure_with_error_message() {
+    // Test that failure-focused summary shows error messages
+    let pytest_input = r#"tests/test_main.py::test_add PASSED
+tests/test_main.py::test_subtract FAILED
+1 passed, 1 failed in 1.23s
+=== FAILURES ===
+____ test_subtract ____
+
+    def test_subtract():
+>       assert 1 == 2
+E       assert 1 == 2"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pytest")
+        .write_stdin(pytest_input)
+        .assert()
+        .success()
+        // Should show failure-focused summary
+        .stdout(predicate::str::contains("FAIL:"))
+        .stdout(predicate::str::contains("1 passed, 1 failed"))
+        .stdout(predicate::str::contains("failed (1):"))
+        // Should show error message (first line)
+        .stdout(predicate::str::contains("def test_subtract():"));
+}
+
+#[test]
+fn test_parse_pytest_multiple_failures_with_error_messages() {
+    // Test that failure-focused summary shows error messages for multiple failures
+    let pytest_input = r#"tests/test_main.py::test_add PASSED
+tests/test_main.py::test_subtract FAILED
+tests/test_main.py::test_multiply FAILED
+2 passed, 2 failed in 1.23s
+=== FAILURES ===
+____ test_subtract ____
+
+    def test_subtract():
+>       assert 1 == 2
+E       assert 1 == 2
+____ test_multiply ____
+
+    def test_multiply():
+>       assert 2 * 3 == 5
+E       assert 6 == 5"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pytest")
+        .write_stdin(pytest_input)
+        .assert()
+        .success()
+        // Should show failure-focused summary
+        .stdout(predicate::str::contains("FAIL:"))
+        .stdout(predicate::str::contains("2 passed, 2 failed"))
+        .stdout(predicate::str::contains("failed (2):"))
+        // Should show both test names
+        .stdout(predicate::str::contains("test_subtract"))
+        .stdout(predicate::str::contains("test_multiply"));
+}

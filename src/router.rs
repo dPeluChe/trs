@@ -3708,7 +3708,11 @@ impl ParseHandler {
                 if trimmed.starts_with("____") && trimmed.ends_with("____") {
                     // Save any previous failure info
                     if let Some(name) = current_failed_test_name.take() {
-                        if let Some(test) = output.tests.iter_mut().find(|t| t.name == name) {
+                        // Find test by matching the name at the end (after ::)
+                        // "____ test_name ____" matches "file.py::test_name"
+                        if let Some(test) = output.tests.iter_mut().find(|t| {
+                            t.name == name || t.name.ends_with(&format!("::{}", name))
+                        }) {
                             test.error_message = Some(failure_buffer.trim().to_string());
                         }
                     }
@@ -3723,7 +3727,10 @@ impl ParseHandler {
                 if trimmed.starts_with("ERROR at") || trimmed.starts_with("ERROR:") {
                     in_failure_section = true;
                     if let Some(name) = current_failed_test_name.take() {
-                        if let Some(test) = output.tests.iter_mut().find(|t| t.name == name) {
+                        // Find test by matching the name at the end (after ::)
+                        if let Some(test) = output.tests.iter_mut().find(|t| {
+                            t.name == name || t.name.ends_with(&format!("::{}", name))
+                        }) {
                             test.error_message = Some(failure_buffer.trim().to_string());
                         }
                     }
@@ -3765,7 +3772,11 @@ impl ParseHandler {
 
         // Save last failure info
         if let Some(name) = current_failed_test_name.take() {
-            if let Some(test) = output.tests.iter_mut().find(|t| t.name == name) {
+            // Find test by matching the name at the end (after ::)
+            // "____ test_name ____" matches "file.py::test_name"
+            if let Some(test) = output.tests.iter_mut().find(|t| {
+                t.name == name || t.name.ends_with(&format!("::{}", name))
+            }) {
                 test.error_message = Some(failure_buffer.trim().to_string());
             }
         }
