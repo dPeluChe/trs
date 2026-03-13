@@ -4016,14 +4016,20 @@ impl ParseHandler {
             }
         }
 
-        // Add total match count at the end
+        // Add total files and match count at the end
         if grep_output.is_truncated {
             output.push_str(&format!(
-                "total: {}/{} matches\n",
-                grep_output.matches_shown, grep_output.total_matches
+                "total: {}/{} files, {}/{} matches\n",
+                grep_output.files_shown,
+                grep_output.total_files,
+                grep_output.matches_shown,
+                grep_output.total_matches
             ));
         } else {
-            output.push_str(&format!("total: {} matches\n", match_count));
+            output.push_str(&format!(
+                "total: {} files, {} matches\n",
+                grep_output.file_count, match_count
+            ));
         }
 
         output

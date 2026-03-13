@@ -666,8 +666,8 @@ fn test_search_includes_excerpts_json() {
 }
 
 #[test]
-fn test_search_shows_total_match_count() {
-    // Test that compact output shows total match count at the end
+fn test_search_shows_total_files_and_match_count() {
+    // Test that compact output shows total files and match count at the end
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("search")
@@ -681,14 +681,16 @@ fn test_search_shows_total_match_count() {
 
     let output_str = String::from_utf8_lossy(&output);
 
-    // Should show total at the end
+    // Should show total at the end with both files and matches
     assert!(output_str.contains("total:"));
+    assert!(output_str.contains("files"));
     assert!(output_str.contains("matches"));
 
-    // Verify the format - should end with "total: X matches\n"
+    // Verify the format - should end with "total: X files, Y matches\n"
     let lines: Vec<&str> = output_str.lines().collect();
     let last_line = lines.last().unwrap();
     assert!(last_line.starts_with("total:"));
+    assert!(last_line.contains("files"));
     assert!(last_line.ends_with("matches"));
 }
 
@@ -712,10 +714,12 @@ fn test_search_shows_total_with_truncation() {
 
     let output_str = String::from_utf8_lossy(&output);
 
-    // Should show truncated summary
+    // Should show truncated summary with both files and matches
     assert!(output_str.contains("total:"));
-    // Should have truncation info in format "total: X/Y matches"
+    // Should have truncation info in format "total: X/Y files, A/B matches"
     assert!(output_str.contains("/"));
+    assert!(output_str.contains("files"));
+    assert!(output_str.contains("matches"));
 }
 
 #[test]
