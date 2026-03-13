@@ -2247,6 +2247,62 @@ fn test_parse_test_json_output() {
 }
 
 #[test]
+fn test_parse_test_jest_json_output() {
+    // Test that Jest parser works and produces valid JSON output
+    let jest_input = r#"PASS src/utils.test.js
+  ✓ should add numbers (5 ms)
+  ✓ should subtract numbers (2 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("jest")
+        .write_stdin(jest_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], true);
+    assert_eq!(json["summary"]["tests"]["passed"], 2);
+    assert_eq!(json["summary"]["tests"]["total"], 2);
+    assert_eq!(json["summary"]["suites"]["passed"], 1);
+    assert_eq!(json["summary"]["suites"]["total"], 1);
+}
+
+#[test]
+fn test_parse_test_jest_compact_output() {
+    // Test that Jest parser works with compact output
+    let jest_input = r#"PASS src/utils.test.js
+  ✓ should add numbers (5 ms)
+
+FAIL src/api.test.js
+  ✕ should fetch data (10 ms)
+
+Test Suites: 1 passed, 1 failed, 2 total
+Tests:       1 passed, 1 failed, 2 total"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("jest")
+        .write_stdin(jest_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    // Compact output should show summary and failed tests
+    assert!(stdout.contains("FAIL:"));
+    assert!(stdout.contains("1 passed, 1 failed"));
+    assert!(stdout.contains("failed suites"));
+    assert!(stdout.contains("src/api.test.js"));
+}
+
+#[test]
 fn test_parse_logs_json_output_not_implemented() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
