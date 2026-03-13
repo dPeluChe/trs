@@ -515,6 +515,196 @@ impl RawFormatter {
             .map(|s| format!("{}\n", s.as_ref()))
             .collect()
     }
+
+    /// Format a simple message/status line (just key and value).
+    pub fn format_message(key: &str, value: &str) -> String {
+        format!("{}: {}\n", key, value)
+    }
+
+    /// Format a count summary line.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::RawFormatter;
+    /// let output = RawFormatter::format_counts(&[("passed", 10), ("failed", 2)]);
+    /// assert_eq!(output, "passed=10 failed=2\n");
+    /// ```
+    pub fn format_counts(counts: &[(&str, usize)]) -> String {
+        let parts: Vec<String> = counts
+            .iter()
+            .filter(|(_, c)| *c > 0)
+            .map(|(name, count)| format!("{}={}", name, count))
+            .collect();
+        if parts.is_empty() {
+            String::new()
+        } else {
+            format!("{}\n", parts.join(" "))
+        }
+    }
+
+    /// Format a section header with an optional count.
+    pub fn format_section_header(name: &str, count: Option<usize>) -> String {
+        match count {
+            Some(c) => format!("{} ({})\n", name, c),
+            None => format!("{}\n", name),
+        }
+    }
+
+    /// Format a list item (status and path, no indentation).
+    pub fn format_item(status: &str, path: &str) -> String {
+        format!("{} {}\n", status, path)
+    }
+
+    /// Format a list item with rename info.
+    pub fn format_item_renamed(status: &str, old_path: &str, new_path: &str) -> String {
+        format!("{} {} -> {}\n", status, old_path, new_path)
+    }
+
+    /// Format a test result summary.
+    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+        let mut parts = Vec::new();
+        if passed > 0 {
+            parts.push(format!("passed={}", passed));
+        }
+        if failed > 0 {
+            parts.push(format!("failed={}", failed));
+        }
+        if skipped > 0 {
+            parts.push(format!("skipped={}", skipped));
+        }
+
+        let mut output = String::new();
+        if !parts.is_empty() {
+            output.push_str(&format!("{}\n", parts.join(" ")));
+        }
+        output.push_str(&format!("{}\n", format_duration(duration_ms)));
+        output
+    }
+
+    /// Format a success/failure indicator.
+    pub fn format_status(success: bool) -> &'static str {
+        if success {
+            "passed\n"
+        } else {
+            "failed\n"
+        }
+    }
+
+    /// Format a list of failing tests.
+    pub fn format_failures(failures: &[String]) -> String {
+        let mut output = String::new();
+        for failure in failures {
+            output.push_str(&format!("{}\n", failure));
+        }
+        output
+    }
+
+    /// Format log level counts.
+    pub fn format_log_levels(error: usize, warn: usize, info: usize, debug: usize) -> String {
+        let mut parts = Vec::new();
+        if error > 0 {
+            parts.push(format!("error={}", error));
+        }
+        if warn > 0 {
+            parts.push(format!("warn={}", warn));
+        }
+        if info > 0 {
+            parts.push(format!("info={}", info));
+        }
+        if debug > 0 {
+            parts.push(format!("debug={}", debug));
+        }
+        if parts.is_empty() {
+            String::new()
+        } else {
+            format!("{}\n", parts.join(" "))
+        }
+    }
+
+    /// Format a grep match line (preserves original format).
+    pub fn format_grep_match(file: &str, line: Option<usize>, content: &str) -> String {
+        match line {
+            Some(l) => format!("{}:{}:{}\n", file, l, content.trim()),
+            None => format!("{}:{}\n", file, content.trim()),
+        }
+    }
+
+    /// Format a grep file header.
+    pub fn format_grep_file(file: &str, match_count: usize) -> String {
+        format!("{} ({})\n", file, match_count)
+    }
+
+    /// Format a diff file entry.
+    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
+        format!("{} {} +{} -{}\n", change_type, path, additions, deletions)
+    }
+
+    /// Format a diff summary.
+    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
+        format!(
+            "{} files +{} -{}\n",
+            files_changed, insertions, deletions
+        )
+    }
+
+    /// Format a clean state indicator.
+    pub fn format_clean() -> String {
+        "clean\n".to_string()
+    }
+
+    /// Format a dirty state indicator with counts.
+    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+        format!(
+            "dirty staged={} unstaged={} untracked={} unmerged={}\n",
+            staged, unstaged, untracked, unmerged
+        )
+    }
+
+    /// Format branch info with ahead/behind.
+    pub fn format_branch_with_tracking(branch: &str, ahead: usize, behind: usize) -> String {
+        let mut tracking = String::new();
+        if ahead > 0 {
+            tracking.push_str(&format!("ahead {}", ahead));
+        }
+        if behind > 0 {
+            if !tracking.is_empty() {
+                tracking.push_str(", ");
+            }
+            tracking.push_str(&format!("behind {}", behind));
+        }
+        if tracking.is_empty() {
+            format!("{}\n", branch)
+        } else {
+            format!("{} ({})\n", branch, tracking)
+        }
+    }
+
+    /// Format an empty result.
+    pub fn format_empty() -> String {
+        String::new()
+    }
+
+    /// Format a truncation warning.
+    pub fn format_truncated(shown: usize, total: usize) -> String {
+        format!("... {}/{}\n", shown, total)
+    }
+
+    /// Format a key-value pair.
+    pub fn format_key_value(key: &str, value: &str) -> String {
+        format!("{} {}\n", key, value)
+    }
+
+    /// Format raw output preserving the original content.
+    pub fn format_raw(content: &str) -> String {
+        if content.is_empty() {
+            String::new()
+        } else if content.ends_with('\n') {
+            content.to_string()
+        } else {
+            format!("{}\n", content)
+        }
+    }
 }
 
 // ============================================================
@@ -886,6 +1076,207 @@ mod tests {
         let items = vec!["file1.rs", "file2.rs"];
         let output = RawFormatter::format_list(&items);
         assert_eq!(output, "file1.rs\nfile2.rs\n");
+    }
+
+    #[test]
+    fn test_raw_format_message() {
+        assert_eq!(
+            RawFormatter::format_message("branch", "main"),
+            "branch: main\n"
+        );
+    }
+
+    #[test]
+    fn test_raw_format_counts() {
+        let output = RawFormatter::format_counts(&[("passed", 10), ("failed", 2)]);
+        assert_eq!(output, "passed=10 failed=2\n");
+
+        // Zero counts should be filtered out
+        let output = RawFormatter::format_counts(&[("passed", 0), ("failed", 2)]);
+        assert_eq!(output, "failed=2\n");
+
+        // All zeros should return empty string
+        let output = RawFormatter::format_counts(&[("passed", 0), ("failed", 0)]);
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_raw_format_section_header() {
+        assert_eq!(
+            RawFormatter::format_section_header("staged", Some(3)),
+            "staged (3)\n"
+        );
+        assert_eq!(
+            RawFormatter::format_section_header("files", None),
+            "files\n"
+        );
+    }
+
+    #[test]
+    fn test_raw_format_item() {
+        assert_eq!(
+            RawFormatter::format_item("M", "src/main.rs"),
+            "M src/main.rs\n"
+        );
+    }
+
+    #[test]
+    fn test_raw_format_item_renamed() {
+        assert_eq!(
+            RawFormatter::format_item_renamed("R", "old.rs", "new.rs"),
+            "R old.rs -> new.rs\n"
+        );
+    }
+
+    #[test]
+    fn test_raw_format_test_summary() {
+        let output = RawFormatter::format_test_summary(10, 2, 1, 1500);
+        assert!(output.contains("passed=10 failed=2 skipped=1"));
+        assert!(output.contains("1.50s"));
+    }
+
+    #[test]
+    fn test_raw_format_test_summary_only_passed() {
+        let output = RawFormatter::format_test_summary(5, 0, 0, 500);
+        assert!(output.contains("passed=5"));
+        assert!(!output.contains("failed"));
+        assert!(!output.contains("skipped"));
+    }
+
+    #[test]
+    fn test_raw_format_status() {
+        assert_eq!(RawFormatter::format_status(true), "passed\n");
+        assert_eq!(RawFormatter::format_status(false), "failed\n");
+    }
+
+    #[test]
+    fn test_raw_format_failures() {
+        let failures = vec!["test_one".to_string(), "test_two".to_string()];
+        let output = RawFormatter::format_failures(&failures);
+        assert!(output.contains("test_one\n"));
+        assert!(output.contains("test_two\n"));
+    }
+
+    #[test]
+    fn test_raw_format_failures_empty() {
+        let failures: Vec<String> = vec![];
+        let output = RawFormatter::format_failures(&failures);
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_raw_format_log_levels() {
+        let output = RawFormatter::format_log_levels(2, 5, 10, 3);
+        assert_eq!(output, "error=2 warn=5 info=10 debug=3\n");
+    }
+
+    #[test]
+    fn test_raw_format_log_levels_partial() {
+        let output = RawFormatter::format_log_levels(0, 5, 0, 0);
+        assert_eq!(output, "warn=5\n");
+    }
+
+    #[test]
+    fn test_raw_format_log_levels_empty() {
+        let output = RawFormatter::format_log_levels(0, 0, 0, 0);
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_raw_format_grep_match() {
+        let output = RawFormatter::format_grep_match("src/main.rs", Some(42), "fn main()");
+        assert_eq!(output, "src/main.rs:42:fn main()\n");
+    }
+
+    #[test]
+    fn test_raw_format_grep_match_no_line() {
+        let output = RawFormatter::format_grep_match("src/main.rs", None, "match found");
+        assert_eq!(output, "src/main.rs:match found\n");
+    }
+
+    #[test]
+    fn test_raw_format_grep_file() {
+        let output = RawFormatter::format_grep_file("src/main.rs", 5);
+        assert_eq!(output, "src/main.rs (5)\n");
+    }
+
+    #[test]
+    fn test_raw_format_diff_file() {
+        let output = RawFormatter::format_diff_file("src/main.rs", "M", 10, 5);
+        assert_eq!(output, "M src/main.rs +10 -5\n");
+    }
+
+    #[test]
+    fn test_raw_format_diff_summary() {
+        let output = RawFormatter::format_diff_summary(3, 25, 10);
+        assert_eq!(output, "3 files +25 -10\n");
+    }
+
+    #[test]
+    fn test_raw_format_clean() {
+        assert_eq!(RawFormatter::format_clean(), "clean\n");
+    }
+
+    #[test]
+    fn test_raw_format_dirty() {
+        let output = RawFormatter::format_dirty(2, 3, 5, 0);
+        assert_eq!(
+            output,
+            "dirty staged=2 unstaged=3 untracked=5 unmerged=0\n"
+        );
+    }
+
+    #[test]
+    fn test_raw_format_branch_with_tracking() {
+        // No tracking
+        assert_eq!(
+            RawFormatter::format_branch_with_tracking("main", 0, 0),
+            "main\n"
+        );
+
+        // Ahead only
+        assert_eq!(
+            RawFormatter::format_branch_with_tracking("feature", 3, 0),
+            "feature (ahead 3)\n"
+        );
+
+        // Behind only
+        assert_eq!(
+            RawFormatter::format_branch_with_tracking("feature", 0, 2),
+            "feature (behind 2)\n"
+        );
+
+        // Both ahead and behind
+        assert_eq!(
+            RawFormatter::format_branch_with_tracking("feature", 3, 2),
+            "feature (ahead 3, behind 2)\n"
+        );
+    }
+
+    #[test]
+    fn test_raw_format_empty() {
+        assert_eq!(RawFormatter::format_empty(), "");
+    }
+
+    #[test]
+    fn test_raw_format_truncated() {
+        let output = RawFormatter::format_truncated(10, 50);
+        assert_eq!(output, "... 10/50\n");
+    }
+
+    #[test]
+    fn test_raw_format_key_value() {
+        assert_eq!(RawFormatter::format_key_value("branch", "main"), "branch main\n");
+    }
+
+    #[test]
+    fn test_raw_format_raw() {
+        // With existing newline
+        assert_eq!(RawFormatter::format_raw("content\n"), "content\n");
+        // Without newline
+        assert_eq!(RawFormatter::format_raw("content"), "content\n");
+        // Empty
+        assert_eq!(RawFormatter::format_raw(""), "");
     }
 
     // ============================================================
