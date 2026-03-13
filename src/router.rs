@@ -936,6 +936,9 @@ struct RepeatedLine {
     last_line: usize,
 }
 
+/// Maximum number of recent critical (ERROR/FATAL) lines to track.
+const MAX_RECENT_CRITICAL: usize = 10;
+
 /// Parsed log output.
 #[derive(Debug, Clone, Default)]
 struct LogsOutput {
@@ -952,6 +955,8 @@ struct LogsOutput {
     unknown_count: usize,
     /// Repeated lines (collapsed).
     repeated_lines: Vec<RepeatedLine>,
+    /// Most recent critical lines (ERROR and FATAL level entries).
+    recent_critical: Vec<LogEntry>,
     /// Whether the output is empty.
     is_empty: bool,
 }
@@ -7727,6 +7732,15 @@ impl ParseHandler {
                 LogLevel::Fatal => logs_output.fatal_count += 1,
                 LogLevel::Unknown => logs_output.unknown_count += 1,
             }
+
+            // Track recent critical lines (ERROR and FATAL)
+            if log_entry.level == LogLevel::Error || log_entry.level == LogLevel::Fatal {
+                logs_output.recent_critical.push(log_entry.clone());
+                // Keep only the most recent MAX_RECENT_CRITICAL entries
+                if logs_output.recent_critical.len() > MAX_RECENT_CRITICAL {
+                    logs_output.recent_critical.remove(0);
+                }
+            }
         }
 
         // Build repeated lines list (only lines repeated more than once)
@@ -8140,6 +8154,7 @@ impl ParseHandler {
 
     /// Format logs output as JSON.
     fn format_logs_json(logs_output: &LogsOutput) -> String {
+        let total_critical = logs_output.error_count + logs_output.fatal_count;
         serde_json::json!({
             "total_lines": logs_output.total_lines,
             "level_counts": {
@@ -8156,6 +8171,21 @@ impl ParseHandler {
                 "first_line": r.first_line,
                 "last_line": r.last_line,
             })).collect::<Vec<_>>(),
+            "recent_critical": logs_output.recent_critical.iter().map(|e| serde_json::json!({
+                "line_number": e.line_number,
+                "level": match e.level {
+                    LogLevel::Debug => "debug",
+                    LogLevel::Info => "info",
+                    LogLevel::Warning => "warning",
+                    LogLevel::Error => "error",
+                    LogLevel::Fatal => "fatal",
+                    LogLevel::Unknown => "unknown",
+                },
+                "timestamp": e.timestamp,
+                "message": e.message,
+            })).collect::<Vec<_>>(),
+            "recent_critical_count": logs_output.recent_critical.len(),
+            "total_critical": total_critical,
             "entries": logs_output.entries.iter().map(|e| serde_json::json!({
                 "line_number": e.line_number,
                 "level": match e.level {
@@ -8286,6 +8316,40 @@ impl ParseHandler {
                         repeated.count, preview, repeated.first_line, repeated.last_line
                     ));
                 }
+            }
+            output.push('\n');
+        }
+
+        // Show recent critical lines (ERROR and FATAL)
+        if !logs_output.recent_critical.is_empty() {
+            let total_critical = logs_output.error_count + logs_output.fatal_count;
+            let shown = logs_output.recent_critical.len();
+            if shown < total_critical {
+                output.push_str(&format!(
+                    "recent critical ({} of {}):\n",
+                    shown, total_critical
+                ));
+            } else {
+                output.push_str(&format!(
+                    "recent critical ({}):\n",
+                    shown
+                ));
+            }
+            for entry in &logs_output.recent_critical {
+                let level_indicator = match entry.level {
+                    LogLevel::Error => "[E]",
+                    LogLevel::Fatal => "[F]",
+                    _ => "[!]",
+                };
+                let preview = if entry.message.len() > 80 {
+                    format!("{}...", &entry.message[..77])
+                } else {
+                    entry.message.clone()
+                };
+                output.push_str(&format!(
+                    "  {} {} {}\n",
+                    level_indicator, entry.line_number, preview
+                ));
             }
             output.push('\n');
         }
@@ -11555,5 +11619,130 @@ All systems operational"#;
         assert_eq!(result.error_count, 1);
         assert_eq!(result.warning_count, 1);
         assert_eq!(result.unknown_count, 2);
+    }
+
+    // ============================================================
+    // Recent Critical Lines Tests
+    // ============================================================
+
+    #[test]
+    fn test_parse_logs_tracks_recent_critical() {
+        let input = r#"[INFO] Starting
+[ERROR] First error
+[WARN] Warning
+[FATAL] Fatal error
+[ERROR] Second error
+[INFO] Done"#;
+        let result = ParseHandler::parse_logs(input);
+
+        // Should track 3 critical lines (ERROR and FATAL)
+        assert_eq!(result.recent_critical.len(), 3);
+        assert_eq!(result.recent_critical[0].message, "First error");
+        assert_eq!(result.recent_critical[1].message, "Fatal error");
+        assert_eq!(result.recent_critical[2].message, "Second error");
+    }
+
+    #[test]
+    fn test_parse_logs_recent_critical_only_errors_and_fatals() {
+        let input = r#"[INFO] Info message
+[WARN] Warning message
+[DEBUG] Debug message
+[ERROR] Error message
+[FATAL] Fatal message"#;
+        let result = ParseHandler::parse_logs(input);
+
+        // Only ERROR and FATAL should be in recent_critical
+        assert_eq!(result.recent_critical.len(), 2);
+        assert_eq!(result.recent_critical[0].level, LogLevel::Error);
+        assert_eq!(result.recent_critical[1].level, LogLevel::Fatal);
+    }
+
+    #[test]
+    fn test_parse_logs_recent_critical_limit() {
+        // Create input with more than MAX_RECENT_CRITICAL (10) errors
+        let mut input = String::new();
+        for i in 1..=15 {
+            input.push_str(&format!("[ERROR] Error message {}\n", i));
+        }
+        let result = ParseHandler::parse_logs(&input);
+
+        // Should be limited to MAX_RECENT_CRITICAL (10)
+        assert_eq!(result.recent_critical.len(), 10);
+        // Should keep the most recent (last 10)
+        assert_eq!(result.recent_critical[0].message, "Error message 6");
+        assert_eq!(result.recent_critical[9].message, "Error message 15");
+    }
+
+    #[test]
+    fn test_parse_logs_recent_critical_order() {
+        let input = r#"[ERROR] Error at line 1
+[INFO] Info
+[FATAL] Fatal at line 3
+[ERROR] Error at line 4
+[FATAL] Fatal at line 5"#;
+        let result = ParseHandler::parse_logs(input);
+
+        assert_eq!(result.recent_critical.len(), 4);
+        // Should be in order of appearance
+        assert_eq!(result.recent_critical[0].line_number, 1);
+        assert_eq!(result.recent_critical[1].line_number, 3);
+        assert_eq!(result.recent_critical[2].line_number, 4);
+        assert_eq!(result.recent_critical[3].line_number, 5);
+    }
+
+    #[test]
+    fn test_parse_logs_no_critical_lines() {
+        let input = r#"[INFO] Starting
+[DEBUG] Debug info
+[WARN] Warning"#;
+        let result = ParseHandler::parse_logs(input);
+
+        assert!(result.recent_critical.is_empty());
+    }
+
+    #[test]
+    fn test_format_logs_json_includes_recent_critical() {
+        let input = "[INFO] Info\n[ERROR] Error 1\n[ERROR] Error 2\n[FATAL] Fatal";
+        let result = ParseHandler::parse_logs(input);
+        let output = ParseHandler::format_logs(&result, OutputFormat::Json);
+
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        // Should have recent_critical array
+        assert!(json["recent_critical"].is_array());
+        let recent = json["recent_critical"].as_array().unwrap();
+        assert_eq!(recent.len(), 3);
+
+        // Should have counts
+        assert_eq!(json["recent_critical_count"], 3);
+        assert_eq!(json["total_critical"], 3);
+    }
+
+    #[test]
+    fn test_format_logs_compact_shows_recent_critical() {
+        let input = "[INFO] Starting\n[ERROR] Something failed\n[FATAL] System crash\n[INFO] Done";
+        let result = ParseHandler::parse_logs(input);
+        let output = ParseHandler::format_logs(&result, OutputFormat::Compact);
+
+        // Should show recent critical section
+        assert!(output.contains("recent critical"));
+        assert!(output.contains("[E]"));
+        assert!(output.contains("[F]"));
+        assert!(output.contains("Something failed"));
+        assert!(output.contains("System crash"));
+    }
+
+    #[test]
+    fn test_format_logs_compact_recent_critical_count() {
+        // Create more than MAX_RECENT_CRITICAL errors
+        let mut input = String::new();
+        for i in 1..=15 {
+            input.push_str(&format!("[ERROR] Error {}\n", i));
+        }
+        let result = ParseHandler::parse_logs(&input);
+        let output = ParseHandler::format_logs(&result, OutputFormat::Compact);
+
+        // Should show count as "10 of 15"
+        assert!(output.contains("10 of 15"));
     }
 }

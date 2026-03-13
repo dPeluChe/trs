@@ -3868,6 +3868,125 @@ fn test_parse_logs_notice_level() {
     assert_eq!(json["level_counts"]["info"], 2);
 }
 
+#[test]
+fn test_parse_logs_detects_recent_critical() {
+    // Test that recent critical lines are tracked
+    let log_input = "[INFO] Starting\n[ERROR] First error\n[WARN] Warning\n[FATAL] Fatal error\n[ERROR] Second error";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    // Should have recent_critical array with 3 entries
+    assert!(json["recent_critical"].is_array());
+    let recent = json["recent_critical"].as_array().unwrap();
+    assert_eq!(recent.len(), 3);
+
+    // Check counts
+    assert_eq!(json["recent_critical_count"], 3);
+    assert_eq!(json["total_critical"], 3);
+}
+
+#[test]
+fn test_parse_logs_recent_critical_only_errors_and_fatals() {
+    // Test that only ERROR and FATAL are in recent_critical
+    let log_input = "[INFO] Info\n[WARN] Warning\n[DEBUG] Debug\n[ERROR] Error\n[FATAL] Fatal";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    let recent = json["recent_critical"].as_array().unwrap();
+    assert_eq!(recent.len(), 2);
+    assert_eq!(recent[0]["level"], "error");
+    assert_eq!(recent[1]["level"], "fatal");
+}
+
+#[test]
+fn test_parse_logs_compact_shows_recent_critical_section() {
+    // Test that compact output shows recent critical section
+    let log_input = "[INFO] Starting\n[ERROR] Something failed\n[FATAL] System crash\n[INFO] Done";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("recent critical"))
+        .stdout(predicate::str::contains("[E]"))
+        .stdout(predicate::str::contains("[F]"))
+        .stdout(predicate::str::contains("Something failed"))
+        .stdout(predicate::str::contains("System crash"));
+}
+
+#[test]
+fn test_parse_logs_recent_critical_limited() {
+    // Create input with more than 10 errors to test limiting
+    let mut log_input = String::new();
+    for i in 1..=15 {
+        log_input.push_str(&format!("[ERROR] Error message {}\n", i));
+    }
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input.as_str())
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    // Should be limited to 10
+    let recent = json["recent_critical"].as_array().unwrap();
+    assert_eq!(recent.len(), 10);
+    assert_eq!(json["total_critical"], 15);
+}
+
+#[test]
+fn test_parse_logs_compact_shows_truncated_count() {
+    // Create input with more than 10 errors
+    let mut log_input = String::new();
+    for i in 1..=15 {
+        log_input.push_str(&format!("[ERROR] Error {}\n", i));
+    }
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input.as_str())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("10 of 15"));
+}
+
+#[test]
+fn test_parse_logs_no_recent_critical_when_none() {
+    // Test that no recent critical section appears when there are no errors
+    let log_input = "[INFO] Starting\n[DEBUG] Debug\n[WARN] Warning";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success()
+        .stdout(predicate::function(|x: &str| !x.contains("recent critical")));
+}
+
 // ============================================================
 // Stats Output Tests for Command Execution
 // ============================================================
