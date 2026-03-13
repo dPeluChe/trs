@@ -1752,6 +1752,8 @@ impl TsvFormatter {
 /// - Uses structured markdown-like format
 /// - Includes metadata sections
 /// - Highlights key information
+/// - Uses concise key-value pairs
+/// - Groups related data with headers
 #[allow(dead_code)]
 pub struct AgentFormatter;
 
@@ -1768,11 +1770,42 @@ impl Formatter for AgentFormatter {
 #[allow(dead_code)]
 impl AgentFormatter {
     /// Format a section header.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::section_header("Files");
+    /// assert_eq!(output, "## Files\n");
+    /// ```
     pub fn section_header(title: &str) -> String {
         format!("## {}\n", title)
     }
 
+    /// Format a subsection header.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::subsection_header("Details");
+    /// assert_eq!(output, "### Details\n");
+    /// ```
+    pub fn subsection_header(title: &str) -> String {
+        format!("### {}\n", title)
+    }
+
     /// Format a list item with optional label.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::list_item("file.rs", None);
+    /// assert_eq!(output, "- file.rs\n");
+    /// let output = AgentFormatter::list_item("file.rs", Some("modified"));
+    /// assert_eq!(output, "- file.rs [modified]\n");
+    /// ```
     pub fn list_item(item: &str, label: Option<&str>) -> String {
         match label {
             Some(l) => format!("- {} [{}]\n", item, l),
@@ -1781,11 +1814,602 @@ impl AgentFormatter {
     }
 
     /// Format a key-value item with optional label.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::key_value_item("branch", "main", None);
+    /// assert_eq!(output, "- branch: main\n");
+    /// let output = AgentFormatter::key_value_item("count", "5", Some("files"));
+    /// assert_eq!(output, "- count [files]: 5\n");
+    /// ```
     pub fn key_value_item(key: &str, value: &str, label: Option<&str>) -> String {
         match label {
             Some(l) => format!("- {} [{}]: {}\n", key, l, value),
             None => format!("- {}: {}\n", key, value),
         }
+    }
+
+    /// Format a simple message/status line.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_message("branch", "main");
+    /// assert_eq!(output, "- branch: main\n");
+    /// ```
+    pub fn format_message(key: &str, value: &str) -> String {
+        format!("- {}: {}\n", key, value)
+    }
+
+    /// Format a count summary line.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_counts("counts", &[("passed", 10), ("failed", 2)]);
+    /// assert_eq!(output, "- counts: passed=10 failed=2\n");
+    /// ```
+    pub fn format_counts(label: &str, counts: &[(&str, usize)]) -> String {
+        let parts: Vec<String> = counts
+            .iter()
+            .filter(|(_, c)| *c > 0)
+            .map(|(name, count)| format!("{}={}", name, count))
+            .collect();
+        if parts.is_empty() {
+            String::new()
+        } else {
+            format!("- {}: {}\n", label, parts.join(" "))
+        }
+    }
+
+    /// Format a section header with an optional count.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_section_header("staged", Some(3));
+    /// assert_eq!(output, "## staged (3)\n");
+    /// let output = AgentFormatter::format_section_header("files", None);
+    /// assert_eq!(output, "## files\n");
+    /// ```
+    pub fn format_section_header(name: &str, count: Option<usize>) -> String {
+        match count {
+            Some(c) => format!("## {} ({})\n", name, c),
+            None => format!("## {}\n", name),
+        }
+    }
+
+    /// Format an indented list item.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_item("M", "src/main.rs");
+    /// assert_eq!(output, "  - [M] src/main.rs\n");
+    /// ```
+    pub fn format_item(status: &str, path: &str) -> String {
+        format!("  - [{}] {}\n", status, path)
+    }
+
+    /// Format an indented list item with rename info.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_item_renamed("R", "old.rs", "new.rs");
+    /// assert_eq!(output, "  - [R] old.rs -> new.rs\n");
+    /// ```
+    pub fn format_item_renamed(status: &str, old_path: &str, new_path: &str) -> String {
+        format!("  - [{}] {} -> {}\n", status, old_path, new_path)
+    }
+
+    /// Format a test result summary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_test_summary(10, 2, 1, 1500);
+    /// assert!(output.contains("passed: 10"));
+    /// assert!(output.contains("failed: 2"));
+    /// assert!(output.contains("duration: 1.50s"));
+    /// ```
+    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+        let mut output = String::new();
+        output.push_str("## Test Results\n");
+        output.push_str(&format!("- passed: {}\n", passed));
+        output.push_str(&format!("- failed: {}\n", failed));
+        output.push_str(&format!("- skipped: {}\n", skipped));
+        output.push_str(&format!("- total: {}\n", passed + failed + skipped));
+        output.push_str(&format!("- duration: {}\n", format_duration(duration_ms)));
+        output
+    }
+
+    /// Format a success/failure indicator.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_status(true);
+    /// assert_eq!(output, "- status: passed\n");
+    /// let output = AgentFormatter::format_status(false);
+    /// assert_eq!(output, "- status: failed\n");
+    /// ```
+    pub fn format_status(success: bool) -> String {
+        format!("- status: {}\n", if success { "passed" } else { "failed" })
+    }
+
+    /// Format a list of failing tests.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let failures = vec!["test_one".to_string(), "test_two".to_string()];
+    /// let output = AgentFormatter::format_failures(&failures);
+    /// assert!(output.contains("## Failures"));
+    /// assert!(output.contains("test_one"));
+    /// assert!(output.contains("test_two"));
+    /// ```
+    pub fn format_failures(failures: &[String]) -> String {
+        let mut output = String::new();
+        if !failures.is_empty() {
+            output.push_str(&format!("## Failures ({})\n", failures.len()));
+            for failure in failures {
+                output.push_str(&format!("- {}\n", failure));
+            }
+        }
+        output
+    }
+
+    /// Format log level counts.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_log_levels(2, 5, 10, 3);
+    /// assert!(output.contains("error: 2"));
+    /// assert!(output.contains("warn: 5"));
+    /// assert!(output.contains("info: 10"));
+    /// assert!(output.contains("debug: 3"));
+    /// ```
+    pub fn format_log_levels(error: usize, warn: usize, info: usize, debug: usize) -> String {
+        let mut output = String::new();
+        output.push_str("## Log Levels\n");
+        output.push_str(&format!("- error: {}\n", error));
+        output.push_str(&format!("- warn: {}\n", warn));
+        output.push_str(&format!("- info: {}\n", info));
+        output.push_str(&format!("- debug: {}\n", debug));
+        output.push_str(&format!("- total: {}\n", error + warn + info + debug));
+        output
+    }
+
+    /// Format a grep match line.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_grep_match("src/main.rs", Some(42), "fn main()");
+    /// assert!(output.contains("file: src/main.rs"));
+    /// assert!(output.contains("line: 42"));
+    /// assert!(output.contains("content: fn main()"));
+    /// ```
+    pub fn format_grep_match(file: &str, line: Option<usize>, content: &str) -> String {
+        let mut output = String::new();
+        output.push_str(&format!("- file: {}\n", file));
+        if let Some(l) = line {
+            output.push_str(&format!("  line: {}\n", l));
+        }
+        output.push_str(&format!("  content: {}\n", content.trim()));
+        output
+    }
+
+    /// Format a grep file header.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_grep_file("src/main.rs", 5);
+    /// assert_eq!(output, "### src/main.rs (5 matches)\n");
+    /// ```
+    pub fn format_grep_file(file: &str, match_count: usize) -> String {
+        format!("### {} ({} matches)\n", file, match_count)
+    }
+
+    /// Format a diff file entry.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_diff_file("src/main.rs", "M", 10, 5);
+    /// assert!(output.contains("[M] src/main.rs"));
+    /// assert!(output.contains("added: 10"));
+    /// assert!(output.contains("removed: 5"));
+    /// ```
+    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
+        format!("- [{}] {} (+{} -{})\n", change_type, path, additions, deletions)
+    }
+
+    /// Format a diff summary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_diff_summary(3, 25, 10);
+    /// assert!(output.contains("files changed: 3"));
+    /// assert!(output.contains("insertions: 25"));
+    /// assert!(output.contains("deletions: 10"));
+    /// ```
+    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
+        let mut output = String::new();
+        output.push_str("## Diff Summary\n");
+        output.push_str(&format!("- files changed: {}\n", files_changed));
+        output.push_str(&format!("- insertions: {}\n", insertions));
+        output.push_str(&format!("- deletions: {}\n", deletions));
+        output
+    }
+
+    /// Format a clean state indicator.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_clean();
+    /// assert_eq!(output, "- status: clean\n");
+    /// ```
+    pub fn format_clean() -> String {
+        "- status: clean\n".to_string()
+    }
+
+    /// Format a dirty state indicator with counts.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_dirty(2, 3, 5, 0);
+    /// assert!(output.contains("status: dirty"));
+    /// assert!(output.contains("staged: 2"));
+    /// assert!(output.contains("unstaged: 3"));
+    /// ```
+    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+        let mut output = String::new();
+        output.push_str("- status: dirty\n");
+        output.push_str(&format!("- staged: {}\n", staged));
+        output.push_str(&format!("- unstaged: {}\n", unstaged));
+        output.push_str(&format!("- untracked: {}\n", untracked));
+        output.push_str(&format!("- unmerged: {}\n", unmerged));
+        output
+    }
+
+    /// Format branch info with ahead/behind.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_branch_with_tracking("main", 3, 2);
+    /// assert!(output.contains("branch: main"));
+    /// assert!(output.contains("ahead: 3"));
+    /// assert!(output.contains("behind: 2"));
+    /// ```
+    pub fn format_branch_with_tracking(branch: &str, ahead: usize, behind: usize) -> String {
+        let mut output = String::new();
+        output.push_str(&format!("- branch: {}\n", branch));
+        if ahead > 0 || behind > 0 {
+            output.push_str(&format!("- ahead: {}\n", ahead));
+            output.push_str(&format!("- behind: {}\n", behind));
+        }
+        output
+    }
+
+    /// Format an empty result.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_empty();
+    /// assert_eq!(output, "- result: empty\n");
+    /// ```
+    pub fn format_empty() -> String {
+        "- result: empty\n".to_string()
+    }
+
+    /// Format a truncation warning.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_truncated(10, 50);
+    /// assert!(output.contains("truncated: true"));
+    /// assert!(output.contains("shown: 10"));
+    /// assert!(output.contains("total: 50"));
+    /// ```
+    pub fn format_truncated(shown: usize, total: usize) -> String {
+        format!("- truncated: showing {} of {}\n", shown, total)
+    }
+
+    /// Format an error message.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_error("Something went wrong");
+    /// assert!(output.contains("error: Something went wrong"));
+    /// ```
+    pub fn format_error(message: &str) -> String {
+        format!("- error: {}\n", message)
+    }
+
+    /// Format an error with exit code.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_error_with_code("Command failed", 1);
+    /// assert!(output.contains("error: Command failed"));
+    /// assert!(output.contains("exit_code: 1"));
+    /// ```
+    pub fn format_error_with_code(message: &str, exit_code: i32) -> String {
+        format!("- error: {}\n- exit_code: {}\n", message, exit_code)
+    }
+
+    /// Format a not-implemented message.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_not_implemented("Feature X");
+    /// assert!(output.contains("not_implemented: Feature X"));
+    /// ```
+    pub fn format_not_implemented(message: &str) -> String {
+        format!("- not_implemented: {}\n", message)
+    }
+
+    /// Format a command result.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_command_result(
+    ///     "echo",
+    ///     &["hello".to_string(), "world".to_string()],
+    ///     "hello world\n",
+    ///     "",
+    ///     0,
+    ///     10,
+    /// );
+    /// assert!(output.contains("command: echo"));
+    /// assert!(output.contains("exit_code: 0"));
+    /// assert!(output.contains("duration_ms: 10"));
+    /// ```
+    pub fn format_command_result(
+        command: &str,
+        args: &[String],
+        stdout: &str,
+        stderr: &str,
+        exit_code: i32,
+        duration_ms: u64,
+    ) -> String {
+        let mut output = String::new();
+        output.push_str("## Command Result\n");
+        output.push_str(&format!("- command: {}\n", command));
+        if !args.is_empty() {
+            output.push_str(&format!("- args: {}\n", args.join(" ")));
+        }
+        output.push_str(&format!("- exit_code: {}\n", exit_code));
+        output.push_str(&format!("- duration_ms: {}\n", duration_ms));
+        if !stdout.is_empty() {
+            output.push_str("### stdout\n");
+            output.push_str(&format!("```\n{}```\n", stdout));
+        }
+        if !stderr.is_empty() {
+            output.push_str("### stderr\n");
+            output.push_str(&format!("```\n{}```\n", stderr));
+        }
+        output
+    }
+
+    /// Format a list of strings.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_list(&["file1.rs", "file2.rs"]);
+    /// assert!(output.contains("- file1.rs"));
+    /// assert!(output.contains("- file2.rs"));
+    /// ```
+    pub fn format_list(items: &[impl AsRef<str>]) -> String {
+        items
+            .iter()
+            .map(|s| format!("- {}\n", s.as_ref()))
+            .collect()
+    }
+
+    /// Format a count.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_count(42);
+    /// assert_eq!(output, "- count: 42\n");
+    /// ```
+    pub fn format_count(count: usize) -> String {
+        format!("- count: {}\n", count)
+    }
+
+    /// Format a boolean flag.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_flag("is_clean", true);
+    /// assert_eq!(output, "- is_clean: true\n");
+    /// ```
+    pub fn format_flag(name: &str, value: bool) -> String {
+        format!("- {}: {}\n", name, value)
+    }
+
+    /// Format an array of objects.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let items = vec!["item1", "item2", "item3"];
+    /// let output = AgentFormatter::format_array(&items);
+    /// assert!(output.contains("- item1"));
+    /// assert!(output.contains("- item2"));
+    /// assert!(output.contains("- item3"));
+    /// ```
+    pub fn format_array(items: &[impl AsRef<str>]) -> String {
+        Self::format_list(items)
+    }
+
+    /// Format a table with headers.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let items = vec![
+    ///     vec!["file1.rs", "M", "10"],
+    ///     vec!["file2.rs", "A", "5"],
+    /// ];
+    /// let output = AgentFormatter::format_table(&["path", "status", "lines"], &items);
+    /// assert!(output.contains("| path | status | lines |"));
+    /// assert!(output.contains("| file1.rs | M | 10 |"));
+    /// ```
+    pub fn format_table(headers: &[&str], rows: &[Vec<&str>]) -> String {
+        let mut output = String::new();
+
+        // Header row
+        output.push_str(&format!("| {} |\n", headers.join(" | ")));
+
+        // Separator row
+        output.push_str(&format!("| {} |\n", headers.iter().map(|_| "---").collect::<Vec<_>>().join(" | ")));
+
+        // Data rows
+        for row in rows {
+            output.push_str(&format!("| {} |\n", row.join(" | ")));
+        }
+
+        output
+    }
+
+    /// Format a key-value pair.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_key_value("branch", "main");
+    /// assert_eq!(output, "- branch: main\n");
+    /// ```
+    pub fn format_key_value(key: &str, value: &str) -> String {
+        format!("- {}: {}\n", key, value)
+    }
+
+    /// Format a metadata block.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_metadata(&[
+    ///     ("branch", "main"),
+    ///     ("is_clean", "true"),
+    /// ]);
+    /// assert!(output.contains("## Metadata"));
+    /// assert!(output.contains("branch: main"));
+    /// assert!(output.contains("is_clean: true"));
+    /// ```
+    pub fn format_metadata(items: &[(&str, &str)]) -> String {
+        let mut output = String::new();
+        output.push_str("## Metadata\n");
+        for (key, value) in items {
+            output.push_str(&format!("- {}: {}\n", key, value));
+        }
+        output
+    }
+
+    /// Format a code block.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_code_block("fn main() {}", Some("rust"));
+    /// assert!(output.contains("```rust"));
+    /// assert!(output.contains("fn main() {}"));
+    /// assert!(output.contains("```"));
+    /// ```
+    pub fn format_code_block(code: &str, language: Option<&str>) -> String {
+        match language {
+            Some(lang) => format!("```{}\n{}\n```\n", lang, code),
+            None => format!("```\n{}\n```\n", code),
+        }
+    }
+
+    /// Format a divider line.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// let output = AgentFormatter::format_divider();
+    /// assert_eq!(output, "---\n");
+    /// ```
+    pub fn format_divider() -> String {
+        "---\n".to_string()
+    }
+
+    /// Format a bold text.
+    pub fn format_bold(text: &str) -> String {
+        format!("**{}**", text)
+    }
+
+    /// Format an italic text.
+    pub fn format_italic(text: &str) -> String {
+        format!("*{}*", text)
+    }
+
+    /// Format a code inline.
+    pub fn format_code_inline(text: &str) -> String {
+        format!("`{}`", text)
+    }
+
+    /// Format a link.
+    pub fn format_link(text: &str, url: &str) -> String {
+        format!("[{}]({})", text, url)
+    }
+
+    /// Start a new output document.
+    pub fn start_document(title: &str) -> String {
+        format!("# {}\n\n", title)
     }
 }
 
@@ -3255,6 +3879,11 @@ mod tests {
     }
 
     #[test]
+    fn test_agent_subsection_header() {
+        assert_eq!(AgentFormatter::subsection_header("Details"), "### Details\n");
+    }
+
+    #[test]
     fn test_agent_list_item() {
         assert_eq!(AgentFormatter::list_item("file.rs", None), "- file.rs\n");
         assert_eq!(
@@ -3273,6 +3902,385 @@ mod tests {
             AgentFormatter::key_value_item("count", "5", Some("files")),
             "- count [files]: 5\n"
         );
+    }
+
+    #[test]
+    fn test_agent_format_message() {
+        assert_eq!(
+            AgentFormatter::format_message("branch", "main"),
+            "- branch: main\n"
+        );
+    }
+
+    #[test]
+    fn test_agent_format_counts() {
+        let output = AgentFormatter::format_counts("counts", &[("passed", 10), ("failed", 2)]);
+        assert_eq!(output, "- counts: passed=10 failed=2\n");
+
+        // Zero counts should be filtered out
+        let output = AgentFormatter::format_counts("counts", &[("passed", 0), ("failed", 2)]);
+        assert_eq!(output, "- counts: failed=2\n");
+
+        // All zeros should return empty string
+        let output = AgentFormatter::format_counts("counts", &[("passed", 0), ("failed", 0)]);
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_agent_format_section_header() {
+        assert_eq!(
+            AgentFormatter::format_section_header("staged", Some(3)),
+            "## staged (3)\n"
+        );
+        assert_eq!(
+            AgentFormatter::format_section_header("files", None),
+            "## files\n"
+        );
+    }
+
+    #[test]
+    fn test_agent_format_item() {
+        assert_eq!(
+            AgentFormatter::format_item("M", "src/main.rs"),
+            "  - [M] src/main.rs\n"
+        );
+    }
+
+    #[test]
+    fn test_agent_format_item_renamed() {
+        assert_eq!(
+            AgentFormatter::format_item_renamed("R", "old.rs", "new.rs"),
+            "  - [R] old.rs -> new.rs\n"
+        );
+    }
+
+    #[test]
+    fn test_agent_format_test_summary() {
+        let output = AgentFormatter::format_test_summary(10, 2, 1, 1500);
+        assert!(output.contains("## Test Results"));
+        assert!(output.contains("- passed: 10"));
+        assert!(output.contains("- failed: 2"));
+        assert!(output.contains("- skipped: 1"));
+        assert!(output.contains("- total: 13"));
+        assert!(output.contains("- duration: 1.50s"));
+    }
+
+    #[test]
+    fn test_agent_format_test_summary_only_passed() {
+        let output = AgentFormatter::format_test_summary(5, 0, 0, 500);
+        assert!(output.contains("- passed: 5"));
+        assert!(output.contains("- failed: 0"));
+        assert!(output.contains("- duration: 500ms"));
+    }
+
+    #[test]
+    fn test_agent_format_status() {
+        assert_eq!(AgentFormatter::format_status(true), "- status: passed\n");
+        assert_eq!(AgentFormatter::format_status(false), "- status: failed\n");
+    }
+
+    #[test]
+    fn test_agent_format_failures() {
+        let failures = vec!["test_one".to_string(), "test_two".to_string()];
+        let output = AgentFormatter::format_failures(&failures);
+        assert!(output.contains("## Failures (2)"));
+        assert!(output.contains("- test_one"));
+        assert!(output.contains("- test_two"));
+    }
+
+    #[test]
+    fn test_agent_format_failures_empty() {
+        let failures: Vec<String> = vec![];
+        let output = AgentFormatter::format_failures(&failures);
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_agent_format_log_levels() {
+        let output = AgentFormatter::format_log_levels(2, 5, 10, 3);
+        assert!(output.contains("## Log Levels"));
+        assert!(output.contains("- error: 2"));
+        assert!(output.contains("- warn: 5"));
+        assert!(output.contains("- info: 10"));
+        assert!(output.contains("- debug: 3"));
+        assert!(output.contains("- total: 20"));
+    }
+
+    #[test]
+    fn test_agent_format_log_levels_with_zeros() {
+        let output = AgentFormatter::format_log_levels(0, 5, 0, 0);
+        assert!(output.contains("- error: 0"));
+        assert!(output.contains("- warn: 5"));
+        assert!(output.contains("- total: 5"));
+    }
+
+    #[test]
+    fn test_agent_format_grep_match() {
+        let output = AgentFormatter::format_grep_match("src/main.rs", Some(42), "fn main()");
+        assert!(output.contains("- file: src/main.rs"));
+        assert!(output.contains("  line: 42"));
+        assert!(output.contains("  content: fn main()"));
+    }
+
+    #[test]
+    fn test_agent_format_grep_match_no_line() {
+        let output = AgentFormatter::format_grep_match("src/main.rs", None, "match found");
+        assert!(output.contains("- file: src/main.rs"));
+        assert!(output.contains("  content: match found"));
+        assert!(!output.contains("line:"));
+    }
+
+    #[test]
+    fn test_agent_format_grep_file() {
+        let output = AgentFormatter::format_grep_file("src/main.rs", 5);
+        assert_eq!(output, "### src/main.rs (5 matches)\n");
+    }
+
+    #[test]
+    fn test_agent_format_diff_file() {
+        let output = AgentFormatter::format_diff_file("src/main.rs", "M", 10, 5);
+        assert_eq!(output, "- [M] src/main.rs (+10 -5)\n");
+    }
+
+    #[test]
+    fn test_agent_format_diff_summary() {
+        let output = AgentFormatter::format_diff_summary(3, 25, 10);
+        assert!(output.contains("## Diff Summary"));
+        assert!(output.contains("- files changed: 3"));
+        assert!(output.contains("- insertions: 25"));
+        assert!(output.contains("- deletions: 10"));
+    }
+
+    #[test]
+    fn test_agent_format_clean() {
+        assert_eq!(AgentFormatter::format_clean(), "- status: clean\n");
+    }
+
+    #[test]
+    fn test_agent_format_dirty() {
+        let output = AgentFormatter::format_dirty(2, 3, 5, 0);
+        assert!(output.contains("- status: dirty"));
+        assert!(output.contains("- staged: 2"));
+        assert!(output.contains("- unstaged: 3"));
+        assert!(output.contains("- untracked: 5"));
+        assert!(output.contains("- unmerged: 0"));
+    }
+
+    #[test]
+    fn test_agent_format_branch_with_tracking() {
+        // No tracking
+        let output = AgentFormatter::format_branch_with_tracking("main", 0, 0);
+        assert!(output.contains("- branch: main"));
+        assert!(!output.contains("- ahead:"));
+        assert!(!output.contains("- behind:"));
+
+        // With tracking
+        let output = AgentFormatter::format_branch_with_tracking("feature", 3, 2);
+        assert!(output.contains("- branch: feature"));
+        assert!(output.contains("- ahead: 3"));
+        assert!(output.contains("- behind: 2"));
+    }
+
+    #[test]
+    fn test_agent_format_empty() {
+        assert_eq!(AgentFormatter::format_empty(), "- result: empty\n");
+    }
+
+    #[test]
+    fn test_agent_format_truncated() {
+        let output = AgentFormatter::format_truncated(10, 50);
+        assert_eq!(output, "- truncated: showing 10 of 50\n");
+    }
+
+    #[test]
+    fn test_agent_format_error() {
+        let output = AgentFormatter::format_error("Something went wrong");
+        assert_eq!(output, "- error: Something went wrong\n");
+    }
+
+    #[test]
+    fn test_agent_format_error_with_code() {
+        let output = AgentFormatter::format_error_with_code("Command failed", 1);
+        assert!(output.contains("- error: Command failed"));
+        assert!(output.contains("- exit_code: 1"));
+    }
+
+    #[test]
+    fn test_agent_format_not_implemented() {
+        let output = AgentFormatter::format_not_implemented("Feature X");
+        assert_eq!(output, "- not_implemented: Feature X\n");
+    }
+
+    #[test]
+    fn test_agent_format_command_result() {
+        let output = AgentFormatter::format_command_result(
+            "echo",
+            &["hello".to_string(), "world".to_string()],
+            "hello world\n",
+            "",
+            0,
+            10,
+        );
+        assert!(output.contains("## Command Result"));
+        assert!(output.contains("- command: echo"));
+        assert!(output.contains("- args: hello world"));
+        assert!(output.contains("- exit_code: 0"));
+        assert!(output.contains("- duration_ms: 10"));
+        assert!(output.contains("### stdout"));
+        assert!(output.contains("hello world"));
+    }
+
+    #[test]
+    fn test_agent_format_command_result_with_stderr() {
+        let output = AgentFormatter::format_command_result(
+            "cmd",
+            &[],
+            "stdout\n",
+            "stderr\n",
+            1,
+            20,
+        );
+        assert!(output.contains("### stdout"));
+        assert!(output.contains("### stderr"));
+        assert!(output.contains("stderr"));
+        assert!(output.contains("- exit_code: 1"));
+    }
+
+    #[test]
+    fn test_agent_format_command_result_no_args() {
+        let output = AgentFormatter::format_command_result(
+            "pwd",
+            &[],
+            "/home\n",
+            "",
+            0,
+            5,
+        );
+        assert!(output.contains("- command: pwd"));
+        assert!(!output.contains("- args:"));
+    }
+
+    #[test]
+    fn test_agent_format_list() {
+        let items = vec!["file1.rs", "file2.rs"];
+        let output = AgentFormatter::format_list(&items);
+        assert_eq!(output, "- file1.rs\n- file2.rs\n");
+    }
+
+    #[test]
+    fn test_agent_format_list_empty() {
+        let items: Vec<&str> = vec![];
+        let output = AgentFormatter::format_list(&items);
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn test_agent_format_count() {
+        let output = AgentFormatter::format_count(42);
+        assert_eq!(output, "- count: 42\n");
+    }
+
+    #[test]
+    fn test_agent_format_flag() {
+        let output = AgentFormatter::format_flag("is_clean", true);
+        assert_eq!(output, "- is_clean: true\n");
+
+        let output = AgentFormatter::format_flag("is_clean", false);
+        assert_eq!(output, "- is_clean: false\n");
+    }
+
+    #[test]
+    fn test_agent_format_array() {
+        let items = vec!["item1", "item2", "item3"];
+        let output = AgentFormatter::format_array(&items);
+        assert!(output.contains("- item1"));
+        assert!(output.contains("- item2"));
+        assert!(output.contains("- item3"));
+    }
+
+    #[test]
+    fn test_agent_format_table() {
+        let items = vec![
+            vec!["file1.rs", "M", "10"],
+            vec!["file2.rs", "A", "5"],
+        ];
+        let output = AgentFormatter::format_table(&["path", "status", "lines"], &items);
+        assert!(output.contains("| path | status | lines |"));
+        assert!(output.contains("| --- | --- | --- |"));
+        assert!(output.contains("| file1.rs | M | 10 |"));
+        assert!(output.contains("| file2.rs | A | 5 |"));
+    }
+
+    #[test]
+    fn test_agent_format_table_empty() {
+        let items: Vec<Vec<&str>> = vec![];
+        let output = AgentFormatter::format_table(&["path", "status"], &items);
+        assert!(output.contains("| path | status |"));
+        assert!(output.contains("| --- | --- |"));
+    }
+
+    #[test]
+    fn test_agent_format_key_value() {
+        let output = AgentFormatter::format_key_value("branch", "main");
+        assert_eq!(output, "- branch: main\n");
+    }
+
+    #[test]
+    fn test_agent_format_metadata() {
+        let output = AgentFormatter::format_metadata(&[
+            ("branch", "main"),
+            ("is_clean", "true"),
+        ]);
+        assert!(output.contains("## Metadata"));
+        assert!(output.contains("- branch: main"));
+        assert!(output.contains("- is_clean: true"));
+    }
+
+    #[test]
+    fn test_agent_format_code_block() {
+        let output = AgentFormatter::format_code_block("fn main() {}", Some("rust"));
+        assert!(output.contains("```rust"));
+        assert!(output.contains("fn main() {}"));
+        assert!(output.contains("```"));
+    }
+
+    #[test]
+    fn test_agent_format_code_block_no_language() {
+        let output = AgentFormatter::format_code_block("code", None);
+        assert!(output.contains("```\ncode\n```"));
+        assert!(!output.contains("```rust"));
+    }
+
+    #[test]
+    fn test_agent_format_divider() {
+        assert_eq!(AgentFormatter::format_divider(), "---\n");
+    }
+
+    #[test]
+    fn test_agent_format_bold() {
+        assert_eq!(AgentFormatter::format_bold("text"), "**text**");
+    }
+
+    #[test]
+    fn test_agent_format_italic() {
+        assert_eq!(AgentFormatter::format_italic("text"), "*text*");
+    }
+
+    #[test]
+    fn test_agent_format_code_inline() {
+        assert_eq!(AgentFormatter::format_code_inline("code"), "`code`");
+    }
+
+    #[test]
+    fn test_agent_format_link() {
+        let output = AgentFormatter::format_link("text", "https://example.com");
+        assert_eq!(output, "[text](https://example.com)");
+    }
+
+    #[test]
+    fn test_agent_start_document() {
+        let output = AgentFormatter::start_document("Title");
+        assert_eq!(output, "# Title\n\n");
     }
 
     // ============================================================
