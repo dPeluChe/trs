@@ -2689,7 +2689,14 @@ impl Router {
         match self.route(command, ctx) {
             Ok(()) => {}
             Err(CommandError::NotImplemented(msg)) => {
-                println!("{} not yet implemented", msg);
+                // Format not implemented message according to output format
+                let formatted = Self::format_not_implemented(&msg, ctx.format);
+                if ctx.format == OutputFormat::Json {
+                    // For JSON, output to stderr (consistent with error handling)
+                    eprintln!("{}", formatted);
+                } else {
+                    println!("{}", formatted);
+                }
             }
             Err(e) => {
                 // Format error according to output format
@@ -2699,6 +2706,20 @@ impl Router {
                 let exit_code = e.exit_code().unwrap_or(1);
                 std::process::exit(exit_code);
             }
+        }
+    }
+
+    /// Format a not-implemented message based on the output format.
+    fn format_not_implemented(msg: &str, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => {
+                serde_json::json!({
+                    "not_implemented": true,
+                    "message": format!("{} not yet implemented", msg),
+                })
+                .to_string()
+            }
+            _ => format!("{} not yet implemented", msg),
         }
     }
 

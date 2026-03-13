@@ -1717,6 +1717,156 @@ fn test_run_json_parsable() {
 }
 
 // ============================================================
+// JSON Output Tests for Not-Implemented Commands
+// ============================================================
+
+#[test]
+fn test_search_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("search")
+        .arg(".")
+        .arg("test")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    // The last line should be JSON
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("search command execution"));
+}
+
+#[test]
+fn test_replace_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("replace")
+        .arg(".")
+        .arg("old")
+        .arg("new")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("replace command execution"));
+}
+
+#[test]
+fn test_tail_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("tail")
+        .arg("/var/log/test.log")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("tail command execution"));
+}
+
+#[test]
+fn test_clean_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("clean")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("clean command execution"));
+}
+
+#[test]
+fn test_html2md_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("html2md")
+        .arg("https://example.com")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("html2md command execution"));
+}
+
+#[test]
+fn test_txt2md_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("txt2md")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("txt2md command execution"));
+}
+
+#[test]
+fn test_parse_grep_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("grep parsing"));
+}
+
+#[test]
+fn test_parse_test_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("test parsing"));
+}
+
+#[test]
+fn test_parse_logs_json_output_not_implemented() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .assert()
+        .success();
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    let json_line = stderr.lines().last().unwrap_or("");
+    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
+    assert_eq!(json["not_implemented"], true);
+    assert!(json["message"].as_str().unwrap().contains("logs parsing"));
+}
+
+// ============================================================
 // Stats Output Tests for Command Execution
 // ============================================================
 
