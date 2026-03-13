@@ -136,7 +136,12 @@ impl CompactFormatter {
     }
 
     /// Format a test result summary.
-    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+    pub fn format_test_summary(
+        passed: usize,
+        failed: usize,
+        skipped: usize,
+        duration_ms: u64,
+    ) -> String {
         let mut parts = Vec::new();
         if passed > 0 {
             parts.push(format!("passed={}", passed));
@@ -213,12 +218,24 @@ impl CompactFormatter {
     }
 
     /// Format a diff file entry.
-    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
-        format!("  {} {} (+{} -{})\n", change_type, path, additions, deletions)
+    pub fn format_diff_file(
+        path: &str,
+        change_type: &str,
+        additions: usize,
+        deletions: usize,
+    ) -> String {
+        format!(
+            "  {} {} (+{} -{})\n",
+            change_type, path, additions, deletions
+        )
     }
 
     /// Format a diff summary.
-    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
+    pub fn format_diff_summary(
+        files_changed: usize,
+        insertions: usize,
+        deletions: usize,
+    ) -> String {
         format!(
             "diff: {} files changed, {} insertions, {} deletions\n",
             files_changed, insertions, deletions
@@ -231,7 +248,12 @@ impl CompactFormatter {
     }
 
     /// Format a dirty state indicator with counts.
-    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+    pub fn format_dirty(
+        staged: usize,
+        unstaged: usize,
+        untracked: usize,
+        unmerged: usize,
+    ) -> String {
         format!(
             "status: dirty (staged={} unstaged={} untracked={} unmerged={})\n",
             staged, unstaged, untracked, unmerged
@@ -478,7 +500,12 @@ impl JsonFormatter {
     }
 
     /// Format a test result summary as JSON.
-    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+    pub fn format_test_summary(
+        passed: usize,
+        failed: usize,
+        skipped: usize,
+        duration_ms: u64,
+    ) -> String {
         serde_json::json!({
             "passed": passed,
             "failed": failed,
@@ -538,7 +565,12 @@ impl JsonFormatter {
     }
 
     /// Format a diff file entry as JSON.
-    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
+    pub fn format_diff_file(
+        path: &str,
+        change_type: &str,
+        additions: usize,
+        deletions: usize,
+    ) -> String {
         serde_json::json!({
             "path": path,
             "change_type": change_type,
@@ -549,7 +581,11 @@ impl JsonFormatter {
     }
 
     /// Format a diff summary as JSON.
-    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
+    pub fn format_diff_summary(
+        files_changed: usize,
+        insertions: usize,
+        deletions: usize,
+    ) -> String {
         serde_json::json!({
             "files_changed": files_changed,
             "insertions": insertions,
@@ -567,7 +603,12 @@ impl JsonFormatter {
     }
 
     /// Format a dirty state indicator with counts as JSON.
-    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+    pub fn format_dirty(
+        staged: usize,
+        unstaged: usize,
+        untracked: usize,
+        unmerged: usize,
+    ) -> String {
         serde_json::json!({
             "is_clean": false,
             "staged": staged,
@@ -703,7 +744,10 @@ impl Formatter for CsvFormatter {
 impl CsvFormatter {
     /// Escape a field for CSV format.
     pub fn escape_field(field: &str) -> String {
-        if field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r')
+        if field.contains(',')
+            || field.contains('"')
+            || field.contains('\n')
+            || field.contains('\r')
         {
             format!("\"{}\"", field.replace('"', "\"\""))
         } else {
@@ -749,7 +793,11 @@ impl CsvFormatter {
     /// assert_eq!(output, "key\nvalue\n");
     /// ```
     pub fn format_message(key: &str, value: &str) -> String {
-        format!("{}\n{}\n", Self::escape_field(key), Self::escape_field(value))
+        format!(
+            "{}\n{}\n",
+            Self::escape_field(key),
+            Self::escape_field(value)
+        )
     }
 
     /// Format a key-value pair as CSV with header row.
@@ -762,7 +810,11 @@ impl CsvFormatter {
     /// assert_eq!(output, "branch\nmain\n");
     /// ```
     pub fn format_key_value(key: &str, value: &str) -> String {
-        format!("{}\n{}\n", Self::escape_field(key), Self::escape_field(value))
+        format!(
+            "{}\n{}\n",
+            Self::escape_field(key),
+            Self::escape_field(value)
+        )
     }
 
     /// Format multiple key-value pairs as CSV with headers.
@@ -792,7 +844,10 @@ impl CsvFormatter {
     /// assert!(output.contains("10,2"));
     /// ```
     pub fn format_counts(counts: &[(&str, usize)]) -> String {
-        let headers: Vec<String> = counts.iter().map(|(name, _)| Self::escape_field(name)).collect();
+        let headers: Vec<String> = counts
+            .iter()
+            .map(|(name, _)| Self::escape_field(name))
+            .collect();
         let values: Vec<String> = counts.iter().map(|(_, count)| count.to_string()).collect();
         format!("{}\n{}\n", headers.join(","), values.join(","))
     }
@@ -839,7 +894,10 @@ impl CsvFormatter {
     /// assert_eq!(output, "R,new.rs,old.rs\n");
     /// ```
     pub fn format_item_renamed(status: &str, old_path: &str, new_path: &str) -> String {
-        format!("{}\n", Self::format_row(&[status, new_path, old_path]).trim())
+        format!(
+            "{}\n",
+            Self::format_row(&[status, new_path, old_path]).trim()
+        )
     }
 
     /// Format a test result summary as CSV with header.
@@ -852,10 +910,19 @@ impl CsvFormatter {
     /// assert!(output.contains("passed,failed,skipped,total,duration_ms"));
     /// assert!(output.contains("10,2,1,13,1500"));
     /// ```
-    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+    pub fn format_test_summary(
+        passed: usize,
+        failed: usize,
+        skipped: usize,
+        duration_ms: u64,
+    ) -> String {
         format!(
             "passed,failed,skipped,total,duration_ms\n{},{},{},{},{}\n",
-            passed, failed, skipped, passed + failed + skipped, duration_ms
+            passed,
+            failed,
+            skipped,
+            passed + failed + skipped,
+            duration_ms
         )
     }
 
@@ -904,7 +971,11 @@ impl CsvFormatter {
     pub fn format_log_levels(error: usize, warn: usize, info: usize, debug: usize) -> String {
         format!(
             "error,warn,info,debug,total\n{},{},{},{},{}\n",
-            error, warn, info, debug, error + warn + info + debug
+            error,
+            warn,
+            info,
+            debug,
+            error + warn + info + debug
         )
     }
 
@@ -961,7 +1032,12 @@ impl CsvFormatter {
     /// let output = CsvFormatter::format_diff_file("src/main.rs", "M", 10, 5);
     /// assert_eq!(output, "path,change_type,additions,deletions\nsrc/main.rs,M,10,5\n");
     /// ```
-    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
+    pub fn format_diff_file(
+        path: &str,
+        change_type: &str,
+        additions: usize,
+        deletions: usize,
+    ) -> String {
         format!(
             "path,change_type,additions,deletions\n{},{},{},{}\n",
             Self::escape_field(path),
@@ -980,7 +1056,11 @@ impl CsvFormatter {
     /// let output = CsvFormatter::format_diff_summary(3, 25, 10);
     /// assert_eq!(output, "files_changed,insertions,deletions\n3,25,10\n");
     /// ```
-    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
+    pub fn format_diff_summary(
+        files_changed: usize,
+        insertions: usize,
+        deletions: usize,
+    ) -> String {
         format!(
             "files_changed,insertions,deletions\n{},{},{}\n",
             files_changed, insertions, deletions
@@ -1009,7 +1089,12 @@ impl CsvFormatter {
     /// let output = CsvFormatter::format_dirty(2, 3, 5, 0);
     /// assert_eq!(output, "is_clean,staged,unstaged,untracked,unmerged\nfalse,2,3,5,0\n");
     /// ```
-    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+    pub fn format_dirty(
+        staged: usize,
+        unstaged: usize,
+        untracked: usize,
+        unmerged: usize,
+    ) -> String {
         format!(
             "is_clean,staged,unstaged,untracked,unmerged\nfalse,{},{},{},{}\n",
             staged, unstaged, untracked, unmerged
@@ -1071,10 +1156,7 @@ impl CsvFormatter {
     /// assert!(output.contains("true,Something went wrong"));
     /// ```
     pub fn format_error(message: &str) -> String {
-        format!(
-            "error,message\ntrue,{}\n",
-            Self::escape_field(message)
-        )
+        format!("error,message\ntrue,{}\n", Self::escape_field(message))
     }
 
     /// Format an error with exit code as CSV with header.
@@ -1284,7 +1366,11 @@ impl TsvFormatter {
     /// assert_eq!(output, "key\nvalue\n");
     /// ```
     pub fn format_message(key: &str, value: &str) -> String {
-        format!("{}\n{}\n", Self::escape_field(key), Self::escape_field(value))
+        format!(
+            "{}\n{}\n",
+            Self::escape_field(key),
+            Self::escape_field(value)
+        )
     }
 
     /// Format a key-value pair as TSV with header row.
@@ -1297,7 +1383,11 @@ impl TsvFormatter {
     /// assert_eq!(output, "branch\nmain\n");
     /// ```
     pub fn format_key_value(key: &str, value: &str) -> String {
-        format!("{}\n{}\n", Self::escape_field(key), Self::escape_field(value))
+        format!(
+            "{}\n{}\n",
+            Self::escape_field(key),
+            Self::escape_field(value)
+        )
     }
 
     /// Format multiple key-value pairs as TSV with headers.
@@ -1327,7 +1417,10 @@ impl TsvFormatter {
     /// assert!(output.contains("10\t2"));
     /// ```
     pub fn format_counts(counts: &[(&str, usize)]) -> String {
-        let headers: Vec<String> = counts.iter().map(|(name, _)| Self::escape_field(name)).collect();
+        let headers: Vec<String> = counts
+            .iter()
+            .map(|(name, _)| Self::escape_field(name))
+            .collect();
         let values: Vec<String> = counts.iter().map(|(_, count)| count.to_string()).collect();
         format!("{}\n{}\n", headers.join("\t"), values.join("\t"))
     }
@@ -1374,7 +1467,10 @@ impl TsvFormatter {
     /// assert_eq!(output, "R\tnew.rs\told.rs\n");
     /// ```
     pub fn format_item_renamed(status: &str, old_path: &str, new_path: &str) -> String {
-        format!("{}\n", Self::format_row(&[status, new_path, old_path]).trim())
+        format!(
+            "{}\n",
+            Self::format_row(&[status, new_path, old_path]).trim()
+        )
     }
 
     /// Format a test result summary as TSV with header.
@@ -1387,10 +1483,19 @@ impl TsvFormatter {
     /// assert!(output.contains("passed\tfailed\tskipped\ttotal\tduration_ms"));
     /// assert!(output.contains("10\t2\t1\t13\t1500"));
     /// ```
-    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+    pub fn format_test_summary(
+        passed: usize,
+        failed: usize,
+        skipped: usize,
+        duration_ms: u64,
+    ) -> String {
         format!(
             "passed\tfailed\tskipped\ttotal\tduration_ms\n{}\t{}\t{}\t{}\t{}\n",
-            passed, failed, skipped, passed + failed + skipped, duration_ms
+            passed,
+            failed,
+            skipped,
+            passed + failed + skipped,
+            duration_ms
         )
     }
 
@@ -1439,7 +1544,11 @@ impl TsvFormatter {
     pub fn format_log_levels(error: usize, warn: usize, info: usize, debug: usize) -> String {
         format!(
             "error\twarn\tinfo\tdebug\ttotal\n{}\t{}\t{}\t{}\t{}\n",
-            error, warn, info, debug, error + warn + info + debug
+            error,
+            warn,
+            info,
+            debug,
+            error + warn + info + debug
         )
     }
 
@@ -1495,7 +1604,12 @@ impl TsvFormatter {
     /// let output = TsvFormatter::format_diff_file("src/main.rs", "M", 10, 5);
     /// assert_eq!(output, "path\tchange_type\tadditions\tdeletions\nsrc/main.rs\tM\t10\t5\n");
     /// ```
-    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
+    pub fn format_diff_file(
+        path: &str,
+        change_type: &str,
+        additions: usize,
+        deletions: usize,
+    ) -> String {
         format!(
             "path\tchange_type\tadditions\tdeletions\n{}\t{}\t{}\t{}\n",
             Self::escape_field(path),
@@ -1514,7 +1628,11 @@ impl TsvFormatter {
     /// let output = TsvFormatter::format_diff_summary(3, 25, 10);
     /// assert_eq!(output, "files_changed\tinsertions\tdeletions\n3\t25\t10\n");
     /// ```
-    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
+    pub fn format_diff_summary(
+        files_changed: usize,
+        insertions: usize,
+        deletions: usize,
+    ) -> String {
         format!(
             "files_changed\tinsertions\tdeletions\n{}\t{}\t{}\n",
             files_changed, insertions, deletions
@@ -1543,7 +1661,12 @@ impl TsvFormatter {
     /// let output = TsvFormatter::format_dirty(2, 3, 5, 0);
     /// assert_eq!(output, "is_clean\tstaged\tunstaged\tuntracked\tunmerged\nfalse\t2\t3\t5\t0\n");
     /// ```
-    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+    pub fn format_dirty(
+        staged: usize,
+        unstaged: usize,
+        untracked: usize,
+        unmerged: usize,
+    ) -> String {
         format!(
             "is_clean\tstaged\tunstaged\tuntracked\tunmerged\nfalse\t{}\t{}\t{}\t{}\n",
             staged, unstaged, untracked, unmerged
@@ -1605,10 +1728,7 @@ impl TsvFormatter {
     /// assert!(output.contains("true\tSomething went wrong"));
     /// ```
     pub fn format_error(message: &str) -> String {
-        format!(
-            "error\tmessage\ntrue\t{}\n",
-            Self::escape_field(message)
-        )
+        format!("error\tmessage\ntrue\t{}\n", Self::escape_field(message))
     }
 
     /// Format an error with exit code as TSV with header.
@@ -1921,7 +2041,12 @@ impl AgentFormatter {
     /// assert!(output.contains("failed: 2"));
     /// assert!(output.contains("duration: 1.50s"));
     /// ```
-    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+    pub fn format_test_summary(
+        passed: usize,
+        failed: usize,
+        skipped: usize,
+        duration_ms: u64,
+    ) -> String {
         let mut output = String::new();
         output.push_str("## Test Results\n");
         output.push_str(&format!("- passed: {}\n", passed));
@@ -2038,8 +2163,16 @@ impl AgentFormatter {
     /// assert!(output.contains("added: 10"));
     /// assert!(output.contains("removed: 5"));
     /// ```
-    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
-        format!("- [{}] {} (+{} -{})\n", change_type, path, additions, deletions)
+    pub fn format_diff_file(
+        path: &str,
+        change_type: &str,
+        additions: usize,
+        deletions: usize,
+    ) -> String {
+        format!(
+            "- [{}] {} (+{} -{})\n",
+            change_type, path, additions, deletions
+        )
     }
 
     /// Format a diff summary.
@@ -2053,7 +2186,11 @@ impl AgentFormatter {
     /// assert!(output.contains("insertions: 25"));
     /// assert!(output.contains("deletions: 10"));
     /// ```
-    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
+    pub fn format_diff_summary(
+        files_changed: usize,
+        insertions: usize,
+        deletions: usize,
+    ) -> String {
         let mut output = String::new();
         output.push_str("## Diff Summary\n");
         output.push_str(&format!("- files changed: {}\n", files_changed));
@@ -2086,7 +2223,12 @@ impl AgentFormatter {
     /// assert!(output.contains("staged: 2"));
     /// assert!(output.contains("unstaged: 3"));
     /// ```
-    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+    pub fn format_dirty(
+        staged: usize,
+        unstaged: usize,
+        untracked: usize,
+        unmerged: usize,
+    ) -> String {
         let mut output = String::new();
         output.push_str("- status: dirty\n");
         output.push_str(&format!("- staged: {}\n", staged));
@@ -2310,7 +2452,14 @@ impl AgentFormatter {
         output.push_str(&format!("| {} |\n", headers.join(" | ")));
 
         // Separator row
-        output.push_str(&format!("| {} |\n", headers.iter().map(|_| "---").collect::<Vec<_>>().join(" | ")));
+        output.push_str(&format!(
+            "| {} |\n",
+            headers
+                .iter()
+                .map(|_| "---")
+                .collect::<Vec<_>>()
+                .join(" | ")
+        ));
 
         // Data rows
         for row in rows {
@@ -2441,10 +2590,7 @@ impl Formatter for RawFormatter {
 impl RawFormatter {
     /// Format a simple list of items (one per line).
     pub fn format_list(items: &[impl AsRef<str>]) -> String {
-        items
-            .iter()
-            .map(|s| format!("{}\n", s.as_ref()))
-            .collect()
+        items.iter().map(|s| format!("{}\n", s.as_ref())).collect()
     }
 
     /// Format a simple message/status line (just key and value).
@@ -2493,7 +2639,12 @@ impl RawFormatter {
     }
 
     /// Format a test result summary.
-    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+    pub fn format_test_summary(
+        passed: usize,
+        failed: usize,
+        skipped: usize,
+        duration_ms: u64,
+    ) -> String {
         let mut parts = Vec::new();
         if passed > 0 {
             parts.push(format!("passed={}", passed));
@@ -2567,16 +2718,22 @@ impl RawFormatter {
     }
 
     /// Format a diff file entry.
-    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
+    pub fn format_diff_file(
+        path: &str,
+        change_type: &str,
+        additions: usize,
+        deletions: usize,
+    ) -> String {
         format!("{} {} +{} -{}\n", change_type, path, additions, deletions)
     }
 
     /// Format a diff summary.
-    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
-        format!(
-            "{} files +{} -{}\n",
-            files_changed, insertions, deletions
-        )
+    pub fn format_diff_summary(
+        files_changed: usize,
+        insertions: usize,
+        deletions: usize,
+    ) -> String {
+        format!("{} files +{} -{}\n", files_changed, insertions, deletions)
     }
 
     /// Format a clean state indicator.
@@ -2585,7 +2742,12 @@ impl RawFormatter {
     }
 
     /// Format a dirty state indicator with counts.
-    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+    pub fn format_dirty(
+        staged: usize,
+        unstaged: usize,
+        untracked: usize,
+        unmerged: usize,
+    ) -> String {
         format!(
             "dirty staged={} unstaged={} untracked={} unmerged={}\n",
             staged, unstaged, untracked, unmerged
@@ -3252,8 +3414,14 @@ mod tests {
             value: usize,
         }
         let items = vec![
-            Item { name: "first", value: 1 },
-            Item { name: "second", value: 2 },
+            Item {
+                name: "first",
+                value: 1,
+            },
+            Item {
+                name: "second",
+                value: 2,
+            },
         ];
         let output = JsonFormatter::format_array(&items);
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -3270,9 +3438,18 @@ mod tests {
     fn test_csv_escape_field() {
         assert_eq!(CsvFormatter::escape_field("simple"), "simple");
         assert_eq!(CsvFormatter::escape_field("with,comma"), "\"with,comma\"");
-        assert_eq!(CsvFormatter::escape_field("with\"quote"), "\"with\"\"quote\"");
-        assert_eq!(CsvFormatter::escape_field("with\nnewline"), "\"with\nnewline\"");
-        assert_eq!(CsvFormatter::escape_field("with\rcarriage"), "\"with\rcarriage\"");
+        assert_eq!(
+            CsvFormatter::escape_field("with\"quote"),
+            "\"with\"\"quote\""
+        );
+        assert_eq!(
+            CsvFormatter::escape_field("with\nnewline"),
+            "\"with\nnewline\""
+        );
+        assert_eq!(
+            CsvFormatter::escape_field("with\rcarriage"),
+            "\"with\rcarriage\""
+        );
     }
 
     #[test]
@@ -3313,7 +3490,11 @@ mod tests {
 
     #[test]
     fn test_csv_format_object() {
-        let output = CsvFormatter::format_object(&[("branch", "main"), ("is_clean", "true"), ("count", "5")]);
+        let output = CsvFormatter::format_object(&[
+            ("branch", "main"),
+            ("is_clean", "true"),
+            ("count", "5"),
+        ]);
         assert!(output.contains("branch,is_clean,count"));
         assert!(output.contains("main,true,5"));
     }
@@ -3334,7 +3515,11 @@ mod tests {
 
     #[test]
     fn test_csv_format_section() {
-        let output = CsvFormatter::format_section("status", "path", &[("M", "src/main.rs"), ("A", "src/new.rs")]);
+        let output = CsvFormatter::format_section(
+            "status",
+            "path",
+            &[("M", "src/main.rs"), ("A", "src/new.rs")],
+        );
         assert!(output.contains("status,path"));
         assert!(output.contains("M,src/main.rs"));
         assert!(output.contains("A,src/new.rs"));
@@ -3428,7 +3613,10 @@ mod tests {
     #[test]
     fn test_csv_format_diff_file() {
         let output = CsvFormatter::format_diff_file("src/main.rs", "M", 10, 5);
-        assert_eq!(output, "path,change_type,additions,deletions\nsrc/main.rs,M,10,5\n");
+        assert_eq!(
+            output,
+            "path,change_type,additions,deletions\nsrc/main.rs,M,10,5\n"
+        );
     }
 
     #[test]
@@ -3446,7 +3634,10 @@ mod tests {
     #[test]
     fn test_csv_format_dirty() {
         let output = CsvFormatter::format_dirty(2, 3, 5, 0);
-        assert_eq!(output, "is_clean,staged,unstaged,untracked,unmerged\nfalse,2,3,5,0\n");
+        assert_eq!(
+            output,
+            "is_clean,staged,unstaged,untracked,unmerged\nfalse,2,3,5,0\n"
+        );
     }
 
     #[test]
@@ -3538,10 +3729,7 @@ mod tests {
 
     #[test]
     fn test_csv_format_table() {
-        let items = vec![
-            vec!["file1.rs", "M", "10"],
-            vec!["file2.rs", "A", "5"],
-        ];
+        let items = vec![vec!["file1.rs", "M", "10"], vec!["file2.rs", "A", "5"]];
         let output = CsvFormatter::format_table(&["path", "status", "lines"], &items);
         assert!(output.contains("path,status,lines"));
         assert!(output.contains("file1.rs,M,10"));
@@ -3574,8 +3762,14 @@ mod tests {
     fn test_tsv_escape_field() {
         assert_eq!(TsvFormatter::escape_field("simple"), "simple");
         assert_eq!(TsvFormatter::escape_field("with\ttab"), "with\\ttab");
-        assert_eq!(TsvFormatter::escape_field("with\nnewline"), "with\\nnewline");
-        assert_eq!(TsvFormatter::escape_field("with\rcarriage"), "with\\rcarriage");
+        assert_eq!(
+            TsvFormatter::escape_field("with\nnewline"),
+            "with\\nnewline"
+        );
+        assert_eq!(
+            TsvFormatter::escape_field("with\rcarriage"),
+            "with\\rcarriage"
+        );
     }
 
     #[test]
@@ -3616,7 +3810,11 @@ mod tests {
 
     #[test]
     fn test_tsv_format_object() {
-        let output = TsvFormatter::format_object(&[("branch", "main"), ("is_clean", "true"), ("count", "5")]);
+        let output = TsvFormatter::format_object(&[
+            ("branch", "main"),
+            ("is_clean", "true"),
+            ("count", "5"),
+        ]);
         assert!(output.contains("branch\tis_clean\tcount"));
         assert!(output.contains("main\ttrue\t5"));
     }
@@ -3637,7 +3835,11 @@ mod tests {
 
     #[test]
     fn test_tsv_format_section() {
-        let output = TsvFormatter::format_section("status", "path", &[("M", "src/main.rs"), ("A", "src/new.rs")]);
+        let output = TsvFormatter::format_section(
+            "status",
+            "path",
+            &[("M", "src/main.rs"), ("A", "src/new.rs")],
+        );
         assert!(output.contains("status\tpath"));
         assert!(output.contains("M\tsrc/main.rs"));
         assert!(output.contains("A\tsrc/new.rs"));
@@ -3731,7 +3933,10 @@ mod tests {
     #[test]
     fn test_tsv_format_diff_file() {
         let output = TsvFormatter::format_diff_file("src/main.rs", "M", 10, 5);
-        assert_eq!(output, "path\tchange_type\tadditions\tdeletions\nsrc/main.rs\tM\t10\t5\n");
+        assert_eq!(
+            output,
+            "path\tchange_type\tadditions\tdeletions\nsrc/main.rs\tM\t10\t5\n"
+        );
     }
 
     #[test]
@@ -3749,7 +3954,10 @@ mod tests {
     #[test]
     fn test_tsv_format_dirty() {
         let output = TsvFormatter::format_dirty(2, 3, 5, 0);
-        assert_eq!(output, "is_clean\tstaged\tunstaged\tuntracked\tunmerged\nfalse\t2\t3\t5\t0\n");
+        assert_eq!(
+            output,
+            "is_clean\tstaged\tunstaged\tuntracked\tunmerged\nfalse\t2\t3\t5\t0\n"
+        );
     }
 
     #[test]
@@ -3785,7 +3993,10 @@ mod tests {
     #[test]
     fn test_tsv_format_error_with_code() {
         let output = TsvFormatter::format_error_with_code("Command failed", 1);
-        assert_eq!(output, "error\tmessage\texit_code\ntrue\tCommand failed\t1\n");
+        assert_eq!(
+            output,
+            "error\tmessage\texit_code\ntrue\tCommand failed\t1\n"
+        );
     }
 
     #[test]
@@ -3841,10 +4052,7 @@ mod tests {
 
     #[test]
     fn test_tsv_format_table() {
-        let items = vec![
-            vec!["file1.rs", "M", "10"],
-            vec!["file2.rs", "A", "5"],
-        ];
+        let items = vec![vec!["file1.rs", "M", "10"], vec!["file2.rs", "A", "5"]];
         let output = TsvFormatter::format_table(&["path", "status", "lines"], &items);
         assert!(output.contains("path\tstatus\tlines"));
         assert!(output.contains("file1.rs\tM\t10"));
@@ -3880,7 +4088,10 @@ mod tests {
 
     #[test]
     fn test_agent_subsection_header() {
-        assert_eq!(AgentFormatter::subsection_header("Details"), "### Details\n");
+        assert_eq!(
+            AgentFormatter::subsection_header("Details"),
+            "### Details\n"
+        );
     }
 
     #[test]
@@ -4132,14 +4343,8 @@ mod tests {
 
     #[test]
     fn test_agent_format_command_result_with_stderr() {
-        let output = AgentFormatter::format_command_result(
-            "cmd",
-            &[],
-            "stdout\n",
-            "stderr\n",
-            1,
-            20,
-        );
+        let output =
+            AgentFormatter::format_command_result("cmd", &[], "stdout\n", "stderr\n", 1, 20);
         assert!(output.contains("### stdout"));
         assert!(output.contains("### stderr"));
         assert!(output.contains("stderr"));
@@ -4148,14 +4353,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_command_result_no_args() {
-        let output = AgentFormatter::format_command_result(
-            "pwd",
-            &[],
-            "/home\n",
-            "",
-            0,
-            5,
-        );
+        let output = AgentFormatter::format_command_result("pwd", &[], "/home\n", "", 0, 5);
         assert!(output.contains("- command: pwd"));
         assert!(!output.contains("- args:"));
     }
@@ -4200,10 +4398,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_table() {
-        let items = vec![
-            vec!["file1.rs", "M", "10"],
-            vec!["file2.rs", "A", "5"],
-        ];
+        let items = vec![vec!["file1.rs", "M", "10"], vec!["file2.rs", "A", "5"]];
         let output = AgentFormatter::format_table(&["path", "status", "lines"], &items);
         assert!(output.contains("| path | status | lines |"));
         assert!(output.contains("| --- | --- | --- |"));
@@ -4227,10 +4422,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_metadata() {
-        let output = AgentFormatter::format_metadata(&[
-            ("branch", "main"),
-            ("is_clean", "true"),
-        ]);
+        let output = AgentFormatter::format_metadata(&[("branch", "main"), ("is_clean", "true")]);
         assert!(output.contains("## Metadata"));
         assert!(output.contains("- branch: main"));
         assert!(output.contains("- is_clean: true"));
@@ -4436,10 +4628,7 @@ mod tests {
     #[test]
     fn test_raw_format_dirty() {
         let output = RawFormatter::format_dirty(2, 3, 5, 0);
-        assert_eq!(
-            output,
-            "dirty staged=2 unstaged=3 untracked=5 unmerged=0\n"
-        );
+        assert_eq!(output, "dirty staged=2 unstaged=3 untracked=5 unmerged=0\n");
     }
 
     #[test]
@@ -4482,7 +4671,10 @@ mod tests {
 
     #[test]
     fn test_raw_format_key_value() {
-        assert_eq!(RawFormatter::format_key_value("branch", "main"), "branch main\n");
+        assert_eq!(
+            RawFormatter::format_key_value("branch", "main"),
+            "branch main\n"
+        );
     }
 
     #[test]

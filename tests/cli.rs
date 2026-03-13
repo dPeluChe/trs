@@ -314,7 +314,9 @@ fn test_search_csv_output() {
         .arg("rs")
         .assert()
         .success()
-        .stdout(predicate::str::contains("path,line_number,column,is_context,line"))
+        .stdout(predicate::str::contains(
+            "path,line_number,column,is_context,line",
+        ))
         .stdout(predicate::str::contains("router.rs"));
 }
 
@@ -329,7 +331,9 @@ fn test_search_tsv_output() {
         .arg("rs")
         .assert()
         .success()
-        .stdout(predicate::str::contains("path\tline_number\tcolumn\tis_context\tline"))
+        .stdout(predicate::str::contains(
+            "path\tline_number\tcolumn\tis_context\tline",
+        ))
         .stdout(predicate::str::contains("router.rs"));
 }
 
@@ -429,21 +433,21 @@ fn test_search_groups_matches_by_file_json() {
         .get_output()
         .stdout
         .clone();
-    
+
     let output_str = String::from_utf8_lossy(&output);
-    
+
     // Parse JSON to verify structure
     let json: serde_json::Value = serde_json::from_str(&output_str).unwrap();
-    
+
     // Should have files array
     assert!(json["files"].is_array());
-    
+
     // Each file should have path and matches
     let files = json["files"].as_array().unwrap();
     for file in files {
         assert!(file["path"].is_string());
         assert!(file["matches"].is_array());
-        
+
         // Each match should have required fields
         for m in file["matches"].as_array().unwrap() {
             assert!(m["line_number"].is_number());
@@ -458,7 +462,7 @@ fn test_search_groups_multiple_files_correctly() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
         .arg("src")
-        .arg("fn")  // Pattern that appears in multiple files
+        .arg("fn") // Pattern that appears in multiple files
         .arg("--extension")
         .arg("rs")
         .arg("--limit")
@@ -476,19 +480,19 @@ fn test_search_groups_single_file_multiple_matches() {
     let output = cmd
         .arg("search")
         .arg("src/router.rs")
-        .arg("SearchHandler")  // Appears multiple times in one file
+        .arg("SearchHandler") // Appears multiple times in one file
         .assert()
         .success()
         .get_output()
         .stdout
         .clone();
-    
+
     let output_str = String::from_utf8_lossy(&output);
-    
+
     // Should only show the file header once
     let router_count = output_str.matches("router.rs").count();
     assert!(router_count >= 1);
-    
+
     // Should show match count > 1
     assert!(output_str.contains("("));
 }
@@ -507,9 +511,9 @@ fn test_search_groups_preserve_line_numbers() {
         .get_output()
         .stdout
         .clone();
-    
+
     let output_str = String::from_utf8_lossy(&output);
-    
+
     // Raw format should show line numbers with colons
     assert!(output_str.contains(":"));
     assert!(output_str.contains("SearchHandler"));
@@ -521,11 +525,11 @@ fn test_search_groups_with_truncation() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
         .arg(".")
-        .arg("fn")  // Common pattern
+        .arg("fn") // Common pattern
         .arg("--extension")
         .arg("rs")
         .arg("--limit")
-        .arg("2")  // Limit to 2 files
+        .arg("2") // Limit to 2 files
         .assert()
         .success()
         // Should show truncation info
@@ -577,9 +581,9 @@ fn test_search_counts_match_groups() {
         .get_output()
         .stdout
         .clone();
-    
+
     let output_str = String::from_utf8_lossy(&output);
-    
+
     // Should show files count and results count
     assert!(output_str.contains("matches:"));
     assert!(output_str.contains("files"));
@@ -592,7 +596,7 @@ fn test_search_groups_case_insensitive() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
         .arg("src")
-        .arg("searchhandler")  // lowercase
+        .arg("searchhandler") // lowercase
         .arg("--extension")
         .arg("rs")
         .arg("--ignore-case")
@@ -659,6 +663,81 @@ fn test_search_includes_excerpts_json() {
 
     // First match should have column number
     assert!(first_match["column"].is_number());
+}
+
+#[test]
+fn test_search_shows_total_match_count() {
+    // Test that compact output shows total match count at the end
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("search")
+        .arg("src/router.rs")
+        .arg("SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let output_str = String::from_utf8_lossy(&output);
+
+    // Should show total at the end
+    assert!(output_str.contains("total:"));
+    assert!(output_str.contains("matches"));
+
+    // Verify the format - should end with "total: X matches\n"
+    let lines: Vec<&str> = output_str.lines().collect();
+    let last_line = lines.last().unwrap();
+    assert!(last_line.starts_with("total:"));
+    assert!(last_line.ends_with("matches"));
+}
+
+#[test]
+fn test_search_shows_total_with_truncation() {
+    // Test that truncated output shows shown/total format
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("search")
+        .arg(".")
+        .arg("fn")
+        .arg("--extension")
+        .arg("rs")
+        .arg("--limit")
+        .arg("2") // Force truncation
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let output_str = String::from_utf8_lossy(&output);
+
+    // Should show truncated summary
+    assert!(output_str.contains("total:"));
+    // Should have truncation info in format "total: X/Y matches"
+    assert!(output_str.contains("/"));
+}
+
+#[test]
+fn test_search_total_no_matches() {
+    // Test that no matches case doesn't show total
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("search")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_12345")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let output_str = String::from_utf8_lossy(&output);
+
+    // Should show no matches message but not total line
+    assert!(output_str.contains("no matches"));
 }
 
 #[test]
@@ -2076,11 +2155,7 @@ fn test_run_command_capture_duration_true() {
 #[test]
 fn test_router_search_command() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg(".")
-        .arg("pattern")
-        .assert()
-        .success();
+    cmd.arg("search").arg(".").arg("pattern").assert().success();
     // Search is now fully implemented
 }
 
@@ -3931,7 +4006,8 @@ Ran 2 tests in 1.44ms"#;
 
 #[test]
 fn test_parse_logs_json_output() {
-    let log_input = "[INFO] Starting application\n[ERROR] Something went wrong\n[WARN] Warning message";
+    let log_input =
+        "[INFO] Starting application\n[ERROR] Something went wrong\n[WARN] Warning message";
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
@@ -3977,7 +4053,10 @@ fn test_parse_logs_detects_repeated_lines() {
     assert_eq!(same_line["last_line"], 4);
 
     // Find "Another line" in repeated lines
-    let another_line = repeated.iter().find(|r| r["line"] == "Another line").unwrap();
+    let another_line = repeated
+        .iter()
+        .find(|r| r["line"] == "Another line")
+        .unwrap();
     assert_eq!(another_line["count"], 2);
     assert_eq!(another_line["first_line"], 5);
     assert_eq!(another_line["last_line"], 6);
@@ -4065,7 +4144,8 @@ fn test_parse_logs_detects_failed_keyword() {
 #[test]
 fn test_parse_logs_detects_exception() {
     // Test that "Exception" keyword is detected as error
-    let log_input = "Starting application...\nException: NullPointerException\nError at com.example.Main.main";
+    let log_input =
+        "Starting application...\nException: NullPointerException\nError at com.example.Main.main";
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
@@ -4371,7 +4451,9 @@ fn test_parse_logs_no_recent_critical_when_none() {
         .write_stdin(log_input)
         .assert()
         .success()
-        .stdout(predicate::function(|x: &str| !x.contains("recent critical")));
+        .stdout(predicate::function(|x: &str| {
+            !x.contains("recent critical")
+        }));
 }
 
 // ============================================================
@@ -5186,7 +5268,9 @@ fn test_parse_pytest_raw_format() {
         .success()
         // Raw format should show minimal output
         .stdout(predicate::str::contains("tests/test_main.py::test_add"))
-        .stdout(predicate::str::contains("tests/test_main.py::test_subtract"));
+        .stdout(predicate::str::contains(
+            "tests/test_main.py::test_subtract",
+        ));
 }
 
 #[test]
@@ -5274,7 +5358,7 @@ fn test_raw_format_lower_precedence_than_compact() {
         .arg("test")
         .assert()
         .success()
-    // Compact format should be used (just the output)
+        // Compact format should be used (just the output)
         .stdout(predicate::str::contains("test"));
 }
 
@@ -5482,16 +5566,12 @@ fn test_parse_grep_with_malformed_lines() {
 fn test_stdin_empty_input() {
     // Test empty input handling
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.write_stdin("")
-        .assert()
-        .success();
+    cmd.write_stdin("").assert().success();
 }
 
 #[test]
 fn test_stdin_only_whitespace() {
     // Test whitespace-only input
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.write_stdin("   \n\n   \t  ")
-        .assert()
-        .success();
+    cmd.write_stdin("   \n\n   \t  ").assert().success();
 }

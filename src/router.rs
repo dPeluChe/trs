@@ -1428,11 +1428,11 @@ impl SearchHandler {
 
     /// Execute high-performance search using ripgrep crates.
     fn execute_search(&self, input: &SearchInput) -> CommandResult<GrepOutput> {
+        use grep::matcher::Matcher;
         use grep::regex::RegexMatcher;
+        use grep::searcher::Searcher;
         use grep::searcher::SearcherBuilder;
         use grep::searcher::Sink;
-        use grep::searcher::Searcher;
-        use grep::matcher::Matcher;
         use ignore::WalkBuilder;
         use std::sync::{Arc, Mutex};
 
@@ -1484,21 +1484,22 @@ impl SearchHandler {
                 let line_bytes = mat.bytes();
                 let line_str = String::from_utf8_lossy(line_bytes);
                 let line = line_str.to_string();
-                
+
                 // Find the column position and extract the excerpt
                 let (column, excerpt) = if let Ok(Some(m)) = self.matcher.find(line_bytes) {
                     let col = m.start();
                     let excerpt_bytes = &line_bytes[m.start()..m.end()];
                     let excerpt_str = String::from_utf8_lossy(excerpt_bytes);
                     // Calculate character column (not byte offset) for display
-                    let char_col = String::from_utf8_lossy(&line_bytes[..col.min(line_bytes.len())])
-                        .chars()
-                        .count();
+                    let char_col =
+                        String::from_utf8_lossy(&line_bytes[..col.min(line_bytes.len())])
+                            .chars()
+                            .count();
                     (char_col + 1, excerpt_str.to_string()) // 1-indexed
                 } else {
                     (1, String::new())
                 };
-                
+
                 self.matches.push(MatchResult {
                     line_number,
                     column,
@@ -1517,7 +1518,7 @@ impl SearchHandler {
                 let line_number = ctx.line_number().unwrap_or(0) as usize;
                 let line_bytes = ctx.bytes();
                 let line_str = String::from_utf8_lossy(line_bytes);
-                
+
                 self.matches.push(MatchResult {
                     line_number,
                     column: 0,
@@ -1530,7 +1531,8 @@ impl SearchHandler {
         }
 
         // Shared state for collecting matches per file
-        let file_matches: Arc<Mutex<Vec<(String, Vec<MatchResult>)>>> = Arc::new(Mutex::new(Vec::new()));
+        let file_matches: Arc<Mutex<Vec<(String, Vec<MatchResult>)>>> =
+            Arc::new(Mutex::new(Vec::new()));
 
         // Build the directory walker with ignore rules
         let mut walk_builder = WalkBuilder::new(&input.path);
@@ -1570,7 +1572,7 @@ impl SearchHandler {
             // Create a new searcher for each file
             let mut searcher_builder = SearcherBuilder::new();
             searcher_builder.line_number(true);
-            
+
             // Configure context if requested
             if let Some(ctx) = input.context {
                 searcher_builder.before_context(ctx);
@@ -1608,7 +1610,11 @@ impl SearchHandler {
                         column: if mr.is_context { None } else { Some(mr.column) },
                         line: mr.line,
                         is_context: mr.is_context,
-                        excerpt: if mr.excerpt.is_empty() || mr.is_context { None } else { Some(mr.excerpt) },
+                        excerpt: if mr.excerpt.is_empty() || mr.is_context {
+                            None
+                        } else {
+                            Some(mr.excerpt)
+                        },
                     })
                     .collect();
                 GrepFile {
@@ -1666,7 +1672,9 @@ impl SearchHandler {
 
     /// Format search output as JSON using the schema.
     fn format_json(grep_output: &GrepOutput) -> String {
-        use crate::schema::{GrepCounts, GrepFile as SchemaGrepFile, GrepMatch as SchemaGrepMatch, GrepOutputSchema};
+        use crate::schema::{
+            GrepCounts, GrepFile as SchemaGrepFile, GrepMatch as SchemaGrepMatch, GrepOutputSchema,
+        };
 
         let mut schema = GrepOutputSchema::new();
         schema.is_empty = grep_output.is_empty;
@@ -2218,8 +2226,7 @@ impl ParseHandler {
         use std::io::{self, Read};
 
         if let Some(path) = file {
-            let bytes =
-                std::fs::read(path).map_err(|e| CommandError::IoError(e.to_string()))?;
+            let bytes = std::fs::read(path).map_err(|e| CommandError::IoError(e.to_string()))?;
             Ok(String::from_utf8_lossy(&bytes).into_owned())
         } else {
             let mut buffer = Vec::new();
@@ -3943,20 +3950,29 @@ impl ParseHandler {
                     // Output the match line with excerpt if available
                     if let Some(ln) = m.line_number {
                         if let Some(col) = m.column {
-                            let excerpt_str = m.excerpt.as_ref()
+                            let excerpt_str = m
+                                .excerpt
+                                .as_ref()
                                 .map(|e| format!(" [{}]", e))
                                 .unwrap_or_default();
-                            output.push_str(&format!("  {}:{}: {}{}\n", ln, col, m.line, excerpt_str));
+                            output.push_str(&format!(
+                                "  {}:{}: {}{}\n",
+                                ln, col, m.line, excerpt_str
+                            ));
                         } else {
-                            let excerpt_str = m.excerpt.as_ref()
+                            let excerpt_str = m
+                                .excerpt
+                                .as_ref()
                                 .map(|e| format!(" [{}]", e))
                                 .unwrap_or_default();
                             output.push_str(&format!("  {}: {}{}\n", ln, m.line, excerpt_str));
                         }
                     } else {
-                        let excerpt_str = m.excerpt.as_ref()
+                        let excerpt_str = m
+                            .excerpt
+                            .as_ref()
                             .map(|e| format!(" [{}]", e))
-                                .unwrap_or_default();
+                            .unwrap_or_default();
                         output.push_str(&format!("  {}{}\n", m.line, excerpt_str));
                     }
                 }
@@ -3998,6 +4014,16 @@ impl ParseHandler {
                     hidden_matches
                 ));
             }
+        }
+
+        // Add total match count at the end
+        if grep_output.is_truncated {
+            output.push_str(&format!(
+                "total: {}/{} matches\n",
+                grep_output.matches_shown, grep_output.total_matches
+            ));
+        } else {
+            output.push_str(&format!("total: {} matches\n", match_count));
         }
 
         output
@@ -4201,9 +4227,11 @@ impl ParseHandler {
                     if let Some(name) = current_failed_test_name.take() {
                         // Find test by matching the name at the end (after ::)
                         // "____ test_name ____" matches "file.py::test_name"
-                        if let Some(test) = output.tests.iter_mut().find(|t| {
-                            t.name == name || t.name.ends_with(&format!("::{}", name))
-                        }) {
+                        if let Some(test) = output
+                            .tests
+                            .iter_mut()
+                            .find(|t| t.name == name || t.name.ends_with(&format!("::{}", name)))
+                        {
                             test.error_message = Some(failure_buffer.trim().to_string());
                         }
                     }
@@ -4219,9 +4247,11 @@ impl ParseHandler {
                     in_failure_section = true;
                     if let Some(name) = current_failed_test_name.take() {
                         // Find test by matching the name at the end (after ::)
-                        if let Some(test) = output.tests.iter_mut().find(|t| {
-                            t.name == name || t.name.ends_with(&format!("::{}", name))
-                        }) {
+                        if let Some(test) = output
+                            .tests
+                            .iter_mut()
+                            .find(|t| t.name == name || t.name.ends_with(&format!("::{}", name)))
+                        {
                             test.error_message = Some(failure_buffer.trim().to_string());
                         }
                     }
@@ -4265,9 +4295,11 @@ impl ParseHandler {
         if let Some(name) = current_failed_test_name.take() {
             // Find test by matching the name at the end (after ::)
             // "____ test_name ____" matches "file.py::test_name"
-            if let Some(test) = output.tests.iter_mut().find(|t| {
-                t.name == name || t.name.ends_with(&format!("::{}", name))
-            }) {
+            if let Some(test) = output
+                .tests
+                .iter_mut()
+                .find(|t| t.name == name || t.name.ends_with(&format!("::{}", name)))
+            {
                 test.error_message = Some(failure_buffer.trim().to_string());
             }
         }
@@ -8123,7 +8155,9 @@ impl ParseHandler {
             }
 
             // Track repeated lines
-            let entry = line_tracker.entry(trimmed.to_string()).or_insert((0, line_num, line_num));
+            let entry = line_tracker
+                .entry(trimmed.to_string())
+                .or_insert((0, line_num, line_num));
             entry.0 += 1;
             entry.2 = line_num;
 
@@ -8165,9 +8199,7 @@ impl ParseHandler {
         }
 
         // Sort repeated lines by first occurrence
-        logs_output
-            .repeated_lines
-            .sort_by_key(|r| r.first_line);
+        logs_output.repeated_lines.sort_by_key(|r| r.first_line);
 
         logs_output.is_empty = logs_output.entries.is_empty();
         logs_output
@@ -8217,7 +8249,9 @@ impl ParseHandler {
                     let rest = &line[19..];
                     // Check for milliseconds
                     if rest.starts_with('.') {
-                        let ms_end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len().min(4));
+                        let ms_end = rest
+                            .find(|c: char| !c.is_ascii_digit())
+                            .unwrap_or(rest.len().min(4));
                         end += 1 + ms_end;
                     }
                     // Check for timezone (Z or +/-HH:MM)
@@ -8227,13 +8261,14 @@ impl ParseHandler {
                             end += 1;
                         } else if tz_part.starts_with('+') || tz_part.starts_with('-') {
                             // Timezone offset like +00:00 or +0000
-                            let tz_len = if tz_part.len() >= 6 && tz_part.chars().nth(3) == Some(':') {
-                                6
-                            } else if tz_part.len() >= 5 {
-                                5
-                            } else {
-                                0
-                            };
+                            let tz_len =
+                                if tz_part.len() >= 6 && tz_part.chars().nth(3) == Some(':') {
+                                    6
+                                } else if tz_part.len() >= 5 {
+                                    5
+                                } else {
+                                    0
+                                };
                             end += tz_len;
                         }
                     }
@@ -8249,7 +8284,9 @@ impl ParseHandler {
                 let mut end = 19;
                 if line.len() > 19 && line[19..].starts_with('.') {
                     let rest = &line[19..];
-                    let ms_end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len().min(4));
+                    let ms_end = rest
+                        .find(|c: char| !c.is_ascii_digit())
+                        .unwrap_or(rest.len().min(4));
                     end += 1 + ms_end;
                 }
                 return Some(line[..end].to_string());
@@ -8279,7 +8316,9 @@ impl ParseHandler {
                 let mut end = 8;
                 if line.len() > 8 && line[8..].starts_with('.') {
                     let rest = &line[8..];
-                    let ms_end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len().min(4));
+                    let ms_end = rest
+                        .find(|c: char| !c.is_ascii_digit())
+                        .unwrap_or(rest.len().min(4));
                     end += 1 + ms_end;
                 }
                 return Some(line[..end].to_string());
@@ -8353,12 +8392,17 @@ impl ParseHandler {
     /// Check if string is a syslog timestamp.
     fn is_syslog_timestamp(s: &str) -> bool {
         // Format: Mon DD HH:MM:SS (e.g., "Jan 15 10:30:00")
-        let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        let months = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ];
         let parts: Vec<&str> = s.split_whitespace().collect();
         if parts.len() < 3 {
             return false;
         }
-        months.contains(&parts[0]) && parts[1].parse::<u8>().is_ok() && parts[2].len() == 8 && parts[2].contains(':')
+        months.contains(&parts[0])
+            && parts[1].parse::<u8>().is_ok()
+            && parts[2].len() == 8
+            && parts[2].contains(':')
     }
 
     /// Check if string is time only (HH:MM:SS).
@@ -8488,7 +8532,7 @@ impl ParseHandler {
             format!("<{}>", level),
             format!("({})", level),
             format!("{} -", level),
-            format!("{}]", level),  // Level followed by closing bracket
+            format!("{}]", level), // Level followed by closing bracket
         ];
 
         for pattern in patterns {
@@ -8500,7 +8544,10 @@ impl ParseHandler {
         // Check if line starts with level followed by space or colon
         if line_upper.starts_with(level) {
             let after_level = &line_upper[level.len()..];
-            if after_level.starts_with(':') || after_level.starts_with(' ') || after_level.is_empty() {
+            if after_level.starts_with(':')
+                || after_level.starts_with(' ')
+                || after_level.is_empty()
+            {
                 return true;
             }
         }
@@ -8524,11 +8571,45 @@ impl ParseHandler {
 
         // Remove common level prefixes
         let level_patterns: &[&str] = match level {
-            LogLevel::Debug => &["[DEBUG]", "DEBUG:", "|DEBUG|", "<DEBUG>", "(DEBUG)", "DEBUG -", "DEBUG "],
-            LogLevel::Info => &["[INFO]", "INFO:", "|INFO|", "<INFO>", "(INFO)", "INFO -", "INFO "],
-            LogLevel::Warning => &["[WARN]", "[WARNING]", "WARN:", "WARNING:", "|WARN|", "|WARNING|", "<WARN>", "<WARNING>", "(WARN)", "(WARNING)", "WARN -", "WARNING -", "WARN ", "WARNING "],
-            LogLevel::Error => &["[ERROR]", "ERROR:", "|ERROR|", "<ERROR>", "(ERROR)", "ERROR -", "ERROR ", "[ERR]", "ERR:", "ERR "],
-            LogLevel::Fatal => &["[FATAL]", "FATAL:", "|FATAL|", "<FATAL>", "(FATAL)", "FATAL -", "FATAL ", "[CRITICAL]", "CRITICAL:", "[CRIT]", "CRIT:"],
+            LogLevel::Debug => &[
+                "[DEBUG]", "DEBUG:", "|DEBUG|", "<DEBUG>", "(DEBUG)", "DEBUG -", "DEBUG ",
+            ],
+            LogLevel::Info => &[
+                "[INFO]", "INFO:", "|INFO|", "<INFO>", "(INFO)", "INFO -", "INFO ",
+            ],
+            LogLevel::Warning => &[
+                "[WARN]",
+                "[WARNING]",
+                "WARN:",
+                "WARNING:",
+                "|WARN|",
+                "|WARNING|",
+                "<WARN>",
+                "<WARNING>",
+                "(WARN)",
+                "(WARNING)",
+                "WARN -",
+                "WARNING -",
+                "WARN ",
+                "WARNING ",
+            ],
+            LogLevel::Error => &[
+                "[ERROR]", "ERROR:", "|ERROR|", "<ERROR>", "(ERROR)", "ERROR -", "ERROR ", "[ERR]",
+                "ERR:", "ERR ",
+            ],
+            LogLevel::Fatal => &[
+                "[FATAL]",
+                "FATAL:",
+                "|FATAL|",
+                "<FATAL>",
+                "(FATAL)",
+                "FATAL -",
+                "FATAL ",
+                "[CRITICAL]",
+                "CRITICAL:",
+                "[CRIT]",
+                "CRIT:",
+            ],
             LogLevel::Unknown => &[],
         };
 
@@ -8704,7 +8785,11 @@ impl ParseHandler {
             output.push_str(&format!(
                 "repeated: {} unique lines ({} occurrences)\n",
                 logs_output.repeated_lines.len(),
-                logs_output.repeated_lines.iter().map(|r| r.count).sum::<usize>()
+                logs_output
+                    .repeated_lines
+                    .iter()
+                    .map(|r| r.count)
+                    .sum::<usize>()
             ));
         }
 
@@ -8739,10 +8824,7 @@ impl ParseHandler {
                     shown, total_critical
                 ));
             } else {
-                output.push_str(&format!(
-                    "recent critical ({}):\n",
-                    shown
-                ));
+                output.push_str(&format!("recent critical ({}):\n", shown));
             }
             for entry in &logs_output.recent_critical {
                 let level_indicator = match entry.level {
@@ -8764,7 +8846,10 @@ impl ParseHandler {
         }
 
         // Show entries with detected levels (collapse consecutive duplicates)
-        let has_levels = logs_output.entries.iter().any(|e| e.level != LogLevel::Unknown);
+        let has_levels = logs_output
+            .entries
+            .iter()
+            .any(|e| e.level != LogLevel::Unknown);
         if has_levels {
             output.push_str("entries:\n");
             // Collapse consecutive entries with same level and message
@@ -9326,16 +9411,14 @@ impl Router {
         let formatted = match ctx.format {
             OutputFormat::Raw => result.clone(),
             OutputFormat::Compact => result.clone(),
-            OutputFormat::Json => {
-                serde_json::json!({
-                    "content": result,
-                    "stats": {
-                        "input_length": input.len(),
-                        "output_length": result.len(),
-                    }
-                })
-                .to_string()
-            }
+            OutputFormat::Json => serde_json::json!({
+                "content": result,
+                "stats": {
+                    "input_length": input.len(),
+                    "output_length": result.len(),
+                }
+            })
+            .to_string(),
             OutputFormat::Agent => {
                 format!("Content:\n{}\n", result)
             }
@@ -11912,7 +11995,10 @@ Ran 4 tests across 1 files. [0.66ms]"#;
         let input = "2024-01-15T10:30:00 [INFO] Message";
         let result = ParseHandler::parse_logs(input);
 
-        assert_eq!(result.entries[0].timestamp, Some("2024-01-15T10:30:00".to_string()));
+        assert_eq!(
+            result.entries[0].timestamp,
+            Some("2024-01-15T10:30:00".to_string())
+        );
         assert_eq!(result.entries[0].level, LogLevel::Info);
     }
 
@@ -11921,7 +12007,10 @@ Ran 4 tests across 1 files. [0.66ms]"#;
         let input = "2024-01-15 10:30:00 [ERROR] Error message";
         let result = ParseHandler::parse_logs(input);
 
-        assert_eq!(result.entries[0].timestamp, Some("2024-01-15 10:30:00".to_string()));
+        assert_eq!(
+            result.entries[0].timestamp,
+            Some("2024-01-15 10:30:00".to_string())
+        );
         assert_eq!(result.entries[0].level, LogLevel::Error);
     }
 
@@ -11930,7 +12019,10 @@ Ran 4 tests across 1 files. [0.66ms]"#;
         let input = "Jan 15 10:30:00 server daemon[123]: Message";
         let result = ParseHandler::parse_logs(input);
 
-        assert_eq!(result.entries[0].timestamp, Some("Jan 15 10:30:00".to_string()));
+        assert_eq!(
+            result.entries[0].timestamp,
+            Some("Jan 15 10:30:00".to_string())
+        );
     }
 
     #[test]
@@ -11943,39 +12035,87 @@ Ran 4 tests across 1 files. [0.66ms]"#;
 
     #[test]
     fn test_detect_log_level_brackets() {
-        assert_eq!(ParseHandler::detect_log_level("[DEBUG] test"), LogLevel::Debug);
-        assert_eq!(ParseHandler::detect_log_level("[INFO] test"), LogLevel::Info);
-        assert_eq!(ParseHandler::detect_log_level("[WARN] test"), LogLevel::Warning);
-        assert_eq!(ParseHandler::detect_log_level("[ERROR] test"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("[FATAL] test"), LogLevel::Fatal);
+        assert_eq!(
+            ParseHandler::detect_log_level("[DEBUG] test"),
+            LogLevel::Debug
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("[INFO] test"),
+            LogLevel::Info
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("[WARN] test"),
+            LogLevel::Warning
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("[ERROR] test"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("[FATAL] test"),
+            LogLevel::Fatal
+        );
     }
 
     #[test]
     fn test_detect_log_level_colon() {
-        assert_eq!(ParseHandler::detect_log_level("DEBUG: test"), LogLevel::Debug);
+        assert_eq!(
+            ParseHandler::detect_log_level("DEBUG: test"),
+            LogLevel::Debug
+        );
         assert_eq!(ParseHandler::detect_log_level("INFO: test"), LogLevel::Info);
-        assert_eq!(ParseHandler::detect_log_level("WARNING: test"), LogLevel::Warning);
-        assert_eq!(ParseHandler::detect_log_level("ERROR: test"), LogLevel::Error);
+        assert_eq!(
+            ParseHandler::detect_log_level("WARNING: test"),
+            LogLevel::Warning
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("ERROR: test"),
+            LogLevel::Error
+        );
     }
 
     #[test]
     fn test_detect_log_level_pipes() {
-        assert_eq!(ParseHandler::detect_log_level("|DEBUG| test"), LogLevel::Debug);
-        assert_eq!(ParseHandler::detect_log_level("|INFO| test"), LogLevel::Info);
-        assert_eq!(ParseHandler::detect_log_level("|ERROR| test"), LogLevel::Error);
+        assert_eq!(
+            ParseHandler::detect_log_level("|DEBUG| test"),
+            LogLevel::Debug
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("|INFO| test"),
+            LogLevel::Info
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("|ERROR| test"),
+            LogLevel::Error
+        );
     }
 
     #[test]
     fn test_detect_log_level_case_insensitive() {
-        assert_eq!(ParseHandler::detect_log_level("[info] test"), LogLevel::Info);
-        assert_eq!(ParseHandler::detect_log_level("[Error] test"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("WARN: test"), LogLevel::Warning);
+        assert_eq!(
+            ParseHandler::detect_log_level("[info] test"),
+            LogLevel::Info
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("[Error] test"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("WARN: test"),
+            LogLevel::Warning
+        );
     }
 
     #[test]
     fn test_detect_log_level_exception() {
-        assert_eq!(ParseHandler::detect_log_level("Exception: test"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("java.lang.Exception: test"), LogLevel::Error);
+        assert_eq!(
+            ParseHandler::detect_log_level("Exception: test"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("java.lang.Exception: test"),
+            LogLevel::Error
+        );
     }
 
     #[test]
@@ -11992,11 +12132,7 @@ Ran 4 tests across 1 files. [0.66ms]"#;
 
     #[test]
     fn test_extract_message_removes_level() {
-        let message = ParseHandler::extract_message(
-            "[INFO] Hello world",
-            &None,
-            &LogLevel::Info,
-        );
+        let message = ParseHandler::extract_message("[INFO] Hello world", &None, &LogLevel::Info);
         assert!(message.contains("Hello world"));
         assert!(!message.contains("[INFO]"));
     }
@@ -12124,83 +12260,175 @@ Ran 4 tests across 1 files. [0.66ms]"#;
 
     #[test]
     fn test_detect_log_level_failed() {
-        assert_eq!(ParseHandler::detect_log_level("Test failed"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("FAILED: assertion failed"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("Build failure"), LogLevel::Error);
+        assert_eq!(
+            ParseHandler::detect_log_level("Test failed"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("FAILED: assertion failed"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("Build failure"),
+            LogLevel::Error
+        );
     }
 
     #[test]
     fn test_detect_log_level_stack_trace() {
-        assert_eq!(ParseHandler::detect_log_level("STACK TRACE:"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("Backtrace:"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("Exception at com.example.MyClass.myMethod(MyClass.java:42)"), LogLevel::Error);
+        assert_eq!(
+            ParseHandler::detect_log_level("STACK TRACE:"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("Backtrace:"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level(
+                "Exception at com.example.MyClass.myMethod(MyClass.java:42)"
+            ),
+            LogLevel::Error
+        );
     }
 
     #[test]
     fn test_detect_log_level_panic_crash() {
-        assert_eq!(ParseHandler::detect_log_level("PANIC: unrecoverable error"), LogLevel::Fatal);
-        assert_eq!(ParseHandler::detect_log_level("Application crashed"), LogLevel::Fatal);
-        assert_eq!(ParseHandler::detect_log_level("Aborting due to critical error"), LogLevel::Fatal);
+        assert_eq!(
+            ParseHandler::detect_log_level("PANIC: unrecoverable error"),
+            LogLevel::Fatal
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("Application crashed"),
+            LogLevel::Fatal
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("Aborting due to critical error"),
+            LogLevel::Fatal
+        );
     }
 
     #[test]
     fn test_detect_log_level_deprecated() {
-        assert_eq!(ParseHandler::detect_log_level("DEPRECATED: use newFunction instead"), LogLevel::Warning);
-        assert_eq!(ParseHandler::detect_log_level("This method is deprecated"), LogLevel::Warning);
+        assert_eq!(
+            ParseHandler::detect_log_level("DEPRECATED: use newFunction instead"),
+            LogLevel::Warning
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("This method is deprecated"),
+            LogLevel::Warning
+        );
     }
 
     #[test]
     fn test_detect_log_level_caution() {
-        assert_eq!(ParseHandler::detect_log_level("CAUTION: data may be lost"), LogLevel::Warning);
-        assert_eq!(ParseHandler::detect_log_level("ATTENTION: read carefully"), LogLevel::Warning);
+        assert_eq!(
+            ParseHandler::detect_log_level("CAUTION: data may be lost"),
+            LogLevel::Warning
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("ATTENTION: read carefully"),
+            LogLevel::Warning
+        );
     }
 
     #[test]
     fn test_detect_log_level_connection_errors() {
-        assert_eq!(ParseHandler::detect_log_level("Connection refused"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("CONNECTION ERROR: timeout"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("ACCESS DENIED for user"), LogLevel::Error);
+        assert_eq!(
+            ParseHandler::detect_log_level("Connection refused"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("CONNECTION ERROR: timeout"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("ACCESS DENIED for user"),
+            LogLevel::Error
+        );
     }
 
     #[test]
     fn test_detect_log_level_timeout() {
-        assert_eq!(ParseHandler::detect_log_level("TIMEOUT ERROR"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("Request timed out"), LogLevel::Unknown);
+        assert_eq!(
+            ParseHandler::detect_log_level("TIMEOUT ERROR"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("Request timed out"),
+            LogLevel::Unknown
+        );
     }
 
     #[test]
     fn test_detect_log_level_segfault() {
         assert_eq!(ParseHandler::detect_log_level("SEG FAULT"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("SEGFAULT at 0x0"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("NULL POINTER exception"), LogLevel::Error);
+        assert_eq!(
+            ParseHandler::detect_log_level("SEGFAULT at 0x0"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("NULL POINTER exception"),
+            LogLevel::Error
+        );
     }
 
     #[test]
     fn test_detect_log_level_notice() {
-        assert_eq!(ParseHandler::detect_log_level("NOTICE: system maintenance"), LogLevel::Info);
-        assert_eq!(ParseHandler::detect_log_level("[NOTICE] Server starting"), LogLevel::Info);
+        assert_eq!(
+            ParseHandler::detect_log_level("NOTICE: system maintenance"),
+            LogLevel::Info
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("[NOTICE] Server starting"),
+            LogLevel::Info
+        );
     }
 
     #[test]
     fn test_detect_log_level_slow_queries() {
-        assert_eq!(ParseHandler::detect_log_level("SLOW QUERY detected"), LogLevel::Warning);
-        assert_eq!(ParseHandler::detect_log_level("SLOW REQUEST: 5.2s"), LogLevel::Warning);
+        assert_eq!(
+            ParseHandler::detect_log_level("SLOW QUERY detected"),
+            LogLevel::Warning
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("SLOW REQUEST: 5.2s"),
+            LogLevel::Warning
+        );
     }
 
     #[test]
     fn test_detect_log_level_negation_patterns() {
         // These should NOT be detected as errors due to negation patterns
-        assert_eq!(ParseHandler::detect_log_level("No errors found"), LogLevel::Unknown);
-        assert_eq!(ParseHandler::detect_log_level("Completed with 0 errors"), LogLevel::Unknown);
-        assert_eq!(ParseHandler::detect_log_level("Zero failures detected"), LogLevel::Unknown);
+        assert_eq!(
+            ParseHandler::detect_log_level("No errors found"),
+            LogLevel::Unknown
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("Completed with 0 errors"),
+            LogLevel::Unknown
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("Zero failures detected"),
+            LogLevel::Unknown
+        );
     }
 
     #[test]
     fn test_detect_log_level_case_variations() {
         // Test mixed case detection
-        assert_eq!(ParseHandler::detect_log_level("ERROR: something bad"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("Error: something bad"), LogLevel::Error);
-        assert_eq!(ParseHandler::detect_log_level("error: something bad"), LogLevel::Error);
+        assert_eq!(
+            ParseHandler::detect_log_level("ERROR: something bad"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("Error: something bad"),
+            LogLevel::Error
+        );
+        assert_eq!(
+            ParseHandler::detect_log_level("error: something bad"),
+            LogLevel::Error
+        );
         assert_eq!(ParseHandler::detect_log_level("FAILED"), LogLevel::Error);
         assert_eq!(ParseHandler::detect_log_level("failed"), LogLevel::Error);
         assert_eq!(ParseHandler::detect_log_level("Failed"), LogLevel::Error);

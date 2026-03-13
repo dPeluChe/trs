@@ -1707,7 +1707,8 @@ mod tests {
 
     #[test]
     fn test_ls_entry_type_deserialization() {
-        let json = r#"{"name": "src", "type": "directory", "is_hidden": false, "is_symlink": false}"#;
+        let json =
+            r#"{"name": "src", "type": "directory", "is_hidden": false, "is_symlink": false}"#;
         let entry: LsEntry = serde_json::from_str(json).unwrap();
         assert_eq!(entry.name, "src");
         assert_eq!(entry.entry_type, LsEntryType::Directory);
@@ -1736,7 +1737,9 @@ mod tests {
     fn test_ls_output_round_trip() {
         let mut original = LsOutputSchema::new();
         original.is_empty = false;
-        original.entries.push(LsEntry::new("src", LsEntryType::Directory));
+        original
+            .entries
+            .push(LsEntry::new("src", LsEntryType::Directory));
         original.directories.push("src".to_string());
         original.counts.total = 1;
         original.counts.directories = 1;
