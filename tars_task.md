@@ -128,12 +128,12 @@ The project includes three functional layers:
 - [x] parse pytest output
 - [x] parse jest output
 - [x] parse vitest output
-- [ ] parse npm test output
-- [ ] parse pnpm test output
-- [ ] parse bun test output
-- [ ] extract passed test count
-- [ ] extract failed test count
-- [ ] extract skipped test count
+- [x] parse npm test output
+- [x] parse pnpm test output
+- [x] parse bun test output
+- [x] extract passed test count
+- [x] extract failed test count
+- [x] extract skipped test count
 - [ ] extract execution duration
 - [ ] extract failing test identifiers
 - [ ] implement compact success summary
