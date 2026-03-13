@@ -48,7 +48,7 @@ pub struct Cli {
     pub stats: bool,
 
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 /// Output format options with defined precedence rules.
@@ -513,7 +513,28 @@ fn main() {
 
     // Create router and execute the command
     let router = Router::new();
-    router.execute_and_print(&cli.command, &ctx);
+
+    match &cli.command {
+        Some(command) => router.execute_and_print(command, &ctx),
+        None => {
+            // Read from stdin when no command is provided
+            use std::io::{self, Read};
+            let mut input = String::new();
+            if let Err(e) = io::stdin().read_to_string(&mut input) {
+                eprintln!("Error reading from stdin: {}", e);
+                std::process::exit(1);
+            }
+
+            // Process the input (similar to clean command)
+            match router.process_stdin(&input, &ctx) {
+                Ok(output) => print!("{}", output),
+                Err(e) => {
+                    eprintln!("{}", e);
+                    std::process::exit(e.exit_code().unwrap_or(1));
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -633,7 +654,7 @@ mod tests {
         ]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
-        match cli.command {
+        match cli.command.as_ref().unwrap() {
             Commands::Search {
                 path,
                 query,
@@ -642,12 +663,12 @@ mod tests {
                 context,
                 limit,
             } => {
-                assert_eq!(path, PathBuf::from("/path/to/dir"));
+                assert_eq!(path, &PathBuf::from("/path/to/dir"));
                 assert_eq!(query, "pattern");
-                assert_eq!(extension, Some("rs".to_string()));
-                assert!(ignore_case);
-                assert_eq!(context, Some(3));
-                assert_eq!(limit, Some(100));
+                assert_eq!(extension, &Some("rs".to_string()));
+                assert!(*ignore_case);
+                assert_eq!(context, &Some(3));
+                assert_eq!(limit, &Some(100));
             }
             _ => panic!("Expected Search command"),
         }
@@ -667,7 +688,7 @@ mod tests {
         ]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
-        match cli.command {
+        match cli.command.as_ref().unwrap() {
             Commands::Replace {
                 path,
                 search,
@@ -675,11 +696,11 @@ mod tests {
                 extension,
                 dry_run,
             } => {
-                assert_eq!(path, PathBuf::from("/path/to/dir"));
+                assert_eq!(path, &PathBuf::from("/path/to/dir"));
                 assert_eq!(search, "old");
                 assert_eq!(replace, "new");
-                assert_eq!(extension, Some("ts".to_string()));
-                assert!(dry_run);
+                assert_eq!(extension, &Some("ts".to_string()));
+                assert!(*dry_run);
             }
             _ => panic!("Expected Replace command"),
         }
@@ -698,17 +719,17 @@ mod tests {
         ]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
-        match cli.command {
+        match cli.command.as_ref().unwrap() {
             Commands::Tail {
                 file,
                 lines,
                 errors,
                 follow,
             } => {
-                assert_eq!(file, PathBuf::from("/var/log/app.log"));
-                assert_eq!(lines, 50);
-                assert!(errors);
-                assert!(follow);
+                assert_eq!(file, &PathBuf::from("/var/log/app.log"));
+                assert_eq!(*lines, 50);
+                assert!(*errors);
+                assert!(*follow);
             }
             _ => panic!("Expected Tail command"),
         }
@@ -728,7 +749,7 @@ mod tests {
         ]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
-        match cli.command {
+        match cli.command.as_ref().unwrap() {
             Commands::Clean {
                 file,
                 no_ansi,
@@ -736,11 +757,11 @@ mod tests {
                 collapse_repeats,
                 trim,
             } => {
-                assert_eq!(file, Some(PathBuf::from("input.txt")));
-                assert!(no_ansi);
-                assert!(collapse_blanks);
-                assert!(collapse_repeats);
-                assert!(trim);
+                assert_eq!(file, &Some(PathBuf::from("input.txt")));
+                assert!(*no_ansi);
+                assert!(*collapse_blanks);
+                assert!(*collapse_repeats);
+                assert!(*trim);
             }
             _ => panic!("Expected Clean command"),
         }
@@ -751,7 +772,7 @@ mod tests {
         let cli = Cli::try_parse_from(["trs", "parse", "git-status"]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
-        match cli.command {
+        match cli.command.as_ref().unwrap() {
             Commands::Parse { parser } => match parser {
                 ParseCommands::GitStatus { file, .. } => {
                     assert!(file.is_none());
@@ -767,10 +788,10 @@ mod tests {
         let cli = Cli::try_parse_from(["trs", "parse", "test", "--runner", "pytest"]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
-        match cli.command {
+        match cli.command.as_ref().unwrap() {
             Commands::Parse { parser } => match parser {
                 ParseCommands::Test { runner, file } => {
-                    assert_eq!(runner, Some(TestRunner::Pytest));
+                    assert_eq!(*runner, Some(TestRunner::Pytest));
                     assert!(file.is_none());
                 }
                 _ => panic!("Expected Test parser"),
@@ -791,15 +812,15 @@ mod tests {
         ]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
-        match cli.command {
+        match cli.command.as_ref().unwrap() {
             Commands::Html2md {
                 input,
                 output,
                 metadata,
             } => {
                 assert_eq!(input, "https://example.com");
-                assert_eq!(output, Some(PathBuf::from("out.md")));
-                assert!(metadata);
+                assert_eq!(output, &Some(PathBuf::from("out.md")));
+                assert!(*metadata);
             }
             _ => panic!("Expected Html2md command"),
         }
@@ -817,10 +838,10 @@ mod tests {
         ]);
         assert!(cli.is_ok());
         let cli = cli.unwrap();
-        match cli.command {
+        match cli.command.as_ref().unwrap() {
             Commands::Txt2md { input, output } => {
-                assert_eq!(input, Some(PathBuf::from("input.txt")));
-                assert_eq!(output, Some(PathBuf::from("out.md")));
+                assert_eq!(input, &Some(PathBuf::from("input.txt")));
+                assert_eq!(output, &Some(PathBuf::from("out.md")));
             }
             _ => panic!("Expected Txt2md command"),
         }
@@ -1161,5 +1182,40 @@ mod tests {
     fn test_precedence_with_txt2md_command() {
         let cli = Cli::try_parse_from(["trs", "--json", "txt2md"]).unwrap();
         assert_eq!(cli.output_format(), OutputFormat::Json);
+    }
+
+    // ============================================================
+    // Stdin input tests
+    // ============================================================
+
+    #[test]
+    fn test_stdin_no_command() {
+        // When no command is provided, command should be None
+        let cli = Cli::try_parse_from(["trs"]);
+        assert!(cli.is_ok());
+        let cli = cli.unwrap();
+        assert!(cli.command.is_none());
+    }
+
+    #[test]
+    fn test_stdin_with_format_flags() {
+        // Format flags should work even without a command
+        let cli = Cli::try_parse_from(["trs", "--json"]);
+        assert!(cli.is_ok());
+        let cli = cli.unwrap();
+        assert!(cli.command.is_none());
+        assert_eq!(cli.output_format(), OutputFormat::Json);
+
+        let cli = Cli::try_parse_from(["trs", "--csv"]);
+        assert!(cli.is_ok());
+        let cli = cli.unwrap();
+        assert!(cli.command.is_none());
+        assert_eq!(cli.output_format(), OutputFormat::Csv);
+
+        let cli = Cli::try_parse_from(["trs", "--raw"]);
+        assert!(cli.is_ok());
+        let cli = cli.unwrap();
+        assert!(cli.command.is_none());
+        assert_eq!(cli.output_format(), OutputFormat::Raw);
     }
 }

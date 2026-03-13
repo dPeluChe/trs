@@ -4890,3 +4890,99 @@ fn test_raw_format_lower_precedence_than_compact() {
     // Compact format should be used (just the output)
         .stdout(predicate::str::contains("test"));
 }
+
+// ============================================================
+// Stdin Input Tests
+// ============================================================
+
+#[test]
+fn test_stdin_basic_input() {
+    // Test reading basic input from stdin without a command
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("Hello World")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hello World"));
+}
+
+#[test]
+fn test_stdin_with_trailing_whitespace() {
+    // Test that trailing whitespace is trimmed
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("Line 1   \nLine 2   ")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Line 1"))
+        .stdout(predicate::str::contains("Line 2"));
+}
+
+#[test]
+fn test_stdin_collapses_blank_lines() {
+    // Test that multiple blank lines are collapsed into one
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("Line 1\n\n\n\nLine 2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Line 1"))
+        .stdout(predicate::str::contains("Line 2"));
+}
+
+#[test]
+fn test_stdin_strips_ansi_codes() {
+    // Test that ANSI escape codes are stripped
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("\x1b[31mRed Text\x1b[0m Normal Text")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Red Text"))
+        .stdout(predicate::str::contains("Normal Text"))
+        .stdout(predicate::str::contains("\x1b[").not());
+}
+
+#[test]
+fn test_stdin_with_json_format() {
+    // Test JSON output format with stdin input
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .write_stdin("Test Content")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"content\""))
+        .stdout(predicate::str::contains("\"stats\""))
+        .stdout(predicate::str::contains("Test Content"));
+}
+
+#[test]
+fn test_stdin_with_raw_format() {
+    // Test raw output format with stdin input
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .write_stdin("Raw Content")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Raw Content"));
+}
+
+#[test]
+fn test_stdin_with_csv_format() {
+    // Test CSV output format with stdin input
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--csv")
+        .write_stdin("Line 1\nLine 2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Line 1"))
+        .stdout(predicate::str::contains("Line 2"));
+}
+
+#[test]
+fn test_stdin_with_agent_format() {
+    // Test agent output format with stdin input
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--agent")
+        .write_stdin("Agent Content")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Content:"))
+        .stdout(predicate::str::contains("Agent Content"));
+}

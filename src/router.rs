@@ -7,6 +7,34 @@
 use crate::process::{ProcessBuilder, ProcessError, ProcessOutput};
 use crate::{Cli, Commands, OutputFormat, ParseCommands};
 
+/// Strip ANSI escape codes from a string.
+fn strip_ansi_codes(s: &str) -> String {
+    // Simple ANSI stripping - removes escape sequences
+    let mut result = String::with_capacity(s.len());
+    let chars: Vec<char> = s.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        if chars[i] == '\x1b' {
+            // Skip the escape sequence
+            i += 1;
+            if i < chars.len() && chars[i] == '[' {
+                i += 1;
+                // Skip until we reach a letter (the terminator)
+                while i < chars.len() && !chars[i].is_ascii_alphabetic() {
+                    i += 1;
+                }
+                i += 1; // Skip the terminator
+            }
+        } else {
+            result.push(chars[i]);
+            i += 1;
+        }
+    }
+
+    result
+}
+
 /// Context passed to command handlers containing global CLI options.
 #[derive(Debug, Clone)]
 pub struct CommandContext {
@@ -8872,6 +8900,78 @@ impl Router {
                 std::process::exit(exit_code);
             }
         }
+    }
+
+    /// Process stdin input when no command is specified.
+    ///
+    /// This reads from stdin and applies basic text processing:
+    /// - Strips ANSI codes
+    /// - Trims whitespace
+    /// - Collapses blank lines
+    pub fn process_stdin(&self, input: &str, ctx: &CommandContext) -> CommandResult<String> {
+        let mut result = input.to_string();
+
+        // Strip ANSI escape codes
+        result = strip_ansi_codes(&result);
+
+        // Trim trailing whitespace from each line
+        result = result
+            .lines()
+            .map(|line| line.trim_end())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        // Collapse multiple blank lines into single blank lines
+        let lines: Vec<&str> = result.lines().collect();
+        let mut collapsed_lines = Vec::new();
+        let mut prev_blank = false;
+
+        for line in lines {
+            let is_blank = line.trim().is_empty();
+            if is_blank && prev_blank {
+                continue; // Skip consecutive blank lines
+            }
+            collapsed_lines.push(line);
+            prev_blank = is_blank;
+        }
+
+        result = collapsed_lines.join("\n");
+
+        // Remove leading/trailing blank lines
+        result = result.trim().to_string();
+
+        // Format output based on the requested format
+        let formatted = match ctx.format {
+            OutputFormat::Raw => result.clone(),
+            OutputFormat::Compact => result.clone(),
+            OutputFormat::Json => {
+                serde_json::json!({
+                    "content": result,
+                    "stats": {
+                        "input_length": input.len(),
+                        "output_length": result.len(),
+                    }
+                })
+                .to_string()
+            }
+            OutputFormat::Agent => {
+                format!("Content:\n{}\n", result)
+            }
+            OutputFormat::Csv => {
+                // Output as CSV with one row per line
+                result
+                    .lines()
+                    .map(|line| format!("\"{}\"", line.replace('"', "\"\"")))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+            OutputFormat::Tsv => {
+                // Output as TSV with one row per line
+                result.lines().collect::<Vec<_>>().join("\n")
+            }
+        };
+
+        Ok(formatted)
     }
 
     /// Format a not-implemented message based on the output format.
