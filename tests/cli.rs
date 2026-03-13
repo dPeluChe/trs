@@ -1773,8 +1773,7 @@ fn test_router_parse_test_command() {
         .arg("pytest")
         .assert()
         .success()
-        .stderr(predicate::str::contains("test"))
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("no tests found"));
 }
 
 #[test]
@@ -2226,19 +2225,25 @@ fn test_parse_grep_json_output() {
 }
 
 #[test]
-fn test_parse_test_json_output_not_implemented() {
+fn test_parse_test_json_output() {
+    // Test that pytest parser now works and produces valid JSON output
+    let pytest_input = r#"tests/test_main.py::test_add PASSED
+1 passed in 0.01s"#;
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
         .arg("parse")
         .arg("test")
+        .arg("--runner")
+        .arg("pytest")
+        .write_stdin(pytest_input)
         .assert()
         .success();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-    let json_line = stderr.lines().last().unwrap_or("");
-    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
-    assert_eq!(json["not_implemented"], true);
-    assert!(json["message"].as_str().unwrap().contains("test parsing"));
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], true);
+    assert_eq!(json["summary"]["passed"], 1);
+    assert_eq!(json["summary"]["total"], 1);
 }
 
 #[test]

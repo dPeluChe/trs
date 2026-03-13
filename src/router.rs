@@ -333,6 +333,86 @@ struct GrepOutput {
     matches_shown: usize,
 }
 
+// ============================================================
+// Test Output Data Structures (pytest)
+// ============================================================
+
+/// Status of a single test.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TestStatus {
+    /// Test passed.
+    Passed,
+    /// Test failed.
+    Failed,
+    /// Test was skipped.
+    Skipped,
+    /// Test expected to fail (xfail).
+    XFailed,
+    /// Test expected to fail but passed (xpass).
+    XPassed,
+    /// Test encountered an error.
+    Error,
+}
+
+/// A single test result.
+#[derive(Debug, Clone)]
+struct TestResult {
+    /// Full test name (module::test_name or file::test_name).
+    name: String,
+    /// Status of the test.
+    status: TestStatus,
+    /// Duration in seconds (if available).
+    duration: Option<f64>,
+    /// File path (if available).
+    file: Option<String>,
+    /// Line number (if available).
+    line: Option<usize>,
+    /// Error message (for failed tests).
+    error_message: Option<String>,
+}
+
+/// Summary of test results.
+#[derive(Debug, Clone, Default)]
+struct TestSummary {
+    /// Number of passed tests.
+    passed: usize,
+    /// Number of failed tests.
+    failed: usize,
+    /// Number of skipped tests.
+    skipped: usize,
+    /// Number of xfailed tests.
+    xfailed: usize,
+    /// Number of xpassed tests.
+    xpassed: usize,
+    /// Number of error tests.
+    errors: usize,
+    /// Total number of tests.
+    total: usize,
+    /// Total duration in seconds.
+    duration: Option<f64>,
+}
+
+/// Parsed pytest output.
+#[derive(Debug, Clone, Default)]
+struct PytestOutput {
+    /// List of test results.
+    tests: Vec<TestResult>,
+    /// Summary statistics.
+    summary: TestSummary,
+    /// Whether all tests passed.
+    success: bool,
+    /// Whether the output is empty.
+    is_empty: bool,
+    /// Collection rootdir (if available).
+    rootdir: Option<String>,
+    /// Platform info (if available).
+    platform: Option<String>,
+    /// Python version (if available).
+    python_version: Option<String>,
+    /// Pytest version (if available).
+    pytest_version: Option<String>,
+}
+
 /// Common generated directory names that are typically build artifacts or dependencies.
 const COMMON_GENERATED_DIRS: &[&str] = &[
     // JavaScript/TypeScript
@@ -3016,11 +3096,612 @@ impl ParseHandler {
         if ctx.stats {
             eprintln!("Stats: enabled");
         }
-        eprintln!("Output format: {:?}", ctx.format);
-        eprintln!("Parser: test (runner: {:?}, file: {:?})", runner, file);
 
-        // TODO: Implement actual test parsing
-        Err(CommandError::NotImplemented("test parsing".to_string()))
+        // Read input from file or stdin
+        let input = Self::read_input(file)?;
+
+        // Parse based on the runner type (default to pytest)
+        let test_output = match runner {
+            Some(crate::TestRunner::Pytest) | None => Self::parse_pytest(&input)?,
+            Some(crate::TestRunner::Jest) => {
+                // For now, return not implemented for other runners
+                return Err(CommandError::NotImplemented(
+                    "jest test parsing".to_string(),
+                ));
+            }
+            Some(crate::TestRunner::Vitest) => {
+                return Err(CommandError::NotImplemented(
+                    "vitest test parsing".to_string(),
+                ));
+            }
+            Some(crate::TestRunner::Npm) => {
+                return Err(CommandError::NotImplemented(
+                    "npm test parsing".to_string(),
+                ));
+            }
+            Some(crate::TestRunner::Pnpm) => {
+                return Err(CommandError::NotImplemented(
+                    "pnpm test parsing".to_string(),
+                ));
+            }
+            Some(crate::TestRunner::Bun) => {
+                return Err(CommandError::NotImplemented(
+                    "bun test parsing".to_string(),
+                ));
+            }
+        };
+
+        // Format output based on the requested format
+        let output = Self::format_pytest(&test_output, ctx.format);
+        print!("{}", output);
+
+        Ok(())
+    }
+
+    /// Parse pytest output into structured data.
+    fn parse_pytest(input: &str) -> CommandResult<PytestOutput> {
+        let mut output = PytestOutput::default();
+        let mut current_test: Option<TestResult> = None;
+        let mut in_failure_section = false;
+        let mut failure_buffer = String::new();
+        let mut current_failed_test_name: Option<String> = None;
+
+        for line in input.lines() {
+            let trimmed = line.trim();
+
+            // Skip empty lines
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            // Parse header info
+            // "rootdir: /path/to/project"
+            if trimmed.starts_with("rootdir:") {
+                output.rootdir = Some(
+                    trimmed
+                        .strip_prefix("rootdir:")
+                        .unwrap_or("")
+                        .trim()
+                        .to_string(),
+                );
+                continue;
+            }
+
+            // "platform darwin -- Python 3.12.0, pytest-8.0.0, pluggy-1.4.0"
+            if trimmed.starts_with("platform ") {
+                output.platform = Some(trimmed.to_string());
+                // Extract Python and pytest version
+                if let Some(py_pos) = trimmed.find("Python ") {
+                    let after_py = &trimmed[py_pos + 7..];
+                    if let Some(comma_pos) = after_py.find(',') {
+                        output.python_version = Some(after_py[..comma_pos].to_string());
+                    }
+                }
+                if let Some(pytest_pos) = trimmed.find("pytest-") {
+                    let after_pytest = &trimmed[pytest_pos + 7..];
+                    if let Some(comma_pos) = after_pytest.find(',') {
+                        output.pytest_version = Some(after_pytest[..comma_pos].to_string());
+                    } else {
+                        output.pytest_version = Some(after_pytest.to_string());
+                    }
+                }
+                continue;
+            }
+
+            // Detect start of test session
+            // "test session starts" or "collected N items"
+            if trimmed.contains("test session starts") || trimmed.contains("collected") {
+                continue;
+            }
+
+            // Detect test results with progress format
+            // Format: "tests/test_file.py::test_name PASSED" or "tests/test_file.py::test_name FAILED"
+            // Also handles the short format: "test_file.py .F.s" (dot=pass, F=fail, s=skip)
+            if let Some(test_result) = Self::parse_pytest_test_line(trimmed) {
+                // Save any pending test
+                if let Some(test) = current_test.take() {
+                    output.tests.push(test);
+                }
+                current_test = Some(test_result);
+                continue;
+            }
+
+            // Detect summary line
+            // "N passed, M failed, K skipped in X.XXs"
+            // Also: "N passed in X.XXs"
+            if Self::is_pytest_summary_line(trimmed) {
+                let summary = Self::parse_pytest_summary(trimmed);
+                output.summary = summary;
+                continue;
+            }
+
+            // Detect failure section start
+            // "=== FAILURES ===" or "=== short test summary info ==="
+            if trimmed.starts_with("=== FAILURES") || trimmed.starts_with("FAILURES") {
+                in_failure_section = true;
+                continue;
+            }
+            if trimmed.starts_with("=== short test summary info ===") {
+                in_failure_section = true;
+                continue;
+            }
+
+            // Detect error section
+            // "=== ERRORS ==="
+            if trimmed.starts_with("=== ERRORS") || trimmed.starts_with("ERRORS") {
+                in_failure_section = true;
+                continue;
+            }
+
+            // Parse failure details
+            if in_failure_section {
+                // Check if this is a new failure header: "____ test_name ____"
+                if trimmed.starts_with("____") && trimmed.ends_with("____") {
+                    // Save any previous failure info
+                    if let Some(name) = current_failed_test_name.take() {
+                        if let Some(test) = output.tests.iter_mut().find(|t| t.name == name) {
+                            test.error_message = Some(failure_buffer.trim().to_string());
+                        }
+                    }
+                    let name = trimmed.trim_matches('_').trim().to_string();
+                    current_failed_test_name = Some(name);
+                    failure_buffer = String::new();
+                    continue;
+                }
+
+                // Check for ERROR instead of FAILURES
+                // "ERROR at setup of test_name"
+                if trimmed.starts_with("ERROR at") || trimmed.starts_with("ERROR:") {
+                    in_failure_section = true;
+                    if let Some(name) = current_failed_test_name.take() {
+                        if let Some(test) = output.tests.iter_mut().find(|t| t.name == name) {
+                            test.error_message = Some(failure_buffer.trim().to_string());
+                        }
+                    }
+                    // Extract test name from error line
+                    let name = if trimmed.starts_with("ERROR at setup of ") {
+                        trimmed.strip_prefix("ERROR at setup of ").unwrap_or("").to_string()
+                    } else if trimmed.starts_with("ERROR at teardown of ") {
+                        trimmed.strip_prefix("ERROR at teardown of ").unwrap_or("").to_string()
+                    } else {
+                        trimmed.strip_prefix("ERROR:").unwrap_or("").trim().to_string()
+                    };
+                    current_failed_test_name = Some(name);
+                    failure_buffer = String::new();
+                    continue;
+                }
+
+                // Accumulate failure details
+                if current_failed_test_name.is_some() {
+                    failure_buffer.push_str(line);
+                    failure_buffer.push('\n');
+                }
+            }
+        }
+
+        // Save any pending test
+        if let Some(test) = current_test.take() {
+            output.tests.push(test);
+        }
+
+        // Save last failure info
+        if let Some(name) = current_failed_test_name.take() {
+            if let Some(test) = output.tests.iter_mut().find(|t| t.name == name) {
+                test.error_message = Some(failure_buffer.trim().to_string());
+            }
+        }
+
+        // Calculate totals if not already in summary
+        if output.summary.total == 0 && !output.tests.is_empty() {
+            output.summary.passed = output
+                .tests
+                .iter()
+                .filter(|t| t.status == TestStatus::Passed)
+                .count();
+            output.summary.failed = output
+                .tests
+                .iter()
+                .filter(|t| t.status == TestStatus::Failed)
+                .count();
+            output.summary.skipped = output
+                .tests
+                .iter()
+                .filter(|t| t.status == TestStatus::Skipped)
+                .count();
+            output.summary.xfailed = output
+                .tests
+                .iter()
+                .filter(|t| t.status == TestStatus::XFailed)
+                .count();
+            output.summary.xpassed = output
+                .tests
+                .iter()
+                .filter(|t| t.status == TestStatus::XPassed)
+                .count();
+            output.summary.errors = output
+                .tests
+                .iter()
+                .filter(|t| t.status == TestStatus::Error)
+                .count();
+            output.summary.total = output.tests.len();
+        }
+
+        // Determine success
+        output.success = output.summary.failed == 0
+            && output.summary.errors == 0
+            && output.summary.total > 0;
+        output.is_empty = output.tests.is_empty() && output.summary.total == 0;
+
+        Ok(output)
+    }
+
+    /// Parse a single test result line from pytest output.
+    fn parse_pytest_test_line(line: &str) -> Option<TestResult> {
+        // Format: "tests/test_file.py::test_name PASSED"
+        // or: "tests/test_file.py::test_name SKIPPED (reason)"
+        // or: "tests/test_file.py::test_name FAILED"
+        // or: "tests/test_file.py::test_name XFAIL (reason)"
+
+        // Skip lines that are clearly not test results
+        if line.starts_with("===")
+            || line.starts_with("---")
+            || line.starts_with("...")
+            || line.is_empty()
+        {
+            return None;
+        }
+
+        // Look for PASSED, FAILED, SKIPPED, XFAIL, XPASS, ERROR
+        let (status_str, remainder) = if line.ends_with(" PASSED") {
+            ("PASSED", &line[..line.len() - 7])
+        } else if line.ends_with(" FAILED") {
+            ("FAILED", &line[..line.len() - 7])
+        } else if line.ends_with(" SKIPPED") {
+            ("SKIPPED", &line[..line.len() - 8])
+        } else if line.ends_with(" XFAIL") {
+            ("XFAIL", &line[..line.len() - 6])
+        } else if line.ends_with(" XPASS") {
+            ("XPASS", &line[..line.len() - 6])
+        } else if line.ends_with(" ERROR") {
+            ("ERROR", &line[..line.len() - 6])
+        } else {
+            // Check for inline format: "PASSED [50%]" or "FAILED [50%]"
+            if let Some(pos) = line.find(" PASSED [") {
+                ("PASSED", &line[..pos])
+            } else if let Some(pos) = line.find(" FAILED [") {
+                ("FAILED", &line[..pos])
+            } else if let Some(pos) = line.find(" SKIPPED [") {
+                ("SKIPPED", &line[..pos])
+            } else if let Some(pos) = line.find(" XFAIL [") {
+                ("XFAIL", &line[..pos])
+            } else if let Some(pos) = line.find(" XPASS [") {
+                ("XPASS", &line[..pos])
+            } else if let Some(pos) = line.find(" ERROR [") {
+                ("ERROR", &line[..pos])
+            } else {
+                return None;
+            }
+        };
+
+        let status = match status_str {
+            "PASSED" => TestStatus::Passed,
+            "FAILED" => TestStatus::Failed,
+            "SKIPPED" => TestStatus::Skipped,
+            "XFAIL" => TestStatus::XFailed,
+            "XPASS" => TestStatus::XPassed,
+            "ERROR" => TestStatus::Error,
+            _ => return None,
+        };
+
+        // Parse test name and file
+        let test_name = remainder.trim().to_string();
+
+        // Try to extract file and line from "file.py::test_name" format
+        let (file, line) = if let Some(pos) = test_name.find("::") {
+            let file = test_name[..pos].to_string();
+            let rest = &test_name[pos + 2..];
+            // Check for line number: "test_name[:lineno]"
+            let line = if let Some(colon_pos) = rest.find(':') {
+                rest[colon_pos + 1..].parse().ok()
+            } else {
+                None
+            };
+            (Some(file), line)
+        } else {
+            (None, None)
+        };
+
+        Some(TestResult {
+            name: test_name,
+            status,
+            duration: None, // Duration is usually in the summary line
+            file,
+            line,
+            error_message: None,
+        })
+    }
+
+    /// Check if a line is a pytest summary line.
+    fn is_pytest_summary_line(line: &str) -> bool {
+        // Summary lines start with a number and contain "passed" or "failed"
+        // Examples:
+        // "2 passed in 0.01s"
+        // "2 passed, 1 failed in 0.01s"
+        // "2 passed, 1 failed, 3 skipped in 0.01s"
+        // "1 failed, 2 passed in 0.01s"
+        // "=== 2 passed in 0.01s ==="
+        let lower = line.to_lowercase();
+        let starts_with_equals = line.starts_with("===");
+        let has_passed = lower.contains("passed");
+        let has_failed = lower.contains("failed");
+        let has_skipped = lower.contains("skipped");
+        let has_error = lower.contains("error");
+        let has_deselected = lower.contains("deselected");
+        let has_xfailed = lower.contains("xfailed");
+        let has_xpassed = lower.contains("xpassed");
+        let has_warnings = lower.contains("warning");
+
+        (starts_with_equals
+            || line
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_digit())
+                .unwrap_or(false))
+            && (has_passed
+                || has_failed
+                || has_skipped
+                || has_error
+                || has_deselected
+                || has_xfailed
+                || has_xpassed
+                || has_warnings)
+    }
+
+    /// Parse pytest summary line into TestSummary.
+    fn parse_pytest_summary(line: &str) -> TestSummary {
+        let mut summary = TestSummary::default();
+        let lower = line.to_lowercase();
+
+        // Remove wrapper like "=== ... ==="
+        let cleaned = line.trim_matches('=').trim();
+
+        // Parse counts
+        // Pattern: "N passed", "N failed", "N skipped", etc.
+        fn extract_count(text: &str, label: &str) -> usize {
+            let pattern = format!(" {}", label);
+            if let Some(pos) = text.find(&pattern) {
+                // Look backwards for the number
+                let before = &text[..pos];
+                let words: Vec<&str> = before.split_whitespace().collect();
+                if let Some(last) = words.last() {
+                    return last.parse().unwrap_or(0);
+                }
+            }
+            0
+        }
+
+        summary.passed = extract_count(&lower, "passed");
+        summary.failed = extract_count(&lower, "failed");
+        summary.skipped = extract_count(&lower, "skipped");
+        summary.errors = extract_count(&lower, "error");
+        summary.xfailed = extract_count(&lower, "xfailed");
+        summary.xpassed = extract_count(&lower, "xpassed");
+
+        // Calculate total
+        summary.total = summary.passed
+            + summary.failed
+            + summary.skipped
+            + summary.errors
+            + summary.xfailed
+            + summary.xpassed;
+
+        // Parse duration
+        // "in 0.01s" or "in 1.23 seconds"
+        if let Some(pos) = lower.find(" in ") {
+            let after_in = &cleaned[pos + 4..];
+            // Extract number before 's' or 'seconds'
+            let duration_str: String = after_in
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '.')
+                .collect();
+            if let Ok(duration) = duration_str.parse::<f64>() {
+                summary.duration = Some(duration);
+            }
+        }
+
+        summary
+    }
+
+    /// Format pytest output based on the requested format.
+    fn format_pytest(output: &PytestOutput, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => Self::format_pytest_json(output),
+            OutputFormat::Compact => Self::format_pytest_compact(output),
+            OutputFormat::Raw => Self::format_pytest_raw(output),
+            OutputFormat::Agent => Self::format_pytest_agent(output),
+            OutputFormat::Csv | OutputFormat::Tsv => Self::format_pytest_compact(output),
+        }
+    }
+
+    /// Format pytest output as JSON.
+    fn format_pytest_json(output: &PytestOutput) -> String {
+        serde_json::json!({
+            "success": output.success,
+            "is_empty": output.is_empty,
+            "summary": {
+                "passed": output.summary.passed,
+                "failed": output.summary.failed,
+                "skipped": output.summary.skipped,
+                "xfailed": output.summary.xfailed,
+                "xpassed": output.summary.xpassed,
+                "errors": output.summary.errors,
+                "total": output.summary.total,
+                "duration": output.summary.duration,
+            },
+            "tests": output.tests.iter().map(|t| serde_json::json!({
+                "name": t.name,
+                "status": match t.status {
+                    TestStatus::Passed => "passed",
+                    TestStatus::Failed => "failed",
+                    TestStatus::Skipped => "skipped",
+                    TestStatus::XFailed => "xfailed",
+                    TestStatus::XPassed => "xpassed",
+                    TestStatus::Error => "error",
+                },
+                "duration": t.duration,
+                "file": t.file,
+                "line": t.line,
+                "error_message": t.error_message,
+            })).collect::<Vec<_>>(),
+            "rootdir": output.rootdir,
+            "platform": output.platform,
+            "python_version": output.python_version,
+            "pytest_version": output.pytest_version,
+        })
+        .to_string()
+    }
+
+    /// Format pytest output in compact format.
+    fn format_pytest_compact(output: &PytestOutput) -> String {
+        let mut result = String::new();
+
+        if output.is_empty {
+            result.push_str("no tests found\n");
+            return result;
+        }
+
+        // Summary line
+        let status = if output.success { "PASS" } else { "FAIL" };
+        result.push_str(&format!(
+            "{}: {} passed, {} failed",
+            status, output.summary.passed, output.summary.failed
+        ));
+        if output.summary.skipped > 0 {
+            result.push_str(&format!(", {} skipped", output.summary.skipped));
+        }
+        if output.summary.xfailed > 0 {
+            result.push_str(&format!(", {} xfailed", output.summary.xfailed));
+        }
+        if output.summary.xpassed > 0 {
+            result.push_str(&format!(", {} xpassed", output.summary.xpassed));
+        }
+        if output.summary.errors > 0 {
+            result.push_str(&format!(", {} errors", output.summary.errors));
+        }
+        if let Some(duration) = output.summary.duration {
+            result.push_str(&format!(" [{:.2}s]", duration));
+        }
+        result.push('\n');
+
+        // List failed tests
+        let failed_tests: Vec<_> = output
+            .tests
+            .iter()
+            .filter(|t| t.status == TestStatus::Failed || t.status == TestStatus::Error)
+            .collect();
+
+        if !failed_tests.is_empty() {
+            result.push_str(&format!("failed ({}):\n", failed_tests.len()));
+            for test in failed_tests {
+                result.push_str(&format!("  {}\n", test.name));
+                if let Some(ref msg) = test.error_message {
+                    // Show first line of error message
+                    if let Some(first_line) = msg.lines().next() {
+                        let truncated = if first_line.len() > 80 {
+                            format!("{}...", &first_line[..77])
+                        } else {
+                            first_line.to_string()
+                        };
+                        result.push_str(&format!("    {}\n", truncated));
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Format pytest output as raw (just test names with status).
+    fn format_pytest_raw(output: &PytestOutput) -> String {
+        let mut result = String::new();
+
+        for test in &output.tests {
+            let status = match test.status {
+                TestStatus::Passed => "PASS",
+                TestStatus::Failed => "FAIL",
+                TestStatus::Skipped => "SKIP",
+                TestStatus::XFailed => "XFAIL",
+                TestStatus::XPassed => "XPASS",
+                TestStatus::Error => "ERROR",
+            };
+            result.push_str(&format!("{} {}\n", status, test.name));
+        }
+
+        result
+    }
+
+    /// Format pytest output for AI agent consumption.
+    fn format_pytest_agent(output: &PytestOutput) -> String {
+        let mut result = String::new();
+
+        result.push_str("# Test Results\n\n");
+
+        if output.is_empty {
+            result.push_str("Status: NO_TESTS\n");
+            return result;
+        }
+
+        let status = if output.success { "SUCCESS" } else { "FAILURE" };
+        result.push_str(&format!("Status: {}\n\n", status));
+
+        // Summary
+        result.push_str("## Summary\n");
+        result.push_str(&format!("- Total: {}\n", output.summary.total));
+        result.push_str(&format!("- Passed: {}\n", output.summary.passed));
+        result.push_str(&format!("- Failed: {}\n", output.summary.failed));
+        if output.summary.skipped > 0 {
+            result.push_str(&format!("- Skipped: {}\n", output.summary.skipped));
+        }
+        if output.summary.xfailed > 0 {
+            result.push_str(&format!("- XFailed: {}\n", output.summary.xfailed));
+        }
+        if output.summary.xpassed > 0 {
+            result.push_str(&format!("- XPassed: {}\n", output.summary.xpassed));
+        }
+        if output.summary.errors > 0 {
+            result.push_str(&format!("- Errors: {}\n", output.summary.errors));
+        }
+        if let Some(duration) = output.summary.duration {
+            result.push_str(&format!("- Duration: {:.2}s\n", duration));
+        }
+        result.push('\n');
+
+        // Failed tests with details
+        let failed_tests: Vec<_> = output
+            .tests
+            .iter()
+            .filter(|t| t.status == TestStatus::Failed || t.status == TestStatus::Error)
+            .collect();
+
+        if !failed_tests.is_empty() {
+            result.push_str("## Failed Tests\n\n");
+            for test in failed_tests {
+                result.push_str(&format!("### {}\n", test.name));
+                if let Some(ref file) = test.file {
+                    result.push_str(&format!("File: {}", file));
+                    if let Some(line) = test.line {
+                        result.push_str(&format!(":{}", line));
+                    }
+                    result.push('\n');
+                }
+                if let Some(ref msg) = test.error_message {
+                    result.push_str(&format!("\n```\n{}\n```\n", msg));
+                }
+                result.push('\n');
+            }
+        }
+
+        result
     }
 
     /// Handle the logs subcommand.
@@ -3827,8 +4508,249 @@ mod tests {
             file: None,
         };
 
+        // Note: This test reads from stdin which is empty, so it will return
+        // an empty test result but should succeed
         let result = handler.execute(&input, &ctx);
-        assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+        // The implementation is now complete, so it should succeed
+        assert!(result.is_ok());
+    }
+
+    // ============================================================
+    // Pytest Parser Tests
+    // ============================================================
+
+    #[test]
+    fn test_parse_pytest_empty() {
+        let result = ParseHandler::parse_pytest("").unwrap();
+        assert!(result.is_empty);
+        assert!(result.tests.is_empty());
+        assert_eq!(result.summary.total, 0);
+    }
+
+    #[test]
+    fn test_parse_pytest_single_passed() {
+        let input = r#"tests/test_main.py::test_add PASSED
+1 passed in 0.01s"#;
+        let result = ParseHandler::parse_pytest(input).unwrap();
+
+        assert!(!result.is_empty);
+        assert!(result.success);
+        assert_eq!(result.tests.len(), 1);
+        assert_eq!(result.summary.passed, 1);
+        assert_eq!(result.summary.failed, 0);
+        assert_eq!(result.summary.total, 1);
+    }
+
+    #[test]
+    fn test_parse_pytest_single_failed() {
+        let input = r#"tests/test_main.py::test_fail FAILED
+____ test_fail ____
+def test_fail():
+    assert False
+=== FAILURES ===
+1 failed in 0.01s"#;
+        let result = ParseHandler::parse_pytest(input).unwrap();
+
+        assert!(!result.is_empty);
+        assert!(!result.success);
+        assert_eq!(result.tests.len(), 1);
+        assert_eq!(result.summary.failed, 1);
+        assert_eq!(result.summary.passed, 0);
+    }
+
+    #[test]
+    fn test_parse_pytest_mixed_results() {
+        let input = r#"tests/test_main.py::test_add PASSED
+tests/test_main.py::test_subtract PASSED
+tests/test_main.py::test_multiply SKIPPED
+tests/test_main.py::test_fail FAILED
+2 passed, 1 failed, 1 skipped in 0.05s"#;
+        let result = ParseHandler::parse_pytest(input).unwrap();
+
+        assert!(!result.is_empty);
+        assert!(!result.success);
+        assert_eq!(result.tests.len(), 4);
+        assert_eq!(result.summary.passed, 2);
+        assert_eq!(result.summary.failed, 1);
+        assert_eq!(result.summary.skipped, 1);
+        assert_eq!(result.summary.total, 4);
+    }
+
+    #[test]
+    fn test_parse_pytest_with_xfail() {
+        let input = r#"tests/test_main.py::test_add PASSED
+tests/test_main.py::test_expected_fail XFAIL
+2 passed, 1 xfailed in 0.01s"#;
+        let result = ParseHandler::parse_pytest(input).unwrap();
+
+        assert!(result.success);
+        assert_eq!(result.summary.xfailed, 1);
+    }
+
+    #[test]
+    fn test_parse_pytest_summary_line() {
+        let summary = ParseHandler::parse_pytest_summary("2 passed in 0.01s");
+        assert_eq!(summary.passed, 2);
+        assert_eq!(summary.failed, 0);
+        assert!(summary.duration.is_some());
+
+        let summary = ParseHandler::parse_pytest_summary("2 passed, 1 failed in 0.05s");
+        assert_eq!(summary.passed, 2);
+        assert_eq!(summary.failed, 1);
+
+        let summary =
+            ParseHandler::parse_pytest_summary("3 passed, 1 failed, 2 skipped in 1.23s");
+        assert_eq!(summary.passed, 3);
+        assert_eq!(summary.failed, 1);
+        assert_eq!(summary.skipped, 2);
+        assert_eq!(summary.duration, Some(1.23));
+    }
+
+    #[test]
+    fn test_is_pytest_summary_line() {
+        assert!(ParseHandler::is_pytest_summary_line("2 passed in 0.01s"));
+        assert!(ParseHandler::is_pytest_summary_line("2 passed, 1 failed in 0.05s"));
+        assert!(ParseHandler::is_pytest_summary_line(
+            "=== 2 passed in 0.01s ==="
+        ));
+        assert!(ParseHandler::is_pytest_summary_line("1 failed, 2 passed in 0.05s"));
+        assert!(!ParseHandler::is_pytest_summary_line("test_file.py::test_name PASSED"));
+        assert!(!ParseHandler::is_pytest_summary_line("PASSED"));
+    }
+
+    #[test]
+    fn test_parse_pytest_test_line() {
+        let result = ParseHandler::parse_pytest_test_line(
+            "tests/test_main.py::test_add PASSED",
+        )
+        .unwrap();
+        assert_eq!(result.name, "tests/test_main.py::test_add");
+        assert_eq!(result.status, TestStatus::Passed);
+        assert_eq!(result.file, Some("tests/test_main.py".to_string()));
+
+        let result = ParseHandler::parse_pytest_test_line(
+            "tests/test_main.py::test_fail FAILED",
+        )
+        .unwrap();
+        assert_eq!(result.status, TestStatus::Failed);
+
+        let result = ParseHandler::parse_pytest_test_line(
+            "tests/test_main.py::test_skip SKIPPED",
+        )
+        .unwrap();
+        assert_eq!(result.status, TestStatus::Skipped);
+    }
+
+    #[test]
+    fn test_format_pytest_json() {
+        let mut output = PytestOutput::default();
+        output.tests.push(TestResult {
+            name: "test_example".to_string(),
+            status: TestStatus::Passed,
+            duration: None,
+            file: None,
+            line: None,
+            error_message: None,
+        });
+        output.summary.passed = 1;
+        output.summary.total = 1;
+        output.success = true;
+        output.is_empty = false;
+
+        let json = ParseHandler::format_pytest_json(&output);
+        assert!(json.contains("\"success\":true"));
+        assert!(json.contains("\"passed\":1"));
+        assert!(json.contains("\"total\":1"));
+    }
+
+    #[test]
+    fn test_format_pytest_compact() {
+        let mut output = PytestOutput::default();
+        output.tests.push(TestResult {
+            name: "test_example".to_string(),
+            status: TestStatus::Passed,
+            duration: None,
+            file: None,
+            line: None,
+            error_message: None,
+        });
+        output.summary.passed = 1;
+        output.summary.total = 1;
+        output.success = true;
+        output.is_empty = false;
+
+        let compact = ParseHandler::format_pytest_compact(&output);
+        assert!(compact.contains("PASS:"));
+        assert!(compact.contains("1 passed"));
+    }
+
+    #[test]
+    fn test_format_pytest_raw() {
+        let mut output = PytestOutput::default();
+        output.tests.push(TestResult {
+            name: "test_example".to_string(),
+            status: TestStatus::Passed,
+            duration: None,
+            file: None,
+            line: None,
+            error_message: None,
+        });
+        output.tests.push(TestResult {
+            name: "test_fail".to_string(),
+            status: TestStatus::Failed,
+            duration: None,
+            file: None,
+            line: None,
+            error_message: None,
+        });
+
+        let raw = ParseHandler::format_pytest_raw(&output);
+        assert!(raw.contains("PASS test_example"));
+        assert!(raw.contains("FAIL test_fail"));
+    }
+
+    #[test]
+    fn test_format_pytest_agent() {
+        let mut output = PytestOutput::default();
+        output.tests.push(TestResult {
+            name: "test_example".to_string(),
+            status: TestStatus::Passed,
+            duration: None,
+            file: None,
+            line: None,
+            error_message: None,
+        });
+        output.summary.passed = 1;
+        output.summary.total = 1;
+        output.success = true;
+        output.is_empty = false;
+
+        let agent = ParseHandler::format_pytest_agent(&output);
+        assert!(agent.contains("# Test Results"));
+        assert!(agent.contains("Status: SUCCESS"));
+        assert!(agent.contains("## Summary"));
+    }
+
+    #[test]
+    fn test_parse_pytest_with_header_info() {
+        let input = r#"============================= test session starts ==============================
+platform darwin -- Python 3.12.0, pytest-8.0.0, pluggy-1.4.0
+rootdir: /Users/user/project
+collected 2 items
+
+tests/test_main.py::test_add PASSED
+tests/test_main.py::test_subtract PASSED
+
+2 passed in 0.01s"#;
+        let result = ParseHandler::parse_pytest(input).unwrap();
+
+        assert!(result.success);
+        assert_eq!(result.python_version, Some("3.12.0".to_string()));
+        assert_eq!(result.pytest_version, Some("8.0.0".to_string()));
+        assert_eq!(
+            result.rootdir,
+            Some("/Users/user/project".to_string())
+        );
     }
 
     #[test]
