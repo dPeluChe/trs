@@ -8234,11 +8234,14 @@ impl ParseHandler {
             output.push('\n');
         }
 
-        // Show entries with detected levels
+        // Show entries with detected levels (collapse consecutive duplicates)
         let has_levels = logs_output.entries.iter().any(|e| e.level != LogLevel::Unknown);
         if has_levels {
             output.push_str("entries:\n");
-            for entry in &logs_output.entries {
+            // Collapse consecutive entries with same level and message
+            let mut i = 0;
+            while i < logs_output.entries.len() {
+                let entry = &logs_output.entries[i];
                 let level_indicator = match entry.level {
                     LogLevel::Debug => "[D]",
                     LogLevel::Info => "[I]",
@@ -8247,23 +8250,76 @@ impl ParseHandler {
                     LogLevel::Fatal => "[F]",
                     LogLevel::Unknown => "   ",
                 };
+
+                // Count consecutive entries with same level and message
+                let mut count = 1;
+                let mut last_line = entry.line_number;
+                while i + count < logs_output.entries.len() {
+                    let next = &logs_output.entries[i + count];
+                    if next.level == entry.level && next.message == entry.message {
+                        count += 1;
+                        last_line = next.line_number;
+                    } else {
+                        break;
+                    }
+                }
+
                 let preview = if entry.message.len() > 80 {
                     format!("{}...", &entry.message[..77])
                 } else {
                     entry.message.clone()
                 };
-                output.push_str(&format!("{} {} {}\n", level_indicator, entry.line_number, preview));
+
+                if count > 1 {
+                    output.push_str(&format!(
+                        "{} {}-{} {} [x{}]\n",
+                        level_indicator, entry.line_number, last_line, preview, count
+                    ));
+                } else {
+                    output.push_str(&format!(
+                        "{} {} {}\n",
+                        level_indicator, entry.line_number, preview
+                    ));
+                }
+
+                i += count;
             }
         } else {
-            // No levels detected, just show raw lines with line numbers
+            // No levels detected, just show raw lines with line numbers (collapse consecutive duplicates)
             output.push_str("lines:\n");
-            for entry in &logs_output.entries {
+            let mut i = 0;
+            while i < logs_output.entries.len() {
+                let entry = &logs_output.entries[i];
+
+                // Count consecutive entries with same line content
+                let mut count = 1;
+                let mut last_line = entry.line_number;
+                while i + count < logs_output.entries.len() {
+                    let next = &logs_output.entries[i + count];
+                    if next.line == entry.line {
+                        count += 1;
+                        last_line = next.line_number;
+                    } else {
+                        break;
+                    }
+                }
+
                 let preview = if entry.line.len() > 80 {
                     format!("{}...", &entry.line[..77])
                 } else {
                     entry.line.clone()
                 };
-                output.push_str(&format!("  {} {}\n", entry.line_number, preview));
+
+                if count > 1 {
+                    output.push_str(&format!(
+                        "  {}-{} {} [x{}]\n",
+                        entry.line_number, last_line, preview, count
+                    ));
+                } else {
+                    output.push_str(&format!("  {} {}\n", entry.line_number, preview));
+                }
+
+                i += count;
             }
         }
 
@@ -11267,5 +11323,48 @@ Ran 4 tests across 1 files. [0.66ms]"#;
 
         assert!(output.contains("repeated:"));
         assert!(output.contains("[x3]"));
+    }
+
+    #[test]
+    fn test_format_logs_compact_collapses_consecutive_entries_no_levels() {
+        // Test that consecutive identical lines (no log levels) are collapsed in output
+        let input = "Same line\nSame line\nSame line\nDifferent\nDifferent\nUnique";
+        let result = ParseHandler::parse_logs(input);
+        let output = ParseHandler::format_logs(&result, OutputFormat::Compact);
+
+        // Should show line ranges for collapsed entries
+        assert!(output.contains("1-3 Same line [x3]"));
+        assert!(output.contains("4-5 Different [x2]"));
+        assert!(output.contains("6 Unique"));
+    }
+
+    #[test]
+    fn test_format_logs_compact_collapses_consecutive_entries_with_levels() {
+        // Test that consecutive identical entries with log levels are collapsed
+        let input = "[INFO] Starting\n[INFO] Starting\n[INFO] Starting\n[ERROR] Failed\n[ERROR] Failed\n[WARN] Warning";
+        let result = ParseHandler::parse_logs(input);
+        let output = ParseHandler::format_logs(&result, OutputFormat::Compact);
+
+        // Should show collapsed entries with line ranges
+        assert!(output.contains("[I] 1-3 Starting [x3]"));
+        assert!(output.contains("[E] 4-5 Failed [x2]"));
+        assert!(output.contains("[W] 6 Warning"));
+    }
+
+    #[test]
+    fn test_format_logs_compact_no_collapse_non_consecutive() {
+        // Test that non-consecutive identical lines are NOT collapsed in entries section
+        let input = "Line A\nLine B\nLine A";
+        let result = ParseHandler::parse_logs(input);
+        let output = ParseHandler::format_logs(&result, OutputFormat::Compact);
+
+        // The entries section should show lines separately (not collapsed since not consecutive)
+        // The format is "  N content" (2-space indent)
+        // Should contain all three entries individually
+        assert!(output.contains("  1 Line A"));
+        assert!(output.contains("  2 Line B"));
+        assert!(output.contains("  3 Line A"));
+        // Should not have collapsed format like "1-3 Line A [x2]" in lines section
+        // (non-consecutive entries don't collapse)
     }
 }
