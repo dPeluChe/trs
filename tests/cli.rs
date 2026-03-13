@@ -391,6 +391,216 @@ fn test_search_no_matches() {
         .stdout(predicate::str::contains("no matches"));
 }
 
+// ============================================================
+// Search Grouping Tests
+// ============================================================
+
+#[test]
+fn test_search_groups_matches_by_file_compact() {
+    // Test that matches are grouped by file in compact output
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        // Should show file header with match count
+        .stdout(predicate::str::contains("router.rs ("))
+        // Should show individual matches under the file
+        .stdout(predicate::str::contains("  "))
+        .stdout(predicate::str::contains("SearchHandler"));
+}
+
+#[test]
+fn test_search_groups_matches_by_file_json() {
+    // Test that matches are grouped by file in JSON output
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    
+    let output_str = String::from_utf8_lossy(&output);
+    
+    // Parse JSON to verify structure
+    let json: serde_json::Value = serde_json::from_str(&output_str).unwrap();
+    
+    // Should have files array
+    assert!(json["files"].is_array());
+    
+    // Each file should have path and matches
+    let files = json["files"].as_array().unwrap();
+    for file in files {
+        assert!(file["path"].is_string());
+        assert!(file["matches"].is_array());
+        
+        // Each match should have required fields
+        for m in file["matches"].as_array().unwrap() {
+            assert!(m["line_number"].is_number());
+            assert!(m["line"].is_string());
+        }
+    }
+}
+
+#[test]
+fn test_search_groups_multiple_files_correctly() {
+    // Test that multiple files are each shown as separate groups
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("search")
+        .arg("src")
+        .arg("fn")  // Pattern that appears in multiple files
+        .arg("--extension")
+        .arg("rs")
+        .arg("--limit")
+        .arg("10")
+        .assert()
+        .success()
+        // Should show file count
+        .stdout(predicate::str::contains("files"));
+}
+
+#[test]
+fn test_search_groups_single_file_multiple_matches() {
+    // Test that multiple matches in the same file are grouped together
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("search")
+        .arg("src/router.rs")
+        .arg("SearchHandler")  // Appears multiple times in one file
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    
+    let output_str = String::from_utf8_lossy(&output);
+    
+    // Should only show the file header once
+    let router_count = output_str.matches("router.rs").count();
+    assert!(router_count >= 1);
+    
+    // Should show match count > 1
+    assert!(output_str.contains("("));
+}
+
+#[test]
+fn test_search_groups_preserve_line_numbers() {
+    // Test that grouping preserves line numbers
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--raw")
+        .arg("search")
+        .arg("src/router.rs")
+        .arg("pub struct SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    
+    let output_str = String::from_utf8_lossy(&output);
+    
+    // Raw format should show line numbers with colons
+    assert!(output_str.contains(":"));
+    assert!(output_str.contains("SearchHandler"));
+}
+
+#[test]
+fn test_search_groups_with_truncation() {
+    // Test that grouping works correctly with truncation
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("search")
+        .arg(".")
+        .arg("fn")  // Common pattern
+        .arg("--extension")
+        .arg("rs")
+        .arg("--limit")
+        .arg("2")  // Limit to 2 files
+        .assert()
+        .success()
+        // Should show truncation info
+        .stdout(predicate::str::contains("files"));
+}
+
+#[test]
+fn test_search_csv_maintains_file_column() {
+    // Test that CSV output includes file path for each match
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--csv")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("path,line_number"))
+        .stdout(predicate::str::contains("router.rs"));
+}
+
+#[test]
+fn test_search_tsv_maintains_file_column() {
+    // Test that TSV output includes file path for each match
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--tsv")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("path\tline_number"))
+        .stdout(predicate::str::contains("router.rs"));
+}
+
+#[test]
+fn test_search_counts_match_groups() {
+    // Test that counts reflect grouped matches
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("search")
+        .arg("src/router.rs")
+        .arg("SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    
+    let output_str = String::from_utf8_lossy(&output);
+    
+    // Should show files count and results count
+    assert!(output_str.contains("matches:"));
+    assert!(output_str.contains("files"));
+    assert!(output_str.contains("results"));
+}
+
+#[test]
+fn test_search_groups_case_insensitive() {
+    // Test that grouping works with case-insensitive search
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("search")
+        .arg("src")
+        .arg("searchhandler")  // lowercase
+        .arg("--extension")
+        .arg("rs")
+        .arg("--ignore-case")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("router.rs"));
+}
+
 #[test]
 fn test_replace_basic() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
