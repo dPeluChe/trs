@@ -882,6 +882,124 @@ fn test_parse_ls_hidden_and_generated() {
         .stdout(predicate::str::contains("generated (2):"));
 }
 
+// ============================================================
+// LS Parser: Permission Denied Tests
+// ============================================================
+
+#[test]
+fn test_parse_ls_permission_denied() {
+    // Test that permission denied entries are detected and not treated as files
+    let ls_input = "file1.txt\nls: cannot open directory '/root': Permission denied\nfile2.txt\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("error:"))
+        .stdout(predicate::str::contains("Permission denied"))
+        .stdout(predicate::str::contains("total: 2"))
+        .stdout(predicate::str::contains("files (2):"));
+}
+
+#[test]
+fn test_parse_ls_permission_denied_json() {
+    // Test JSON output includes errors array
+    let ls_input = "file.txt\nls: cannot access 'missing': No such file or directory\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"errors\":"))
+        .stdout(predicate::str::contains("No such file or directory"));
+}
+
+#[test]
+fn test_parse_ls_only_errors() {
+    // Test when all output is errors - still shows total: 0 with errors
+    let ls_input = "ls: cannot open directory '.': Permission denied\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("error:"))
+        .stdout(predicate::str::contains("total: 0"));
+}
+
+// ============================================================
+// LS Parser: Symlink Target Tests
+// ============================================================
+
+#[test]
+fn test_parse_ls_symlink_with_target() {
+    // Test that symlink targets are displayed in compact format
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 link_to_file -> /path/to/target\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("symlinks (1):"))
+        .stdout(predicate::str::contains("link_to_file -> /path/to/target"));
+}
+
+#[test]
+fn test_parse_ls_symlink_target_json() {
+    // Test that JSON output includes symlink_target field
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 mylink -> destination\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"symlink_target\":\"destination\""))
+        .stdout(predicate::str::contains("\"name\":\"mylink\""));
+}
+
+#[test]
+fn test_parse_ls_multiple_symlinks_with_targets() {
+    // Test multiple symlinks with different targets
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 link1 -> target1\nlrwxrwxrwx  1 user  group    10 Jan  1 12:34 link2 -> target2\n-rw-r--r--  1 user  group   42 Jan  1 12:34 file.txt\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("symlinks (2):"))
+        .stdout(predicate::str::contains("link1 -> target1"))
+        .stdout(predicate::str::contains("link2 -> target2"));
+}
+
+#[test]
+fn test_parse_ls_symlink_no_target() {
+    // Test symlink without target (should still work)
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 link_no_target\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("symlinks (1):"))
+        .stdout(predicate::str::contains("link_no_target"));
+}
+
 #[test]
 fn test_parse_grep() {
     let mut cmd = Command::cargo_bin("trs").unwrap();

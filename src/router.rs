@@ -229,6 +229,8 @@ struct LsEntry {
     group: Option<String>,
     /// Last modification time (if available).
     modified: Option<String>,
+    /// Symlink target (if this is a symlink).
+    symlink_target: Option<String>,
 }
 
 // ============================================================
@@ -345,6 +347,15 @@ fn is_generated_directory(name: &str) -> bool {
     COMMON_GENERATED_DIRS.contains(&name_lower.as_str())
 }
 
+/// A permission denied or error entry.
+#[derive(Debug, Clone, Default)]
+struct LsError {
+    /// The path that was denied access.
+    path: String,
+    /// The error message.
+    message: String,
+}
+
 /// Parsed ls output.
 #[derive(Debug, Clone, Default)]
 struct LsOutput {
@@ -360,7 +371,9 @@ struct LsOutput {
     hidden: Vec<LsEntry>,
     /// Generated directory entries (build artifacts, dependencies, etc.).
     generated: Vec<LsEntry>,
-    /// Total count of entries.
+    /// Permission denied or error entries.
+    errors: Vec<LsError>,
+    /// Total count of entries (excluding errors).
     total_count: usize,
     /// Whether the output is empty.
     is_empty: bool,
@@ -1942,6 +1955,16 @@ impl ParseHandler {
                 continue;
             }
 
+            // Check for permission denied or other error messages
+            // Format: "ls: cannot open directory '/path': Permission denied"
+            // or: "ls: cannot access 'file': No such file or directory"
+            if line.starts_with("ls: ") && line.contains("cannot ") {
+                // Parse the error message
+                let error = Self::parse_ls_error(line);
+                ls_output.errors.push(error);
+                continue;
+            }
+
             // Check if this is a long format line (starts with permissions)
             // Long format: drwxr-xr-x  2 user group  64 Jan  1 12:34 file.txt
             if Self::is_long_format_line(line) {
@@ -1996,11 +2019,33 @@ impl ParseHandler {
             }
         }
 
-        // Calculate totals
+        // Calculate totals (excluding errors)
         ls_output.total_count = ls_output.entries.len();
-        ls_output.is_empty = ls_output.entries.is_empty();
+        ls_output.is_empty = ls_output.entries.is_empty() && ls_output.errors.is_empty();
 
         Ok(ls_output)
+    }
+
+    /// Parse an ls error message.
+    fn parse_ls_error(line: &str) -> LsError {
+        // Format: "ls: cannot open directory '/path': Permission denied"
+        // or: "ls: cannot access 'file': No such file or directory"
+        
+        // Try to extract the path (usually in quotes after 'access' or 'directory')
+        let path = if let Some(start) = line.find('\'') {
+            if let Some(end) = line[start + 1..].find('\'') {
+                line[start + 1..start + 1 + end].to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        LsError {
+            path,
+            message: line.to_string(),
+        }
     }
 
     /// Check if a line is in long format (starts with permissions).
@@ -2050,16 +2095,28 @@ impl ParseHandler {
         // Long format: perms links owner group size date time name
         // Example: drwxr-xr-x  2 user  group  4096 Jan  1 12:34 dirname
         //          0          1  2     3     4    5   6  7    8
+        // For symlinks: lrwxrwxrwx  1 user  group    10 Jan  1 12:34 link -> target
 
         if parts.len() < 9 {
             return LsEntry::default();
         }
 
         let perms = parts[0];
-        let name = parts[8..].join(" ");
+        let name_part = parts[8..].join(" ");
 
         // Detect entry type from permissions
         let entry_type = Self::detect_entry_type_from_perms(perms);
+
+        // For symlinks, extract name and target (format: "name -> target")
+        let (name, symlink_target) = if entry_type == LsEntryType::Symlink && name_part.contains(" -> ") {
+            let mut split = name_part.splitn(2, " -> ");
+            let name = split.next().unwrap_or(&name_part).to_string();
+            let target = split.next().map(|s| s.to_string());
+            (name, target)
+        } else {
+            (name_part, None)
+        };
+
         let is_hidden = name.starts_with('.');
 
         LsEntry {
@@ -2072,6 +2129,7 @@ impl ParseHandler {
             owner: parts.get(2).map(|s| s.to_string()),
             group: parts.get(3).map(|s| s.to_string()),
             modified: Some(format!("{} {} {}", parts[5], parts[6], parts[7])),
+            symlink_target,
         }
     }
     /// Detect entry type from permission string.
@@ -2162,18 +2220,36 @@ impl ParseHandler {
                 "owner": e.owner,
                 "group": e.group,
                 "modified": e.modified,
+                "symlink_target": e.symlink_target,
             })).collect::<Vec<_>>(),
             "directories": ls_output.directories.iter().map(|e| &e.name).collect::<Vec<_>>(),
             "files": ls_output.files.iter().map(|e| &e.name).collect::<Vec<_>>(),
-            "symlinks": ls_output.symlinks.iter().map(|e| &e.name).collect::<Vec<_>>(),
+            "symlinks": ls_output.symlinks.iter().map(|e| {
+                if let Some(ref target) = e.symlink_target {
+                    format!("{} -> {}", e.name, target)
+                } else {
+                    e.name.clone()
+                }
+            }).collect::<Vec<_>>(),
             "hidden": ls_output.hidden.iter().map(|e| &e.name).collect::<Vec<_>>(),
             "generated": ls_output.generated.iter().map(|e| &e.name).collect::<Vec<_>>(),
+            "errors": ls_output.errors.iter().map(|e| serde_json::json!({
+                "path": e.path,
+                "message": e.message,
+            })).collect::<Vec<_>>(),
         })
         .to_string()
     }
     /// Format ls output in compact format.
     fn format_ls_compact(ls_output: &LsOutput) -> String {
         let mut output = String::new();
+
+        // Show errors first (if any)
+        if !ls_output.errors.is_empty() {
+            for error in &ls_output.errors {
+                output.push_str(&format!("error: {}\n", error.message));
+            }
+        }
 
         if ls_output.is_empty {
             output.push_str("ls: empty\n");
@@ -2199,7 +2275,11 @@ impl ParseHandler {
         if !ls_output.symlinks.is_empty() {
             output.push_str(&format!("symlinks ({}):\n", ls_output.symlinks.len()));
             for entry in &ls_output.symlinks {
-                output.push_str(&format!("  {}\n", entry.name));
+                if let Some(ref target) = entry.symlink_target {
+                    output.push_str(&format!("  {} -> {}\n", entry.name, target));
+                } else {
+                    output.push_str(&format!("  {}\n", entry.name));
+                }
             }
         }
 
