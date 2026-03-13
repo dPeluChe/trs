@@ -148,6 +148,8 @@ pub struct ProcessBuilder {
     timeout: Option<Duration>,
     capture_stdout: bool,
     capture_stderr: bool,
+    capture_exit_code: bool,
+    capture_duration: bool,
 }
 
 impl ProcessBuilder {
@@ -162,6 +164,8 @@ impl ProcessBuilder {
             timeout: None,
             capture_stdout: true,
             capture_stderr: true,
+            capture_exit_code: true,
+            capture_duration: true,
         }
     }
 
@@ -232,6 +236,18 @@ impl ProcessBuilder {
         self
     }
 
+    /// Set whether to capture exit code.
+    pub fn capture_exit_code(mut self, capture: bool) -> Self {
+        self.capture_exit_code = capture;
+        self
+    }
+
+    /// Set whether to capture execution duration.
+    pub fn capture_duration(mut self, capture: bool) -> Self {
+        self.capture_duration = capture;
+        self
+    }
+
     /// Execute the process and return the output.
     ///
     /// This method captures stdout and stderr, and returns the exit code
@@ -285,6 +301,7 @@ impl ProcessBuilder {
                         status,
                         self.capture_stdout,
                         self.capture_stderr,
+                        self.capture_exit_code,
                     );
                     Ok(output)
                 }
@@ -318,6 +335,7 @@ impl ProcessBuilder {
                         status,
                         self.capture_stdout,
                         self.capture_stderr,
+                        self.capture_exit_code,
                     );
                     Ok(output)
                 }
@@ -332,10 +350,15 @@ impl ProcessBuilder {
         let duration = start.elapsed();
         let command = self.command.clone();
         let args = self.args.clone();
+        let capture_duration = self.capture_duration;
         result.map(|mut output| {
             output.command = command;
             output.args = args;
-            output.duration = duration;
+            output.duration = if capture_duration {
+                duration
+            } else {
+                Duration::ZERO
+            };
             output
         })
     }
@@ -373,6 +396,7 @@ fn capture_output(
     status: ExitStatus,
     capture_stdout: bool,
     capture_stderr: bool,
+    capture_exit_code: bool,
 ) -> ProcessOutput {
     let stdout = if capture_stdout {
         child
@@ -407,7 +431,11 @@ fn capture_output(
         args: Vec::new(),
         stdout,
         stderr,
-        exit_code: status.code(),
+        exit_code: if capture_exit_code {
+            status.code()
+        } else {
+            None
+        },
         duration: Duration::ZERO,
         timed_out: false,
     }
@@ -807,6 +835,67 @@ mod tests {
         assert!(result.is_ok());
         let output = result.unwrap();
         assert!(!output.has_stderr());
+    }
+
+    #[test]
+    fn test_run_no_capture_exit_code() {
+        let result = ProcessBuilder::new("false").capture_exit_code(false).run();
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        // When exit code is not captured, it should be None
+        assert_eq!(output.exit_code, None);
+        // success() should return false because exit_code is None
+        assert!(!output.success());
+    }
+
+    #[test]
+    fn test_run_capture_exit_code_default() {
+        // By default, exit code should be captured
+        let result = ProcessBuilder::new("echo").arg("hello").run();
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert_eq!(output.exit_code, Some(0));
+        assert!(output.success());
+    }
+
+    #[test]
+    fn test_run_capture_exit_code_non_zero() {
+        let result = ProcessBuilder::new("sh")
+            .arg("-c")
+            .arg("exit 42")
+            .capture_exit_code(true)
+            .run();
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert_eq!(output.exit_code, Some(42));
+        assert!(!output.success());
+    }
+
+    #[test]
+    fn test_run_no_capture_duration() {
+        let result = ProcessBuilder::new("echo")
+            .arg("hello")
+            .capture_duration(false)
+            .run();
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        // When duration is not captured, it should be ZERO
+        assert_eq!(output.duration, Duration::ZERO);
+    }
+
+    #[test]
+    fn test_run_capture_duration_default() {
+        // By default, duration should be captured
+        let result = ProcessBuilder::new("echo").arg("hello").run();
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        // Duration should be greater than zero
+        assert!(output.duration > Duration::ZERO);
     }
 
     #[test]

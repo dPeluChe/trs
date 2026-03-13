@@ -115,19 +115,19 @@ The project includes three functional layers:
 
 - [x] parse grep results
 - [x] group matches by file
-- [ ] preserve line numbers
-- [ ] collapse repeated context lines
-- [ ] implement compact summary
+- [x] preserve line numbers
+- [x] collapse repeated context lines
+- [x] implement compact summary
 - [x] implement JSON output
-- [ ] support truncation for large result sets
+- [x] support truncation for large result sets
 
 ---
 
 # Test Runner Reducers
 
-- [ ] parse pytest output
-- [ ] parse jest output
-- [ ] parse vitest output
+- [x] parse pytest output
+- [x] parse jest output
+- [x] parse vitest output
 - [ ] parse npm test output
 - [ ] parse pnpm test output
 - [ ] parse bun test output

@@ -15,6 +15,7 @@ use router::{CommandContext, Router};
 #[command(version, about, long_about = Some(help::LONG_ABOUT))]
 #[command(propagate_version = true)]
 #[command(next_display_order = None)]
+#[command(allow_external_subcommands = true)]
 pub struct Cli {
     /// Output raw, unprocessed input
     #[arg(long, global = true)]
@@ -226,6 +227,14 @@ pub enum Commands {
         /// Capture stderr (default: true, set --no-capture-stderr to inherit)
         #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
         capture_stderr: Option<bool>,
+
+        /// Capture exit code (default: true, set --no-capture-exit-code to disable)
+        #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
+        capture_exit_code: Option<bool>,
+
+        /// Capture execution duration (default: true, set --no-capture-duration to disable)
+        #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
+        capture_duration: Option<bool>,
     },
 
     /// Parse structured input from stdin or file
@@ -351,6 +360,32 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Check if git repository is in a clean state
+    ///
+    /// Detects whether the git repository has any uncommitted changes.
+    /// A clean repository has:
+    /// - No staged changes
+    /// - No unstaged changes  
+    /// - No untracked files
+    /// - No unmerged paths (conflicts)
+    ///
+    /// Exit codes:
+    ///   0 - Repository is clean
+    ///   1 - Repository has changes (dirty)
+    ///   2 - Not a git repository or other error
+    ///
+    /// Examples:
+    ///   trs is-clean                    # Check if repo is clean
+    ///   trs is-clean --json             # Output in JSON format
+    ///   trs is-clean && git push        # Only push if clean
+    #[command(aliases = ["clean?", "repo-clean"])]
+    IsClean {
+        /// Also check for untracked files (default: true)
+        /// Use --no-check-untracked to ignore untracked files
+        #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
+        check_untracked: Option<bool>,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -365,6 +400,11 @@ pub enum ParseCommands {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
         file: Option<PathBuf>,
+
+        /// Output only the count for the specified category (staged, unstaged, untracked, unmerged)
+        /// Default: unstaged
+        #[arg(long)]
+        count: Option<String>,
     },
 
     /// Parse git diff output
@@ -398,6 +438,18 @@ pub enum ParseCommands {
     ///
     /// Example: grep -rn "pattern" . | trs parse grep
     Grep {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse find output
+    ///
+    /// Transforms find results into structured format categorizing
+    /// files, directories, and other entries by type.
+    ///
+    /// Example: find . -name "*.rs" | trs parse find
+    Find {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
         file: Option<PathBuf>,
@@ -699,7 +751,7 @@ mod tests {
         let cli = cli.unwrap();
         match cli.command {
             Commands::Parse { parser } => match parser {
-                ParseCommands::GitStatus { file } => {
+                ParseCommands::GitStatus { file, .. } => {
                     assert!(file.is_none());
                 }
                 _ => panic!("Expected GitStatus parser"),
