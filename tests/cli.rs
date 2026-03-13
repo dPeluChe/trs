@@ -1186,6 +1186,39 @@ fn test_parse_grep_compact() {
 }
 
 #[test]
+fn test_parse_grep_compact_preserves_line_numbers() {
+    // Test that line numbers are preserved in compact format
+    let grep_input = "src/main.rs:42:fn main() {\nsrc/main.rs:45:    println!";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        // Verify line numbers are present in output
+        .stdout(predicate::str::contains("42: fn main() {"))
+        .stdout(predicate::str::contains("45:     println!"));
+}
+
+#[test]
+fn test_parse_grep_compact_line_numbers_multiple_files() {
+    // Test line numbers are preserved across multiple files
+    let grep_input = "src/main.rs:10:line one\nsrc/lib.rs:25:line two\nsrc/main.rs:30:line three";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        // Verify line numbers for each file
+        .stdout(predicate::str::contains("10: line one"))
+        .stdout(predicate::str::contains("25: line two"))
+        .stdout(predicate::str::contains("30: line three"));
+}
+
+#[test]
 fn test_parse_grep_csv() {
     let grep_input = "src/main.rs:42:fn main() {";
     let mut cmd = Command::cargo_bin("trs").unwrap();
