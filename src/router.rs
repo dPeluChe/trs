@@ -269,6 +269,82 @@ struct FindOutput {
     is_empty: bool,
 }
 
+/// Common generated directory names that are typically build artifacts or dependencies.
+const COMMON_GENERATED_DIRS: &[&str] = &[
+    // JavaScript/TypeScript
+    "node_modules",
+    "dist",
+    "build",
+    "out",
+    ".next",
+    ".nuxt",
+    ".output",
+    // Python
+    "__pycache__",
+    ".venv",
+    "venv",
+    "env",
+    ".tox",
+    ".nox",
+    "htmlcov",
+    ".eggs",
+    "eggs",
+    "sdist",
+    "wheelhouse",
+    // Rust
+    "target",
+    // Java/Kotlin
+    "target", // Maven
+    "build",  // Gradle
+    "out",    // IntelliJ
+    ".gradle",
+    // Go
+    "vendor",
+    // Ruby
+    "vendor",
+    ".bundle",
+    // PHP
+    "vendor",
+    // .NET/C#
+    "bin",
+    "obj",
+    // Swift/Objective-C
+    "DerivedData",
+    "Pods",
+    ".build",
+    // Elixir/Erlang
+    "_build",
+    "deps",
+    // Haskell
+    "dist-newstyle",
+    ".stack-work",
+    // Scala
+    ".bloop",
+    ".metals",
+    // Docker
+    ".docker",
+    // Cache directories
+    ".cache",
+    ".npm",
+    ".yarn",
+    ".pnpm-store",
+    // IDE/Editor
+    ".idea",
+    ".vscode",
+    ".vs",
+    // Misc
+    "tmp",
+    "temp",
+];
+
+/// Check if a directory name is a common generated directory.
+fn is_generated_directory(name: &str) -> bool {
+    // Strip trailing slash if present (common in ls output)
+    let name = name.strip_suffix('/').unwrap_or(name);
+    let name_lower = name.to_lowercase();
+    COMMON_GENERATED_DIRS.contains(&name_lower.as_str())
+}
+
 /// Parsed ls output.
 #[derive(Debug, Clone, Default)]
 struct LsOutput {
@@ -282,6 +358,8 @@ struct LsOutput {
     symlinks: Vec<LsEntry>,
     /// Hidden entries.
     hidden: Vec<LsEntry>,
+    /// Generated directory entries (build artifacts, dependencies, etc.).
+    generated: Vec<LsEntry>,
     /// Total count of entries.
     total_count: usize,
     /// Whether the output is empty.
@@ -1906,7 +1984,13 @@ impl ParseHandler {
                 ls_output.hidden.push(entry.clone());
             }
             match entry.entry_type {
-                LsEntryType::Directory => ls_output.directories.push(entry.clone()),
+                LsEntryType::Directory => {
+                    // Check if this is a generated directory
+                    if is_generated_directory(&entry.name) {
+                        ls_output.generated.push(entry.clone());
+                    }
+                    ls_output.directories.push(entry.clone())
+                }
                 LsEntryType::Symlink => ls_output.symlinks.push(entry.clone()),
                 _ => ls_output.files.push(entry.clone()),
             }
@@ -2073,6 +2157,7 @@ impl ParseHandler {
                     LsEntryType::Other => "other",
                 },
                 "is_hidden": e.is_hidden,
+                "is_generated": e.entry_type == LsEntryType::Directory && is_generated_directory(&e.name),
                 "links": e.links,
                 "owner": e.owner,
                 "group": e.group,
@@ -2082,6 +2167,7 @@ impl ParseHandler {
             "files": ls_output.files.iter().map(|e| &e.name).collect::<Vec<_>>(),
             "symlinks": ls_output.symlinks.iter().map(|e| &e.name).collect::<Vec<_>>(),
             "hidden": ls_output.hidden.iter().map(|e| &e.name).collect::<Vec<_>>(),
+            "generated": ls_output.generated.iter().map(|e| &e.name).collect::<Vec<_>>(),
         })
         .to_string()
     }
@@ -2120,6 +2206,13 @@ impl ParseHandler {
         if !ls_output.hidden.is_empty() {
             output.push_str(&format!("hidden ({}):\n", ls_output.hidden.len()));
             for entry in &ls_output.hidden {
+                output.push_str(&format!("  {}\n", entry.name));
+            }
+        }
+
+        if !ls_output.generated.is_empty() {
+            output.push_str(&format!("generated ({}):\n", ls_output.generated.len()));
+            for entry in &ls_output.generated {
                 output.push_str(&format!("  {}\n", entry.name));
             }
         }

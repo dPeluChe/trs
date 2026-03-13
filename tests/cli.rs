@@ -701,6 +701,187 @@ fn test_parse_ls_with_file_from_stdin() {
         .success();
 }
 
+// ============================================================
+// Generated Directories Tests
+// ============================================================
+
+#[test]
+fn test_parse_ls_node_modules_detected() {
+    // Test that node_modules is detected as a generated directory
+    let ls_input = "src/\nnode_modules/\npackage.json\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("node_modules/"));
+}
+
+#[test]
+fn test_parse_ls_target_detected() {
+    // Test that target directory (Rust) is detected
+    let ls_input = "src/\ntarget/\nCargo.toml\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("target/"));
+}
+
+#[test]
+fn test_parse_ls_multiple_generated_dirs() {
+    // Test multiple generated directories
+    let ls_input = "src/\nnode_modules/\ndist/\nbuild/\npackage.json\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 5"))
+        .stdout(predicate::str::contains("generated (3):"))
+        .stdout(predicate::str::contains("node_modules/"))
+        .stdout(predicate::str::contains("dist/"))
+        .stdout(predicate::str::contains("build/"));
+}
+
+#[test]
+fn test_parse_ls_generated_dirs_case_insensitive() {
+    // Test that generated directory detection is case-insensitive
+    let ls_input = "src/\nNode_Modules/\nDIST/\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("generated (2):"));
+}
+
+#[test]
+fn test_parse_ls_no_generated_dirs() {
+    // Test when no generated directories are present
+    let ls_input = "src/\nlib/\nREADME.md\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::function(|x: &str| !x.contains("generated")));
+}
+
+#[test]
+fn test_parse_ls_json_includes_generated() {
+    // Test that JSON output includes is_generated field and generated array
+    let ls_input = "src/\nnode_modules/\nfile.txt\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"is_generated\":true"))
+        .stdout(predicate::str::contains("\"is_generated\":false"))
+        .stdout(predicate::str::contains("\"generated\":[\"node_modules/\"]"));
+}
+
+#[test]
+fn test_parse_ls_long_format_generated_dirs() {
+    // Test generated directories in long format output
+    let ls_input = "total 8\ndrwxr-xr-x  5 user  group 4096 Jan  1 12:34 node_modules\ndrwxr-xr-x  2 user  group 4096 Jan  1 12:34 src\n-rw-r--r--  1 user  group   42 Jan  1 12:34 package.json\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("node_modules"));
+}
+
+#[test]
+fn test_parse_ls_venv_detected() {
+    // Test that Python venv directories are detected
+    let ls_input = "src/\nvenv/\nrequirements.txt\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("venv/"));
+}
+
+#[test]
+fn test_parse_ls_pycache_detected() {
+    // Test that __pycache__ is detected
+    let ls_input = "src/\n__pycache__/\nmain.py\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("__pycache__/"));
+}
+
+#[test]
+fn test_parse_ls_vendor_detected() {
+    // Test that vendor directory (Go/PHP/Ruby) is detected
+    let ls_input = "cmd/\nvendor/\ngo.mod\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("vendor/"));
+}
+
+#[test]
+fn test_parse_ls_hidden_and_generated() {
+    // Test that a directory can be both hidden and generated (e.g., .venv, .next)
+    let ls_input = "src/\n.next/\n.venv/\npackage.json\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 4"))
+        .stdout(predicate::str::contains("hidden (2):"))
+        .stdout(predicate::str::contains("generated (2):"));
+}
+
 #[test]
 fn test_parse_grep() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
