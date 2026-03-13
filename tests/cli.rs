@@ -2303,6 +2303,118 @@ Tests:       1 passed, 1 failed, 2 total"#;
 }
 
 #[test]
+fn test_parse_test_vitest_json_output() {
+    // Test that Vitest parser works and produces valid JSON output
+    let vitest_input = r#" ✓ test/example-1.test.ts (5 tests | 1 skipped) 306ms
+ ✓ test/example-2.test.ts (5 tests) 307ms
+
+ Test Files  2 passed (4)
+      Tests  10 passed | 3 skipped (65)
+   Start at  11:01:36
+   Duration  2.00s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("vitest")
+        .write_stdin(vitest_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], true);
+    assert_eq!(json["summary"]["tests"]["passed"], 10);
+    assert_eq!(json["summary"]["tests"]["skipped"], 3);
+    assert_eq!(json["summary"]["tests"]["total"], 65);
+    assert_eq!(json["summary"]["suites"]["passed"], 2);
+    assert_eq!(json["summary"]["suites"]["total"], 4);
+}
+
+#[test]
+fn test_parse_test_vitest_compact_output() {
+    // Test that Vitest parser works with compact output
+    let vitest_input = r#" ✓ test/utils.test.ts (2 tests) 306ms
+
+ ✗ test/api.test.ts (2 tests | 1 failed) 307ms
+
+ Test Files  1 passed, 1 failed (2)
+      Tests  3 passed, 1 failed, 2 skipped (6)
+   Duration  1.26s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("vitest")
+        .write_stdin(vitest_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    // Compact output should show summary and failed tests
+    assert!(stdout.contains("FAIL:"));
+    assert!(stdout.contains("1 passed, 1 failed"));
+    assert!(stdout.contains("failed suites"));
+    assert!(stdout.contains("test/api.test.ts"));
+}
+
+#[test]
+fn test_parse_test_vitest_with_tree_output() {
+    // Test that Vitest parser works with tree format output
+    let vitest_input = r#"✓ __tests__/file1.test.ts (2) 725ms
+   ✓ first test file (2) 725ms
+     ✓ 2 + 2 should equal 4
+     ✓ 4 - 2 should equal 2
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  12:34:32
+   Duration  1.26s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("vitest")
+        .write_stdin(vitest_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], true);
+    assert_eq!(json["summary"]["tests"]["passed"], 2);
+    assert_eq!(json["summary"]["suites"]["passed"], 1);
+}
+
+#[test]
+fn test_parse_test_vitest_failed_output() {
+    // Test that Vitest parser handles failed tests
+    let vitest_input = r#" ✗ test/failing.test.ts (2 tests | 1 failed) 306ms
+
+ Test Files  1 failed (1)
+      Tests  1 passed, 1 failed (2)
+   Duration  0.50s"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("vitest")
+        .write_stdin(vitest_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], false);
+    assert_eq!(json["summary"]["tests"]["passed"], 1);
+    assert_eq!(json["summary"]["tests"]["failed"], 1);
+    assert_eq!(json["summary"]["suites"]["failed"], 1);
+}
+
+#[test]
 fn test_parse_logs_json_output_not_implemented() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
