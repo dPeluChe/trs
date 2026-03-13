@@ -518,12 +518,16 @@ fn main() {
         Some(command) => router.execute_and_print(command, &ctx),
         None => {
             // Read from stdin when no command is provided
+            // Handle both UTF-8 and binary input gracefully
             use std::io::{self, Read};
-            let mut input = String::new();
-            if let Err(e) = io::stdin().read_to_string(&mut input) {
+            let mut buffer = Vec::new();
+            if let Err(e) = io::stdin().read_to_end(&mut buffer) {
                 eprintln!("Error reading from stdin: {}", e);
                 std::process::exit(1);
             }
+
+            // Convert to string, replacing invalid UTF-8 sequences with replacement character
+            let input = String::from_utf8_lossy(&buffer);
 
             // Process the input (similar to clean command)
             match router.process_stdin(&input, &ctx) {

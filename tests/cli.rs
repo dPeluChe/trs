@@ -4986,3 +4986,125 @@ fn test_stdin_with_agent_format() {
         .stdout(predicate::str::contains("Content:"))
         .stdout(predicate::str::contains("Agent Content"));
 }
+
+// ============================================================
+// Malformed Input Handling Tests
+// ============================================================
+
+#[test]
+fn test_stdin_handles_null_bytes() {
+    // Test that null bytes are removed gracefully
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("hello\x00world")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("helloworld"))
+        .stdout(predicate::function(|x: &str| !x.contains('\x00')));
+}
+
+#[test]
+fn test_stdin_handles_control_characters() {
+    // Test that control characters (except newline/tab) are replaced with spaces
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("hello\x01\x02world")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hello world"));
+}
+
+#[test]
+fn test_stdin_preserves_newlines_and_tabs() {
+    // Test that newlines and tabs are preserved
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("line1\nline2\ttabbed")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line1\nline2\ttabbed"));
+}
+
+#[test]
+fn test_stdin_handles_ansi_and_control_chars() {
+    // Test combination of ANSI codes and control characters
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("\x1b[31mhello\x1b[0m\x00world")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("helloworld"))
+        .stdout(predicate::function(|x: &str| !x.contains("\x1b[31m")));
+}
+
+#[test]
+fn test_stdin_json_format_with_null_bytes() {
+    // Test JSON output handles null bytes correctly
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .write_stdin("hello\x00world")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"content\":\"helloworld\""));
+}
+
+#[test]
+fn test_parse_git_status_handles_malformed_input() {
+    // Test that malformed git status input is handled gracefully
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-status")
+        .write_stdin("garbage:invalid:data::::here")
+        .assert()
+        .success(); // Should not crash
+}
+
+#[test]
+fn test_parse_git_status_with_null_bytes() {
+    // Test git status parsing with null bytes in input
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-status")
+        .write_stdin("On branch main\x00\nmodified: file.txt")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("main"));
+}
+
+#[test]
+fn test_parse_logs_with_control_chars() {
+    // Test logs parsing with control characters
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("logs")
+        .write_stdin("[INFO] Starting\x00\n[ERROR] Failed\x01")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Starting"));
+}
+
+#[test]
+fn test_parse_grep_with_malformed_lines() {
+    // Test grep parsing with malformed lines
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("grep")
+        .write_stdin("valid:10:match\nmalformed_line\nanother:20:match")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("valid"));
+}
+
+#[test]
+fn test_stdin_empty_input() {
+    // Test empty input handling
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("")
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_stdin_only_whitespace() {
+    // Test whitespace-only input
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.write_stdin("   \n\n   \t  ")
+        .assert()
+        .success();
+}

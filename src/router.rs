@@ -35,6 +35,44 @@ fn strip_ansi_codes(s: &str) -> String {
     result
 }
 
+/// Sanitize input string by handling control characters.
+///
+/// This function:
+/// - Removes null bytes (0x00)
+/// - Replaces other control characters (except newlines and tabs) with spaces
+/// - Normalizes multiple consecutive spaces to single space
+/// - Preserves valid Unicode characters
+fn sanitize_control_chars(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut prev_was_space = false;
+
+    for c in s.chars() {
+        match c {
+            // Remove null bytes entirely
+            '\x00' => continue,
+            // Preserve newlines and tabs
+            '\n' | '\t' | '\r' => {
+                result.push(c);
+                prev_was_space = false;
+            }
+            // Replace other ASCII control characters with space
+            c if c.is_ascii_control() => {
+                if !prev_was_space {
+                    result.push(' ');
+                    prev_was_space = true;
+                }
+            }
+            // Keep all other characters (including Unicode)
+            c => {
+                result.push(c);
+                prev_was_space = false;
+            }
+        }
+    }
+
+    result
+}
+
 /// Context passed to command handlers containing global CLI options.
 #[derive(Debug, Clone)]
 pub struct CommandContext {
@@ -1850,17 +1888,21 @@ impl ParseHandler {
     }
 
     /// Read input from a file or stdin.
+    /// Handles both UTF-8 and binary input gracefully by replacing invalid
+    /// UTF-8 sequences with the Unicode replacement character.
     fn read_input(file: &Option<std::path::PathBuf>) -> CommandResult<String> {
         use std::io::{self, Read};
 
         if let Some(path) = file {
-            std::fs::read_to_string(path).map_err(|e| CommandError::IoError(e.to_string()))
+            let bytes =
+                std::fs::read(path).map_err(|e| CommandError::IoError(e.to_string()))?;
+            Ok(String::from_utf8_lossy(&bytes).into_owned())
         } else {
-            let mut buffer = String::new();
+            let mut buffer = Vec::new();
             io::stdin()
-                .read_to_string(&mut buffer)
+                .read_to_end(&mut buffer)
                 .map_err(|e| CommandError::IoError(e.to_string()))?;
-            Ok(buffer)
+            Ok(String::from_utf8_lossy(&buffer).into_owned())
         }
     }
 
@@ -8908,11 +8950,16 @@ impl Router {
     /// - Strips ANSI codes
     /// - Trims whitespace
     /// - Collapses blank lines
+    /// - Sanitizes control characters
     pub fn process_stdin(&self, input: &str, ctx: &CommandContext) -> CommandResult<String> {
         let mut result = input.to_string();
 
-        // Strip ANSI escape codes
+        // Strip ANSI escape codes FIRST (before sanitizing control chars)
+        // because ANSI codes start with \x1b which is a control character
         result = strip_ansi_codes(&result);
+
+        // Sanitize control characters (remove nulls, replace other control chars)
+        result = sanitize_control_chars(&result);
 
         // Trim trailing whitespace from each line
         result = result
@@ -9017,6 +9064,140 @@ impl Default for Router {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ============================================================
+    // Malformed Input Handling Tests
+    // ============================================================
+
+    #[test]
+    fn test_sanitize_control_chars_removes_nulls() {
+        let input = "hello\x00world";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, "helloworld");
+    }
+
+    #[test]
+    fn test_sanitize_control_chars_replaces_control_chars() {
+        let input = "hello\x01\x02\x03world";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, "hello world");
+    }
+
+    #[test]
+    fn test_sanitize_control_chars_preserves_newlines() {
+        let input = "hello\nworld\r\ntest";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, "hello\nworld\r\ntest");
+    }
+
+    #[test]
+    fn test_sanitize_control_chars_preserves_tabs() {
+        let input = "hello\tworld";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, "hello\tworld");
+    }
+
+    #[test]
+    fn test_sanitize_control_chars_normalizes_spaces() {
+        let input = "hello\x01\x02world";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, "hello world"); // Multiple control chars become single space
+    }
+
+    #[test]
+    fn test_sanitize_control_chars_preserves_unicode() {
+        let input = "hello 世界 🌍";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, "hello 世界 🌍");
+    }
+
+    #[test]
+    fn test_sanitize_control_chars_mixed() {
+        let input = "line1\x00\nline2\x01\x02end";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, "line1\nline2 end");
+    }
+
+    #[test]
+    fn test_sanitize_control_chars_empty() {
+        let input = "";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_sanitize_control_chars_only_control() {
+        let input = "\x00\x01\x02\x03";
+        let result = sanitize_control_chars(input);
+        assert_eq!(result, " ");
+    }
+
+    #[test]
+    fn test_strip_ansi_codes_basic() {
+        let input = "\x1b[31mRed text\x1b[0m";
+        let result = strip_ansi_codes(input);
+        assert_eq!(result, "Red text");
+    }
+
+    #[test]
+    fn test_strip_ansi_codes_multiple() {
+        let input = "\x1b[1;31mBold Red\x1b[0m \x1b[32mGreen\x1b[0m";
+        let result = strip_ansi_codes(input);
+        assert_eq!(result, "Bold Red Green");
+    }
+
+    #[test]
+    fn test_process_stdin_with_null_bytes() {
+        let router = Router::new();
+        let ctx = CommandContext {
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let input = "hello\x00world\nline2";
+        let result = router.process_stdin(input, &ctx).unwrap();
+        assert_eq!(result, "helloworld\nline2");
+    }
+
+    #[test]
+    fn test_process_stdin_with_control_chars() {
+        let router = Router::new();
+        let ctx = CommandContext {
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let input = "hello\x01world";
+        let result = router.process_stdin(input, &ctx).unwrap();
+        assert_eq!(result, "hello world");
+    }
+
+    #[test]
+    fn test_process_stdin_with_ansi_and_control() {
+        let router = Router::new();
+        let ctx = CommandContext {
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let input = "\x1b[31mhello\x1b[0m\x00world";
+        let result = router.process_stdin(input, &ctx).unwrap();
+        assert_eq!(result, "helloworld");
+    }
+
+    #[test]
+    fn test_process_stdin_json_format() {
+        let router = Router::new();
+        let ctx = CommandContext {
+            format: OutputFormat::Json,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let input = "hello\x00world";
+        let result = router.process_stdin(input, &ctx).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(json["content"], "helloworld");
+    }
 
     #[test]
     fn test_command_context_creation() {
