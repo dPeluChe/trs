@@ -387,6 +387,147 @@ fn test_parse_ls() {
     cmd.arg("parse").arg("ls").assert().success();
 }
 
+// ============================================================
+// LS Parser Tests
+// ============================================================
+
+    
+#[test]
+fn test_parse_ls_empty() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin("")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("ls: empty"));
+}
+    
+#[test]
+fn test_parse_ls_simple_files() {
+    let ls_input = "file1.txt\nfile2.txt\nfile3.txt\n";
+    
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("files (3):"))
+        .stdout(predicate::str::contains("file1.txt"))
+        .stdout(predicate::str::contains("file2.txt"))
+        .stdout(predicate::str::contains("file3.txt"));
+}
+    
+#[test]
+fn test_parse_ls_with_directories() {
+    let ls_input = "file1.txt\ndir1\nfile2.txt\ndir2\n";
+    
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 4"))
+        .stdout(predicate::str::contains("directories (2):"))
+        .stdout(predicate::str::contains("files (2):"))
+        .stdout(predicate::str::contains("dir1"))
+        .stdout(predicate::str::contains("dir2"));
+}
+    
+#[test]
+fn test_parse_ls_with_hidden_files() {
+    let ls_input = "file1.txt\n.hidden_file\n.visible_file\n";
+    
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("hidden (2):"))
+        .stdout(predicate::str::contains(".hidden_file"))
+        .stdout(predicate::str::contains(".visible_file"));
+}
+    
+#[test]
+fn test_parse_ls_long_format() {
+    let ls_input = "total 0\ndrwxr-xr-x  2 user  group  4096 Jan  1 12:34 dirname\n-rw-r--r--  1 user  group    42 Jan  1 12:34 file1.txt\n";
+    
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 2"))
+        .stdout(predicate::str::contains("directories (1):"))
+        .stdout(predicate::str::contains("files (1):"))
+        .stdout(predicate::str::contains("dirname"))
+        .stdout(predicate::str::contains("file1.txt"));
+}
+    
+#[test]
+fn test_parse_ls_json_format() {
+    let ls_input = "file1.txt\nfile2.txt\n";
+    
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total_count\":2"))
+        .stdout(predicate::str::contains("\"name\":\"file1.txt\""))
+        .stdout(predicate::str::contains("\"type\":\"file\""));
+}
+    
+#[test]
+fn test_parse_ls_raw_format() {
+    let ls_input = "file1.txt\nfile2.txt\nfile3.txt\n";
+    
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("file1.txt"))
+        .stdout(predicate::str::contains("file2.txt"))
+        .stdout(predicate::str::contains("file3.txt"))
+        .stdout(predicate::function(|x: &str| !x.contains("total:")));
+}
+    
+#[test]
+fn test_parse_ls_with_symlinks() {
+    let ls_input = "file1.txt\nlrwxrwxrwx  1 user  group    10 Jan  1 12:34 link_to_file\n";
+    
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("symlink"))
+        .stdout(predicate::str::contains("link_to_file"));
+}
+    
+#[test]
+fn test_parse_ls_with_file_from_stdin() {
+    // Test that we can pipe ls output to the parser
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("run")
+        .arg("ls")
+        .arg("/tmp")
+        .assert()
+        .success();
+}
+
 #[test]
 fn test_parse_grep() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -1273,4 +1414,47 @@ fn test_exit_code_no_capture_still_propagates() {
         .arg("--capture-stderr=false")
         .assert()
         .code(1);
+}
+
+// ============================================================
+// IsClean Command Tests
+// ============================================================
+
+#[test]
+fn test_is_clean_in_git_repo() {
+    // This test runs in the git repo, so it should be clean by default
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("is-clean")
+        .assert()
+        .code(0); // Exit 0 means clean
+}
+
+#[test]
+fn test_is_clean_json_format() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("is-clean")
+        .assert()
+        .code(0)
+        .stdout(predicate::str::contains("\"is_clean\":true"));
+}
+
+#[test]
+fn test_is_clean_compact_format() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("is-clean")
+        .assert()
+        .code(0)
+        .stdout(predicate::str::contains("status: clean"));
+}
+
+#[test]
+fn test_is_clean_raw_format() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("is-clean")
+        .assert()
+        .code(0)
+        .stdout(predicate::str::contains("clean"));
 }
