@@ -353,6 +353,18 @@ pub fn format_bytes(bytes: usize) -> String {
 /// - Can be parsed by other tools
 /// - Contains all available fields
 /// - Uses consistent schemas
+///
+/// # Example Output
+///
+/// ```json
+/// {"branch": "main", "is_clean": true}
+/// ```
+///
+/// Or for dirty state:
+///
+/// ```json
+/// {"branch": "feature/new-thing", "is_clean": false, "staged_count": 2, "unstaged_count": 3, "untracked_count": 5, "unmerged_count": 0}
+/// ```
 pub struct JsonFormatter;
 
 impl Formatter for JsonFormatter {
@@ -362,6 +374,292 @@ impl Formatter for JsonFormatter {
 
     fn format() -> OutputFormat {
         OutputFormat::Json
+    }
+}
+
+impl JsonFormatter {
+    /// Format a simple message/status as JSON.
+    pub fn format_message(key: &str, value: &str) -> String {
+        serde_json::json!({
+            key: value
+        })
+        .to_string()
+    }
+
+    /// Format a key-value pair as JSON.
+    pub fn format_key_value(key: &str, value: impl serde::Serialize) -> String {
+        serde_json::json!({
+            key: value
+        })
+        .to_string()
+    }
+
+    /// Format multiple key-value pairs as JSON.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::JsonFormatter;
+    /// use serde_json::json;
+    /// let output = JsonFormatter::format_object(&[
+    ///     ("branch", json!("main")),
+    ///     ("is_clean", json!(true)),
+    ///     ("count", json!(5)),
+    /// ]);
+    /// let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+    /// assert_eq!(json["branch"], "main");
+    /// assert_eq!(json["is_clean"], true);
+    /// assert_eq!(json["count"], 5);
+    /// ```
+    pub fn format_object(pairs: &[(&str, serde_json::Value)]) -> String {
+        let mut map = serde_json::Map::new();
+        for (key, value) in pairs {
+            map.insert(key.to_string(), value.clone());
+        }
+        serde_json::Value::Object(map).to_string()
+    }
+
+    /// Format a count summary as JSON.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::JsonFormatter;
+    /// let output = JsonFormatter::format_counts(&[("passed", 10), ("failed", 2)]);
+    /// let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+    /// assert_eq!(json["passed"], 10);
+    /// assert_eq!(json["failed"], 2);
+    /// ```
+    pub fn format_counts(counts: &[(&str, usize)]) -> String {
+        let mut map = serde_json::Map::new();
+        for (name, count) in counts {
+            map.insert(name.to_string(), serde_json::json!(*count));
+        }
+        serde_json::Value::Object(map).to_string()
+    }
+
+    /// Format a section with items as JSON.
+    pub fn format_section(name: &str, items: &[impl serde::Serialize]) -> String {
+        serde_json::json!({
+            name: items
+        })
+        .to_string()
+    }
+
+    /// Format a list item with status and path as JSON.
+    pub fn format_item(status: &str, path: &str) -> String {
+        serde_json::json!({
+            "status": status,
+            "path": path
+        })
+        .to_string()
+    }
+
+    /// Format a list item with rename info as JSON.
+    pub fn format_item_renamed(status: &str, old_path: &str, new_path: &str) -> String {
+        serde_json::json!({
+            "status": status,
+            "path": new_path,
+            "old_path": old_path
+        })
+        .to_string()
+    }
+
+    /// Format a test result summary as JSON.
+    pub fn format_test_summary(passed: usize, failed: usize, skipped: usize, duration_ms: u64) -> String {
+        serde_json::json!({
+            "passed": passed,
+            "failed": failed,
+            "skipped": skipped,
+            "total": passed + failed + skipped,
+            "duration_ms": duration_ms
+        })
+        .to_string()
+    }
+
+    /// Format a success/failure status as JSON.
+    pub fn format_status(success: bool) -> String {
+        serde_json::json!({
+            "success": success
+        })
+        .to_string()
+    }
+
+    /// Format a list of failing tests as JSON.
+    pub fn format_failures(failures: &[String]) -> String {
+        serde_json::json!({
+            "failures": failures,
+            "count": failures.len()
+        })
+        .to_string()
+    }
+
+    /// Format log level counts as JSON.
+    pub fn format_log_levels(error: usize, warn: usize, info: usize, debug: usize) -> String {
+        serde_json::json!({
+            "error": error,
+            "warn": warn,
+            "info": info,
+            "debug": debug,
+            "total": error + warn + info + debug
+        })
+        .to_string()
+    }
+
+    /// Format a grep match as JSON.
+    pub fn format_grep_match(file: &str, line: Option<usize>, content: &str) -> String {
+        serde_json::json!({
+            "file": file,
+            "line": line,
+            "content": content.trim()
+        })
+        .to_string()
+    }
+
+    /// Format a grep file with matches as JSON.
+    pub fn format_grep_file(file: &str, match_count: usize) -> String {
+        serde_json::json!({
+            "file": file,
+            "match_count": match_count
+        })
+        .to_string()
+    }
+
+    /// Format a diff file entry as JSON.
+    pub fn format_diff_file(path: &str, change_type: &str, additions: usize, deletions: usize) -> String {
+        serde_json::json!({
+            "path": path,
+            "change_type": change_type,
+            "additions": additions,
+            "deletions": deletions
+        })
+        .to_string()
+    }
+
+    /// Format a diff summary as JSON.
+    pub fn format_diff_summary(files_changed: usize, insertions: usize, deletions: usize) -> String {
+        serde_json::json!({
+            "files_changed": files_changed,
+            "insertions": insertions,
+            "deletions": deletions
+        })
+        .to_string()
+    }
+
+    /// Format a clean state indicator as JSON.
+    pub fn format_clean() -> String {
+        serde_json::json!({
+            "is_clean": true
+        })
+        .to_string()
+    }
+
+    /// Format a dirty state indicator with counts as JSON.
+    pub fn format_dirty(staged: usize, unstaged: usize, untracked: usize, unmerged: usize) -> String {
+        serde_json::json!({
+            "is_clean": false,
+            "staged": staged,
+            "unstaged": unstaged,
+            "untracked": untracked,
+            "unmerged": unmerged
+        })
+        .to_string()
+    }
+
+    /// Format branch info with ahead/behind as JSON.
+    pub fn format_branch_with_tracking(branch: &str, ahead: usize, behind: usize) -> String {
+        serde_json::json!({
+            "branch": branch,
+            "ahead": ahead,
+            "behind": behind
+        })
+        .to_string()
+    }
+
+    /// Format an empty result as JSON.
+    pub fn format_empty() -> String {
+        serde_json::json!({
+            "empty": true
+        })
+        .to_string()
+    }
+
+    /// Format a truncation warning as JSON.
+    pub fn format_truncated(shown: usize, total: usize) -> String {
+        serde_json::json!({
+            "is_truncated": true,
+            "shown": shown,
+            "total": total
+        })
+        .to_string()
+    }
+
+    /// Format an error message as JSON.
+    pub fn format_error(message: &str) -> String {
+        serde_json::json!({
+            "error": true,
+            "message": message
+        })
+        .to_string()
+    }
+
+    /// Format an error with exit code as JSON.
+    pub fn format_error_with_code(message: &str, exit_code: i32) -> String {
+        serde_json::json!({
+            "error": true,
+            "message": message,
+            "exit_code": exit_code
+        })
+        .to_string()
+    }
+
+    /// Format a not-implemented message as JSON.
+    pub fn format_not_implemented(message: &str) -> String {
+        serde_json::json!({
+            "not_implemented": true,
+            "message": message
+        })
+        .to_string()
+    }
+
+    /// Format a command result as JSON.
+    pub fn format_command_result(
+        command: &str,
+        args: &[String],
+        stdout: &str,
+        stderr: &str,
+        exit_code: i32,
+        duration_ms: u64,
+    ) -> String {
+        serde_json::json!({
+            "command": command,
+            "args": args,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": exit_code,
+            "duration_ms": duration_ms
+        })
+        .to_string()
+    }
+
+    /// Format a list of strings as JSON array.
+    pub fn format_list(items: &[impl AsRef<str>]) -> String {
+        serde_json::json!(items.iter().map(|s| s.as_ref()).collect::<Vec<_>>()).to_string()
+    }
+
+    /// Format a count as JSON.
+    pub fn format_count(count: usize) -> String {
+        serde_json::json!({ "count": count }).to_string()
+    }
+
+    /// Format a boolean flag as JSON.
+    pub fn format_flag(name: &str, value: bool) -> String {
+        serde_json::json!({ name: value }).to_string()
+    }
+
+    /// Format an array of objects as JSON.
+    pub fn format_array<T: serde::Serialize>(items: &[T]) -> String {
+        serde_json::to_string(items).unwrap_or_else(|_| "[]".to_string())
     }
 }
 
@@ -1012,6 +1310,322 @@ mod tests {
         assert_eq!(format_bytes(1024), "1.00KB");
         assert_eq!(format_bytes(1048576), "1.00MB");
         assert_eq!(format_bytes(1073741824), "1.00GB");
+    }
+
+    // ============================================================
+    // JSON Formatter Tests
+    // ============================================================
+
+    #[test]
+    fn test_json_format_message() {
+        let output = JsonFormatter::format_message("branch", "main");
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["branch"], "main");
+    }
+
+    #[test]
+    fn test_json_format_key_value() {
+        let output = JsonFormatter::format_key_value("count", 42);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["count"], 42);
+    }
+
+    #[test]
+    fn test_json_format_object() {
+        let output = JsonFormatter::format_object(&[
+            ("branch", serde_json::json!("main")),
+            ("is_clean", serde_json::json!(true)),
+            ("count", serde_json::json!(5)),
+        ]);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["branch"], "main");
+        assert_eq!(json["is_clean"], true);
+        assert_eq!(json["count"], 5);
+    }
+
+    #[test]
+    fn test_json_format_counts() {
+        let output = JsonFormatter::format_counts(&[("passed", 10), ("failed", 2)]);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["passed"], 10);
+        assert_eq!(json["failed"], 2);
+    }
+
+    #[test]
+    fn test_json_format_counts_with_zeros() {
+        // Unlike compact, JSON includes zero counts
+        let output = JsonFormatter::format_counts(&[("passed", 0), ("failed", 2)]);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["passed"], 0);
+        assert_eq!(json["failed"], 2);
+    }
+
+    #[test]
+    fn test_json_format_section() {
+        let items = vec!["file1.rs", "file2.rs"];
+        let output = JsonFormatter::format_section("staged", &items);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert!(json["staged"].is_array());
+        assert_eq!(json["staged"][0], "file1.rs");
+        assert_eq!(json["staged"][1], "file2.rs");
+    }
+
+    #[test]
+    fn test_json_format_item() {
+        let output = JsonFormatter::format_item("M", "src/main.rs");
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["status"], "M");
+        assert_eq!(json["path"], "src/main.rs");
+    }
+
+    #[test]
+    fn test_json_format_item_renamed() {
+        let output = JsonFormatter::format_item_renamed("R", "old.rs", "new.rs");
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["status"], "R");
+        assert_eq!(json["path"], "new.rs");
+        assert_eq!(json["old_path"], "old.rs");
+    }
+
+    #[test]
+    fn test_json_format_test_summary() {
+        let output = JsonFormatter::format_test_summary(10, 2, 1, 1500);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["passed"], 10);
+        assert_eq!(json["failed"], 2);
+        assert_eq!(json["skipped"], 1);
+        assert_eq!(json["total"], 13);
+        assert_eq!(json["duration_ms"], 1500);
+    }
+
+    #[test]
+    fn test_json_format_status() {
+        let success_output = JsonFormatter::format_status(true);
+        let success_json: serde_json::Value = serde_json::from_str(&success_output).unwrap();
+        assert_eq!(success_json["success"], true);
+
+        let failure_output = JsonFormatter::format_status(false);
+        let failure_json: serde_json::Value = serde_json::from_str(&failure_output).unwrap();
+        assert_eq!(failure_json["success"], false);
+    }
+
+    #[test]
+    fn test_json_format_failures() {
+        let failures = vec!["test_one".to_string(), "test_two".to_string()];
+        let output = JsonFormatter::format_failures(&failures);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert!(json["failures"].is_array());
+        assert_eq!(json["count"], 2);
+    }
+
+    #[test]
+    fn test_json_format_failures_empty() {
+        let failures: Vec<String> = vec![];
+        let output = JsonFormatter::format_failures(&failures);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert!(json["failures"].is_array());
+        assert_eq!(json["count"], 0);
+    }
+
+    #[test]
+    fn test_json_format_log_levels() {
+        let output = JsonFormatter::format_log_levels(2, 5, 10, 3);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["error"], 2);
+        assert_eq!(json["warn"], 5);
+        assert_eq!(json["info"], 10);
+        assert_eq!(json["debug"], 3);
+        assert_eq!(json["total"], 20);
+    }
+
+    #[test]
+    fn test_json_format_log_levels_with_zeros() {
+        let output = JsonFormatter::format_log_levels(0, 5, 0, 0);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["error"], 0);
+        assert_eq!(json["warn"], 5);
+        assert_eq!(json["total"], 5);
+    }
+
+    #[test]
+    fn test_json_format_grep_match() {
+        let output = JsonFormatter::format_grep_match("src/main.rs", Some(42), "fn main()");
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["file"], "src/main.rs");
+        assert_eq!(json["line"], 42);
+        assert_eq!(json["content"], "fn main()");
+    }
+
+    #[test]
+    fn test_json_format_grep_match_no_line() {
+        let output = JsonFormatter::format_grep_match("src/main.rs", None, "match found");
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["file"], "src/main.rs");
+        assert!(json["line"].is_null());
+    }
+
+    #[test]
+    fn test_json_format_grep_file() {
+        let output = JsonFormatter::format_grep_file("src/main.rs", 5);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["file"], "src/main.rs");
+        assert_eq!(json["match_count"], 5);
+    }
+
+    #[test]
+    fn test_json_format_diff_file() {
+        let output = JsonFormatter::format_diff_file("src/main.rs", "M", 10, 5);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["path"], "src/main.rs");
+        assert_eq!(json["change_type"], "M");
+        assert_eq!(json["additions"], 10);
+        assert_eq!(json["deletions"], 5);
+    }
+
+    #[test]
+    fn test_json_format_diff_summary() {
+        let output = JsonFormatter::format_diff_summary(3, 25, 10);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["files_changed"], 3);
+        assert_eq!(json["insertions"], 25);
+        assert_eq!(json["deletions"], 10);
+    }
+
+    #[test]
+    fn test_json_format_clean() {
+        let output = JsonFormatter::format_clean();
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["is_clean"], true);
+    }
+
+    #[test]
+    fn test_json_format_dirty() {
+        let output = JsonFormatter::format_dirty(2, 3, 5, 0);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["is_clean"], false);
+        assert_eq!(json["staged"], 2);
+        assert_eq!(json["unstaged"], 3);
+        assert_eq!(json["untracked"], 5);
+        assert_eq!(json["unmerged"], 0);
+    }
+
+    #[test]
+    fn test_json_format_branch_with_tracking() {
+        // No tracking
+        let output = JsonFormatter::format_branch_with_tracking("main", 0, 0);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["branch"], "main");
+        assert_eq!(json["ahead"], 0);
+        assert_eq!(json["behind"], 0);
+
+        // With tracking
+        let output = JsonFormatter::format_branch_with_tracking("feature", 3, 2);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["branch"], "feature");
+        assert_eq!(json["ahead"], 3);
+        assert_eq!(json["behind"], 2);
+    }
+
+    #[test]
+    fn test_json_format_empty() {
+        let output = JsonFormatter::format_empty();
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["empty"], true);
+    }
+
+    #[test]
+    fn test_json_format_truncated() {
+        let output = JsonFormatter::format_truncated(10, 50);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["is_truncated"], true);
+        assert_eq!(json["shown"], 10);
+        assert_eq!(json["total"], 50);
+    }
+
+    #[test]
+    fn test_json_format_error() {
+        let output = JsonFormatter::format_error("Something went wrong");
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["error"], true);
+        assert_eq!(json["message"], "Something went wrong");
+    }
+
+    #[test]
+    fn test_json_format_error_with_code() {
+        let output = JsonFormatter::format_error_with_code("Command failed", 1);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["error"], true);
+        assert_eq!(json["message"], "Command failed");
+        assert_eq!(json["exit_code"], 1);
+    }
+
+    #[test]
+    fn test_json_format_not_implemented() {
+        let output = JsonFormatter::format_not_implemented("Feature X");
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["not_implemented"], true);
+        assert_eq!(json["message"], "Feature X");
+    }
+
+    #[test]
+    fn test_json_format_command_result() {
+        let output = JsonFormatter::format_command_result(
+            "echo",
+            &["hello".to_string(), "world".to_string()],
+            "hello world\n",
+            "",
+            0,
+            10,
+        );
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["command"], "echo");
+        assert!(json["args"].is_array());
+        assert_eq!(json["stdout"], "hello world\n");
+        assert_eq!(json["stderr"], "");
+        assert_eq!(json["exit_code"], 0);
+        assert_eq!(json["duration_ms"], 10);
+    }
+
+    #[test]
+    fn test_json_format_list() {
+        let items = vec!["file1.rs", "file2.rs"];
+        let output = JsonFormatter::format_list(&items);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert!(json.is_array());
+        assert_eq!(json[0], "file1.rs");
+        assert_eq!(json[1], "file2.rs");
+    }
+
+    #[test]
+    fn test_json_format_count() {
+        let output = JsonFormatter::format_count(42);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["count"], 42);
+    }
+
+    #[test]
+    fn test_json_format_flag() {
+        let output = JsonFormatter::format_flag("is_clean", true);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["is_clean"], true);
+    }
+
+    #[test]
+    fn test_json_format_array() {
+        #[derive(serde::Serialize)]
+        struct Item {
+            name: &'static str,
+            value: usize,
+        }
+        let items = vec![
+            Item { name: "first", value: 1 },
+            Item { name: "second", value: 2 },
+        ];
+        let output = JsonFormatter::format_array(&items);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert!(json.is_array());
+        assert_eq!(json[0]["name"], "first");
+        assert_eq!(json[1]["value"], 2);
     }
 
     // ============================================================
