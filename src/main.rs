@@ -5,6 +5,7 @@ mod formatter;
 mod help;
 mod process;
 mod router;
+mod schema;
 
 use router::{CommandContext, Router};
 
