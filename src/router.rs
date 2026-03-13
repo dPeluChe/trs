@@ -1153,8 +1153,8 @@ impl RunHandler {
                 }
                 result
             }
-            _ => {
-                // Raw and other formats: just stdout
+            OutputFormat::Raw => {
+                // Raw output: unprocessed stdout and stderr
                 let mut result = output.stdout.clone();
                 if output.has_stderr() && !output.stderr.is_empty() {
                     result.push_str(&output.stderr);
@@ -1195,7 +1195,11 @@ impl RunHandler {
                 "is_permission_denied": error.is_permission_denied(),
             })
             .to_string(),
-            _ => format!("Error: {}", error),
+            OutputFormat::Raw
+            | OutputFormat::Compact
+            | OutputFormat::Agent
+            | OutputFormat::Csv
+            | OutputFormat::Tsv => format!("Error: {}", error),
         }
     }
 }
@@ -1650,7 +1654,7 @@ impl IsCleanHandler {
             OutputFormat::Json => Self::format_json(state),
             OutputFormat::Compact | OutputFormat::Agent => Self::format_compact(state),
             OutputFormat::Raw => Self::format_raw(state),
-            _ => Self::format_compact(state),
+            OutputFormat::Csv | OutputFormat::Tsv => Self::format_compact(state),
         }
     }
 
@@ -2547,7 +2551,7 @@ impl ParseHandler {
             OutputFormat::Json => Self::format_git_diff_json(diff),
             OutputFormat::Compact | OutputFormat::Agent => Self::format_git_diff_compact(diff),
             OutputFormat::Raw => Self::format_git_diff_raw(diff),
-            _ => Self::format_git_diff_compact(diff),
+            OutputFormat::Csv | OutputFormat::Tsv => Self::format_git_diff_compact(diff),
         }
     }
 
@@ -2964,7 +2968,7 @@ impl ParseHandler {
             OutputFormat::Json => Self::format_ls_json(ls_output),
             OutputFormat::Compact | OutputFormat::Agent => Self::format_ls_compact(ls_output),
             OutputFormat::Raw => Self::format_ls_raw(ls_output),
-            _ => Self::format_ls_compact(ls_output),
+            OutputFormat::Csv | OutputFormat::Tsv => Self::format_ls_compact(ls_output),
         }
     }
     /// Format ls output as JSON.
@@ -8589,7 +8593,7 @@ impl ParseHandler {
             OutputFormat::Json => Self::format_find_json(find_output),
             OutputFormat::Compact | OutputFormat::Agent => Self::format_find_compact(find_output),
             OutputFormat::Raw => Self::format_find_raw(find_output),
-            _ => Self::format_find_compact(find_output),
+            OutputFormat::Csv | OutputFormat::Tsv => Self::format_find_compact(find_output),
         }
     }
 
@@ -8878,7 +8882,11 @@ impl Router {
                 "message": format!("{} not yet implemented", msg),
             })
             .to_string(),
-            _ => format!("{} not yet implemented", msg),
+            OutputFormat::Raw
+            | OutputFormat::Compact
+            | OutputFormat::Agent
+            | OutputFormat::Csv
+            | OutputFormat::Tsv => format!("{} not yet implemented", msg),
         }
     }
 
@@ -8891,7 +8899,11 @@ impl Router {
                 "exit_code": error.exit_code(),
             })
             .to_string(),
-            _ => format!("Error: {}", error),
+            OutputFormat::Raw
+            | OutputFormat::Compact
+            | OutputFormat::Agent
+            | OutputFormat::Csv
+            | OutputFormat::Tsv => format!("Error: {}", error),
         }
     }
 }

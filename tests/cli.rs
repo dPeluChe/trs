@@ -4684,3 +4684,209 @@ E       assert 6 == 5"#;
         .stdout(predicate::str::contains("test_subtract"))
         .stdout(predicate::str::contains("test_multiply"));
 }
+
+// ============================================================
+// Raw Format Tests
+// ============================================================
+
+#[test]
+fn test_run_command_raw_format() {
+    // Raw format should output unprocessed stdout
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("run")
+        .arg("echo")
+        .arg("raw_output_test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("raw_output_test"));
+}
+
+#[test]
+fn test_run_command_raw_format_with_stderr() {
+    // Raw format should include both stdout and stderr
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo stdout_test && echo stderr_test >&2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("stdout_test"))
+        .stdout(predicate::str::contains("stderr_test"));
+}
+
+#[test]
+fn test_parse_git_status_raw_format() {
+    // Test raw format for git status parsing
+    let status_input = "On branch main\nYour branch is up to date.\n\nChanges to be committed:\n  modified:   src/main.rs\n\nUntracked files:\n  new_file.txt\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("git-status")
+        .write_stdin(status_input)
+        .assert()
+        .success()
+        // Raw format should show simple status/path pairs
+        .stdout(predicate::str::contains("M src/main.rs"))
+        .stdout(predicate::str::contains("? new_file.txt"));
+}
+
+#[test]
+fn test_parse_git_diff_raw_format() {
+    // Test raw format for git diff parsing
+    let diff_input = "diff --git a/src/main.rs b/src/main.rs\nindex 1234567..abcdefg 100644\n--- a/src/main.rs\n+++ b/src/main.rs\n@@ -1,5 +1,6 @@\n fn main() {\n-    println!(\"old\");\n+    println!(\"new\");\n }\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(diff_input)
+        .assert()
+        .success()
+        // Raw format should show file with change type
+        .stdout(predicate::str::contains("M src/main.rs"));
+}
+
+#[test]
+fn test_parse_find_raw_format() {
+    // Test raw format for find parsing
+    let find_input = "./src/main.rs\n./src/lib.rs\n./tests/test.rs\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("find")
+        .write_stdin(find_input)
+        .assert()
+        .success()
+        // Raw format should show just the paths
+        .stdout(predicate::str::contains("./src/main.rs"))
+        .stdout(predicate::str::contains("./src/lib.rs"))
+        .stdout(predicate::str::contains("./tests/test.rs"))
+        // Should not include metadata like "total:"
+        .stdout(predicate::function(|x: &str| !x.contains("total:")));
+}
+
+#[test]
+fn test_parse_logs_raw_format() {
+    // Test raw format for log parsing
+    let logs_input = "2024-01-15 10:30:00 INFO Application started\n2024-01-15 10:30:01 ERROR Connection failed\n2024-01-15 10:30:02 INFO Retrying...\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(logs_input)
+        .assert()
+        .success()
+        // Raw format should show just the log lines
+        .stdout(predicate::str::contains("Application started"))
+        .stdout(predicate::str::contains("Connection failed"))
+        .stdout(predicate::str::contains("Retrying..."));
+}
+
+#[test]
+fn test_parse_pytest_raw_format() {
+    // Test raw format for pytest output
+    let pytest_input = "tests/test_main.py::test_add PASSED\ntests/test_main.py::test_subtract FAILED\n1 passed, 1 failed in 1.23s\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pytest")
+        .write_stdin(pytest_input)
+        .assert()
+        .success()
+        // Raw format should show minimal output
+        .stdout(predicate::str::contains("tests/test_main.py::test_add"))
+        .stdout(predicate::str::contains("tests/test_main.py::test_subtract"));
+}
+
+#[test]
+fn test_parse_jest_raw_format() {
+    // Test raw format for Jest output
+    let jest_input = "PASS src/utils.test.js\n  ✓ should add numbers (5ms)\n  ✓ should subtract numbers (3ms)\n\nTest Suites: 1 passed, 1 total\nTests:       2 passed, 2 total\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("jest")
+        .write_stdin(jest_input)
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_parse_vitest_raw_format() {
+    // Test raw format for Vitest output
+    let vitest_input = " ✓ src/math.test.ts > add (5ms)\n ✓ src/math.test.ts > subtract (3ms)\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("vitest")
+        .write_stdin(vitest_input)
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_parse_npm_test_raw_format() {
+    // Test raw format for npm test output
+    let npm_input = "\n> project@1.0.0 test\n> jest\n\nPASS src/test.js\n  ✓ test1 (5ms)\n\nTest Suites: 1 passed, 1 total\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("npm")
+        .write_stdin(npm_input)
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_raw_format_precedence_over_default() {
+    // Test that --raw explicitly sets raw format
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test"));
+}
+
+#[test]
+fn test_raw_format_lower_precedence_than_json() {
+    // Test that JSON has higher precedence than Raw
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("--raw")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        // JSON format should be used
+        .stdout(predicate::str::contains("\"exit_code\""))
+        .stdout(predicate::str::contains("\"stdout\""));
+}
+
+#[test]
+fn test_raw_format_lower_precedence_than_compact() {
+    // Test that Compact has higher precedence than Raw
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("--raw")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+    // Compact format should be used (just the output)
+        .stdout(predicate::str::contains("test"));
+}
