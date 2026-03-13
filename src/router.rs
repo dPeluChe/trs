@@ -313,7 +313,7 @@ struct GrepFile {
 /// Parsed grep output.
 #[derive(Debug, Clone, Default)]
 struct GrepOutput {
-    /// List of files with matches.
+    /// List of files with matches (limited if truncated).
     files: Vec<GrepFile>,
     /// Total number of files with matches.
     file_count: usize,
@@ -321,6 +321,16 @@ struct GrepOutput {
     match_count: usize,
     /// Whether the output is empty (no matches).
     is_empty: bool,
+    /// Whether the output was truncated.
+    is_truncated: bool,
+    /// Total number of files available before truncation.
+    total_files: usize,
+    /// Total number of matches available before truncation.
+    total_matches: usize,
+    /// Number of files shown after truncation.
+    files_shown: usize,
+    /// Number of matches shown after truncation.
+    matches_shown: usize,
 }
 
 /// Common generated directory names that are typically build artifacts or dependencies.
@@ -2458,7 +2468,14 @@ impl ParseHandler {
         let input = Self::read_input(file)?;
 
         // Parse the grep output
-        let grep_output = Self::parse_grep(&input)?;
+        let mut grep_output = Self::parse_grep(&input)?;
+
+        // Apply truncation for large result sets
+        Self::truncate_grep(
+            &mut grep_output,
+            Self::DEFAULT_MAX_GREP_FILES,
+            Self::DEFAULT_MAX_GREP_MATCHES_PER_FILE,
+        );
 
         // Format output based on the requested format
         let output = Self::format_grep(&grep_output, ctx.format);
@@ -2523,10 +2540,49 @@ impl ParseHandler {
             grep_output.match_count += file.matches.len();
         }
 
+        // Set total counts before any truncation
+        grep_output.total_files = grep_output.files.len();
+        grep_output.total_matches = grep_output.match_count;
+        grep_output.files_shown = grep_output.files.len();
+        grep_output.matches_shown = grep_output.match_count;
+
         // Check if empty
         grep_output.is_empty = grep_output.files.is_empty();
 
         Ok(grep_output)
+    }
+
+    /// Default maximum number of files to show in grep output before truncation.
+    const DEFAULT_MAX_GREP_FILES: usize = 50;
+
+    /// Default maximum number of matches per file to show before truncation.
+    const DEFAULT_MAX_GREP_MATCHES_PER_FILE: usize = 20;
+
+    /// Truncate grep output if it exceeds the limits.
+    ///
+    /// This truncates both the number of files and the number of matches per file
+    /// to prevent overwhelming output for large result sets.
+    fn truncate_grep(grep_output: &mut GrepOutput, max_files: usize, max_matches_per_file: usize) {
+        // First, truncate matches per file
+        for file in &mut grep_output.files {
+            if file.matches.len() > max_matches_per_file {
+                file.matches.truncate(max_matches_per_file);
+            }
+        }
+
+        // Then, truncate files if needed
+        if grep_output.files.len() > max_files {
+            grep_output.is_truncated = true;
+            grep_output.files_shown = max_files;
+            grep_output.files.truncate(max_files);
+        } else if grep_output.total_matches > grep_output.files.iter().map(|f| f.matches.len()).sum::<usize>() {
+            // Some matches were truncated per-file but not files
+            grep_output.is_truncated = true;
+            grep_output.files_shown = grep_output.files.len();
+        }
+
+        // Calculate final matches shown
+        grep_output.matches_shown = grep_output.files.iter().map(|f| f.matches.len()).sum();
     }
 
     /// Parse a single grep line.
@@ -2697,6 +2753,11 @@ impl ParseHandler {
 
         serde_json::json!({
             "is_empty": grep_output.is_empty,
+            "is_truncated": grep_output.is_truncated,
+            "total_files": grep_output.total_files,
+            "total_matches": grep_output.total_matches,
+            "files_shown": grep_output.files_shown,
+            "matches_shown": grep_output.matches_shown,
             "file_count": grep_output.file_count,
             "match_count": match_count,
             "files": grep_output.files.iter().map(|file| {
@@ -2710,6 +2771,21 @@ impl ParseHandler {
                     })).collect::<Vec<_>>(),
                 })
             }).collect::<Vec<_>>(),
+            "truncation": if grep_output.is_truncated {
+                Some(serde_json::json!({
+                    "hidden_files": grep_output.total_files.saturating_sub(grep_output.files_shown),
+                    "hidden_matches": grep_output.total_matches.saturating_sub(grep_output.matches_shown),
+                    "message": format!(
+                        "Output truncated: showing {} of {} files, {} of {} matches",
+                        grep_output.files_shown,
+                        grep_output.total_files,
+                        grep_output.matches_shown,
+                        grep_output.total_matches
+                    ),
+                }))
+            } else {
+                None
+            },
         })
         .to_string()
     }
@@ -2780,10 +2856,21 @@ impl ParseHandler {
             .map(|f| f.matches.iter().filter(|m| !m.is_context).count())
             .sum();
 
-        output.push_str(&format!(
-            "matches: {} files, {} results\n",
-            grep_output.file_count, match_count
-        ));
+        // Show summary with truncation info if applicable
+        if grep_output.is_truncated {
+            output.push_str(&format!(
+                "matches: {}/{} files, {}/{} results (truncated)\n",
+                grep_output.files_shown,
+                grep_output.total_files,
+                grep_output.matches_shown,
+                grep_output.total_matches
+            ));
+        } else {
+            output.push_str(&format!(
+                "matches: {} files, {} results\n",
+                grep_output.file_count, match_count
+            ));
+        }
 
         for file in &grep_output.files {
             let non_context_count = file.matches.iter().filter(|m| !m.is_context).count();
@@ -2855,6 +2942,24 @@ impl ParseHandler {
             }
         }
 
+        // Show truncation warning if applicable
+        if grep_output.is_truncated {
+            let hidden_files = grep_output.total_files.saturating_sub(grep_output.files_shown);
+            let hidden_matches = grep_output.total_matches.saturating_sub(grep_output.matches_shown);
+            if hidden_files > 0 {
+                output.push_str(&format!(
+                    "  ... {} more file(s) not shown\n",
+                    hidden_files
+                ));
+            }
+            if hidden_matches > 0 && hidden_files == 0 {
+                output.push_str(&format!(
+                    "  ... {} more match(es) not shown\n",
+                    hidden_matches
+                ));
+            }
+        }
+
         output
     }
 
@@ -2878,6 +2983,24 @@ impl ParseHandler {
                 } else {
                     output.push_str(&format!("{}:{}\n", file.path, m.line));
                 }
+            }
+        }
+
+        // Show truncation warning if applicable
+        if grep_output.is_truncated {
+            let hidden_files = grep_output.total_files.saturating_sub(grep_output.files_shown);
+            let hidden_matches = grep_output.total_matches.saturating_sub(grep_output.matches_shown);
+            if hidden_files > 0 {
+                output.push_str(&format!(
+                    "... {} more file(s) truncated\n",
+                    hidden_files
+                ));
+            }
+            if hidden_matches > 0 && hidden_files == 0 {
+                output.push_str(&format!(
+                    "... {} more match(es) truncated\n",
+                    hidden_matches
+                ));
             }
         }
 
@@ -4069,5 +4192,162 @@ mod tests {
         let output = ParseHandler::format_grep(&result, OutputFormat::Raw);
 
         assert!(output.contains("src/main.rs:10:match line"));
+    }
+
+    // ============================================================
+    // Grep Truncation Tests
+    // ============================================================
+
+    #[test]
+    fn test_parse_grep_truncation_fields_not_truncated() {
+        // Small result set should not be truncated
+        let input = "src/main.rs:42:fn main() {";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.is_truncated, false);
+        assert_eq!(result.total_files, 1);
+        assert_eq!(result.total_matches, 1);
+        assert_eq!(result.files_shown, 1);
+        assert_eq!(result.matches_shown, 1);
+    }
+
+    #[test]
+    fn test_truncate_grep_files() {
+        // Create 60 files (exceeds DEFAULT_MAX_GREP_FILES = 50)
+        let mut input = String::new();
+        for i in 1..=60 {
+            input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
+        }
+        let mut result = ParseHandler::parse_grep(&input).unwrap();
+
+        // Before truncation
+        assert_eq!(result.total_files, 60);
+        assert_eq!(result.files.len(), 60);
+
+        // Apply truncation
+        ParseHandler::truncate_grep(&mut result, 50, 20);
+
+        // After truncation
+        assert_eq!(result.is_truncated, true);
+        assert_eq!(result.files_shown, 50);
+        assert_eq!(result.total_files, 60);
+        assert_eq!(result.files.len(), 50);
+    }
+
+    #[test]
+    fn test_truncate_grep_matches_per_file() {
+        // Create 1 file with 25 matches (exceeds DEFAULT_MAX_GREP_MATCHES_PER_FILE = 20)
+        let mut input = String::new();
+        for i in 1..=25 {
+            input.push_str(&format!("src/main.rs:{}:fn func{}() {{\n", i, i));
+        }
+        let mut result = ParseHandler::parse_grep(&input).unwrap();
+
+        // Before truncation
+        assert_eq!(result.total_matches, 25);
+        assert_eq!(result.files[0].matches.len(), 25);
+
+        // Apply truncation
+        ParseHandler::truncate_grep(&mut result, 50, 20);
+
+        // After truncation
+        assert_eq!(result.is_truncated, true);
+        assert_eq!(result.matches_shown, 20);
+        assert_eq!(result.total_matches, 25);
+        assert_eq!(result.files[0].matches.len(), 20);
+    }
+
+    #[test]
+    fn test_truncate_grep_both_limits() {
+        // Create 60 files, each with 25 matches
+        let mut input = String::new();
+        for i in 1..=60 {
+            for j in 1..=25 {
+                input.push_str(&format!("src/file{}.rs:{}:fn func{}() {{\n", i, j, j));
+            }
+        }
+        let mut result = ParseHandler::parse_grep(&input).unwrap();
+
+        // Before truncation: 60 files * 25 matches = 1500 total matches
+        assert_eq!(result.total_files, 60);
+        assert_eq!(result.total_matches, 1500);
+
+        // Apply truncation
+        ParseHandler::truncate_grep(&mut result, 50, 20);
+
+        // After truncation: 50 files * 20 matches = 1000 matches shown
+        assert_eq!(result.is_truncated, true);
+        assert_eq!(result.files_shown, 50);
+        assert_eq!(result.matches_shown, 1000);
+        assert_eq!(result.files.len(), 50);
+    }
+
+    #[test]
+    fn test_format_grep_json_truncation_info() {
+        // Create 60 files to trigger truncation
+        let mut input = String::new();
+        for i in 1..=60 {
+            input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
+        }
+        let mut result = ParseHandler::parse_grep(&input).unwrap();
+        ParseHandler::truncate_grep(&mut result, 50, 20);
+
+        let output = ParseHandler::format_grep(&result, OutputFormat::Json);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(json["is_truncated"], true);
+        assert_eq!(json["total_files"], 60);
+        assert_eq!(json["files_shown"], 50);
+        assert_eq!(json["truncation"]["hidden_files"], 10);
+        assert!(json["truncation"]["message"].as_str().unwrap().contains("60"));
+        assert!(json["truncation"]["message"].as_str().unwrap().contains("50"));
+    }
+
+    #[test]
+    fn test_format_grep_compact_truncation_info() {
+        // Create 60 files to trigger truncation
+        let mut input = String::new();
+        for i in 1..=60 {
+            input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
+        }
+        let mut result = ParseHandler::parse_grep(&input).unwrap();
+        ParseHandler::truncate_grep(&mut result, 50, 20);
+
+        let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
+
+        // Check for truncation indicators in compact output
+        assert!(output.contains("truncated"));
+        assert!(output.contains("50/60"));
+        assert!(output.contains("10 more file"));
+    }
+
+    #[test]
+    fn test_format_grep_raw_truncation_info() {
+        // Create 60 files to trigger truncation
+        let mut input = String::new();
+        for i in 1..=60 {
+            input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
+        }
+        let mut result = ParseHandler::parse_grep(&input).unwrap();
+        ParseHandler::truncate_grep(&mut result, 50, 20);
+
+        let output = ParseHandler::format_grep(&result, OutputFormat::Raw);
+
+        // Check for truncation indicator in raw output
+        assert!(output.contains("10 more file"));
+    }
+
+    #[test]
+    fn test_format_grep_json_no_truncation_when_within_limits() {
+        // Small result set should not show truncation info
+        let input = "src/main.rs:42:fn main() {\nsrc/main.rs:45:println!()";
+        let mut result = ParseHandler::parse_grep(input).unwrap();
+        ParseHandler::truncate_grep(&mut result, 50, 20);
+
+        let output = ParseHandler::format_grep(&result, OutputFormat::Json);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+
+        assert_eq!(json["is_truncated"], false);
+        assert!(json["truncation"].is_null());
     }
 }

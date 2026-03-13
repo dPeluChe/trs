@@ -1277,6 +1277,114 @@ fn test_parse_grep_multiple_files() {
         .stdout(predicate::str::contains("\"match_count\":2"));
 }
 
+// ============================================================
+// Grep Truncation Tests
+// ============================================================
+
+#[test]
+fn test_parse_grep_truncation_json_not_truncated() {
+    // Small result set should not be truncated
+    let grep_input = "src/main.rs:42:fn main() {";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["is_truncated"], false);
+    assert_eq!(json["total_files"], 1);
+    assert_eq!(json["total_matches"], 1);
+    assert_eq!(json["files_shown"], 1);
+    assert_eq!(json["matches_shown"], 1);
+}
+
+#[test]
+fn test_parse_grep_truncation_json_many_files() {
+    // Create input with 60 files (exceeds DEFAULT_MAX_GREP_FILES = 50)
+    let mut grep_input = String::new();
+    for i in 1..=60 {
+        grep_input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
+    }
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input.as_str())
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["is_truncated"], true);
+    assert_eq!(json["total_files"], 60);
+    assert_eq!(json["files_shown"], 50);
+    assert!(json["truncation"]["hidden_files"].as_u64().unwrap() > 0);
+    assert!(json["truncation"]["message"].as_str().unwrap().contains("60"));
+}
+
+#[test]
+fn test_parse_grep_truncation_json_many_matches_per_file() {
+    // Create input with 1 file but 25 matches (exceeds DEFAULT_MAX_GREP_MATCHES_PER_FILE = 20)
+    let mut grep_input = String::new();
+    for i in 1..=25 {
+        grep_input.push_str(&format!("src/main.rs:{}:fn func{}() {{\n", i, i));
+    }
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input.as_str())
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["is_truncated"], true);
+    assert_eq!(json["total_matches"], 25);
+    assert_eq!(json["matches_shown"], 20);
+    assert!(json["truncation"]["hidden_matches"].as_u64().unwrap() > 0);
+}
+
+#[test]
+fn test_parse_grep_truncation_compact_format() {
+    // Create input with 60 files to trigger truncation
+    let mut grep_input = String::new();
+    for i in 1..=60 {
+        grep_input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
+    }
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input.as_str())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("truncated"))
+        .stdout(predicate::str::contains("50/60"))
+        .stdout(predicate::str::contains("10 more file"));
+}
+
+#[test]
+fn test_parse_grep_truncation_raw_format() {
+    // Create input with 60 files to trigger truncation
+    let mut grep_input = String::new();
+    for i in 1..=60 {
+        grep_input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
+    }
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input.as_str())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("10 more file"));
+}
+
 #[test]
 fn test_parse_test() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
