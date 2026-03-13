@@ -1397,6 +1397,173 @@ impl From<(&String, &Vec<String>, bool, bool, bool, bool, Option<u64>)> for RunI
 /// Handler for the `search` command.
 pub struct SearchHandler;
 
+impl SearchHandler {
+    /// Default directories to ignore during search.
+    const DEFAULT_IGNORE_DIRS: &'static [&'static str] = &[
+        ".git",
+        "node_modules",
+        "target",
+        "dist",
+        "build",
+        ".cache",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".idea",
+        ".vscode",
+        "vendor",
+        "bundle",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        "coverage",
+        ".next",
+        ".nuxt",
+    ];
+
+    /// Default maximum number of files to show in output before truncation.
+    const DEFAULT_MAX_FILES: usize = 50;
+
+    /// Default maximum number of matches per file to show before truncation.
+    const DEFAULT_MAX_MATCHES_PER_FILE: usize = 20;
+
+    /// Execute ripgrep and parse the output.
+    fn execute_search(&self, input: &SearchInput) -> CommandResult<GrepOutput> {
+        // Build the ripgrep command
+        let mut builder = ProcessBuilder::new("rg");
+
+        // Always use line numbers
+        builder = builder.arg("--line-number");
+
+        // Add case-insensitive flag if requested
+        if input.ignore_case {
+            builder = builder.arg("--ignore-case");
+        }
+
+        // Add context lines if requested
+        if let Some(context) = input.context {
+            builder = builder.arg("-C").arg(context.to_string());
+        }
+
+        // Add extension filter if specified
+        if let Some(ref ext) = input.extension {
+            builder = builder.arg("-g").arg(format!("*.{}", ext));
+        }
+
+        // Add ignore patterns for common directories
+        for dir in Self::DEFAULT_IGNORE_DIRS {
+            builder = builder.arg("--glob").arg(format!("!{}/", dir));
+        }
+
+        // Add the query and path
+        builder = builder.arg(&input.query).arg(input.path.to_string_lossy().to_string());
+
+        // Execute the command
+        let output = builder
+            .run()
+            .map_err(|e: ProcessError| CommandError::ExecutionError {
+                message: format!("Failed to execute ripgrep: {}", e),
+                exit_code: e.exit_code(),
+            })?;
+
+        // Parse the output
+        let mut grep_output = Self::parse_search_output(&output.stdout)?;
+
+        // Apply truncation if needed
+        let max_files = input.limit.unwrap_or(Self::DEFAULT_MAX_FILES);
+        Self::truncate_grep_output(&mut grep_output, max_files, Self::DEFAULT_MAX_MATCHES_PER_FILE);
+
+        Ok(grep_output)
+    }
+
+    /// Parse ripgrep output into structured data.
+    fn parse_search_output(output: &str) -> CommandResult<GrepOutput> {
+        // Use the existing grep parser
+        ParseHandler::parse_grep(output)
+    }
+
+    /// Truncate grep output if it exceeds the limits.
+    fn truncate_grep_output(
+        grep_output: &mut GrepOutput,
+        max_files: usize,
+        max_matches_per_file: usize,
+    ) {
+        ParseHandler::truncate_grep(grep_output, max_files, max_matches_per_file);
+    }
+
+    /// Format search output for display.
+    fn format_output(grep_output: &GrepOutput, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => Self::format_json(grep_output),
+            OutputFormat::Csv => Self::format_csv(grep_output),
+            OutputFormat::Tsv => Self::format_tsv(grep_output),
+            OutputFormat::Compact | OutputFormat::Agent => Self::format_compact(grep_output),
+            OutputFormat::Raw => Self::format_raw(grep_output),
+        }
+    }
+
+    /// Format search output as JSON using the schema.
+    fn format_json(grep_output: &GrepOutput) -> String {
+        use crate::schema::{GrepCounts, GrepFile as SchemaGrepFile, GrepMatch as SchemaGrepMatch, GrepOutputSchema};
+
+        let mut schema = GrepOutputSchema::new();
+        schema.is_empty = grep_output.is_empty;
+        schema.is_truncated = grep_output.is_truncated;
+
+        // Convert internal GrepFile to schema GrepFile
+        schema.files = grep_output
+            .files
+            .iter()
+            .map(|f| SchemaGrepFile {
+                path: f.path.clone(),
+                matches: f
+                    .matches
+                    .iter()
+                    .map(|m| SchemaGrepMatch {
+                        line_number: m.line_number,
+                        column: m.column,
+                        line: m.line.clone(),
+                        is_context: m.is_context,
+                    })
+                    .collect(),
+            })
+            .collect();
+
+        schema.counts = GrepCounts {
+            files: grep_output.file_count,
+            matches: grep_output.match_count,
+            total_files: grep_output.total_files,
+            total_matches: grep_output.total_matches,
+            files_shown: grep_output.files_shown,
+            matches_shown: grep_output.matches_shown,
+        };
+
+        serde_json::to_string_pretty(&schema).unwrap_or_else(|e| {
+            serde_json::json!({"error": format!("Failed to serialize: {}", e)}).to_string()
+        })
+    }
+
+    /// Format search output as CSV.
+    fn format_csv(grep_output: &GrepOutput) -> String {
+        ParseHandler::format_grep_csv(grep_output)
+    }
+
+    /// Format search output as TSV.
+    fn format_tsv(grep_output: &GrepOutput) -> String {
+        ParseHandler::format_grep_tsv(grep_output)
+    }
+
+    /// Format search output in compact format.
+    fn format_compact(grep_output: &GrepOutput) -> String {
+        ParseHandler::format_grep_compact(grep_output)
+    }
+
+    /// Format search output as raw (ripgrep output).
+    fn format_raw(grep_output: &GrepOutput) -> String {
+        ParseHandler::format_grep_raw(grep_output)
+    }
+}
+
 impl CommandHandler for SearchHandler {
     type Input = SearchInput;
 
@@ -1404,21 +1571,15 @@ impl CommandHandler for SearchHandler {
         if ctx.stats {
             eprintln!("Stats: enabled");
         }
-        eprintln!("Output format: {:?}", ctx.format);
-        eprintln!(
-            "Search: {:?} in {:?} (ext: {:?}, case: {}, context: {:?}, limit: {:?})",
-            input.query,
-            input.path,
-            input.extension,
-            !input.ignore_case,
-            input.context,
-            input.limit
-        );
 
-        // TODO: Implement actual search execution
-        Err(CommandError::NotImplemented(
-            "search command execution".to_string(),
-        ))
+        // Execute the search
+        let grep_output = self.execute_search(input)?;
+
+        // Format and print the output
+        let output = Self::format_output(&grep_output, ctx.format);
+        print!("{}", output);
+
+        Ok(())
     }
 }
 
@@ -9397,21 +9558,22 @@ mod tests {
     fn test_search_handler() {
         let handler = SearchHandler;
         let ctx = CommandContext {
-            format: OutputFormat::Json,
-            stats: true,
-            enabled_formats: vec![OutputFormat::Json],
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
         };
         let input = SearchInput {
-            path: std::path::PathBuf::from("."),
-            query: "test".to_string(),
+            path: std::path::PathBuf::from("src"),
+            query: "SearchHandler".to_string(),
             extension: Some("rs".to_string()),
-            ignore_case: true,
-            context: Some(2),
-            limit: Some(100),
+            ignore_case: false,
+            context: None,
+            limit: Some(10),
         };
 
+        // The search handler should now execute successfully
         let result = handler.execute(&input, &ctx);
-        assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+        assert!(result.is_ok());
     }
 
     #[test]

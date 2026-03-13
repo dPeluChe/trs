@@ -260,26 +260,135 @@ fn test_global_flags_help() {
 
 #[test]
 fn test_search_basic() {
+    // Search should find results when searching for a pattern that exists
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
         .arg(".")
-        .arg("test")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success()
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("matches:"))
+        .stdout(predicate::str::contains("router.rs"));
 }
 
 #[test]
 fn test_search_with_options() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
-        .arg("/path/to/dir")
-        .arg("pattern")
+        .arg(".")
+        .arg("SearchHandler")
         .arg("--extension")
         .arg("rs")
         .arg("--ignore-case")
         .assert()
         .success();
+}
+
+#[test]
+fn test_search_json_output() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"schema\""))
+        .stdout(predicate::str::contains("\"grep_output\""))
+        .stdout(predicate::str::contains("\"files\""))
+        .stdout(predicate::str::contains("router.rs"));
+}
+
+#[test]
+fn test_search_csv_output() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--csv")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("path,line_number,column,is_context,line"))
+        .stdout(predicate::str::contains("router.rs"));
+}
+
+#[test]
+fn test_search_tsv_output() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--tsv")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("path\tline_number\tcolumn\tis_context\tline"))
+        .stdout(predicate::str::contains("router.rs"));
+}
+
+#[test]
+fn test_search_raw_output() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("router.rs:"))
+        .stdout(predicate::str::contains("SearchHandler"));
+}
+
+#[test]
+fn test_search_with_context() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .arg("--context")
+        .arg("2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("matches:"));
+}
+
+#[test]
+fn test_search_with_limit() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .arg("--limit")
+        .arg("2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("matches:"));
+}
+
+#[test]
+fn test_search_no_matches() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("search")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_12345")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("no matches"));
 }
 
 #[test]
@@ -2102,24 +2211,23 @@ fn test_run_json_parsable() {
 // ============================================================
 
 #[test]
-fn test_search_json_output_not_implemented() {
+fn test_search_json_output_format() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
         .arg("search")
-        .arg(".")
-        .arg("test")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-    // The last line should be JSON
-    let json_line = stderr.lines().last().unwrap_or("");
-    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
-    assert_eq!(json["not_implemented"], true);
-    assert!(json["message"]
-        .as_str()
-        .unwrap()
-        .contains("search command execution"));
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    // The output should be valid JSON with the grep_output schema
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["schema"]["type"], "grep_output");
+    assert!(!json["is_empty"].as_bool().unwrap());
+    assert!(json["files"].as_array().unwrap().len() > 0);
 }
 
 #[test]
