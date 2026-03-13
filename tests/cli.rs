@@ -1538,11 +1538,13 @@ fn test_global_json_flag() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
         .arg("search")
-        .arg(".")
-        .arg("test")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Output format: Json"));
+        .stdout(predicate::str::contains("\"schema\""));
 }
 
 #[test]
@@ -1550,11 +1552,13 @@ fn test_global_csv_flag() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--csv")
         .arg("search")
-        .arg(".")
-        .arg("test")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Output format: Csv"));
+        .stdout(predicate::str::contains("path,line_number"));
 }
 
 #[test]
@@ -1806,9 +1810,8 @@ fn test_router_search_command() {
         .arg(".")
         .arg("pattern")
         .assert()
-        .success()
-        .stderr(predicate::str::contains("Search:"))
-        .stdout(predicate::str::contains("not yet implemented"));
+        .success();
+    // Search is now fully implemented
 }
 
 #[test]
@@ -1916,11 +1919,13 @@ fn test_context_json_format_routing() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
         .arg("search")
-        .arg(".")
-        .arg("test")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Output format: Json"));
+        .stdout(predicate::str::contains("\"schema\""));
 }
 
 #[test]
@@ -1928,11 +1933,13 @@ fn test_context_agent_format_routing() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--agent")
         .arg("search")
-        .arg(".")
-        .arg("test")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Output format: Agent"));
+        .stdout(predicate::str::contains("matches:"));
 }
 
 #[test]
@@ -1953,11 +1960,13 @@ fn test_context_combined_flags_routing() {
     cmd.arg("--json")
         .arg("--stats")
         .arg("search")
-        .arg(".")
-        .arg("test")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Output format: Json"))
+        .stdout(predicate::str::contains("\"schema\""))
         .stderr(predicate::str::contains("Stats: enabled"));
 }
 

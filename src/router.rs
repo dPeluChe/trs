@@ -1424,71 +1424,163 @@ impl SearchHandler {
     /// Default maximum number of files to show in output before truncation.
     const DEFAULT_MAX_FILES: usize = 50;
 
-    /// Default maximum number of matches per file to show before truncation.
-    const DEFAULT_MAX_MATCHES_PER_FILE: usize = 20;
-
-    /// Execute ripgrep and parse the output.
+    /// Execute high-performance search using ripgrep crates.
     fn execute_search(&self, input: &SearchInput) -> CommandResult<GrepOutput> {
-        // Build the ripgrep command
-        let mut builder = ProcessBuilder::new("rg");
+        use grep::regex::RegexMatcher;
+        use grep::searcher::SearcherBuilder;
+        use grep::searcher::sinks::UTF8;
+        use ignore::WalkBuilder;
+        use std::sync::{Arc, Mutex};
 
-        // Always use line numbers
-        builder = builder.arg("--line-number");
-
-        // Add case-insensitive flag if requested
-        if input.ignore_case {
-            builder = builder.arg("--ignore-case");
+        // Build the regex matcher
+        let matcher = if input.ignore_case {
+            RegexMatcher::new(&format!("(?i){}", input.query))
+        } else {
+            RegexMatcher::new(&input.query)
         }
+        .map_err(|e| CommandError::ExecutionError {
+            message: format!("Invalid regex pattern '{}': {}", input.query, e),
+            exit_code: Some(2),
+        })?;
 
-        // Add context lines if requested
-        if let Some(context) = input.context {
-            builder = builder.arg("-C").arg(context.to_string());
+        // Shared state for collecting matches
+        let matches: Arc<Mutex<Vec<(String, usize, String)>>> = Arc::new(Mutex::new(Vec::new()));
+
+        // Build the directory walker with ignore rules
+        let mut walk_builder = WalkBuilder::new(&input.path);
+
+        // Add custom ignore patterns for common directories
+        for dir in Self::DEFAULT_IGNORE_DIRS {
+            walk_builder.add_ignore(format!("!{}/", dir));
         }
 
         // Add extension filter if specified
         if let Some(ref ext) = input.extension {
-            builder = builder.arg("-g").arg(format!("*.{}", ext));
+            let pattern = format!("*.{}", ext);
+            walk_builder.add_ignore(format!("!{}", pattern));
         }
 
-        // Add ignore patterns for common directories
-        for dir in Self::DEFAULT_IGNORE_DIRS {
-            builder = builder.arg("--glob").arg(format!("!{}/", dir));
+        // Configure walker
+        walk_builder
+            .hidden(false) // Don't skip hidden files by default
+            .git_ignore(true) // Respect .gitignore
+            .ignore(true) // Respect .ignore files
+            .follow_links(false); // Don't follow symlinks
+
+        // Search each file
+        for entry_result in walk_builder.build() {
+            let entry = match entry_result {
+                Ok(e) => e,
+                Err(_) => continue, // Skip files we can't access
+            };
+
+            // Skip directories
+            if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                continue;
+            }
+
+            let path = entry.path().to_string_lossy().to_string();
+
+            // Clone Arc for use in closure
+            let matches_clone = Arc::clone(&matches);
+
+            // Create a new searcher for each file
+            let mut searcher_builder = SearcherBuilder::new();
+            searcher_builder.line_number(true);
+            
+            // Configure context if requested
+            if let Some(ctx) = input.context {
+                searcher_builder.before_context(ctx);
+                searcher_builder.after_context(ctx);
+            }
+
+            let mut searcher = searcher_builder.build();
+
+            // Search with line numbers
+            let search_result = searcher.search_path(
+                &matcher,
+                entry.path(),
+                UTF8(|lnum, line| {
+                    let line_str = line.to_string();
+                    matches_clone.lock().unwrap().push((path.clone(), lnum as usize, line_str));
+                    Ok(true)
+                })
+            );
+
+            // Ignore search errors (binary files, permission issues, etc.)
+            let _ = search_result;
         }
 
-        // Add the query and path
-        builder = builder.arg(&input.query).arg(input.path.to_string_lossy().to_string());
+        // Collect results into GrepOutput
+        let collected = Arc::try_unwrap(matches)
+            .expect("All references should be dropped")
+            .into_inner()
+            .expect("Mutex should not be poisoned");
 
-        // Execute the command
-        let output = builder
-            .run()
-            .map_err(|e: ProcessError| CommandError::ExecutionError {
-                message: format!("Failed to execute ripgrep: {}", e),
-                exit_code: e.exit_code(),
-            })?;
+        // Build GrepOutput from collected matches
+        let mut files_map: std::collections::HashMap<String, Vec<(usize, String, bool)>> =
+            std::collections::HashMap::new();
 
-        // Parse the output
-        let mut grep_output = Self::parse_search_output(&output.stdout)?;
+        for (path, lnum, line) in collected {
+            files_map
+                .entry(path)
+                .or_insert_with(Vec::new)
+                .push((lnum, line, false));
+        }
 
-        // Apply truncation if needed
+        // Convert to GrepFile structures
+        let mut files: Vec<GrepFile> = files_map
+            .into_iter()
+            .map(|(path, matches)| {
+                let grep_matches: Vec<GrepMatch> = matches
+                    .into_iter()
+                    .map(|(lnum, line, is_context)| GrepMatch {
+                        line_number: Some(lnum),
+                        column: None,
+                        line,
+                        is_context,
+                    })
+                    .collect();
+                GrepFile {
+                    path,
+                    matches: grep_matches,
+                }
+            })
+            .collect();
+
+        // Sort files by path
+        files.sort_by(|a, b| a.path.cmp(&b.path));
+
+        // Calculate counts
+        let file_count = files.len();
+        let match_count: usize = files.iter().map(|f| f.matches.len()).sum();
+
+        // Apply truncation
         let max_files = input.limit.unwrap_or(Self::DEFAULT_MAX_FILES);
-        Self::truncate_grep_output(&mut grep_output, max_files, Self::DEFAULT_MAX_MATCHES_PER_FILE);
+        let is_truncated = files.len() > max_files;
 
-        Ok(grep_output)
-    }
+        let total_files = files.len();
+        let total_matches = match_count;
 
-    /// Parse ripgrep output into structured data.
-    fn parse_search_output(output: &str) -> CommandResult<GrepOutput> {
-        // Use the existing grep parser
-        ParseHandler::parse_grep(output)
-    }
+        // Truncate files if needed
+        if files.len() > max_files {
+            files.truncate(max_files);
+        }
 
-    /// Truncate grep output if it exceeds the limits.
-    fn truncate_grep_output(
-        grep_output: &mut GrepOutput,
-        max_files: usize,
-        max_matches_per_file: usize,
-    ) {
-        ParseHandler::truncate_grep(grep_output, max_files, max_matches_per_file);
+        let files_shown = files.len();
+        let matches_shown: usize = files.iter().map(|f| f.matches.len()).sum();
+
+        Ok(GrepOutput {
+            files,
+            file_count,
+            match_count,
+            is_empty: file_count == 0,
+            is_truncated,
+            total_files,
+            total_matches,
+            files_shown,
+            matches_shown,
+        })
     }
 
     /// Format search output for display.
@@ -10009,7 +10101,8 @@ tests/test_main.py::test_subtract PASSED
         };
 
         let result = router.route(&command, &ctx);
-        assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+        // Search is now implemented, so it should succeed
+        assert!(result.is_ok());
     }
 
     // ============================================================
