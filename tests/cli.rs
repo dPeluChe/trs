@@ -2650,6 +2650,37 @@ fn test_parse_npm_test_with_skipped() {
     assert_eq!(json["summary"]["tests_total"], 3);
 }
 
+#[test]
+fn test_parse_npm_test_failing_json() {
+    // Test that npm parser correctly extracts failed test count in JSON output
+    let npm_input = r#"▶ test/math.test.js
+  ✖ should multiply numbers
+    AssertionError: values are not equal
+  ✔ should divide numbers (1.234ms)
+▶ test/math.test.js (5.678ms)
+
+ℹ tests 1 passed 1 failed (2)
+ℹ test files 1 failed (1)
+ℹ duration 10ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("npm")
+        .write_stdin(npm_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], false);
+    assert_eq!(json["summary"]["tests_passed"], 1);
+    assert_eq!(json["summary"]["tests_failed"], 1);
+    assert_eq!(json["summary"]["tests_total"], 2);
+    assert_eq!(json["summary"]["suites_failed"], 1);
+}
+
 // ============================================================
 // PNPM Test Parser Tests
 // ============================================================
@@ -2740,6 +2771,37 @@ fn test_parse_pnpm_test_with_skipped() {
     assert_eq!(json["summary"]["tests_passed"], 2);
     assert_eq!(json["summary"]["tests_skipped"], 1);
     assert_eq!(json["summary"]["tests_total"], 3);
+}
+
+#[test]
+fn test_parse_pnpm_test_failing_json() {
+    // Test that pnpm parser correctly extracts failed test count in JSON output
+    let pnpm_input = r#"▶ test/api.test.js
+  ✖ should fetch data
+    Error: network timeout
+  ✔ should create item (2.345ms)
+▶ test/api.test.js (8.123ms)
+
+ℹ tests 1 passed 1 failed (2)
+ℹ test files 1 failed (1)
+ℹ duration 12ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pnpm")
+        .write_stdin(pnpm_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], false);
+    assert_eq!(json["summary"]["tests_passed"], 1);
+    assert_eq!(json["summary"]["tests_failed"], 1);
+    assert_eq!(json["summary"]["tests_total"], 2);
+    assert_eq!(json["summary"]["suites_failed"], 1);
 }
 
 #[test]
