@@ -2558,6 +2558,190 @@ Ran 2 tests in 0.50s"#;
     assert!(json.is_object());
 }
 
+// ============================================================
+// NPM Test Parser Tests
+// ============================================================
+
+#[test]
+fn test_parse_npm_test_json_output() {
+    // Test that npm parser works and produces valid JSON output with passed test count
+    let npm_input = r#"▶ test/utils.test.js
+  ✔ should add numbers (5.123ms)
+  ✔ should subtract numbers (2.456ms)
+▶ test/utils.test.js (10.579ms)
+
+ℹ tests 2 passed (2)
+ℹ test files 1 passed (1)
+ℹ duration 15ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("npm")
+        .write_stdin(npm_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], true);
+    assert_eq!(json["summary"]["tests_passed"], 2);
+    assert_eq!(json["summary"]["tests_total"], 2);
+    assert_eq!(json["summary"]["suites_passed"], 1);
+    assert_eq!(json["summary"]["suites_total"], 1);
+}
+
+#[test]
+fn test_parse_npm_test_failing_compact_output() {
+    // Test compact output with failures
+    let npm_input = r#"▶ test/math.test.js
+  ✖ should multiply numbers
+    AssertionError: values are not equal
+  ✔ should divide numbers (1.234ms)
+▶ test/math.test.js (5.678ms)
+
+ℹ tests 1 passed 1 failed (2)
+ℹ test files 1 failed (1)
+ℹ duration 10ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("npm")
+        .write_stdin(npm_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    // Compact output should show summary and failed tests
+    assert!(stdout.contains("FAIL:"));
+    assert!(stdout.contains("1 passed, 1 failed"));
+    assert!(stdout.contains("test/math.test.js"));
+}
+
+#[test]
+fn test_parse_npm_test_with_skipped() {
+    // Test that npm parser correctly counts passed tests with skipped tests
+    let npm_input = r#"▶ test/test.js
+  ✔ test 1 (5.123ms)
+  ℹ test 2 # SKIP
+  ✔ test 3 (1.234ms)
+▶ test/test.js (10.579ms)
+
+ℹ tests 2 passed 1 skipped (3)
+ℹ test files 1 passed (1)
+ℹ duration 15ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("npm")
+        .write_stdin(npm_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], true);
+    assert_eq!(json["summary"]["tests_passed"], 2);
+    assert_eq!(json["summary"]["tests_skipped"], 1);
+    assert_eq!(json["summary"]["tests_total"], 3);
+}
+
+// ============================================================
+// PNPM Test Parser Tests
+// ============================================================
+
+#[test]
+fn test_parse_pnpm_test_json_output() {
+    // Test that pnpm parser works and produces valid JSON output with passed test count
+    let pnpm_input = r#"▶ test/utils.test.js
+  ✔ should add numbers (5.123ms)
+  ✔ should subtract numbers (2.456ms)
+▶ test/utils.test.js (10.579ms)
+
+ℹ tests 2 passed (2)
+ℹ test files 1 passed (1)
+ℹ duration 15ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pnpm")
+        .write_stdin(pnpm_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], true);
+    assert_eq!(json["summary"]["tests_passed"], 2);
+    assert_eq!(json["summary"]["tests_total"], 2);
+    assert_eq!(json["summary"]["suites_passed"], 1);
+    assert_eq!(json["summary"]["suites_total"], 1);
+}
+
+#[test]
+fn test_parse_pnpm_test_failing_compact_output() {
+    // Test compact output with failures
+    let pnpm_input = r#"▶ test/api.test.js
+  ✖ should fetch data
+    Error: network timeout
+  ✔ should create item (2.345ms)
+▶ test/api.test.js (8.123ms)
+
+ℹ tests 1 passed 1 failed (2)
+ℹ test files 1 failed (1)
+ℹ duration 12ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pnpm")
+        .write_stdin(pnpm_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    // Compact output should show summary and failed tests
+    assert!(stdout.contains("FAIL:"));
+    assert!(stdout.contains("1 passed, 1 failed"));
+    assert!(stdout.contains("test/api.test.js"));
+}
+
+#[test]
+fn test_parse_pnpm_test_with_skipped() {
+    // Test that pnpm parser correctly counts passed tests with skipped tests
+    let pnpm_input = r#"▶ test/test.js
+  ✔ test 1 (5.123ms)
+  ℹ test 2 # SKIP
+  ✔ test 3 (1.234ms)
+▶ test/test.js (10.579ms)
+
+ℹ tests 2 passed 1 skipped (3)
+ℹ test files 1 passed (1)
+ℹ duration 15ms"#;
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("test")
+        .arg("--runner")
+        .arg("pnpm")
+        .write_stdin(pnpm_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["success"], true);
+    assert_eq!(json["summary"]["tests_passed"], 2);
+    assert_eq!(json["summary"]["tests_skipped"], 1);
+    assert_eq!(json["summary"]["tests_total"], 3);
+}
+
 #[test]
 fn test_parse_logs_json_output_not_implemented() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
