@@ -297,6 +297,8 @@ struct GrepMatch {
     column: Option<usize>,
     /// The matched line content.
     line: String,
+    /// Whether this is a context line (not a direct match).
+    is_context: bool,
 }
 
 /// A file with grep matches.
@@ -2534,6 +2536,7 @@ impl ParseHandler {
     /// - `path:line_number:column:content` (with --column)
     /// - `path:content` (without -n)
     /// - Binary file matches: `Binary file path matches`
+    /// - Context lines: `path-line_number-content` (with -C/-B/-A flags)
     fn parse_grep_line(line: &str) -> Option<(String, GrepMatch)> {
         // Handle "Binary file path matches" format
         if line.starts_with("Binary file ") && line.ends_with(" matches") {
@@ -2549,27 +2552,47 @@ impl ParseHandler {
                         line_number: None,
                         column: None,
                         line: "[binary file]".to_string(),
+                        is_context: false,
                     },
                 ));
             }
         }
 
-        // Find the first colon to get the path
-        let colon_pos = line.find(':')?;
+        // Determine if this is a context line or match line
+        // Context lines use "-" as separator: "path-line-content"
+        // Match lines use ":" as separator: "path:line:content"
+        // Find the first separator (either : or -)
+        let is_context_line = if let Some(dash_pos) = line.find('-') {
+            // Check if dash comes before any colon (or no colon at all)
+            match line.find(':') {
+                Some(colon_pos) if colon_pos < dash_pos => false,
+                _ => true,
+            }
+        } else {
+            false
+        };
 
-        // Check if this looks like a path (not a line that starts with a number)
-        let potential_path = &line[..colon_pos];
+        // Find the first separator to get the path
+        let sep_pos = if is_context_line {
+            line.find('-')?
+        } else {
+            line.find(':')?
+        };
+
+        let potential_path = &line[..sep_pos];
 
         // If the path is empty or the rest doesn't have content, skip
-        if potential_path.is_empty() || line.len() <= colon_pos + 1 {
+        if potential_path.is_empty() || line.len() <= sep_pos + 1 {
             return None;
         }
 
-        let rest = &line[colon_pos + 1..];
+        let rest = &line[sep_pos + 1..];
 
         // Try to parse line number and optionally column
         // Format: line_number:content OR line_number:column:content OR just content
-        let (line_number, column, content) = Self::parse_grep_line_content(rest);
+        // Context lines: line_number-content OR line_number-column-content
+        let (line_number, column, content, is_context) =
+            Self::parse_grep_line_content(rest, is_context_line);
 
         Some((
             potential_path.to_string(),
@@ -2577,39 +2600,79 @@ impl ParseHandler {
                 line_number,
                 column,
                 line: content.to_string(),
+                is_context,
             },
         ))
     }
 
-    /// Parse the content part of a grep line (after the path:).
-    fn parse_grep_line_content(rest: &str) -> (Option<usize>, Option<usize>, &str) {
-        // Try to find the first colon for line number
-        if let Some(colon_pos) = rest.find(':') {
-            let potential_line_num = &rest[..colon_pos];
+    /// Parse the content part of a grep line (after the path: or path-).
+    ///
+    /// Context lines use "-" as separator (e.g., "10-content" for context)
+    /// while match lines use ":" (e.g., "10:content" for matches).
+    fn parse_grep_line_content(
+        rest: &str,
+        is_context_line: bool,
+    ) -> (Option<usize>, Option<usize>, &str, bool) {
+        if is_context_line {
+            // Context line: use "-" as separator
+            // Format: "10-content" or "10-5-content"
+            if let Some(dash_pos) = rest.find('-') {
+                let potential_line_num = &rest[..dash_pos];
 
-            // Check if it's a valid line number
-            if let Ok(line_number) = potential_line_num.parse::<usize>() {
-                let after_line = &rest[colon_pos + 1..];
+                // Check if it's a valid line number before the dash
+                if let Ok(line_number) = potential_line_num.parse::<usize>() {
+                    let after_line = &rest[dash_pos + 1..];
 
-                // Try to parse column if present
-                if let Some(colon_pos2) = after_line.find(':') {
-                    let potential_column = &after_line[..colon_pos2];
-                    if let Ok(column) = potential_column.parse::<usize>() {
-                        return (
-                            Some(line_number),
-                            Some(column),
-                            &after_line[colon_pos2 + 1..],
-                        );
+                    // Try to parse column if present (context with column: "10-5-content")
+                    if let Some(dash_pos2) = after_line.find('-') {
+                        let potential_column = &after_line[..dash_pos2];
+                        if let Ok(column) = potential_column.parse::<usize>() {
+                            return (
+                                Some(line_number),
+                                Some(column),
+                                &after_line[dash_pos2 + 1..],
+                                true, // is_context
+                            );
+                        }
                     }
+
+                    // No column, just line number with context
+                    return (Some(line_number), None, after_line, true);
                 }
-
-                // No column, just line number
-                return (Some(line_number), None, after_line);
             }
-        }
+            // Couldn't parse as context line, return as content
+            (None, None, rest, true)
+        } else {
+            // Match line: use ":" as separator
+            // Try to find the first colon for line number
+            if let Some(colon_pos) = rest.find(':') {
+                let potential_line_num = &rest[..colon_pos];
 
-        // No line number, just content
-        (None, None, rest)
+                // Check if it's a valid line number
+                if let Ok(line_number) = potential_line_num.parse::<usize>() {
+                    let after_line = &rest[colon_pos + 1..];
+
+                    // Try to parse column if present
+                    if let Some(colon_pos2) = after_line.find(':') {
+                        let potential_column = &after_line[..colon_pos2];
+                        if let Ok(column) = potential_column.parse::<usize>() {
+                            return (
+                                Some(line_number),
+                                Some(column),
+                                &after_line[colon_pos2 + 1..],
+                                false, // is_context
+                            );
+                        }
+                    }
+
+                    // No column, just line number
+                    return (Some(line_number), None, after_line, false);
+                }
+            }
+
+            // No line number, just content
+            (None, None, rest, false)
+        }
     }
 
     /// Format grep output for display.
@@ -2625,10 +2688,17 @@ impl ParseHandler {
 
     /// Format grep output as JSON.
     fn format_grep_json(grep_output: &GrepOutput) -> String {
+        // Count only non-context matches
+        let match_count: usize = grep_output
+            .files
+            .iter()
+            .map(|f| f.matches.iter().filter(|m| !m.is_context).count())
+            .sum();
+
         serde_json::json!({
             "is_empty": grep_output.is_empty,
             "file_count": grep_output.file_count,
-            "match_count": grep_output.match_count,
+            "match_count": match_count,
             "files": grep_output.files.iter().map(|file| {
                 serde_json::json!({
                     "path": file.path,
@@ -2636,6 +2706,7 @@ impl ParseHandler {
                         "line_number": m.line_number,
                         "column": m.column,
                         "line": m.line,
+                        "is_context": m.is_context,
                     })).collect::<Vec<_>>(),
                 })
             }).collect::<Vec<_>>(),
@@ -2646,18 +2717,19 @@ impl ParseHandler {
     /// Format grep output as CSV.
     fn format_grep_csv(grep_output: &GrepOutput) -> String {
         let mut result = String::new();
-        result.push_str("path,line_number,column,line\n");
+        result.push_str("path,line_number,column,is_context,line\n");
 
         for file in &grep_output.files {
             for m in &file.matches {
                 let line_escaped = RunHandler::escape_csv_field(&m.line);
                 result.push_str(&format!(
-                    "{},{},{},{}\n",
+                    "{},{},{},{},{}\n",
                     file.path,
                     m.line_number
                         .map(|n| n.to_string())
                         .unwrap_or_default(),
                     m.column.map(|c| c.to_string()).unwrap_or_default(),
+                    m.is_context,
                     line_escaped
                 ));
             }
@@ -2669,18 +2741,19 @@ impl ParseHandler {
     /// Format grep output as TSV.
     fn format_grep_tsv(grep_output: &GrepOutput) -> String {
         let mut result = String::new();
-        result.push_str("path\tline_number\tcolumn\tline\n");
+        result.push_str("path\tline_number\tcolumn\tis_context\tline\n");
 
         for file in &grep_output.files {
             for m in &file.matches {
                 let line_escaped = RunHandler::escape_tsv_field(&m.line);
                 result.push_str(&format!(
-                    "{}\t{}\t{}\t{}\n",
+                    "{}\t{}\t{}\t{}\t{}\n",
                     file.path,
                     m.line_number
                         .map(|n| n.to_string())
                         .unwrap_or_default(),
                     m.column.map(|c| c.to_string()).unwrap_or_default(),
+                    m.is_context,
                     line_escaped
                 ));
             }
@@ -2690,6 +2763,8 @@ impl ParseHandler {
     }
 
     /// Format grep output in compact format.
+    ///
+    /// Consecutive context lines are collapsed into a summary like "... (3 context lines)".
     fn format_grep_compact(grep_output: &GrepOutput) -> String {
         let mut output = String::new();
 
@@ -2698,22 +2773,84 @@ impl ParseHandler {
             return output;
         }
 
+        // Count only non-context matches for the summary
+        let match_count: usize = grep_output
+            .files
+            .iter()
+            .map(|f| f.matches.iter().filter(|m| !m.is_context).count())
+            .sum();
+
         output.push_str(&format!(
             "matches: {} files, {} results\n",
-            grep_output.file_count, grep_output.match_count
+            grep_output.file_count, match_count
         ));
 
         for file in &grep_output.files {
-            output.push_str(&format!("{} ({}):\n", file.path, file.matches.len()));
+            let non_context_count = file.matches.iter().filter(|m| !m.is_context).count();
+            output.push_str(&format!("{} ({}):\n", file.path, non_context_count));
+
+            // Track consecutive context lines for collapsing
+            let mut context_start: Option<usize> = None;
+            let mut context_count = 0;
+
             for m in &file.matches {
-                if let Some(ln) = m.line_number {
-                    if let Some(col) = m.column {
-                        output.push_str(&format!("  {}:{}: {}\n", ln, col, m.line));
+                if m.is_context {
+                    // Start or continue a context block
+                    if context_start.is_none() {
+                        context_start = m.line_number;
+                    }
+                    context_count += 1;
+                } else {
+                    // Output any accumulated context lines first
+                    if context_count > 0 {
+                        if context_count == 1 {
+                            // Single context line - show it
+                            if let Some(ln) = context_start {
+                                output.push_str(&format!("  {}: ...\n", ln));
+                            }
+                        } else {
+                            // Multiple context lines - collapse
+                            if let Some(start) = context_start {
+                                output.push_str(&format!(
+                                    "  {}-{}: ... ({} context lines)\n",
+                                    start,
+                                    start + context_count - 1,
+                                    context_count
+                                ));
+                            }
+                        }
+                        context_start = None;
+                        context_count = 0;
+                    }
+
+                    // Output the match line
+                    if let Some(ln) = m.line_number {
+                        if let Some(col) = m.column {
+                            output.push_str(&format!("  {}:{}: {}\n", ln, col, m.line));
+                        } else {
+                            output.push_str(&format!("  {}: {}\n", ln, m.line));
+                        }
                     } else {
-                        output.push_str(&format!("  {}: {}\n", ln, m.line));
+                        output.push_str(&format!("  {}\n", m.line));
+                    }
+                }
+            }
+
+            // Handle any trailing context lines
+            if context_count > 0 {
+                if context_count == 1 {
+                    if let Some(ln) = context_start {
+                        output.push_str(&format!("  {}: ...\n", ln));
                     }
                 } else {
-                    output.push_str(&format!("  {}\n", m.line));
+                    if let Some(start) = context_start {
+                        output.push_str(&format!(
+                            "  {}-{}: ... ({} context lines)\n",
+                            start,
+                            start + context_count - 1,
+                            context_count
+                        ));
+                    }
                 }
             }
         }
@@ -2727,11 +2864,16 @@ impl ParseHandler {
 
         for file in &grep_output.files {
             for m in &file.matches {
+                // Use dash separator for context lines, colon for matches
+                let sep = if m.is_context { "-" } else { ":" };
                 if let Some(ln) = m.line_number {
                     if let Some(col) = m.column {
-                        output.push_str(&format!("{}:{}:{}:{}\n", file.path, ln, col, m.line));
+                        output.push_str(&format!(
+                            "{}{}{}{}{}:{}\n",
+                            file.path, sep, ln, sep, col, m.line
+                        ));
                     } else {
-                        output.push_str(&format!("{}:{}:{}\n", file.path, ln, m.line));
+                        output.push_str(&format!("{}{}{}{}{}\n", file.path, sep, ln, sep, m.line));
                     }
                 } else {
                     output.push_str(&format!("{}:{}\n", file.path, m.line));
@@ -3740,8 +3882,8 @@ mod tests {
         let result = ParseHandler::parse_grep(input).unwrap();
         let output = ParseHandler::format_grep(&result, OutputFormat::Csv);
 
-        assert!(output.starts_with("path,line_number,column,line\n"));
-        assert!(output.contains("src/main.rs,42,,fn main() {"));
+        assert!(output.starts_with("path,line_number,column,is_context,line\n"));
+        assert!(output.contains("src/main.rs,42,,false,fn main() {"));
     }
 
     #[test]
@@ -3750,8 +3892,8 @@ mod tests {
         let result = ParseHandler::parse_grep(input).unwrap();
         let output = ParseHandler::format_grep(&result, OutputFormat::Tsv);
 
-        assert!(output.starts_with("path\tline_number\tcolumn\tline\n"));
-        assert!(output.contains("src/main.rs\t42\t\tfn main() {"));
+        assert!(output.starts_with("path\tline_number\tcolumn\tis_context\tline\n"));
+        assert!(output.contains("src/main.rs\t42\t\tfalse\tfn main() {"));
     }
 
     #[test]
@@ -3783,5 +3925,149 @@ mod tests {
             result.files[0].matches[0].line,
             "let x = \"http://example.com\";"
         );
+    }
+
+    // ============================================================
+    // Context Line Tests
+    // ============================================================
+
+    #[test]
+    fn test_parse_grep_context_line() {
+        // Context lines use "-" as separator (from grep -C/-B/-A)
+        let input = "src/main.rs-42-context line";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.files[0].matches[0].line_number, Some(42));
+        assert_eq!(result.files[0].matches[0].line, "context line");
+        assert!(result.files[0].matches[0].is_context);
+    }
+
+    #[test]
+    fn test_parse_grep_context_line_with_column() {
+        // Context line with column info
+        let input = "src/main.rs-42-10-context line";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.files[0].matches[0].line_number, Some(42));
+        assert_eq!(result.files[0].matches[0].column, Some(10));
+        assert_eq!(result.files[0].matches[0].line, "context line");
+        assert!(result.files[0].matches[0].is_context);
+    }
+
+    #[test]
+    fn test_parse_grep_mixed_match_and_context() {
+        // Mix of match and context lines
+        let input = "src/main.rs-41-context before\nsrc/main.rs:42:match line\nsrc/main.rs-43-context after";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert_eq!(result.files[0].matches.len(), 3);
+
+        // First line is context
+        assert!(result.files[0].matches[0].is_context);
+        assert_eq!(result.files[0].matches[0].line, "context before");
+
+        // Second line is a match
+        assert!(!result.files[0].matches[1].is_context);
+        assert_eq!(result.files[0].matches[1].line, "match line");
+
+        // Third line is context
+        assert!(result.files[0].matches[2].is_context);
+        assert_eq!(result.files[0].matches[2].line, "context after");
+    }
+
+    #[test]
+    fn test_parse_grep_context_is_context_flag_false_for_matches() {
+        let input = "src/main.rs:42:match line";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        assert!(!result.files[0].matches[0].is_context);
+    }
+
+    #[test]
+    fn test_format_grep_compact_collapse_context_lines() {
+        // Multiple consecutive context lines should be collapsed
+        let input = "src/main.rs-10-context 1\nsrc/main.rs-11-context 2\nsrc/main.rs-12-context 3\nsrc/main.rs:13:match line";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
+
+        // Should collapse 3 context lines into a summary
+        assert!(output.contains("10-12: ... (3 context lines)"));
+        assert!(output.contains("13: match line"));
+    }
+
+    #[test]
+    fn test_format_grep_compact_single_context_line() {
+        // Single context line should show as "... (1 context lines)" format
+        let input = "src/main.rs-10-context line\nsrc/main.rs:11:match line";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
+
+        assert!(output.contains("10: ..."));
+        assert!(output.contains("11: match line"));
+    }
+
+    #[test]
+    fn test_format_grep_compact_context_before_and_after() {
+        // Context lines before and after match
+        let input = "src/main.rs-10-before\nsrc/main.rs:11:match\nsrc/main.rs-12-after";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
+
+        assert!(output.contains("10: ..."));
+        assert!(output.contains("11: match"));
+        assert!(output.contains("12: ..."));
+    }
+
+    #[test]
+    fn test_format_grep_compact_count_excludes_context() {
+        // Match count should exclude context lines
+        let input = "src/main.rs-10-context\nsrc/main.rs:11:match\nsrc/main.rs-12-context";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
+
+        // Should show 1 result (only the match), not 3
+        assert!(output.contains("matches: 1 files, 1 results"));
+    }
+
+    #[test]
+    fn test_format_grep_compact_trailing_context() {
+        // Context lines at the end should be collapsed
+        let input = "src/main.rs:10:match\nsrc/main.rs-11-context 1\nsrc/main.rs-12-context 2";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
+
+        assert!(output.contains("10: match"));
+        assert!(output.contains("11-12: ... (2 context lines)"));
+    }
+
+    #[test]
+    fn test_format_grep_json_includes_is_context() {
+        let input = "src/main.rs-10-context\nsrc/main.rs:11:match";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Json);
+
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(json["files"][0]["matches"][0]["is_context"], true);
+        assert_eq!(json["files"][0]["matches"][1]["is_context"], false);
+    }
+
+    #[test]
+    fn test_format_grep_raw_context_uses_dash() {
+        // Raw format should preserve dash separator for context
+        let input = "src/main.rs-10-context line";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Raw);
+
+        assert!(output.contains("src/main.rs-10-context line"));
+    }
+
+    #[test]
+    fn test_format_grep_raw_match_uses_colon() {
+        // Raw format should use colon for matches
+        let input = "src/main.rs:10:match line";
+        let result = ParseHandler::parse_grep(input).unwrap();
+        let output = ParseHandler::format_grep(&result, OutputFormat::Raw);
+
+        assert!(output.contains("src/main.rs:10:match line"));
     }
 }

@@ -1228,8 +1228,10 @@ fn test_parse_grep_csv() {
         .write_stdin(grep_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("path,line_number,column,line"))
-        .stdout(predicate::str::contains("src/main.rs,42,,"));
+        .stdout(predicate::str::contains(
+            "path,line_number,column,is_context,line",
+        ))
+        .stdout(predicate::str::contains("src/main.rs,42,,false,"));
 }
 
 #[test]
@@ -1242,8 +1244,10 @@ fn test_parse_grep_tsv() {
         .write_stdin(grep_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("path\tline_number\tcolumn\tline"))
-        .stdout(predicate::str::contains("src/main.rs\t42\t\t"));
+        .stdout(predicate::str::contains(
+            "path\tline_number\tcolumn\tis_context\tline",
+        ))
+        .stdout(predicate::str::contains("src/main.rs\t42\t\tfalse\t"));
 }
 
 #[test]
