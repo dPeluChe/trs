@@ -3561,6 +3561,63 @@ fn test_parse_logs_json_output() {
     assert_eq!(json["level_counts"]["warning"], 1);
 }
 
+#[test]
+fn test_parse_logs_detects_repeated_lines() {
+    // Test that repeated lines are detected and counted
+    let log_input = "Same line\nDifferent line\nSame line\nSame line\nAnother line\nAnother line";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    // Should have 6 total lines
+    assert_eq!(json["total_lines"], 6);
+
+    // Should detect 2 unique repeated lines
+    let repeated = json["repeated_lines"].as_array().unwrap();
+    assert_eq!(repeated.len(), 2);
+
+    // Find "Same line" in repeated lines
+    let same_line = repeated.iter().find(|r| r["line"] == "Same line").unwrap();
+    assert_eq!(same_line["count"], 3);
+    assert_eq!(same_line["first_line"], 1);
+    assert_eq!(same_line["last_line"], 4);
+
+    // Find "Another line" in repeated lines
+    let another_line = repeated.iter().find(|r| r["line"] == "Another line").unwrap();
+    assert_eq!(another_line["count"], 2);
+    assert_eq!(another_line["first_line"], 5);
+    assert_eq!(another_line["last_line"], 6);
+}
+
+#[test]
+fn test_parse_logs_compact_shows_repeated() {
+    // Test that compact output shows repeated lines summary
+    let log_input = "Repeated message\nOther line\nRepeated message\nRepeated message";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--compact")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+
+    // Should show repeated count
+    assert!(stdout.contains("repeated:"));
+    // Should show the count [x3]
+    assert!(stdout.contains("[x3]"));
+    // Should show the line content
+    assert!(stdout.contains("Repeated message"));
+}
+
 // ============================================================
 // Stats Output Tests for Command Execution
 // ============================================================
