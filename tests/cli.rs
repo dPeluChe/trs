@@ -440,7 +440,7 @@ fn test_parse_ls_with_directories() {
 #[test]
 fn test_parse_ls_with_hidden_files() {
     let ls_input = "file1.txt\n.hidden_file\n.visible_file\n";
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse")
         .arg("ls")
@@ -452,7 +452,180 @@ fn test_parse_ls_with_hidden_files() {
         .stdout(predicate::str::contains(".hidden_file"))
         .stdout(predicate::str::contains(".visible_file"));
 }
-    
+
+// ============================================================
+// Hidden File Detection Tests
+// ============================================================
+
+#[test]
+fn test_parse_ls_hidden_directory() {
+    // Test that hidden directories are detected
+    let ls_input = ".git/\npublic/\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 2"))
+        .stdout(predicate::str::contains("hidden (1):"))
+        .stdout(predicate::str::contains(".git/"))
+        // Verify hidden section appears and public is NOT listed there
+        .stdout(predicate::str::contains("hidden (1):\n  .git/"));
+}
+
+#[test]
+fn test_parse_ls_hidden_file_with_extension() {
+    // Test that hidden files with extensions are detected
+    let ls_input = ".gitignore\n.env.local\n.config.json\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("hidden (3):"))
+        .stdout(predicate::str::contains(".gitignore"))
+        .stdout(predicate::str::contains(".env.local"))
+        .stdout(predicate::str::contains(".config.json"));
+}
+
+#[test]
+fn test_parse_ls_dot_and_dotdot() {
+    // Test that . and .. are detected as hidden (though typically not shown by ls)
+    let ls_input = ".\n..\nfile.txt\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hidden (2):"))
+        .stdout(predicate::str::contains("."))
+        .stdout(predicate::str::contains(".."));
+}
+
+#[test]
+fn test_parse_ls_double_dots() {
+    // Test files starting with multiple dots
+    let ls_input = "..swp\n...triple\nfile.txt\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hidden (2):"))
+        .stdout(predicate::str::contains("..swp"))
+        .stdout(predicate::str::contains("...triple"));
+}
+
+#[test]
+fn test_parse_ls_long_format_hidden_files() {
+    // Test hidden files in long format output
+    let ls_input = "total 8\n-rw-r--r--  1 user  group  123 Jan  1 12:34 .gitignore\n-rw-r--r--  1 user  group  456 Jan  1 12:34 .env\ndrwxr-xr-x  2 user  group 4096 Jan  1 12:34 .git\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("hidden (3):"))
+        .stdout(predicate::str::contains(".gitignore"))
+        .stdout(predicate::str::contains(".env"))
+        .stdout(predicate::str::contains(".git"));
+}
+
+#[test]
+fn test_parse_ls_hidden_symlink() {
+    // Test hidden symlinks
+    let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 .link_to_file\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hidden (1):"))
+        .stdout(predicate::str::contains(".link_to_file"));
+}
+
+#[test]
+fn test_parse_ls_json_hidden_files() {
+    // Test JSON output includes is_hidden field
+    let ls_input = "file.txt\n.hidden\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"is_hidden\":false"))
+        .stdout(predicate::str::contains("\"is_hidden\":true"))
+        .stdout(predicate::str::contains("\"hidden\":[\".hidden\"]"));
+}
+
+#[test]
+fn test_parse_ls_mixed_hidden_and_visible() {
+    // Test a mix of hidden and visible files/directories
+    let ls_input = "public/\nsrc/\n.git/\n.env\nREADME.md\n.gitignore\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 6"))
+        .stdout(predicate::str::contains("hidden (3):"))
+        .stdout(predicate::str::contains(".git/"))
+        .stdout(predicate::str::contains(".env"))
+        .stdout(predicate::str::contains(".gitignore"));
+}
+
+#[test]
+fn test_parse_ls_only_hidden_files() {
+    // Test when all files are hidden
+    let ls_input = ".a\n.b\n.c\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::str::contains("hidden (3):"))
+        .stdout(predicate::str::contains(".a"))
+        .stdout(predicate::str::contains(".b"))
+        .stdout(predicate::str::contains(".c"));
+}
+
+#[test]
+fn test_parse_ls_no_hidden_files() {
+    // Test when no hidden files are present
+    let ls_input = "file1.txt\nfile2.txt\nfile3.txt\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(ls_input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3"))
+        .stdout(predicate::function(|x: &str| !x.contains("hidden")));
+}
+
 #[test]
 fn test_parse_ls_long_format() {
     let ls_input = "total 0\ndrwxr-xr-x  2 user  group  4096 Jan  1 12:34 dirname\n-rw-r--r--  1 user  group    42 Jan  1 12:34 file1.txt\n";
