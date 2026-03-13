@@ -3990,6 +3990,14 @@ impl ParseHandler {
 
     /// Format pytest output as JSON.
     fn format_pytest_json(output: &PytestOutput) -> String {
+        // Extract failing test identifiers
+        let failed_tests: Vec<_> = output
+            .tests
+            .iter()
+            .filter(|t| t.status == TestStatus::Failed || t.status == TestStatus::Error)
+            .map(|t| t.name.clone())
+            .collect();
+
         serde_json::json!({
             "success": output.success,
             "is_empty": output.is_empty,
@@ -4003,6 +4011,7 @@ impl ParseHandler {
                 "total": output.summary.total,
                 "duration": output.summary.duration,
             },
+            "failed_tests": failed_tests,
             "tests": output.tests.iter().map(|t| serde_json::json!({
                 "name": t.name,
                 "status": match t.status {
@@ -4472,6 +4481,19 @@ impl ParseHandler {
 
     /// Format Jest output as JSON.
     fn format_jest_json(output: &JestOutput) -> String {
+        // Extract failing test identifiers (file::test_name format)
+        let failed_tests: Vec<_> = output
+            .test_suites
+            .iter()
+            .flat_map(|suite| {
+                suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == JestTestStatus::Failed)
+                    .map(|t| format!("{}::{}", suite.file, t.name))
+            })
+            .collect();
+
         serde_json::json!({
             "success": output.success,
             "is_empty": output.is_empty,
@@ -4491,6 +4513,7 @@ impl ParseHandler {
                 "snapshots": output.summary.snapshots,
                 "duration": output.summary.duration,
             },
+            "failed_tests": failed_tests,
             "test_suites": output.test_suites.iter().map(|suite| serde_json::json!({
                 "file": suite.file,
                 "passed": suite.passed,
@@ -5077,6 +5100,19 @@ impl ParseHandler {
 
     /// Format Vitest output as JSON.
     fn format_vitest_json(output: &VitestOutput) -> String {
+        // Extract failing test identifiers (file::test_name format)
+        let failed_tests: Vec<_> = output
+            .test_suites
+            .iter()
+            .flat_map(|suite| {
+                suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == VitestTestStatus::Failed)
+                    .map(|t| format!("{}::{}", suite.file, t.name))
+            })
+            .collect();
+
         serde_json::json!({
             "success": output.success,
             "is_empty": output.is_empty,
@@ -5096,6 +5132,7 @@ impl ParseHandler {
                 "duration": output.summary.duration,
                 "start_at": output.summary.start_at,
             },
+            "failed_tests": failed_tests,
             "test_suites": output.test_suites.iter().map(|suite| serde_json::json!({
                 "file": suite.file,
                 "passed": suite.passed,
@@ -5713,6 +5750,19 @@ impl ParseHandler {
 
     /// Format npm test output as JSON.
     fn format_npm_test_json(output: &NpmTestOutput) -> String {
+        // Extract failing test identifiers (file::test_name format)
+        let failed_tests: Vec<_> = output
+            .test_suites
+            .iter()
+            .flat_map(|suite| {
+                suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == NpmTestStatus::Failed)
+                    .map(|t| format!("{}::{}", suite.file, t.name))
+            })
+            .collect();
+
         serde_json::json!({
             "success": output.success,
             "is_empty": output.is_empty,
@@ -5728,6 +5778,7 @@ impl ParseHandler {
                 "tests_total": output.summary.tests_total,
                 "duration": output.summary.duration,
             },
+            "failed_tests": failed_tests,
             "test_suites": output.test_suites.iter().map(|suite| serde_json::json!({
                 "file": suite.file,
                 "passed": suite.passed,
@@ -6341,6 +6392,19 @@ impl ParseHandler {
 
     /// Format pnpm test output as JSON.
     fn format_pnpm_test_json(output: &PnpmTestOutput) -> String {
+        // Extract failing test identifiers (file::test_name format)
+        let failed_tests: Vec<_> = output
+            .test_suites
+            .iter()
+            .flat_map(|suite| {
+                suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == PnpmTestStatus::Failed)
+                    .map(|t| format!("{}::{}", suite.file, t.name))
+            })
+            .collect();
+
         serde_json::json!({
             "success": output.success,
             "is_empty": output.is_empty,
@@ -6356,6 +6420,7 @@ impl ParseHandler {
                 "tests_total": output.summary.tests_total,
                 "duration": output.summary.duration,
             },
+            "failed_tests": failed_tests,
             "test_suites": output.test_suites.iter().map(|suite| serde_json::json!({
                 "file": suite.file,
                 "passed": suite.passed,
@@ -7009,6 +7074,19 @@ impl ParseHandler {
 
     /// Format Bun test output as JSON.
     fn format_bun_test_json(output: &BunTestOutput) -> String {
+        // Extract failing test identifiers (file::test_name format)
+        let failed_tests: Vec<_> = output
+            .test_suites
+            .iter()
+            .flat_map(|suite| {
+                suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == BunTestStatus::Failed)
+                    .map(|t| format!("{}::{}", suite.file, t.name))
+            })
+            .collect();
+
         serde_json::json!({
             "success": output.success,
             "is_empty": output.is_empty,
@@ -7025,6 +7103,7 @@ impl ParseHandler {
                 "expect_calls": output.summary.expect_calls,
                 "duration": output.summary.duration,
             },
+            "failed_tests": failed_tests,
             "test_suites": output.test_suites.iter().map(|suite| serde_json::json!({
                 "file": suite.file,
                 "passed": suite.passed,
