@@ -3619,6 +3619,256 @@ fn test_parse_logs_compact_shows_repeated() {
 }
 
 // ============================================================
+// Error/Warning Level Detection Tests
+// ============================================================
+
+#[test]
+fn test_parse_logs_detects_error_levels() {
+    // Test that ERROR level is properly detected
+    let log_input = "[ERROR] Database connection failed\n[INFO] Retrying...";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["error"], 1);
+    assert_eq!(json["level_counts"]["info"], 1);
+}
+
+#[test]
+fn test_parse_logs_detects_warning_levels() {
+    // Test that WARNING level is properly detected
+    let log_input = "[WARN] Cache miss\n[WARNING] Slow response time";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["warning"], 2);
+}
+
+#[test]
+fn test_parse_logs_detects_failed_keyword() {
+    // Test that "FAILED" keyword is detected as error
+    let log_input = "Test case 1 PASSED\nTest case 2 FAILED\nTest case 3 PASSED";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["error"], 1);
+    assert_eq!(json["level_counts"]["unknown"], 2);
+}
+
+#[test]
+fn test_parse_logs_detects_exception() {
+    // Test that "Exception" keyword is detected as error
+    let log_input = "Starting application...\nException: NullPointerException\nError at com.example.Main.main";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["error"], 2);
+}
+
+#[test]
+fn test_parse_logs_detects_fatal_levels() {
+    // Test that FATAL level is properly detected
+    let log_input = "[FATAL] System out of memory\n[CRITICAL] Disk full";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["fatal"], 2);
+}
+
+#[test]
+fn test_parse_logs_detects_panic_crash() {
+    // Test that PANIC and CRASH are detected as fatal
+    let log_input = "PANIC: unrecoverable error\nApplication crashed";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["fatal"], 2);
+}
+
+#[test]
+fn test_parse_logs_detects_deprecated() {
+    // Test that "deprecated" is detected as warning
+    let log_input = "Warning: This method is deprecated\nPlease use newMethod instead";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["warning"], 1);
+}
+
+#[test]
+fn test_parse_logs_detects_connection_errors() {
+    // Test that connection errors are detected
+    let log_input = "Connection refused\nConnection error: timeout\nAccess denied";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["error"], 3);
+}
+
+#[test]
+fn test_parse_logs_detects_stack_trace() {
+    // Test that stack trace and backtrace are detected as errors
+    let log_input = "STACK TRACE:\nBACKTRACE:\nException occurred";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["error"], 3);
+}
+
+#[test]
+fn test_parse_logs_compact_shows_level_indicators() {
+    // Test that compact output shows level indicators [E], [W], [I], etc.
+    let log_input = "[ERROR] Something failed\n[WARN] Be careful\n[INFO] All good";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--compact")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+
+    // Should show level indicators
+    assert!(stdout.contains("[E]"));
+    assert!(stdout.contains("[W]"));
+    assert!(stdout.contains("[I]"));
+}
+
+#[test]
+fn test_parse_logs_negation_not_detected_as_error() {
+    // Test that "no errors" is NOT detected as error
+    let log_input = "All tests passed\nNo errors found\nCompleted with 0 errors";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    // All lines should be unknown, not error
+    assert_eq!(json["level_counts"]["error"], 0);
+    assert_eq!(json["level_counts"]["unknown"], 3);
+}
+
+#[test]
+fn test_parse_logs_various_formats() {
+    // Test various log level formats: brackets, colon, pipes
+    let log_input = "[ERROR] Bracket format\nERROR: Colon format\n|ERROR| Pipe format";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["error"], 3);
+}
+
+#[test]
+fn test_parse_logs_slow_query_warning() {
+    // Test that slow query/request are detected as warnings
+    let log_input = "SLOW QUERY detected: 5.2s\nSLOW REQUEST: 3.1s";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["warning"], 2);
+}
+
+#[test]
+fn test_parse_logs_notice_level() {
+    // Test that NOTICE is detected as info
+    let log_input = "[NOTICE] System maintenance scheduled\nNOTICE: Server restart at midnight";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("logs")
+        .write_stdin(log_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["level_counts"]["info"], 2);
+}
+
+// ============================================================
 // Stats Output Tests for Command Execution
 // ============================================================
 

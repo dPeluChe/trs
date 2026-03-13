@@ -7959,31 +7959,56 @@ impl ParseHandler {
         // Check for various level indicators in order of severity (highest first)
         // Patterns: [FATAL], FATAL:, |FATAL|, FATAL - etc.
 
-        // Fatal/Critical
+        // Fatal/Critical - includes panic, crash, abort
         if Self::contains_level_marker(&line_upper, "FATAL")
             || Self::contains_level_marker(&line_upper, "CRITICAL")
             || Self::contains_level_marker(&line_upper, "CRIT")
+            || Self::contains_error_keyword(&line_upper, "PANIC")
+            || Self::contains_error_keyword(&line_upper, "CRASH")
+            || Self::contains_error_keyword(&line_upper, "ABORT")
+            || Self::contains_error_keyword(&line_upper, "EMERG")
+            || Self::contains_error_keyword(&line_upper, "ALERT")
         {
             return LogLevel::Fatal;
         }
 
-        // Error
+        // Error - includes exceptions, failures, and common error patterns
         if Self::contains_level_marker(&line_upper, "ERROR")
             || Self::contains_level_marker(&line_upper, "ERR")
-            || line_upper.contains("EXCEPTION")
+            || Self::contains_error_keyword(&line_upper, "EXCEPTION")
+            || Self::contains_error_keyword(&line_upper, "FAILED")
+            || Self::contains_error_keyword(&line_upper, "FAILURE")
+            || Self::contains_error_keyword(&line_upper, "STACK TRACE")
+            || Self::contains_error_keyword(&line_upper, "BACKTRACE")
+            || Self::contains_error_keyword(&line_upper, "SEGFAULT")
+            || Self::contains_error_keyword(&line_upper, "SEG FAULT")
+            || Self::contains_error_keyword(&line_upper, "NULL POINTER")
+            || Self::contains_error_keyword(&line_upper, "ACCESS DENIED")
+            || Self::contains_error_keyword(&line_upper, "TIMEOUT ERROR")
+            || Self::contains_error_keyword(&line_upper, "CONNECTION REFUSED")
+            || Self::contains_error_keyword(&line_upper, "CONNECTION ERROR")
         {
             return LogLevel::Error;
         }
 
-        // Warning
+        // Warning - includes deprecation, caution notices
         if Self::contains_level_marker(&line_upper, "WARN")
             || Self::contains_level_marker(&line_upper, "WARNING")
+            || Self::contains_warning_keyword(&line_upper, "DEPRECATED")
+            || Self::contains_warning_keyword(&line_upper, "CAUTION")
+            || Self::contains_warning_keyword(&line_upper, "ATTENTION")
+            || Self::contains_warning_keyword(&line_upper, "BE AWARE")
+            || Self::contains_warning_keyword(&line_upper, "PLEASE NOTE")
+            || Self::contains_warning_keyword(&line_upper, "SLOW QUERY")
+            || Self::contains_warning_keyword(&line_upper, "SLOW REQUEST")
         {
             return LogLevel::Warning;
         }
 
         // Info
-        if Self::contains_level_marker(&line_upper, "INFO") {
+        if Self::contains_level_marker(&line_upper, "INFO")
+            || Self::contains_level_marker(&line_upper, "NOTICE")
+        {
             return LogLevel::Info;
         }
 
@@ -7996,6 +8021,37 @@ impl ParseHandler {
         }
 
         LogLevel::Unknown
+    }
+
+    /// Check if line contains an error-related keyword.
+    /// This is more lenient than contains_level_marker and looks for keywords
+    /// anywhere in the line that typically indicate an error condition.
+    fn contains_error_keyword(line_upper: &str, keyword: &str) -> bool {
+        // Check for the keyword with word boundaries
+        if line_upper.contains(keyword) {
+            // Avoid false positives by checking context
+            // For example, "no errors" should not be detected as an error
+            let keyword_lower = keyword.to_lowercase();
+            let negation_patterns = [
+                format!("no {}", keyword_lower),
+                format!("without {}", keyword_lower),
+                format!("not {}", keyword_lower),
+                format!("0 {}", keyword_lower),
+                format!("zero {}", keyword_lower),
+            ];
+            for neg in negation_patterns {
+                if line_upper.contains(&neg.to_uppercase()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        false
+    }
+
+    /// Check if line contains a warning-related keyword.
+    fn contains_warning_keyword(line_upper: &str, keyword: &str) -> bool {
+        line_upper.contains(keyword)
     }
 
     /// Check if line contains a level marker.
@@ -11366,5 +11422,138 @@ Ran 4 tests across 1 files. [0.66ms]"#;
         assert!(output.contains("  3 Line A"));
         // Should not have collapsed format like "1-3 Line A [x2]" in lines section
         // (non-consecutive entries don't collapse)
+    }
+
+    // ============================================================
+    // Enhanced Error/Warning Level Detection Tests
+    // ============================================================
+
+    #[test]
+    fn test_detect_log_level_failed() {
+        assert_eq!(ParseHandler::detect_log_level("Test failed"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("FAILED: assertion failed"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("Build failure"), LogLevel::Error);
+    }
+
+    #[test]
+    fn test_detect_log_level_stack_trace() {
+        assert_eq!(ParseHandler::detect_log_level("STACK TRACE:"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("Backtrace:"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("Exception at com.example.MyClass.myMethod(MyClass.java:42)"), LogLevel::Error);
+    }
+
+    #[test]
+    fn test_detect_log_level_panic_crash() {
+        assert_eq!(ParseHandler::detect_log_level("PANIC: unrecoverable error"), LogLevel::Fatal);
+        assert_eq!(ParseHandler::detect_log_level("Application crashed"), LogLevel::Fatal);
+        assert_eq!(ParseHandler::detect_log_level("Aborting due to critical error"), LogLevel::Fatal);
+    }
+
+    #[test]
+    fn test_detect_log_level_deprecated() {
+        assert_eq!(ParseHandler::detect_log_level("DEPRECATED: use newFunction instead"), LogLevel::Warning);
+        assert_eq!(ParseHandler::detect_log_level("This method is deprecated"), LogLevel::Warning);
+    }
+
+    #[test]
+    fn test_detect_log_level_caution() {
+        assert_eq!(ParseHandler::detect_log_level("CAUTION: data may be lost"), LogLevel::Warning);
+        assert_eq!(ParseHandler::detect_log_level("ATTENTION: read carefully"), LogLevel::Warning);
+    }
+
+    #[test]
+    fn test_detect_log_level_connection_errors() {
+        assert_eq!(ParseHandler::detect_log_level("Connection refused"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("CONNECTION ERROR: timeout"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("ACCESS DENIED for user"), LogLevel::Error);
+    }
+
+    #[test]
+    fn test_detect_log_level_timeout() {
+        assert_eq!(ParseHandler::detect_log_level("TIMEOUT ERROR"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("Request timed out"), LogLevel::Unknown);
+    }
+
+    #[test]
+    fn test_detect_log_level_segfault() {
+        assert_eq!(ParseHandler::detect_log_level("SEG FAULT"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("SEGFAULT at 0x0"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("NULL POINTER exception"), LogLevel::Error);
+    }
+
+    #[test]
+    fn test_detect_log_level_notice() {
+        assert_eq!(ParseHandler::detect_log_level("NOTICE: system maintenance"), LogLevel::Info);
+        assert_eq!(ParseHandler::detect_log_level("[NOTICE] Server starting"), LogLevel::Info);
+    }
+
+    #[test]
+    fn test_detect_log_level_slow_queries() {
+        assert_eq!(ParseHandler::detect_log_level("SLOW QUERY detected"), LogLevel::Warning);
+        assert_eq!(ParseHandler::detect_log_level("SLOW REQUEST: 5.2s"), LogLevel::Warning);
+    }
+
+    #[test]
+    fn test_detect_log_level_negation_patterns() {
+        // These should NOT be detected as errors due to negation patterns
+        assert_eq!(ParseHandler::detect_log_level("No errors found"), LogLevel::Unknown);
+        assert_eq!(ParseHandler::detect_log_level("Completed with 0 errors"), LogLevel::Unknown);
+        assert_eq!(ParseHandler::detect_log_level("Zero failures detected"), LogLevel::Unknown);
+    }
+
+    #[test]
+    fn test_detect_log_level_case_variations() {
+        // Test mixed case detection
+        assert_eq!(ParseHandler::detect_log_level("ERROR: something bad"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("Error: something bad"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("error: something bad"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("FAILED"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("failed"), LogLevel::Error);
+        assert_eq!(ParseHandler::detect_log_level("Failed"), LogLevel::Error);
+    }
+
+    #[test]
+    fn test_parse_logs_counts_levels_correctly() {
+        let input = r#"[INFO] Starting
+[ERROR] Connection failed
+[WARN] Deprecated API
+[FATAL] System panic
+[DEBUG] Trace info
+Unknown line"#;
+        let result = ParseHandler::parse_logs(input);
+
+        assert_eq!(result.total_lines, 6);
+        assert_eq!(result.info_count, 1);
+        assert_eq!(result.error_count, 1);
+        assert_eq!(result.warning_count, 1);
+        assert_eq!(result.fatal_count, 1);
+        assert_eq!(result.debug_count, 1);
+        assert_eq!(result.unknown_count, 1);
+    }
+
+    #[test]
+    fn test_parse_logs_multiple_errors() {
+        let input = r#"Test case 1 FAILED
+Test case 2 FAILED
+Exception in thread main
+Connection refused"#;
+        let result = ParseHandler::parse_logs(input);
+
+        assert_eq!(result.error_count, 4);
+    }
+
+    #[test]
+    fn test_parse_logs_mixed_levels() {
+        let input = r#"Starting application...
+PANIC: unrecoverable error
+Build failure
+Deprecated method used
+All systems operational"#;
+        let result = ParseHandler::parse_logs(input);
+
+        assert_eq!(result.fatal_count, 1);
+        assert_eq!(result.error_count, 1);
+        assert_eq!(result.warning_count, 1);
+        assert_eq!(result.unknown_count, 2);
     }
 }
