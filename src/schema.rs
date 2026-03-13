@@ -788,6 +788,9 @@ pub struct GrepMatch {
     /// Whether this is a context line (not a direct match).
     #[serde(default)]
     pub is_context: bool,
+    /// Short excerpt of the matched text (if available).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excerpt: Option<String>,
 }
 
 impl GrepMatch {
@@ -798,6 +801,7 @@ impl GrepMatch {
             column: None,
             line: line.to_string(),
             is_context: false,
+            excerpt: None,
         }
     }
 }

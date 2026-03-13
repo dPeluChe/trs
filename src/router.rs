@@ -365,6 +365,8 @@ struct GrepMatch {
     line: String,
     /// Whether this is a context line (not a direct match).
     is_context: bool,
+    /// Short excerpt of the matched text.
+    excerpt: Option<String>,
 }
 
 /// A file with grep matches.
@@ -1428,7 +1430,9 @@ impl SearchHandler {
     fn execute_search(&self, input: &SearchInput) -> CommandResult<GrepOutput> {
         use grep::regex::RegexMatcher;
         use grep::searcher::SearcherBuilder;
-        use grep::searcher::sinks::UTF8;
+        use grep::searcher::Sink;
+        use grep::searcher::Searcher;
+        use grep::matcher::Matcher;
         use ignore::WalkBuilder;
         use std::sync::{Arc, Mutex};
 
@@ -1443,8 +1447,90 @@ impl SearchHandler {
             exit_code: Some(2),
         })?;
 
-        // Shared state for collecting matches
-        let matches: Arc<Mutex<Vec<(String, usize, String)>>> = Arc::new(Mutex::new(Vec::new()));
+        /// A single match result with column information.
+        #[derive(Debug, Clone)]
+        struct MatchResult {
+            line_number: usize,
+            column: usize,
+            line: String,
+            excerpt: String,
+            is_context: bool,
+        }
+
+        /// Custom sink to capture match positions and excerpts.
+        struct MatchSink {
+            matches: Vec<MatchResult>,
+            matcher: RegexMatcher,
+        }
+
+        impl MatchSink {
+            fn new(matcher: RegexMatcher) -> Self {
+                Self {
+                    matches: Vec::new(),
+                    matcher,
+                }
+            }
+        }
+
+        impl Sink for MatchSink {
+            type Error = std::io::Error;
+
+            fn matched(
+                &mut self,
+                _searcher: &Searcher,
+                mat: &grep::searcher::SinkMatch<'_>,
+            ) -> Result<bool, Self::Error> {
+                let line_number = mat.line_number().unwrap_or(0) as usize;
+                let line_bytes = mat.bytes();
+                let line_str = String::from_utf8_lossy(line_bytes);
+                let line = line_str.to_string();
+                
+                // Find the column position and extract the excerpt
+                let (column, excerpt) = if let Ok(Some(m)) = self.matcher.find(line_bytes) {
+                    let col = m.start();
+                    let excerpt_bytes = &line_bytes[m.start()..m.end()];
+                    let excerpt_str = String::from_utf8_lossy(excerpt_bytes);
+                    // Calculate character column (not byte offset) for display
+                    let char_col = String::from_utf8_lossy(&line_bytes[..col.min(line_bytes.len())])
+                        .chars()
+                        .count();
+                    (char_col + 1, excerpt_str.to_string()) // 1-indexed
+                } else {
+                    (1, String::new())
+                };
+                
+                self.matches.push(MatchResult {
+                    line_number,
+                    column,
+                    line: line.trim_end().to_string(),
+                    excerpt,
+                    is_context: false,
+                });
+                Ok(true)
+            }
+
+            fn context(
+                &mut self,
+                _searcher: &Searcher,
+                ctx: &grep::searcher::SinkContext<'_>,
+            ) -> Result<bool, Self::Error> {
+                let line_number = ctx.line_number().unwrap_or(0) as usize;
+                let line_bytes = ctx.bytes();
+                let line_str = String::from_utf8_lossy(line_bytes);
+                
+                self.matches.push(MatchResult {
+                    line_number,
+                    column: 0,
+                    line: line_str.trim_end().to_string(),
+                    excerpt: String::new(),
+                    is_context: true,
+                });
+                Ok(true)
+            }
+        }
+
+        // Shared state for collecting matches per file
+        let file_matches: Arc<Mutex<Vec<(String, Vec<MatchResult>)>>> = Arc::new(Mutex::new(Vec::new()));
 
         // Build the directory walker with ignore rules
         let mut walk_builder = WalkBuilder::new(&input.path);
@@ -1481,9 +1567,6 @@ impl SearchHandler {
 
             let path = entry.path().to_string_lossy().to_string();
 
-            // Clone Arc for use in closure
-            let matches_clone = Arc::clone(&matches);
-
             // Create a new searcher for each file
             let mut searcher_builder = SearcherBuilder::new();
             searcher_builder.line_number(true);
@@ -1496,49 +1579,36 @@ impl SearchHandler {
 
             let mut searcher = searcher_builder.build();
 
-            // Search with line numbers
-            let search_result = searcher.search_path(
-                &matcher,
-                entry.path(),
-                UTF8(|lnum, line| {
-                    let line_str = line.to_string();
-                    matches_clone.lock().unwrap().push((path.clone(), lnum as usize, line_str));
-                    Ok(true)
-                })
-            );
+            // Create sink with matcher clone
+            let mut sink = MatchSink::new(matcher.clone());
+
+            // Search with our custom sink
+            let search_result = searcher.search_path(&matcher, entry.path(), &mut sink);
 
             // Ignore search errors (binary files, permission issues, etc.)
-            let _ = search_result;
+            if search_result.is_ok() && !sink.matches.is_empty() {
+                file_matches.lock().unwrap().push((path, sink.matches));
+            }
         }
 
         // Collect results into GrepOutput
-        let collected = Arc::try_unwrap(matches)
+        let collected = Arc::try_unwrap(file_matches)
             .expect("All references should be dropped")
             .into_inner()
             .expect("Mutex should not be poisoned");
 
-        // Build GrepOutput from collected matches
-        let mut files_map: std::collections::HashMap<String, Vec<(usize, String, bool)>> =
-            std::collections::HashMap::new();
-
-        for (path, lnum, line) in collected {
-            files_map
-                .entry(path)
-                .or_insert_with(Vec::new)
-                .push((lnum, line, false));
-        }
-
-        // Convert to GrepFile structures
-        let mut files: Vec<GrepFile> = files_map
+        // Convert to GrepFile structures with excerpts
+        let mut files: Vec<GrepFile> = collected
             .into_iter()
-            .map(|(path, matches)| {
-                let grep_matches: Vec<GrepMatch> = matches
+            .map(|(path, match_results)| {
+                let grep_matches: Vec<GrepMatch> = match_results
                     .into_iter()
-                    .map(|(lnum, line, is_context)| GrepMatch {
-                        line_number: Some(lnum),
-                        column: None,
-                        line,
-                        is_context,
+                    .map(|mr| GrepMatch {
+                        line_number: Some(mr.line_number),
+                        column: if mr.is_context { None } else { Some(mr.column) },
+                        line: mr.line,
+                        is_context: mr.is_context,
+                        excerpt: if mr.excerpt.is_empty() || mr.is_context { None } else { Some(mr.excerpt) },
                     })
                     .collect();
                 GrepFile {
@@ -1616,6 +1686,7 @@ impl SearchHandler {
                         column: m.column,
                         line: m.line.clone(),
                         is_context: m.is_context,
+                        excerpt: m.excerpt.clone(),
                     })
                     .collect(),
             })
@@ -3570,6 +3641,7 @@ impl ParseHandler {
                         column: None,
                         line: "[binary file]".to_string(),
                         is_context: false,
+                        excerpt: None,
                     },
                 ));
             }
@@ -3618,6 +3690,7 @@ impl ParseHandler {
                 column,
                 line: content.to_string(),
                 is_context,
+                excerpt: None,
             },
         ))
     }
@@ -3867,15 +3940,24 @@ impl ParseHandler {
                         context_count = 0;
                     }
 
-                    // Output the match line
+                    // Output the match line with excerpt if available
                     if let Some(ln) = m.line_number {
                         if let Some(col) = m.column {
-                            output.push_str(&format!("  {}:{}: {}\n", ln, col, m.line));
+                            let excerpt_str = m.excerpt.as_ref()
+                                .map(|e| format!(" [{}]", e))
+                                .unwrap_or_default();
+                            output.push_str(&format!("  {}:{}: {}{}\n", ln, col, m.line, excerpt_str));
                         } else {
-                            output.push_str(&format!("  {}: {}\n", ln, m.line));
+                            let excerpt_str = m.excerpt.as_ref()
+                                .map(|e| format!(" [{}]", e))
+                                .unwrap_or_default();
+                            output.push_str(&format!("  {}: {}{}\n", ln, m.line, excerpt_str));
                         }
                     } else {
-                        output.push_str(&format!("  {}\n", m.line));
+                        let excerpt_str = m.excerpt.as_ref()
+                            .map(|e| format!(" [{}]", e))
+                                .unwrap_or_default();
+                        output.push_str(&format!("  {}{}\n", m.line, excerpt_str));
                     }
                 }
             }

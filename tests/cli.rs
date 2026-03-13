@@ -602,6 +602,66 @@ fn test_search_groups_case_insensitive() {
 }
 
 #[test]
+fn test_search_includes_excerpts_compact() {
+    // Test that compact output includes match excerpts
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let output_str = String::from_utf8_lossy(&output);
+    // Excerpt should be shown in square brackets
+    assert!(output_str.contains("[SearchHandler]"));
+    // Column number should be shown
+    assert!(output_str.contains(":12:"));
+}
+
+#[test]
+fn test_search_includes_excerpts_json() {
+    // Test that JSON output includes excerpt field
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let output_str = String::from_utf8_lossy(&output);
+    let json: serde_json::Value = serde_json::from_str(&output_str).unwrap();
+
+    // Check that matches have excerpt field
+    let files = json["files"].as_array().unwrap();
+    assert!(!files.is_empty());
+
+    let first_file = &files[0];
+    let matches = first_file["matches"].as_array().unwrap();
+    assert!(!matches.is_empty());
+
+    // First match should have excerpt
+    let first_match = &matches[0];
+    assert!(first_match["excerpt"].is_string());
+    assert_eq!(first_match["excerpt"].as_str().unwrap(), "SearchHandler");
+
+    // First match should have column number
+    assert!(first_match["column"].is_number());
+}
+
+#[test]
 fn test_replace_basic() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
