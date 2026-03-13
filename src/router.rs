@@ -770,6 +770,115 @@ struct PnpmTestSummary {
     duration: Option<f64>,
 }
 
+// ============================================================
+// Bun Test Parser Data Structures
+// ============================================================
+
+/// Parsed Bun test output.
+///
+/// Expected format (default console reporter):
+/// ```text
+/// test/package-json-lint.test.ts:
+/// ✓ test/package.json [0.88ms]
+/// ✓ test/js/third_party/grpc-js/package.json [0.18ms]
+///
+///  4 pass
+///  0 fail
+///  4 expect() calls
+/// Ran 4 tests in 1.44ms
+/// ```
+///
+/// For non-TTY environments (no colors):
+/// ```text
+/// test/package-json-lint.test.ts:
+/// (pass) test/package.json [0.48ms]
+/// (fail) test/failing.test.ts
+/// (skip) test/skipped.test.ts
+/// ```
+#[derive(Debug, Clone, Default)]
+struct BunTestOutput {
+    /// List of test suites (files).
+    test_suites: Vec<BunTestSuite>,
+    /// Summary statistics.
+    summary: BunTestSummary,
+    /// Whether all tests passed.
+    success: bool,
+    /// Whether the output is empty.
+    is_empty: bool,
+    /// Bun version (if available).
+    bun_version: Option<String>,
+}
+
+/// A Bun test suite result (a test file).
+#[derive(Debug, Clone)]
+struct BunTestSuite {
+    /// Test file path.
+    file: String,
+    /// Whether the suite passed.
+    passed: bool,
+    /// Execution time in seconds.
+    duration: Option<f64>,
+    /// List of test results in this suite.
+    tests: Vec<BunTest>,
+}
+
+/// A single Bun test result.
+#[derive(Debug, Clone)]
+struct BunTest {
+    /// Full test name (including nested structure).
+    name: String,
+    /// Test name only (last part).
+    test_name: String,
+    /// Ancestor names (describe/nested test blocks).
+    ancestors: Vec<String>,
+    /// Status of the test.
+    status: BunTestStatus,
+    /// Duration in seconds (if available).
+    duration: Option<f64>,
+    /// Error message (for failed tests).
+    error_message: Option<String>,
+}
+
+/// Status of a Bun test.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BunTestStatus {
+    /// Test passed.
+    Passed,
+    /// Test failed.
+    Failed,
+    /// Test was skipped.
+    Skipped,
+    /// Test was todo.
+    Todo,
+}
+
+/// Bun test summary statistics.
+#[derive(Debug, Clone, Default)]
+struct BunTestSummary {
+    /// Number of test suites passed.
+    suites_passed: usize,
+    /// Number of test suites failed.
+    suites_failed: usize,
+    /// Number of test suites skipped.
+    suites_skipped: usize,
+    /// Number of test suites total.
+    suites_total: usize,
+    /// Number of tests passed.
+    tests_passed: usize,
+    /// Number of tests failed.
+    tests_failed: usize,
+    /// Number of tests skipped.
+    tests_skipped: usize,
+    /// Number of tests todo.
+    tests_todo: usize,
+    /// Number of tests total.
+    tests_total: usize,
+    /// Number of expect() calls.
+    expect_calls: Option<usize>,
+    /// Total duration in seconds.
+    duration: Option<f64>,
+}
+
 /// Common generated directory names that are typically build artifacts or dependencies.
 const COMMON_GENERATED_DIRS: &[&str] = &[
     // JavaScript/TypeScript
@@ -3485,9 +3594,9 @@ impl ParseHandler {
                 print!("{}", output);
             }
             Some(crate::TestRunner::Bun) => {
-                return Err(CommandError::NotImplemented(
-                    "bun test parsing".to_string(),
-                ));
+                let test_output = Self::parse_bun_test(&input)?;
+                let output = Self::format_bun_test(&test_output, ctx.format);
+                print!("{}", output);
             }
         }
 
@@ -6409,6 +6518,692 @@ impl ParseHandler {
         result
     }
 
+    // ============================================================
+    // Bun Test Parsing and Formatting
+    // ============================================================
+
+    /// Parse Bun test output into structured data.
+    ///
+    /// Expected format (default console reporter):
+    /// ```text
+    /// test/package-json-lint.test.ts:
+    /// ✓ test/package.json [0.88ms]
+    /// ✓ test/js/third_party/grpc-js/package.json [0.18ms]
+    ///
+    ///  4 pass
+    ///  0 fail
+    ///  4 expect() calls
+    /// Ran 4 tests in 1.44ms
+    /// ```
+    ///
+    /// For non-TTY environments (no colors):
+    /// ```text
+    /// test/package-json-lint.test.ts:
+    /// (pass) test/package.json [0.48ms]
+    /// (fail) test/failing.test.ts
+    /// (skip) test/skipped.test.ts
+    /// ```
+    fn parse_bun_test(input: &str) -> CommandResult<BunTestOutput> {
+        let mut output = BunTestOutput::default();
+        let mut current_suite: Option<BunTestSuite> = None;
+        let mut current_test: Option<BunTest> = None;
+        let mut in_error_details = false;
+        let mut error_buffer = String::new();
+        let mut indent_stack: Vec<String> = Vec::new();
+        let mut in_suite = false;
+
+        for line in input.lines() {
+            let trimmed = line.trim();
+
+            // Skip empty lines, but first save any pending test
+            if trimmed.is_empty() {
+                if let Some(test) = current_test.take() {
+                    if let Some(ref mut suite) = current_suite {
+                        suite.tests.push(test);
+                    }
+                }
+                in_error_details = false;
+                continue;
+            }
+
+            // Check for bun version line (e.g., "bun: 1.0.0" or "Bun v1.0.0")
+            if trimmed.starts_with("bun:") || trimmed.starts_with("Bun v") {
+                output.bun_version = Some(
+                    trimmed
+                        .split(|c| c == ':' || c == 'v')
+                        .last()
+                        .map(|s| s.trim().to_string())
+                        .unwrap_or_default(),
+                );
+                continue;
+            }
+
+            // Check for summary lines at the end
+            // "X pass" or "Y fail" or "X expect() calls"
+            if Self::is_bun_summary_line(trimmed) {
+                // Save any pending test before processing summary
+                if let Some(test) = current_test.take() {
+                    if let Some(ref mut suite) = current_suite {
+                        suite.tests.push(test);
+                    }
+                }
+                Self::parse_bun_summary_line(trimmed, &mut output.summary);
+                continue;
+            }
+
+            // "Ran X tests in Yms" or "Ran X tests across Y files. [Zms]"
+            if trimmed.starts_with("Ran ") && trimmed.contains(" tests") {
+                Self::parse_bun_ran_line(trimmed, &mut output.summary);
+                continue;
+            }
+
+            // Check for test file header: "test/file.test.ts:" (ends with colon)
+            if trimmed.ends_with(':') && !trimmed.starts_with(|c| c == '✓' || c == '✗' || c == '×' || c == '(') {
+                // Save any pending test
+                if let Some(test) = current_test.take() {
+                    if let Some(ref mut suite) = current_suite {
+                        suite.tests.push(test);
+                    }
+                }
+
+                // Save any pending suite
+                if let Some(suite) = current_suite.take() {
+                    let has_failures = suite.tests.iter().any(|t| t.status == BunTestStatus::Failed);
+                    let suite_to_save = BunTestSuite {
+                        passed: !has_failures,
+                        ..suite
+                    };
+                    output.test_suites.push(suite_to_save);
+                }
+
+                let file = trimmed.trim_end_matches(':').to_string();
+                current_suite = Some(BunTestSuite {
+                    file,
+                    passed: true,
+                    duration: None,
+                    tests: Vec::new(),
+                });
+                indent_stack.clear();
+                in_error_details = false;
+                in_suite = true;
+                continue;
+            }
+
+            // Parse test results if we're in a suite
+            if in_suite && current_suite.is_some() {
+                // Count indentation level (2 spaces per level)
+                let indent = line.chars().take_while(|&c| c == ' ').count() / 2;
+
+                // Adjust indent stack
+                while indent_stack.len() > indent {
+                    indent_stack.pop();
+                }
+
+                // Handle error details (indented more than test line, no marker)
+                if in_error_details
+                    && !trimmed.starts_with("✓")
+                    && !trimmed.starts_with("✗")
+                    && !trimmed.starts_with("×")
+                    && !trimmed.starts_with("(pass)")
+                    && !trimmed.starts_with("(fail)")
+                    && !trimmed.starts_with("(skip)")
+                    && !trimmed.starts_with("(todo)")
+                {
+                    if let Some(ref mut test) = current_test {
+                        if !error_buffer.is_empty() {
+                            error_buffer.push('\n');
+                        }
+                        error_buffer.push_str(trimmed);
+                        test.error_message = Some(error_buffer.clone());
+                    }
+                    continue;
+                }
+
+                // Save previous test if we're starting a new one at same or lower indent
+                if let Some(test) = current_test.take() {
+                    if let Some(ref mut suite) = current_suite {
+                        suite.tests.push(test);
+                    }
+                }
+
+                // Parse test line
+                if let Some(test) = Self::parse_bun_test_line(trimmed, &indent_stack) {
+                    let test_name = test.test_name.clone();
+                    let is_failed = test.status == BunTestStatus::Failed;
+
+                    // Check for failed test to start collecting error details
+                    if is_failed {
+                        in_error_details = true;
+                        error_buffer.clear();
+                        current_test = Some(test);
+                    } else {
+                        in_error_details = false;
+                        if let Some(ref mut suite) = current_suite {
+                            suite.tests.push(test);
+                        }
+                    }
+
+                    // Track nested test names
+                    indent_stack.push(test_name);
+                }
+            }
+        }
+
+        // Save any pending test
+        if let Some(test) = current_test {
+            if let Some(ref mut suite) = current_suite {
+                suite.tests.push(test);
+            }
+        }
+
+        // Save any pending suite
+        if let Some(suite) = current_suite.take() {
+            let has_failures = suite.tests.iter().any(|t| t.status == BunTestStatus::Failed);
+            let suite_to_save = BunTestSuite {
+                passed: !has_failures,
+                ..suite
+            };
+            output.test_suites.push(suite_to_save);
+        }
+
+        // Set output properties
+        output.is_empty = output.test_suites.is_empty();
+        output.success = output.test_suites.iter().all(|s| s.passed);
+
+        // Update summary counts from parsed tests
+        Self::update_bun_summary_from_tests(&mut output);
+
+        Ok(output)
+    }
+
+    /// Parse a single Bun test result line.
+    fn parse_bun_test_line(line: &str, ancestors: &[String]) -> Option<BunTest> {
+        let line = line.trim_start();
+
+        // Parse with color markers: "✓ test name [5.123ms]"
+        if line.starts_with("✓") {
+            let rest = line.strip_prefix("✓").unwrap_or(line).trim();
+            let (name, duration) = Self::split_bun_test_name_and_duration(rest);
+            return Some(BunTest {
+                name: if ancestors.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{} > {}", ancestors.join(" > "), name)
+                },
+                test_name: name,
+                ancestors: ancestors.to_vec(),
+                status: BunTestStatus::Passed,
+                duration,
+                error_message: None,
+            });
+        }
+
+        // Parse failed test with color markers: "✗ test name" or "× test name"
+        if line.starts_with("✗") || line.starts_with("×") {
+            let rest = line
+                .strip_prefix("✗")
+                .or_else(|| line.strip_prefix("×"))
+                .unwrap_or(line)
+                .trim();
+            let name = rest.to_string();
+            return Some(BunTest {
+                name: if ancestors.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{} > {}", ancestors.join(" > "), name)
+                },
+                test_name: name,
+                ancestors: ancestors.to_vec(),
+                status: BunTestStatus::Failed,
+                duration: None,
+                error_message: None,
+            });
+        }
+
+        // Parse non-TTY format: "(pass) test name [5.123ms]"
+        if line.starts_with("(pass)") {
+            let rest = line.strip_prefix("(pass)").unwrap_or(line).trim();
+            let (name, duration) = Self::split_bun_test_name_and_duration(rest);
+            return Some(BunTest {
+                name: if ancestors.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{} > {}", ancestors.join(" > "), name)
+                },
+                test_name: name,
+                ancestors: ancestors.to_vec(),
+                status: BunTestStatus::Passed,
+                duration,
+                error_message: None,
+            });
+        }
+
+        // Parse non-TTY format: "(fail) test name"
+        if line.starts_with("(fail)") {
+            let rest = line.strip_prefix("(fail)").unwrap_or(line).trim();
+            let name = rest.to_string();
+            return Some(BunTest {
+                name: if ancestors.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{} > {}", ancestors.join(" > "), name)
+                },
+                test_name: name,
+                ancestors: ancestors.to_vec(),
+                status: BunTestStatus::Failed,
+                duration: None,
+                error_message: None,
+            });
+        }
+
+        // Parse non-TTY format: "(skip) test name"
+        if line.starts_with("(skip)") {
+            let rest = line.strip_prefix("(skip)").unwrap_or(line).trim();
+            let (name, _) = Self::split_bun_test_name_and_duration(rest);
+            return Some(BunTest {
+                name: if ancestors.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{} > {}", ancestors.join(" > "), name)
+                },
+                test_name: name,
+                ancestors: ancestors.to_vec(),
+                status: BunTestStatus::Skipped,
+                duration: None,
+                error_message: None,
+            });
+        }
+
+        // Parse non-TTY format: "(todo) test name"
+        if line.starts_with("(todo)") {
+            let rest = line.strip_prefix("(todo)").unwrap_or(line).trim();
+            let (name, _) = Self::split_bun_test_name_and_duration(rest);
+            return Some(BunTest {
+                name: if ancestors.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{} > {}", ancestors.join(" > "), name)
+                },
+                test_name: name,
+                ancestors: ancestors.to_vec(),
+                status: BunTestStatus::Todo,
+                duration: None,
+                error_message: None,
+            });
+        }
+
+        None
+    }
+
+    /// Parse duration string like "5.123ms" or "1.234s" into seconds.
+    fn parse_bun_duration(s: &str) -> Option<f64> {
+        let s = s.trim();
+        if s.ends_with("ms") {
+            s.strip_suffix("ms")
+                .and_then(|n| n.parse::<f64>().ok())
+                .map(|ms| ms / 1000.0)
+        } else if s.ends_with("s") {
+            s.strip_suffix("s").and_then(|n| n.parse::<f64>().ok())
+        } else {
+            None
+        }
+    }
+
+    /// Split test name and duration from a string like "test name [5.123ms]".
+    fn split_bun_test_name_and_duration(s: &str) -> (String, Option<f64>) {
+        // Look for duration in brackets at the end: "test name [5.123ms]"
+        if let Some(start) = s.rfind('[') {
+            if let Some(end) = s[start..].find(']') {
+                let duration_str = &s[start + 1..start + end];
+                let name = s[..start].trim().to_string();
+                let duration = Self::parse_bun_duration(duration_str);
+                return (name, duration);
+            }
+        }
+        (s.to_string(), None)
+    }
+
+    /// Check if a line is a Bun summary line.
+    fn is_bun_summary_line(line: &str) -> bool {
+        let line = line.trim();
+        // Match "X pass", "Y fail", "Z expect() calls", "W skipped"
+        // These lines start with a number, not a test marker
+        // Examples: " 4 pass", " 0 fail", " 4 expect() calls"
+        // NOT: "✓ test pass" or "✗ should fail"
+        
+        // First check if line starts with a number (possibly with leading spaces)
+        let starts_with_number = line.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false);
+        
+        if !starts_with_number {
+            return false;
+        }
+        
+        line.ends_with(" pass")
+            || line.ends_with(" fail")
+            || line.ends_with(" expect() calls")
+            || line.ends_with(" skipped")
+    }
+
+    /// Parse a Bun summary line.
+    fn parse_bun_summary_line(line: &str, summary: &mut BunTestSummary) {
+        let line = line.trim();
+
+        // Parse "X pass"
+        if line.ends_with(" pass") {
+            if let Some(count_str) = line.strip_suffix(" pass") {
+                if let Ok(count) = count_str.trim().parse::<usize>() {
+                    summary.tests_passed = count;
+                }
+            }
+            return;
+        }
+
+        // Parse "Y fail"
+        if line.ends_with(" fail") {
+            if let Some(count_str) = line.strip_suffix(" fail") {
+                if let Ok(count) = count_str.trim().parse::<usize>() {
+                    summary.tests_failed = count;
+                }
+            }
+            return;
+        }
+
+        // Parse "Z expect() calls"
+        if line.ends_with(" expect() calls") {
+            if let Some(count_str) = line.strip_suffix(" expect() calls") {
+                if let Ok(count) = count_str.trim().parse::<usize>() {
+                    summary.expect_calls = Some(count);
+                }
+            }
+            return;
+        }
+
+        // Parse "X skipped"
+        if line.ends_with(" skipped") {
+            if let Some(count_str) = line.strip_suffix(" skipped") {
+                if let Ok(count) = count_str.trim().parse::<usize>() {
+                    summary.tests_skipped = count;
+                }
+            }
+        }
+    }
+
+    /// Parse "Ran X tests in Yms" or "Ran X tests across Y files. [Zms]"
+    fn parse_bun_ran_line(line: &str, summary: &mut BunTestSummary) {
+        // Format: "Ran X tests in Yms" or "Ran X tests across Y files. [Zms]"
+        let line = line.trim();
+
+        // Extract total tests
+        if let Some(start) = line.find("Ran ") {
+            let after_ran = &line[start + 4..];
+            if let Some(end) = after_ran.find(" tests") {
+                if let Ok(count) = after_ran[..end].trim().parse::<usize>() {
+                    summary.tests_total = count;
+                }
+            }
+        }
+
+        // Extract files count
+        if let Some(start) = line.find("across ") {
+            let after_across = &line[start + 7..];
+            if let Some(end) = after_across.find(" files") {
+                if let Ok(count) = after_across[..end].trim().parse::<usize>() {
+                    summary.suites_total = count;
+                }
+            }
+        }
+
+        // Extract duration - format: "in 1.44ms" or "[1.44ms]"
+        if let Some(start) = line.find("in ") {
+            let after_in = &line[start + 3..];
+            summary.duration = Self::parse_bun_duration(after_in);
+        } else if let Some(start) = line.rfind('[') {
+            if let Some(end) = line[start..].find(']') {
+                let duration_str = &line[start + 1..start + end];
+                summary.duration = Self::parse_bun_duration(duration_str);
+            }
+        }
+    }
+
+    /// Update summary counts from parsed tests.
+    fn update_bun_summary_from_tests(output: &mut BunTestOutput) {
+        // Always update suite counts since they may not be in the "Ran" line
+        // (the "across X files" part is optional)
+        if output.summary.suites_total == 0 {
+            for suite in &output.test_suites {
+                output.summary.suites_total += 1;
+                if suite.passed {
+                    output.summary.suites_passed += 1;
+                } else {
+                    output.summary.suites_failed += 1;
+                }
+            }
+        }
+
+        // Only update test counts if summary wasn't already populated from output
+        if output.summary.tests_total == 0 {
+            for suite in &output.test_suites {
+                for test in &suite.tests {
+                    output.summary.tests_total += 1;
+                    match test.status {
+                        BunTestStatus::Passed => output.summary.tests_passed += 1,
+                        BunTestStatus::Failed => output.summary.tests_failed += 1,
+                        BunTestStatus::Skipped => output.summary.tests_skipped += 1,
+                        BunTestStatus::Todo => output.summary.tests_todo += 1,
+                    }
+                }
+            }
+        }
+    }
+
+    /// Format Bun test output based on the requested format.
+    fn format_bun_test(output: &BunTestOutput, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => Self::format_bun_test_json(output),
+            OutputFormat::Compact => Self::format_bun_test_compact(output),
+            OutputFormat::Raw => Self::format_bun_test_raw(output),
+            OutputFormat::Agent => Self::format_bun_test_agent(output),
+            OutputFormat::Csv | OutputFormat::Tsv => Self::format_bun_test_compact(output),
+        }
+    }
+
+    /// Format Bun test output as JSON.
+    fn format_bun_test_json(output: &BunTestOutput) -> String {
+        serde_json::json!({
+            "success": output.success,
+            "is_empty": output.is_empty,
+            "summary": {
+                "suites_passed": output.summary.suites_passed,
+                "suites_failed": output.summary.suites_failed,
+                "suites_skipped": output.summary.suites_skipped,
+                "suites_total": output.summary.suites_total,
+                "tests_passed": output.summary.tests_passed,
+                "tests_failed": output.summary.tests_failed,
+                "tests_skipped": output.summary.tests_skipped,
+                "tests_todo": output.summary.tests_todo,
+                "tests_total": output.summary.tests_total,
+                "expect_calls": output.summary.expect_calls,
+                "duration": output.summary.duration,
+            },
+            "test_suites": output.test_suites.iter().map(|suite| serde_json::json!({
+                "file": suite.file,
+                "passed": suite.passed,
+                "duration": suite.duration,
+                "tests": suite.tests.iter().map(|t| serde_json::json!({
+                    "name": t.name,
+                    "test_name": t.test_name,
+                    "ancestors": t.ancestors,
+                    "status": match t.status {
+                        BunTestStatus::Passed => "passed",
+                        BunTestStatus::Failed => "failed",
+                        BunTestStatus::Skipped => "skipped",
+                        BunTestStatus::Todo => "todo",
+                    },
+                    "duration": t.duration,
+                    "error_message": t.error_message,
+                })).collect::<Vec<_>>(),
+            })).collect::<Vec<_>>(),
+            "bun_version": output.bun_version,
+        })
+        .to_string()
+    }
+
+    /// Format Bun test output in compact format.
+    fn format_bun_test_compact(output: &BunTestOutput) -> String {
+        let mut result = String::new();
+
+        if output.is_empty {
+            result.push_str("bun test: no tests found\n");
+            return result;
+        }
+
+        let status = if output.success { "PASS" } else { "FAIL" };
+
+        // Group by passed/failed suites
+        let passed_suites: Vec<_> = output.test_suites.iter().filter(|s| s.passed).collect();
+        let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
+
+        // Show failed suites first
+        for suite in &failed_suites {
+            result.push_str(&format!(
+                "FAIL: {} ({} tests)\n",
+                suite.file,
+                suite.tests.len()
+            ));
+            for test in &suite.tests {
+                if test.status == BunTestStatus::Failed {
+                    result.push_str(&format!("  ✖ {}\n", test.test_name));
+                }
+            }
+        }
+
+        // Show passed suites summary
+        if !passed_suites.is_empty() {
+            result.push_str(&format!(
+                "PASS: {} suites, {} tests\n",
+                passed_suites.len(),
+                passed_suites.iter().map(|s| s.tests.len()).sum::<usize>()
+            ));
+        }
+
+        // Summary line
+        result.push_str(&format!(
+            "\n[{}] {} suites ({} passed, {} failed), {} tests ({} passed, {} failed)",
+            status,
+            output.summary.suites_total,
+            output.summary.suites_passed,
+            output.summary.suites_failed,
+            output.summary.tests_total,
+            output.summary.tests_passed,
+            output.summary.tests_failed
+        ));
+
+        if output.summary.tests_skipped > 0 {
+            result.push_str(&format!(", {} skipped", output.summary.tests_skipped));
+        }
+
+        if let Some(duration) = output.summary.duration {
+            result.push_str(&format!(", {:.2}s", duration));
+        }
+
+        result.push('\n');
+
+        result
+    }
+
+    /// Format Bun test output as raw (just test names with status).
+    fn format_bun_test_raw(output: &BunTestOutput) -> String {
+        let mut result = String::new();
+
+        for suite in &output.test_suites {
+            let status = if suite.passed { "PASS" } else { "FAIL" };
+            result.push_str(&format!("{} {}\n", status, suite.file));
+
+            for test in &suite.tests {
+                let test_status = match test.status {
+                    BunTestStatus::Passed => "PASS",
+                    BunTestStatus::Failed => "FAIL",
+                    BunTestStatus::Skipped => "SKIP",
+                    BunTestStatus::Todo => "TODO",
+                };
+                result.push_str(&format!("  {} {}\n", test_status, test.name));
+            }
+        }
+
+        result
+    }
+
+    /// Format Bun test output for AI agent consumption.
+    fn format_bun_test_agent(output: &BunTestOutput) -> String {
+        let mut result = String::new();
+
+        result.push_str("# Test Results\n\n");
+
+        if output.is_empty {
+            result.push_str("Status: NO_TESTS\n");
+            return result;
+        }
+
+        let status = if output.success { "SUCCESS" } else { "FAILURE" };
+        result.push_str(&format!("Status: {}\n\n", status));
+
+        // Summary
+        result.push_str("## Summary\n");
+        result.push_str(&format!(
+            "- Test Files: {} passed, {} failed, {} total\n",
+            output.summary.suites_passed,
+            output.summary.suites_failed,
+            output.summary.suites_total
+        ));
+        result.push_str(&format!(
+            "- Tests: {} passed, {} failed, {} total\n",
+            output.summary.tests_passed,
+            output.summary.tests_failed,
+            output.summary.tests_total
+        ));
+        if output.summary.tests_skipped > 0 {
+            result.push_str(&format!("- Skipped: {}\n", output.summary.tests_skipped));
+        }
+        if output.summary.tests_todo > 0 {
+            result.push_str(&format!("- Todo: {}\n", output.summary.tests_todo));
+        }
+        if let Some(expect_calls) = output.summary.expect_calls {
+            result.push_str(&format!("- Expect() calls: {}\n", expect_calls));
+        }
+        if let Some(duration) = output.summary.duration {
+            result.push_str(&format!("- Duration: {:.2}s\n", duration));
+        }
+        result.push('\n');
+
+        // Failed tests with details
+        let failed_suites: Vec<_> = output.test_suites.iter().filter(|s| !s.passed).collect();
+
+        if !failed_suites.is_empty() {
+            result.push_str("## Failed Test Files\n\n");
+            for suite in failed_suites {
+                result.push_str(&format!("### {}\n", suite.file));
+                let failed_tests: Vec<_> = suite
+                    .tests
+                    .iter()
+                    .filter(|t| t.status == BunTestStatus::Failed)
+                    .collect();
+                for test in failed_tests {
+                    result.push_str(&format!("- {}", test.name));
+                    if let Some(duration) = test.duration {
+                        result.push_str(&format!(" ({:.2}s)", duration));
+                    }
+                    result.push('\n');
+                    if let Some(ref msg) = test.error_message {
+                        result.push_str(&format!("\n```\n{}\n```\n", msg));
+                    }
+                }
+                result.push('\n');
+            }
+        }
+
+        result
+    }
+
     /// Handle the logs subcommand.
     fn handle_logs(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
         if ctx.stats {
@@ -8832,6 +9627,323 @@ Tests:       2 passed, 1 skipped, 3 total"#;
     fn test_parse_pnpm_test_with_ancestors() {
         // Test that nested tests track ancestor names
         let result = ParseHandler::parse_pnpm_test_line("✔ nested test (5.123ms)", &["describe block".to_string()]).unwrap();
+        assert_eq!(result.test_name, "nested test");
+        assert_eq!(result.ancestors, vec!["describe block"]);
+        assert_eq!(result.name, "describe block > nested test");
+    }
+
+    // ============================================================
+    // Bun Test Parser Tests
+    // ============================================================
+
+    #[test]
+    fn test_parse_bun_test_empty() {
+        let result = ParseHandler::parse_bun_test("").unwrap();
+        assert!(result.is_empty);
+        assert!(result.test_suites.is_empty());
+    }
+
+    #[test]
+    fn test_parse_bun_test_single_suite_passed() {
+        let input = r#"test/package-json-lint.test.ts:
+✓ test/package.json [0.88ms]
+✓ test/js/third_party/grpc-js/package.json [0.18ms]
+
+ 4 pass
+ 0 fail
+ 4 expect() calls
+Ran 4 tests in 1.44ms"#;
+        let result = ParseHandler::parse_bun_test(input).unwrap();
+        assert!(!result.is_empty);
+        assert!(result.success);
+        assert_eq!(result.test_suites.len(), 1);
+        assert_eq!(result.test_suites[0].file, "test/package-json-lint.test.ts");
+        assert!(result.test_suites[0].passed);
+        assert_eq!(result.summary.tests_passed, 4);
+        assert_eq!(result.summary.tests_failed, 0);
+        assert_eq!(result.summary.expect_calls, Some(4));
+        assert!(result.summary.duration.is_some());
+    }
+
+    #[test]
+    fn test_parse_bun_test_single_suite_failed() {
+        let input = r#"test/api.test.ts:
+✓ should pass [0.88ms]
+✗ should fail
+
+ 1 pass
+ 1 fail
+ 2 expect() calls
+Ran 2 tests in 1.44ms"#;
+        let result = ParseHandler::parse_bun_test(input).unwrap();
+        assert!(!result.is_empty);
+        assert!(!result.success);
+        assert_eq!(result.test_suites.len(), 1);
+        assert!(!result.test_suites[0].passed);
+        assert_eq!(result.summary.tests_passed, 1);
+        assert_eq!(result.summary.tests_failed, 1);
+    }
+
+    #[test]
+    fn test_parse_bun_test_multiple_suites() {
+        let input = r#"test/a.test.ts:
+✓ test a [0.88ms]
+
+test/b.test.ts:
+✓ test b [0.18ms]
+
+ 2 pass
+ 0 fail
+Ran 2 tests in 1.44ms"#;
+        let result = ParseHandler::parse_bun_test(input).unwrap();
+        assert!(!result.is_empty);
+        assert!(result.success);
+        assert_eq!(result.test_suites.len(), 2);
+        assert_eq!(result.summary.tests_passed, 2);
+    }
+
+    #[test]
+    fn test_parse_bun_test_non_tty_format() {
+        let input = r#"test/package-json-lint.test.ts:
+(pass) test/package.json [0.48ms]
+(pass) test/js/third_party/grpc-js/package.json [0.10ms]
+(fail) test/failing.test.ts
+(skip) test/skipped.test.ts
+
+ 2 pass
+ 1 fail
+ 1 skipped
+Ran 4 tests across 1 files. [0.66ms]"#;
+        let result = ParseHandler::parse_bun_test(input).unwrap();
+        assert!(!result.is_empty);
+        assert!(!result.success);
+        assert_eq!(result.summary.tests_passed, 2);
+        assert_eq!(result.summary.tests_failed, 1);
+        assert_eq!(result.summary.tests_skipped, 1);
+        assert_eq!(result.summary.suites_total, 1);
+    }
+
+    #[test]
+    fn test_parse_bun_test_line() {
+        // Test with checkmark
+        let result = ParseHandler::parse_bun_test_line("✓ should work correctly [5.123ms]", &[]).unwrap();
+        assert_eq!(result.status, BunTestStatus::Passed);
+        assert_eq!(result.test_name, "should work correctly");
+        assert_eq!(result.duration, Some(0.005123));
+
+        // Test with x mark (failure)
+        let result = ParseHandler::parse_bun_test_line("✗ should fail", &[]).unwrap();
+        assert_eq!(result.status, BunTestStatus::Failed);
+        assert_eq!(result.test_name, "should fail");
+
+        // Test with × mark (failure alternative)
+        let result = ParseHandler::parse_bun_test_line("× should also fail", &[]).unwrap();
+        assert_eq!(result.status, BunTestStatus::Failed);
+
+        // Test non-TTY pass format
+        let result = ParseHandler::parse_bun_test_line("(pass) should work [5.123ms]", &[]).unwrap();
+        assert_eq!(result.status, BunTestStatus::Passed);
+
+        // Test non-TTY fail format
+        let result = ParseHandler::parse_bun_test_line("(fail) should fail", &[]).unwrap();
+        assert_eq!(result.status, BunTestStatus::Failed);
+
+        // Test non-TTY skip format
+        let result = ParseHandler::parse_bun_test_line("(skip) skipped test", &[]).unwrap();
+        assert_eq!(result.status, BunTestStatus::Skipped);
+
+        // Test non-TTY todo format
+        let result = ParseHandler::parse_bun_test_line("(todo) todo test", &[]).unwrap();
+        assert_eq!(result.status, BunTestStatus::Todo);
+    }
+
+    #[test]
+    fn test_split_bun_test_name_and_duration() {
+        let (name, duration) = ParseHandler::split_bun_test_name_and_duration("test name [5.123ms]");
+        assert_eq!(name, "test name");
+        assert_eq!(duration, Some(0.005123));
+
+        let (name, duration) = ParseHandler::split_bun_test_name_and_duration("test name [1.234s]");
+        assert_eq!(name, "test name");
+        assert_eq!(duration, Some(1.234));
+
+        let (name, duration) = ParseHandler::split_bun_test_name_and_duration("test name without duration");
+        assert_eq!(name, "test name without duration");
+        assert_eq!(duration, None);
+    }
+
+    #[test]
+    fn test_parse_bun_duration() {
+        assert_eq!(ParseHandler::parse_bun_duration("5.123ms"), Some(0.005123));
+        assert_eq!(ParseHandler::parse_bun_duration("1.234s"), Some(1.234));
+        assert_eq!(ParseHandler::parse_bun_duration("invalid"), None);
+    }
+
+    #[test]
+    fn test_parse_bun_summary_line() {
+        let mut summary = BunTestSummary::default();
+
+        ParseHandler::parse_bun_summary_line("4 pass", &mut summary);
+        assert_eq!(summary.tests_passed, 4);
+
+        ParseHandler::parse_bun_summary_line("2 fail", &mut summary);
+        assert_eq!(summary.tests_failed, 2);
+
+        ParseHandler::parse_bun_summary_line("10 expect() calls", &mut summary);
+        assert_eq!(summary.expect_calls, Some(10));
+
+        ParseHandler::parse_bun_summary_line("3 skipped", &mut summary);
+        assert_eq!(summary.tests_skipped, 3);
+    }
+
+    #[test]
+    fn test_parse_bun_ran_line() {
+        let mut summary = BunTestSummary::default();
+
+        ParseHandler::parse_bun_ran_line("Ran 4 tests in 1.44ms", &mut summary);
+        assert_eq!(summary.tests_total, 4);
+        assert!(summary.duration.is_some());
+        let duration = summary.duration.unwrap();
+        assert!((duration - 0.00144).abs() < 1e-9);
+
+        let mut summary2 = BunTestSummary::default();
+        ParseHandler::parse_bun_ran_line("Ran 4 tests across 1 files. [0.66ms]", &mut summary2);
+        assert_eq!(summary2.tests_total, 4);
+        assert_eq!(summary2.suites_total, 1);
+        assert!(summary2.duration.is_some());
+        let duration2 = summary2.duration.unwrap();
+        assert!((duration2 - 0.00066).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_format_bun_test_json() {
+        let mut output = BunTestOutput::default();
+        output.test_suites.push(BunTestSuite {
+            file: "test.js".to_string(),
+            passed: true,
+            duration: Some(0.01),
+            tests: vec![BunTest {
+                name: "should pass".to_string(),
+                test_name: "should pass".to_string(),
+                ancestors: vec![],
+                status: BunTestStatus::Passed,
+                duration: Some(0.005),
+                error_message: None,
+            }],
+        });
+        output.summary.tests_passed = 1;
+        output.summary.tests_total = 1;
+        output.summary.suites_passed = 1;
+        output.summary.suites_total = 1;
+        output.summary.expect_calls = Some(1);
+        output.success = true;
+        output.is_empty = false;
+
+        let json = ParseHandler::format_bun_test_json(&output);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["success"], true);
+        assert_eq!(parsed["summary"]["tests_passed"], 1);
+        assert_eq!(parsed["summary"]["expect_calls"], 1);
+    }
+
+    #[test]
+    fn test_format_bun_test_compact() {
+        let mut output = BunTestOutput::default();
+        output.test_suites.push(BunTestSuite {
+            file: "test.js".to_string(),
+            passed: true,
+            duration: Some(0.01),
+            tests: vec![BunTest {
+                name: "should pass".to_string(),
+                test_name: "should pass".to_string(),
+                ancestors: vec![],
+                status: BunTestStatus::Passed,
+                duration: Some(0.005),
+                error_message: None,
+            }],
+        });
+        output.summary.tests_passed = 1;
+        output.summary.tests_total = 1;
+        output.summary.suites_passed = 1;
+        output.summary.suites_total = 1;
+        output.summary.duration = Some(0.01);
+        output.success = true;
+        output.is_empty = false;
+
+        let compact = ParseHandler::format_bun_test_compact(&output);
+        assert!(compact.contains("PASS"));
+        assert!(compact.contains("1 suites"));
+        assert!(compact.contains("1 tests"));
+    }
+
+    #[test]
+    fn test_format_bun_test_raw() {
+        let mut output = BunTestOutput::default();
+        output.test_suites.push(BunTestSuite {
+            file: "test.js".to_string(),
+            passed: true,
+            duration: None,
+            tests: vec![
+                BunTest {
+                    name: "passing test".to_string(),
+                    test_name: "passing test".to_string(),
+                    ancestors: vec![],
+                    status: BunTestStatus::Passed,
+                    duration: None,
+                    error_message: None,
+                },
+                BunTest {
+                    name: "failing test".to_string(),
+                    test_name: "failing test".to_string(),
+                    ancestors: vec![],
+                    status: BunTestStatus::Failed,
+                    duration: None,
+                    error_message: None,
+                },
+            ],
+        });
+
+        let raw = ParseHandler::format_bun_test_raw(&output);
+        assert!(raw.contains("PASS test.js"));
+        assert!(raw.contains("PASS passing test"));
+        assert!(raw.contains("FAIL failing test"));
+    }
+
+    #[test]
+    fn test_format_bun_test_agent() {
+        let mut output = BunTestOutput::default();
+        output.test_suites.push(BunTestSuite {
+            file: "test.js".to_string(),
+            passed: true,
+            duration: Some(0.01),
+            tests: vec![BunTest {
+                name: "should pass".to_string(),
+                test_name: "should pass".to_string(),
+                ancestors: vec![],
+                status: BunTestStatus::Passed,
+                duration: Some(0.005),
+                error_message: None,
+            }],
+        });
+        output.summary.tests_passed = 1;
+        output.summary.tests_total = 1;
+        output.summary.suites_passed = 1;
+        output.summary.suites_total = 1;
+        output.summary.expect_calls = Some(1);
+        output.success = true;
+        output.is_empty = false;
+
+        let agent = ParseHandler::format_bun_test_agent(&output);
+        assert!(agent.contains("# Test Results"));
+        assert!(agent.contains("Status: SUCCESS"));
+        assert!(agent.contains("## Summary"));
+        assert!(agent.contains("Expect() calls: 1"));
+    }
+
+    #[test]
+    fn test_parse_bun_test_with_ancestors() {
+        // Test that nested tests track ancestor names
+        let result = ParseHandler::parse_bun_test_line("✓ nested test [5.123ms]", &["describe block".to_string()]).unwrap();
         assert_eq!(result.test_name, "nested test");
         assert_eq!(result.ancestors, vec!["describe block"]);
         assert_eq!(result.name, "describe block > nested test");
