@@ -968,12 +968,12 @@ fn test_tail_basic() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "line 2").unwrap();
     writeln!(file, "line 3").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("tail")
         .arg(path)
@@ -990,12 +990,12 @@ fn test_tail_with_lines() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     for i in 1..=20 {
         writeln!(file, "line {}", i).unwrap();
     }
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("tail")
         .arg(path)
@@ -1014,13 +1014,13 @@ fn test_tail_with_errors_flag() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "INFO: process started").unwrap();
     writeln!(file, "ERROR: something went wrong").unwrap();
     writeln!(file, "WARNING: deprecated API").unwrap();
     writeln!(file, "FATAL: critical failure").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("tail")
         .arg(path)
@@ -1039,11 +1039,11 @@ fn test_tail_json_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "ERROR: test error").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
@@ -1054,10 +1054,10 @@ fn test_tail_json_output() {
         .get_output()
         .stdout
         .clone();
-    
+
     let stdout = String::from_utf8_lossy(&output);
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON output");
-    
+
     assert!(json["file"].is_string());
     assert!(json["lines"].is_array());
     assert!(json["total_lines"].is_number());
@@ -1071,11 +1071,11 @@ fn test_tail_csv_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "line 2").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--csv")
         .arg("tail")
@@ -1093,11 +1093,11 @@ fn test_tail_tsv_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "line 2").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--tsv")
         .arg("tail")
@@ -1115,11 +1115,11 @@ fn test_tail_raw_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "line 2").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--raw")
         .arg("tail")
@@ -1136,11 +1136,11 @@ fn test_tail_agent_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "ERROR: test error").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--agent")
         .arg("tail")
@@ -1807,8 +1807,8 @@ fn test_parse_ls_json_format() {
         .write_stdin(ls_input)
         .assert()
         .success()
-    // Check schema structure
-    .stdout(predicate::str::contains("\"schema\""))
+        // Check schema structure
+        .stdout(predicate::str::contains("\"schema\""))
         .stdout(predicate::str::contains("\"type\": \"ls_output\""))
         .stdout(predicate::str::contains("\"counts\""))
         .stdout(predicate::str::contains("\"total\": 2"))
@@ -2533,7 +2533,10 @@ fn test_parse_grep_truncation_json_many_files() {
     assert_eq!(json["counts"]["total_files"], 60);
     assert_eq!(json["counts"]["files_shown"], 50);
     // Verify truncation happened - files_shown should be less than total_files
-    assert!(json["counts"]["files_shown"].as_u64().unwrap() < json["counts"]["total_files"].as_u64().unwrap());
+    assert!(
+        json["counts"]["files_shown"].as_u64().unwrap()
+            < json["counts"]["total_files"].as_u64().unwrap()
+    );
 }
 
 #[test]
@@ -2557,7 +2560,10 @@ fn test_parse_grep_truncation_json_many_matches_per_file() {
     assert_eq!(json["counts"]["total_matches"], 25);
     assert_eq!(json["counts"]["matches_shown"], 20);
     // Verify truncation happened - matches_shown should be less than total_matches
-    assert!(json["counts"]["matches_shown"].as_u64().unwrap() < json["counts"]["total_matches"].as_u64().unwrap());
+    assert!(
+        json["counts"]["matches_shown"].as_u64().unwrap()
+            < json["counts"]["total_matches"].as_u64().unwrap()
+    );
 }
 
 #[test]
@@ -2615,12 +2621,33 @@ fn test_parse_logs() {
 
 #[test]
 fn test_html2md_basic() {
+    // Test with a local HTML file
+    use std::io::Write;
+    let temp_dir = std::env::temp_dir();
+    let html_path = temp_dir.join("test_html2md_cli.html");
+
+    let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<h1>Hello World</h1>
+<p>This is a test paragraph.</p>
+</body>
+</html>"#;
+
+    let mut file = std::fs::File::create(&html_path).unwrap();
+    file.write_all(html_content.as_bytes()).unwrap();
+    drop(file);
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("html2md")
-        .arg("https://example.com")
+        .arg(&html_path)
         .assert()
         .success()
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("Hello World"));
+
+    // Cleanup
+    let _ = std::fs::remove_file(&html_path);
 }
 
 #[test]
@@ -3055,7 +3082,7 @@ fn test_tail_shorthand_equivalence() {
     for i in 1..=20 {
         writeln!(file, "line {}", i).unwrap();
     }
-    
+
     // Get output with -5 shorthand
     let mut cmd1 = Command::cargo_bin("trs").unwrap();
     let output1 = cmd1
@@ -3068,7 +3095,7 @@ fn test_tail_shorthand_equivalence() {
         .stdout
         .clone();
     let stdout1 = String::from_utf8_lossy(&output1);
-    
+
     // Get output with -n 5
     let mut cmd2 = Command::cargo_bin("trs").unwrap();
     let output2 = cmd2
@@ -3082,7 +3109,7 @@ fn test_tail_shorthand_equivalence() {
         .stdout
         .clone();
     let stdout2 = String::from_utf8_lossy(&output2);
-    
+
     // Outputs should be identical
     assert_eq!(stdout1, stdout2);
 }
@@ -3097,7 +3124,7 @@ fn test_tail_traditional_syntax_still_works() {
     for i in 1..=10 {
         writeln!(file, "line {}", i).unwrap();
     }
-    
+
     // Test -n syntax
     let mut cmd1 = Command::cargo_bin("trs").unwrap();
     cmd1.arg("tail")
@@ -3107,7 +3134,7 @@ fn test_tail_traditional_syntax_still_works() {
         .assert()
         .success()
         .stdout(predicate::str::contains("line 10"));
-    
+
     // Test --lines syntax
     let mut cmd2 = Command::cargo_bin("trs").unwrap();
     cmd2.arg("tail")
@@ -3125,11 +3152,11 @@ fn test_router_tail_command() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "line 2").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("tail")
         .arg(path)
@@ -3152,13 +3179,33 @@ fn test_router_clean_command() {
 
 #[test]
 fn test_router_html2md_command() {
+    // Test with a local HTML file
+    use std::io::Write;
+    let temp_dir = std::env::temp_dir();
+    let html_path = temp_dir.join("test_html2md_router.html");
+
+    let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Router Test</title></head>
+<body>
+<h1>Router Test</h1>
+<p>Content here.</p>
+</body>
+</html>"#;
+
+    let mut file = std::fs::File::create(&html_path).unwrap();
+    file.write_all(html_content.as_bytes()).unwrap();
+    drop(file);
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("html2md")
-        .arg("https://example.com")
+        .arg(&html_path)
         .assert()
         .success()
-        .stderr(predicate::str::contains("Html2md:"))
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("Router Test"));
+
+    // Cleanup
+    let _ = std::fs::remove_file(&html_path);
 }
 
 #[test]
@@ -3571,16 +3618,16 @@ fn test_replace_json_output_format() {
 fn test_replace_affected_file_count() {
     use std::fs;
     use tempfile::TempDir;
-    
+
     // Create a temporary directory
     let temp_dir = TempDir::new().unwrap();
     let temp_path = temp_dir.path();
-    
+
     // Create test files with known patterns
     fs::write(temp_path.join("file1.txt"), "hello world\nhello again").unwrap();
     fs::write(temp_path.join("file2.txt"), "hello everyone").unwrap();
     fs::write(temp_path.join("file3.txt"), "goodbye").unwrap(); // No match
-    
+
     // Run replace in dry-run mode with JSON output
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
@@ -3592,11 +3639,11 @@ fn test_replace_affected_file_count() {
         .arg("--dry-run")
         .output()
         .expect("Failed to execute command");
-    
+
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON output");
-    
+
     // Verify the affected file count is correct (2 files with matches)
     assert_eq!(json["counts"]["files_affected"].as_u64().unwrap(), 2);
     // Verify total replacements (2 in file1 + 1 in file2 = 3)
@@ -3609,16 +3656,16 @@ fn test_replace_affected_file_count() {
 fn test_replace_count_flag() {
     use std::fs;
     use tempfile::TempDir;
-    
+
     // Create a temporary directory
     let temp_dir = TempDir::new().unwrap();
     let temp_path = temp_dir.path();
-    
+
     // Create test files with known patterns
     fs::write(temp_path.join("file1.txt"), "hello world\nhello again").unwrap();
     fs::write(temp_path.join("file2.txt"), "hello everyone").unwrap();
     fs::write(temp_path.join("file3.txt"), "goodbye").unwrap(); // No match
-    
+
     // Run replace with --count flag (default output format)
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
@@ -3630,7 +3677,7 @@ fn test_replace_count_flag() {
         .arg("--count")
         .output()
         .expect("Failed to execute command");
-    
+
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     // Should output just the count (3 total replacements: 2 in file1 + 1 in file2)
@@ -3641,16 +3688,16 @@ fn test_replace_count_flag() {
 fn test_replace_count_flag_json_output() {
     use std::fs;
     use tempfile::TempDir;
-    
+
     // Create a temporary directory
     let temp_dir = TempDir::new().unwrap();
     let temp_path = temp_dir.path();
-    
+
     // Create test files with known patterns
     fs::write(temp_path.join("file1.txt"), "hello world\nhello again").unwrap();
     fs::write(temp_path.join("file2.txt"), "hello everyone").unwrap();
     fs::write(temp_path.join("file3.txt"), "goodbye").unwrap(); // No match
-    
+
     // Run replace with --count flag and JSON output
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
@@ -3663,11 +3710,11 @@ fn test_replace_count_flag_json_output() {
         .arg("--count")
         .output()
         .expect("Failed to execute command");
-    
+
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON output");
-    
+
     // Should output just the count in JSON format
     assert_eq!(json["count"].as_u64().unwrap(), 3);
 }
@@ -3687,7 +3734,7 @@ fn test_replace_count_flag_no_matches() {
         .arg("--count")
         .output()
         .expect("Failed to execute command");
-    
+
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert_eq!(stdout.trim(), "0");
@@ -3833,7 +3880,7 @@ fn test_clean_no_ansi_hyperlinks() {
 #[test]
 fn test_clean_no_ansi_simple_escapes() {
     // Test simple two-character escape sequences
-    let input = "Before\x1bcAfter";  // RIS (Reset to Initial State)
+    let input = "Before\x1bcAfter"; // RIS (Reset to Initial State)
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("clean")
         .arg("--no-ansi")
@@ -3914,9 +3961,7 @@ fn test_clean_collapse_blanks() {
         .stdout(predicate::str::contains("line 2"))
         .stdout(predicate::str::contains("line 3"))
         // Verify no more than one consecutive blank line (no \n\n\n sequences)
-        .stdout(predicate::function(|s: &str| {
-            !s.contains("\n\n\n")
-        }));
+        .stdout(predicate::function(|s: &str| !s.contains("\n\n\n")));
 }
 
 #[test]
@@ -3936,7 +3981,7 @@ fn test_clean_collapse_blanks_many_consecutive() {
             let lines: Vec<&str> = s.lines().collect();
             let mut consecutive_blank_count = 0;
             let mut max_consecutive_blanks = 0;
-            
+
             for line in &lines {
                 if line.trim().is_empty() {
                     consecutive_blank_count += 1;
@@ -4075,22 +4120,38 @@ fn test_clean_tsv_output() {
 }
 
 #[test]
-fn test_html2md_json_output_not_implemented() {
+fn test_html2md_json_output() {
+    // Test with a local HTML file and JSON output
+    use std::io::Write;
+    let temp_dir = std::env::temp_dir();
+    let html_path = temp_dir.join("test_html2md_json.html");
+
+    let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>JSON Test</title></head>
+<body>
+<h1>JSON Test</h1>
+</body>
+</html>"#;
+
+    let mut file = std::fs::File::create(&html_path).unwrap();
+    file.write_all(html_content.as_bytes()).unwrap();
+    drop(file);
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
         .arg("html2md")
-        .arg("https://example.com")
+        .arg(&html_path)
         .assert()
         .success();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-    let json_line = stderr.lines().last().unwrap_or("");
-    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
-    assert_eq!(json["not_implemented"], true);
-    assert!(json["message"]
-        .as_str()
-        .unwrap()
-        .contains("html2md command execution"));
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert!(json["markdown"].as_str().unwrap().contains("JSON Test"));
+
+    // Cleanup
+    let _ = std::fs::remove_file(&html_path);
 }
 
 #[test]
@@ -7454,9 +7515,7 @@ fn test_stdin_very_large_input() {
         .map(|i| format!("Line {} with some content\n", i))
         .collect();
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.write_stdin(large_content.as_bytes())
-        .assert()
-        .success();
+    cmd.write_stdin(large_content.as_bytes()).assert().success();
 }
 
 // ============================================================
@@ -7481,11 +7540,11 @@ fn test_tail_follow_flag_accepted() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "line 2").unwrap();
-    
+
     // Run with --follow but with a timeout to avoid infinite loop in tests
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
@@ -7495,7 +7554,7 @@ fn test_tail_follow_flag_accepted() {
         .timeout(std::time::Duration::from_millis(500))
         .assert()
         .interrupted(); // Will be interrupted by timeout
-    
+
     // The fact that it was interrupted (rather than erroring) shows it entered streaming mode
 }
 
@@ -7505,11 +7564,11 @@ fn test_tail_follow_shows_initial_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "initial line 1").unwrap();
     writeln!(file, "initial line 2").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let _output = cmd
         .arg("tail")
@@ -7518,9 +7577,9 @@ fn test_tail_follow_shows_initial_output() {
         .timeout(std::time::Duration::from_millis(500))
         .output()
         .expect("Failed to execute command");
-    
+
     let stdout = String::from_utf8_lossy(&_output.stdout);
-    
+
     // Should show initial lines
     assert!(stdout.contains("initial line 1") || stdout.contains("initial line 2"));
 }
@@ -7531,12 +7590,12 @@ fn test_tail_follow_with_errors_filter() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "INFO: starting").unwrap();
     writeln!(file, "ERROR: failed").unwrap();
     writeln!(file, "FATAL: crash").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("tail")
@@ -7546,9 +7605,9 @@ fn test_tail_follow_with_errors_filter() {
         .timeout(std::time::Duration::from_millis(500))
         .output()
         .expect("Failed to execute command");
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // Should show error lines
     assert!(stdout.contains("ERROR") || stdout.contains("FATAL"));
     // Should not show INFO lines
@@ -7561,11 +7620,11 @@ fn test_tail_follow_json_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "ERROR: test").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let result = cmd
         .arg("--json")
@@ -7574,7 +7633,7 @@ fn test_tail_follow_json_output() {
         .arg("--follow")
         .timeout(std::time::Duration::from_millis(500))
         .assert();
-    
+
     // The process will be interrupted by timeout, which is expected
     // We just need to verify it started without error
     result.interrupted();
@@ -7586,11 +7645,11 @@ fn test_tail_follow_csv_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "line 2").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--csv")
@@ -7600,9 +7659,9 @@ fn test_tail_follow_csv_output() {
         .timeout(std::time::Duration::from_millis(500))
         .output()
         .expect("Failed to execute command");
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // Should output CSV format for initial lines
     assert!(stdout.contains("line_number,line,is_error") || stdout.contains("line 1"));
 }
@@ -7613,11 +7672,11 @@ fn test_tail_follow_compact_output() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
     writeln!(file, "ERROR: test").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--compact")
@@ -7627,9 +7686,9 @@ fn test_tail_follow_compact_output() {
         .timeout(std::time::Duration::from_millis(500))
         .output()
         .expect("Failed to execute command");
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // Should show compact format header
     assert!(stdout.contains("Last") || stdout.contains("lines from"));
 }
@@ -7640,12 +7699,12 @@ fn test_tail_follow_with_custom_line_count() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     for i in 1..=20 {
         writeln!(file, "line {}", i).unwrap();
     }
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("tail")
@@ -7656,9 +7715,9 @@ fn test_tail_follow_with_custom_line_count() {
         .timeout(std::time::Duration::from_millis(500))
         .output()
         .expect("Failed to execute command");
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // Should show only last 5 lines initially
     assert!(stdout.contains("line 20") || stdout.contains("line 16"));
 }
@@ -7669,15 +7728,15 @@ fn test_tail_follow_shorthand_f() {
     use std::io::Write;
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let mut file = std::fs::File::create(path).unwrap();
     writeln!(file, "line 1").unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let _output = cmd
         .arg("tail")
         .arg(path)
-        .arg("-f")  // Use shorthand
+        .arg("-f") // Use shorthand
         .timeout(std::time::Duration::from_millis(500))
         .assert()
         .interrupted(); // Will be interrupted by timeout, showing it entered streaming mode
@@ -7688,9 +7747,9 @@ fn test_tail_follow_empty_file() {
     // Test that --follow works with empty file
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     let path = temp_file.path();
-    
+
     let _file = std::fs::File::create(path).unwrap();
-    
+
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let _output = cmd
         .arg("tail")
@@ -7699,7 +7758,7 @@ fn test_tail_follow_empty_file() {
         .timeout(std::time::Duration::from_millis(500))
         .output()
         .expect("Failed to execute command");
-    
+
     // Should not crash even with empty file
     // Empty file should show "File is empty" or similar message
 }
@@ -7781,7 +7840,8 @@ fn test_trim_leading_only() {
     // Test trimming leading whitespace only
     let input = "  hello  \n\tworld\t";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("trim")
+    let output = cmd
+        .arg("trim")
         .arg("--leading")
         .write_stdin(input)
         .assert()
@@ -7799,7 +7859,8 @@ fn test_trim_trailing_only() {
     // Test trimming trailing whitespace only
     let input = "  hello  \n\tworld\t";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("trim")
+    let output = cmd
+        .arg("trim")
         .arg("--trailing")
         .write_stdin(input)
         .assert()
@@ -7817,7 +7878,8 @@ fn test_trim_both_flags() {
     // Test with both --leading and --trailing (should be equivalent to default)
     let input = "  hello  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("trim")
+    let output = cmd
+        .arg("trim")
         .arg("--leading")
         .arg("--trailing")
         .write_stdin(input)
@@ -7866,7 +7928,8 @@ fn test_trim_json_output() {
     // Test JSON output format
     let input = "  hello  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("--json")
+    let output = cmd
+        .arg("--json")
         .arg("trim")
         .write_stdin(input)
         .assert()
@@ -7933,7 +7996,8 @@ fn test_trim_raw_output() {
     // Test raw output format
     let input = "  hello  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("--raw")
+    let output = cmd
+        .arg("--raw")
         .arg("trim")
         .write_stdin(input)
         .assert()
@@ -7949,10 +8013,7 @@ fn test_trim_empty_input() {
     // Test with empty input
     let input = "";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("trim")
-        .write_stdin(input)
-        .assert()
-        .success();
+    cmd.arg("trim").write_stdin(input).assert().success();
 }
 
 #[test]
@@ -7960,10 +8021,7 @@ fn test_trim_whitespace_only() {
     // Test with whitespace-only input
     let input = "   \n\t\t\n   ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("trim")
-        .write_stdin(input)
-        .assert()
-        .success();
+    let output = cmd.arg("trim").write_stdin(input).assert().success();
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     // All lines should be empty after trimming
@@ -7979,10 +8037,7 @@ fn test_trim_no_reduction() {
     // Test with input that has no whitespace to trim
     let input = "hello\nworld";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("trim")
-        .write_stdin(input)
-        .assert()
-        .success();
+    let output = cmd.arg("trim").write_stdin(input).assert().success();
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     assert!(stdout.contains("hello"));
@@ -8008,7 +8063,8 @@ fn test_trim_preserves_empty_lines() {
     // Test that empty lines are preserved
     let input = "  hello  \n\n  world  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("--raw")
+    let output = cmd
+        .arg("--raw")
         .arg("trim")
         .write_stdin(input)
         .assert()
@@ -8027,7 +8083,8 @@ fn test_trim_json_with_leading_flag() {
     // Test JSON output with --leading flag
     let input = "  hello  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("--json")
+    let output = cmd
+        .arg("--json")
         .arg("trim")
         .arg("--leading")
         .write_stdin(input)
@@ -8046,7 +8103,8 @@ fn test_trim_json_with_trailing_flag() {
     // Test JSON output with --trailing flag
     let input = "  hello  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("--json")
+    let output = cmd
+        .arg("--json")
         .arg("trim")
         .arg("--trailing")
         .write_stdin(input)

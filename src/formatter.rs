@@ -2147,7 +2147,11 @@ impl CsvFormatter {
                     "staged,{},{},{}\n",
                     Self::escape_field(&entry.status),
                     Self::escape_field(&entry.path),
-                    entry.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default()
+                    entry
+                        .old_path
+                        .as_deref()
+                        .map(|p| Self::escape_field(p))
+                        .unwrap_or_default()
                 ));
             }
 
@@ -2156,7 +2160,11 @@ impl CsvFormatter {
                     "unstaged,{},{},{}\n",
                     Self::escape_field(&entry.status),
                     Self::escape_field(&entry.path),
-                    entry.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default()
+                    entry
+                        .old_path
+                        .as_deref()
+                        .map(|p| Self::escape_field(p))
+                        .unwrap_or_default()
                 ));
             }
 
@@ -2165,7 +2173,11 @@ impl CsvFormatter {
                     "untracked,{},{},{}\n",
                     Self::escape_field(&entry.status),
                     Self::escape_field(&entry.path),
-                    entry.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default()
+                    entry
+                        .old_path
+                        .as_deref()
+                        .map(|p| Self::escape_field(p))
+                        .unwrap_or_default()
                 ));
             }
 
@@ -2174,7 +2186,11 @@ impl CsvFormatter {
                     "unmerged,{},{},{}\n",
                     Self::escape_field(&entry.status),
                     Self::escape_field(&entry.path),
-                    entry.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default()
+                    entry
+                        .old_path
+                        .as_deref()
+                        .map(|p| Self::escape_field(p))
+                        .unwrap_or_default()
                 ));
             }
         }
@@ -2205,10 +2221,7 @@ impl CsvFormatter {
         output.push_str("total_files,total_additions,total_deletions,is_truncated\n");
         output.push_str(&format!(
             "{},{},{},{}\n",
-            diff.counts.total_files,
-            diff.total_additions,
-            diff.total_deletions,
-            diff.is_truncated
+            diff.counts.total_files, diff.total_additions, diff.total_deletions, diff.is_truncated
         ));
 
         // File entries
@@ -2220,7 +2233,10 @@ impl CsvFormatter {
                 output.push_str(&format!(
                     "{},{},{},{},{},{}\n",
                     Self::escape_field(&file.path),
-                    file.old_path.as_deref().map(|p| Self::escape_field(p)).unwrap_or_default(),
+                    file.old_path
+                        .as_deref()
+                        .map(|p| Self::escape_field(p))
+                        .unwrap_or_default(),
                     Self::escape_field(&file.change_type),
                     file.additions,
                     file.deletions,
@@ -2289,7 +2305,11 @@ impl CsvFormatter {
                     type_str,
                     entry.is_hidden,
                     entry.is_symlink,
-                    entry.symlink_target.as_deref().map(|t| Self::escape_field(t)).unwrap_or_default(),
+                    entry
+                        .symlink_target
+                        .as_deref()
+                        .map(|t| Self::escape_field(t))
+                        .unwrap_or_default(),
                     entry.is_broken_symlink
                 ));
             }
@@ -2340,10 +2360,7 @@ impl CsvFormatter {
         output.push_str("files,matches,total_files,is_truncated\n");
         output.push_str(&format!(
             "{},{},{},{}\n",
-            grep.counts.files,
-            grep.counts.matches,
-            grep.counts.total_files,
-            grep.is_truncated
+            grep.counts.files, grep.counts.matches, grep.counts.total_files, grep.is_truncated
         ));
 
         // Matches
@@ -2393,9 +2410,7 @@ impl CsvFormatter {
         output.push_str("total,directories,files\n");
         output.push_str(&format!(
             "{},{},{}\n",
-            find.counts.total,
-            find.counts.directories,
-            find.counts.files
+            find.counts.total, find.counts.directories, find.counts.files
         ));
 
         // Entries
@@ -2486,7 +2501,10 @@ impl CsvFormatter {
                     Self::escape_field(&t.name),
                     status_str,
                     t.duration_ms.unwrap_or(0),
-                    t.error_message.as_deref().map(|e| Self::escape_field(e)).unwrap_or_default()
+                    t.error_message
+                        .as_deref()
+                        .map(|e| Self::escape_field(e))
+                        .unwrap_or_default()
                 ));
             }
         }
@@ -2597,7 +2615,9 @@ impl CsvFormatter {
 
         let mut output = String::new();
 
-        output.push_str("is_git_repo,is_clean,is_detached,branch,staged,unstaged,untracked,unmerged\n");
+        output.push_str(
+            "is_git_repo,is_clean,is_detached,branch,staged,unstaged,untracked,unmerged\n",
+        );
         output.push_str(&format!(
             "{},{},{},{},{},{},{},{}\n",
             state.is_git_repo,
@@ -3377,10 +3397,7 @@ impl TsvFormatter {
         output.push_str("total_files\ttotal_additions\ttotal_deletions\tis_truncated\n");
         output.push_str(&format!(
             "{}\t{}\t{}\t{}\n",
-            diff.counts.total_files,
-            diff.total_additions,
-            diff.total_deletions,
-            diff.is_truncated
+            diff.counts.total_files, diff.total_additions, diff.total_deletions, diff.is_truncated
         ));
 
         // File entries
@@ -3519,10 +3536,7 @@ impl TsvFormatter {
         output.push_str("files\tmatches\ttotal_files\tis_truncated\n");
         output.push_str(&format!(
             "{}\t{}\t{}\t{}\n",
-            grep.counts.files,
-            grep.counts.matches,
-            grep.counts.total_files,
-            grep.is_truncated
+            grep.counts.files, grep.counts.matches, grep.counts.total_files, grep.is_truncated
         ));
 
         // Matches
@@ -5003,9 +5017,7 @@ impl AgentFormatter {
         if test.summary.suites_total > 0 {
             output.push_str(&format!(
                 "\n- suites: {} ({} passed, {} failed)\n",
-                test.summary.suites_total,
-                test.summary.suites_passed,
-                test.summary.suites_failed
+                test.summary.suites_total, test.summary.suites_passed, test.summary.suites_failed
             ));
         }
 
@@ -7636,16 +7648,16 @@ mod tests {
 
     #[test]
     fn test_csv_format_test_output_with_tests() {
-        use crate::schema::{
-            TestOutputSchema, TestResult, TestRunnerType, TestStatus, TestSuite,
-        };
+        use crate::schema::{TestOutputSchema, TestResult, TestRunnerType, TestStatus, TestSuite};
         let mut test = TestOutputSchema::new(TestRunnerType::Pytest);
         test.is_empty = false;
         test.success = true;
         test.summary.passed = 1;
         test.summary.total = 1;
         let mut suite = TestSuite::new("test_main.py");
-        suite.tests.push(TestResult::new("test_example", TestStatus::Passed));
+        suite
+            .tests
+            .push(TestResult::new("test_example", TestStatus::Passed));
         test.test_suites.push(suite);
         let output = CsvFormatter::format_test_output(&test);
         assert!(output.contains("runner,success,total,passed"));
@@ -8259,16 +8271,16 @@ mod tests {
 
     #[test]
     fn test_tsv_format_test_output_with_tests() {
-        use crate::schema::{
-            TestOutputSchema, TestResult, TestRunnerType, TestStatus, TestSuite,
-        };
+        use crate::schema::{TestOutputSchema, TestResult, TestRunnerType, TestStatus, TestSuite};
         let mut test = TestOutputSchema::new(TestRunnerType::Pytest);
         test.is_empty = false;
         test.success = true;
         test.summary.passed = 1;
         test.summary.total = 1;
         let mut suite = TestSuite::new("test_main.py");
-        suite.tests.push(TestResult::new("test_example", TestStatus::Passed));
+        suite
+            .tests
+            .push(TestResult::new("test_example", TestStatus::Passed));
         test.test_suites.push(suite);
         let output = TsvFormatter::format_test_output(&test);
         assert!(output.contains("runner\tsuccess\ttotal\tpassed"));
@@ -8803,7 +8815,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_git_status_dirty() {
-        use crate::schema::{GitStatusSchema, GitFileEntry};
+        use crate::schema::{GitFileEntry, GitStatusSchema};
         let mut status = GitStatusSchema::new("feature");
         status.is_clean = false;
         status.ahead = Some(2);
@@ -8821,10 +8833,12 @@ mod tests {
 
     #[test]
     fn test_agent_format_git_status_renamed() {
-        use crate::schema::{GitStatusSchema, GitFileEntry};
+        use crate::schema::{GitFileEntry, GitStatusSchema};
         let mut status = GitStatusSchema::new("main");
         status.is_clean = false;
-        status.staged.push(GitFileEntry::renamed("R", "old.rs", "new.rs"));
+        status
+            .staged
+            .push(GitFileEntry::renamed("R", "old.rs", "new.rs"));
         status.counts.staged = 1;
         let output = AgentFormatter::format_git_status(&status);
         assert!(output.contains("[R] old.rs -> new.rs"));
@@ -8841,7 +8855,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_git_diff_with_changes() {
-        use crate::schema::{GitDiffSchema, GitDiffEntry};
+        use crate::schema::{GitDiffEntry, GitDiffSchema};
         let mut diff = GitDiffSchema::new();
         diff.is_empty = false;
         diff.counts.total_files = 1;
@@ -8901,7 +8915,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_ls_with_symlinks() {
-        use crate::schema::{LsOutputSchema, LsEntry, LsEntryType};
+        use crate::schema::{LsEntry, LsEntryType, LsOutputSchema};
         let mut ls = LsOutputSchema::new();
         ls.is_empty = false;
         ls.symlinks.push("link".to_string());
@@ -8916,7 +8930,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_ls_with_broken_symlink() {
-        use crate::schema::{LsOutputSchema, LsEntry, LsEntryType};
+        use crate::schema::{LsEntry, LsEntryType, LsOutputSchema};
         let mut ls = LsOutputSchema::new();
         ls.is_empty = false;
         ls.symlinks.push("link".to_string());
@@ -8941,7 +8955,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_grep_with_matches() {
-        use crate::schema::{GrepOutputSchema, GrepFile, GrepMatch};
+        use crate::schema::{GrepFile, GrepMatch, GrepOutputSchema};
         let mut grep = GrepOutputSchema::new();
         grep.is_empty = false;
         let mut file = GrepFile::new("src/main.rs");
@@ -9042,7 +9056,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_test_output_failed() {
-        use crate::schema::{TestOutputSchema, TestRunnerType, TestSuite, TestResult, TestStatus};
+        use crate::schema::{TestOutputSchema, TestResult, TestRunnerType, TestStatus, TestSuite};
         let mut test = TestOutputSchema::new(TestRunnerType::Jest);
         test.is_empty = false;
         test.success = false;
@@ -9091,7 +9105,7 @@ mod tests {
 
     #[test]
     fn test_agent_format_logs_with_critical() {
-        use crate::schema::{LogsOutputSchema, LogEntry, LogLevel};
+        use crate::schema::{LogEntry, LogLevel, LogsOutputSchema};
         let mut logs = LogsOutputSchema::new();
         logs.is_empty = false;
         logs.counts.total_lines = 10;
@@ -9224,7 +9238,9 @@ mod tests {
     fn test_agent_format_error_schema_with_context() {
         use crate::schema::ErrorSchema;
         let mut error = ErrorSchema::new("Build failed");
-        error.context.insert("file".to_string(), "main.rs".to_string());
+        error
+            .context
+            .insert("file".to_string(), "main.rs".to_string());
         error.context.insert("line".to_string(), "42".to_string());
         let output = AgentFormatter::format_error_schema(&error);
         assert!(output.contains("## Context"));

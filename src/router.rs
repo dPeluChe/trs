@@ -23,7 +23,7 @@ fn strip_ansi_codes(s: &str) -> String {
         if chars[i] == '\x1b' {
             // Skip the escape character
             i += 1;
-            
+
             if i >= chars.len() {
                 break;
             }
@@ -1863,10 +1863,11 @@ impl ReplaceHandler {
         use ignore::WalkBuilder;
 
         // Build the regex matcher
-        let matcher = RegexMatcher::new(&input.search).map_err(|e| CommandError::ExecutionError {
-            message: format!("Invalid regex pattern '{}': {}", input.search, e),
-            exit_code: Some(2),
-        })?;
+        let matcher =
+            RegexMatcher::new(&input.search).map_err(|e| CommandError::ExecutionError {
+                message: format!("Invalid regex pattern '{}': {}", input.search, e),
+                exit_code: Some(2),
+            })?;
 
         // Shared state for collecting replacements per file
         let mut file_replacements: Vec<(String, Vec<Replacement>)> = Vec::new();
@@ -1988,13 +1989,8 @@ impl ReplaceHandler {
     }
 
     /// Format replace output as JSON using the schema.
-    fn format_json(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-    ) -> String {
-        use crate::schema::{
-            ReplaceCounts, ReplaceFile, ReplaceMatch, ReplaceOutputSchema,
-        };
+    fn format_json(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
+        use crate::schema::{ReplaceCounts, ReplaceFile, ReplaceMatch, ReplaceOutputSchema};
 
         let files: Vec<ReplaceFile> = replacements
             .iter()
@@ -2003,7 +1999,10 @@ impl ReplaceHandler {
                     .iter()
                     .map(|r| ReplaceMatch::new(r.line_number, &r.original, &r.replaced))
                     .collect();
-                ReplaceFile { path: path.clone(), matches }
+                ReplaceFile {
+                    path: path.clone(),
+                    matches,
+                }
             })
             .collect();
 
@@ -2022,10 +2021,7 @@ impl ReplaceHandler {
     }
 
     /// Format replace output as CSV.
-    fn format_csv(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-    ) -> String {
+    fn format_csv(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
         let mut result = String::new();
         result.push_str("file,line_number,original,replaced\n");
 
@@ -2053,10 +2049,7 @@ impl ReplaceHandler {
     }
 
     /// Format replace output as TSV.
-    fn format_tsv(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-    ) -> String {
+    fn format_tsv(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
         let mut result = String::new();
         result.push_str("file\tline_number\toriginal\treplaced\n");
 
@@ -2083,10 +2076,7 @@ impl ReplaceHandler {
     }
 
     /// Format replace output in compact format.
-    fn format_compact(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-    ) -> String {
+    fn format_compact(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
         let mut result = String::new();
 
         if replacements.is_empty() {
@@ -2130,10 +2120,7 @@ impl ReplaceHandler {
     }
 
     /// Format replace output as raw.
-    fn format_raw(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-    ) -> String {
+    fn format_raw(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
         let mut result = String::new();
 
         for (path, reps) in replacements {
@@ -2167,7 +2154,10 @@ impl ReplaceHandler {
 
     /// Escape a field for CSV format.
     fn escape_csv_field(field: &str) -> String {
-        if field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r')
+        if field.contains(',')
+            || field.contains('"')
+            || field.contains('\n')
+            || field.contains('\r')
         {
             format!("\"{}\"", field.replace('"', "\"\""))
         } else {
@@ -2177,7 +2167,10 @@ impl ReplaceHandler {
 
     /// Escape a field for TSV format.
     fn escape_tsv_field(field: &str) -> String {
-        field.replace('\t', "\\t").replace('\n', "\\n").replace('\r', "\\r")
+        field
+            .replace('\t', "\\t")
+            .replace('\n', "\\n")
+            .replace('\r', "\\r")
     }
 
     /// Format replacement count for output (just the number).
@@ -2276,7 +2269,11 @@ impl TailHandler {
         }
 
         let file = File::open(&input.file).map_err(|e| {
-            CommandError::IoError(format!("Failed to open file {}: {}", input.file.display(), e))
+            CommandError::IoError(format!(
+                "Failed to open file {}: {}",
+                input.file.display(),
+                e
+            ))
         })?;
 
         let reader = BufReader::new(file);
@@ -2284,9 +2281,8 @@ impl TailHandler {
 
         // Read all lines
         for line in reader.lines() {
-            let line = line.map_err(|e| {
-                CommandError::IoError(format!("Failed to read file: {}", e))
-            })?;
+            let line =
+                line.map_err(|e| CommandError::IoError(format!("Failed to read file: {}", e)))?;
             all_lines.push(line);
         }
 
@@ -2369,7 +2365,11 @@ impl TailHandler {
 
         // Open file for streaming
         let file = std::fs::File::open(&input.file).map_err(|e| {
-            CommandError::IoError(format!("Failed to open file {}: {}", input.file.display(), e))
+            CommandError::IoError(format!(
+                "Failed to open file {}: {}",
+                input.file.display(),
+                e
+            ))
         })?;
 
         let mut reader = BufReader::new(file);
@@ -2378,9 +2378,9 @@ impl TailHandler {
         // Skip to the position we've already read
         for _ in 0..last_line_count {
             let mut line = String::new();
-            reader.read_line(&mut line).map_err(|e| {
-                CommandError::IoError(format!("Failed to read file: {}", e))
-            })?;
+            reader
+                .read_line(&mut line)
+                .map_err(|e| CommandError::IoError(format!("Failed to read file: {}", e)))?;
         }
 
         // Continuously poll for new lines
@@ -2439,10 +2439,7 @@ impl TailHandler {
             }
             OutputFormat::Csv => {
                 let line_escaped = Self::escape_csv_field(&line.line);
-                format!(
-                    "{},{},{}\n",
-                    line.line_number, line_escaped, line.is_error
-                )
+                format!("{},{},{}\n", line.line_number, line_escaped, line.is_error)
             }
             OutputFormat::Tsv => {
                 let line_escaped = Self::escape_tsv_field(&line.line);
@@ -2516,9 +2513,7 @@ impl TailHandler {
             let line_escaped = Self::escape_csv_field(&l.line);
             result.push_str(&format!(
                 "{},{},{}\n",
-                l.line_number,
-                line_escaped,
-                l.is_error
+                l.line_number, line_escaped, l.is_error
             ));
         }
 
@@ -2534,9 +2529,7 @@ impl TailHandler {
             let line_escaped = Self::escape_tsv_field(&l.line);
             result.push_str(&format!(
                 "{}\t{}\t{}\n",
-                l.line_number,
-                line_escaped,
-                l.is_error
+                l.line_number, line_escaped, l.is_error
             ));
         }
 
@@ -2547,10 +2540,7 @@ impl TailHandler {
     fn format_agent(output: &TailOutput) -> String {
         let mut result = String::new();
 
-        result.push_str(&format!(
-            "File: {}\n",
-            output.file.display()
-        ));
+        result.push_str(&format!("File: {}\n", output.file.display()));
 
         if output.filtering_errors {
             result.push_str(&format!(
@@ -2629,7 +2619,10 @@ impl TailHandler {
 
     /// Escape a field for CSV format.
     fn escape_csv_field(field: &str) -> String {
-        if field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r')
+        if field.contains(',')
+            || field.contains('"')
+            || field.contains('\n')
+            || field.contains('\r')
         {
             format!("\"{}\"", field.replace('"', "\"\""))
         } else {
@@ -2639,7 +2632,10 @@ impl TailHandler {
 
     /// Escape a field for TSV format.
     fn escape_tsv_field(field: &str) -> String {
-        field.replace('\t', "\\t").replace('\n', "\\n").replace('\r', "\\r")
+        field
+            .replace('\t', "\\t")
+            .replace('\n', "\\n")
+            .replace('\r', "\\r")
     }
 }
 
@@ -2793,27 +2789,25 @@ impl CleanHandler {
         format: OutputFormat,
     ) -> String {
         match format {
-            OutputFormat::Json => {
-                serde_json::json!({
-                    "content": cleaned,
-                    "stats": {
-                        "input_length": original.len(),
-                        "output_length": cleaned.len(),
-                        "reduction_percent": if original.is_empty() {
-                            0.0
-                        } else {
-                            ((original.len() - cleaned.len()) as f64 / original.len() as f64) * 100.0
-                        },
+            OutputFormat::Json => serde_json::json!({
+                "content": cleaned,
+                "stats": {
+                    "input_length": original.len(),
+                    "output_length": cleaned.len(),
+                    "reduction_percent": if original.is_empty() {
+                        0.0
+                    } else {
+                        ((original.len() - cleaned.len()) as f64 / original.len() as f64) * 100.0
                     },
-                    "options": {
-                        "no_ansi": options.no_ansi,
-                        "collapse_blanks": options.collapse_blanks,
-                        "collapse_repeats": options.collapse_repeats,
-                        "trim": options.trim,
-                    }
-                })
-                .to_string()
-            }
+                },
+                "options": {
+                    "no_ansi": options.no_ansi,
+                    "collapse_blanks": options.collapse_blanks,
+                    "collapse_repeats": options.collapse_repeats,
+                    "trim": options.trim,
+                }
+            })
+            .to_string(),
             OutputFormat::Csv => {
                 // Output as CSV with one row per line
                 cleaned
@@ -2832,10 +2826,7 @@ impl CleanHandler {
                 } else {
                     ((original.len() - cleaned.len()) as f64 / original.len() as f64 * 100.0) as i32
                 };
-                format!(
-                    "Content ({}% reduction):\n{}\n",
-                    reduction, cleaned
-                )
+                format!("Content ({}% reduction):\n{}\n", reduction, cleaned)
             }
             OutputFormat::Compact => {
                 let reduction = if original.is_empty() {
@@ -2906,9 +2897,8 @@ impl TrimHandler {
                         path.display()
                     )));
                 }
-                std::fs::read_to_string(path).map_err(|e| {
-                    CommandError::IoError(format!("Failed to read file: {}", e))
-                })
+                std::fs::read_to_string(path)
+                    .map_err(|e| CommandError::IoError(format!("Failed to read file: {}", e)))
             }
             None => {
                 let mut buffer = Vec::new();
@@ -3061,23 +3051,159 @@ impl CommandHandler for TrimHandler {
 /// Handler for the `html2md` command.
 pub struct Html2mdHandler;
 
+impl Html2mdHandler {
+    /// Check if the input is a URL.
+    fn is_url(input: &str) -> bool {
+        input.starts_with("http://") || input.starts_with("https://")
+    }
+
+    /// Fetch HTML content from a URL.
+    fn fetch_url(&self, url: &str) -> CommandResult<String> {
+        use std::io::Read;
+        let response = ureq::get(url)
+            .call()
+            .map_err(|e| CommandError::IoError(format!("Failed to fetch URL '{}': {}", url, e)))?;
+
+        let mut html = String::new();
+        response
+            .into_body()
+            .into_reader()
+            .read_to_string(&mut html)
+            .map_err(|e| CommandError::IoError(format!("Failed to read response: {}", e)))?;
+
+        Ok(html)
+    }
+
+    /// Read HTML content from a file.
+    fn read_file(&self, path: &str) -> CommandResult<String> {
+        let path_buf = std::path::PathBuf::from(path);
+        if !path_buf.exists() {
+            return Err(CommandError::IoError(format!("File not found: {}", path)));
+        }
+        std::fs::read_to_string(&path_buf)
+            .map_err(|e| CommandError::IoError(format!("Failed to read file '{}': {}", path, e)))
+    }
+
+    /// Extract metadata from HTML content.
+    fn extract_metadata(&self, html: &str, url_or_file: &str) -> serde_json::Value {
+        let mut metadata = serde_json::json!({
+            "source": url_or_file,
+        });
+
+        // Extract title from <title> tag
+        if let Some(title_start) = html.find("<title") {
+            if let Some(content_start) = html[title_start..].find('>') {
+                let content_start = title_start + content_start + 1;
+                if let Some(content_end) = html[content_start..].find("</title>") {
+                    let title = &html[content_start..content_start + content_end];
+                    metadata["title"] = serde_json::json!(title.trim());
+                }
+            }
+        }
+
+        // Extract meta description
+        if let Some(meta_start) = html.find("meta name=\"description\"") {
+            let meta_slice = &html[meta_start..];
+            if let Some(content_start) = meta_slice.find("content=\"") {
+                let content_start = content_start + 9;
+                if let Some(content_end) = meta_slice[content_start..].find('"') {
+                    let description = &meta_slice[content_start..content_start + content_end];
+                    metadata["description"] = serde_json::json!(description);
+                }
+            }
+        }
+
+        // Check if source is URL or file
+        if Self::is_url(url_or_file) {
+            metadata["type"] = serde_json::json!("url");
+        } else {
+            metadata["type"] = serde_json::json!("file");
+        }
+
+        metadata
+    }
+
+    /// Convert HTML to Markdown.
+    fn convert_to_markdown(&self, html: &str) -> CommandResult<String> {
+        htmd::convert(html).map_err(|e| CommandError::ExecutionError {
+            message: format!("Failed to convert HTML to Markdown: {}", e),
+            exit_code: Some(1),
+        })
+    }
+
+    /// Format output based on the output format.
+    fn format_output(
+        &self,
+        markdown: &str,
+        metadata: Option<&serde_json::Value>,
+        format: OutputFormat,
+    ) -> String {
+        match format {
+            OutputFormat::Json => {
+                let mut result = serde_json::json!({
+                    "markdown": markdown,
+                });
+                if let Some(meta) = metadata {
+                    result["metadata"] = meta.clone();
+                }
+                format!("{}\n", serde_json::to_string_pretty(&result).unwrap())
+            }
+            OutputFormat::Compact | OutputFormat::Agent => {
+                let mut output = markdown.to_string();
+                if let Some(meta) = metadata {
+                    output = format!(
+                        "---\n{}\n---\n\n{}",
+                        serde_json::to_string_pretty(meta).unwrap(),
+                        output
+                    );
+                }
+                format!("{}\n", output)
+            }
+            OutputFormat::Raw | OutputFormat::Csv | OutputFormat::Tsv => {
+                format!("{}\n", markdown)
+            }
+        }
+    }
+}
+
 impl CommandHandler for Html2mdHandler {
     type Input = Html2mdInput;
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-        eprintln!("Output format: {:?}", ctx.format);
-        eprintln!(
-            "Html2md: {:?} -> {:?} (metadata: {})",
-            input.input, input.output, input.metadata
-        );
+        // Read HTML content from URL or file
+        let html = if Self::is_url(&input.input) {
+            self.fetch_url(&input.input)?
+        } else {
+            self.read_file(&input.input)?
+        };
 
-        // TODO: Implement actual html2md execution
-        Err(CommandError::NotImplemented(
-            "html2md command execution".to_string(),
-        ))
+        // Extract metadata if requested
+        let metadata = if input.metadata {
+            Some(self.extract_metadata(&html, &input.input))
+        } else {
+            None
+        };
+
+        // Convert HTML to Markdown
+        let markdown = self.convert_to_markdown(&html)?;
+
+        // Format output
+        let formatted = self.format_output(&markdown, metadata.as_ref(), ctx.format);
+
+        // Write to output file or stdout
+        if let Some(ref output_path) = input.output {
+            std::fs::write(output_path, &formatted).map_err(|e| {
+                CommandError::IoError(format!(
+                    "Failed to write output file '{}': {}",
+                    output_path.display(),
+                    e
+                ))
+            })?;
+        } else {
+            print!("{}", formatted);
+        }
+
+        Ok(())
     }
 }
 
@@ -3666,7 +3792,10 @@ impl ParseHandler {
             let before_colon = line[..colon_char_idx].trim();
             // Remove leading tabs from status
             let status = before_colon.trim_start_matches('\t').trim();
-            let path_start = char_indices.get(colon_char_idx + 1).map(|(i, _)| *i).unwrap_or(line.len());
+            let path_start = char_indices
+                .get(colon_char_idx + 1)
+                .map(|(i, _)| *i)
+                .unwrap_or(line.len());
             let path = line[path_start..].trim();
 
             if path.is_empty() {
@@ -11199,7 +11328,9 @@ mod tests {
         assert!(TailHandler::is_error_line("Failed to connect"));
         assert!(TailHandler::is_error_line("[ERROR] connection timeout"));
         assert!(TailHandler::is_error_line("ERR connection refused"));
-        assert!(TailHandler::is_error_line("E/AndroidRuntime: FATAL EXCEPTION"));
+        assert!(TailHandler::is_error_line(
+            "E/AndroidRuntime: FATAL EXCEPTION"
+        ));
 
         assert!(!TailHandler::is_error_line("INFO: process started"));
         assert!(!TailHandler::is_error_line("success: operation completed"));
@@ -11230,20 +11361,117 @@ mod tests {
 
     #[test]
     fn test_html2md_handler() {
+        use std::io::Write;
         let handler = Html2mdHandler;
         let ctx = CommandContext {
-            format: OutputFormat::Compact,
+            format: OutputFormat::Raw,
             stats: false,
             enabled_formats: vec![],
         };
+
+        // Create a temporary HTML file for testing
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_html2md_input.html");
+        let output_path = temp_dir.join("test_html2md_output.md");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<h1>Hello World</h1>
+<p>This is a <strong>test</strong> paragraph.</p>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
         let input = Html2mdInput {
-            input: "https://example.com".to_string(),
-            output: Some(std::path::PathBuf::from("out.md")),
+            input: html_path.to_string_lossy().to_string(),
+            output: Some(output_path.clone()),
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        // Verify output file was created and contains markdown
+        let output_content = std::fs::read_to_string(&output_path).unwrap();
+        assert!(output_content.contains("Hello World"));
+        assert!(output_content.contains("test"));
+
+        // Cleanup
+        let _ = std::fs::remove_file(&html_path);
+        let _ = std::fs::remove_file(&output_path);
+    }
+
+    #[test]
+    fn test_html2md_handler_with_metadata() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Json,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        // Create a temporary HTML file for testing
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_html2md_meta_input.html");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Test Title</title>
+<meta name="description" content="Test description">
+</head>
+<body>
+<h1>Heading</h1>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: None,
             metadata: true,
         };
 
         let result = handler.execute(&input, &ctx);
-        assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+        assert!(result.is_ok());
+
+        // Cleanup
+        let _ = std::fs::remove_file(&html_path);
+    }
+
+    #[test]
+    fn test_html2md_is_url() {
+        assert!(Html2mdHandler::is_url("http://example.com"));
+        assert!(Html2mdHandler::is_url("https://example.com"));
+        assert!(!Html2mdHandler::is_url("/path/to/file.html"));
+        assert!(!Html2mdHandler::is_url("file.html"));
+    }
+
+    #[test]
+    fn test_html2md_file_not_found() {
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let input = Html2mdInput {
+            input: "/nonexistent/path/to/file.html".to_string(),
+            output: None,
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(matches!(result, Err(CommandError::IoError(_))));
     }
 
     #[test]

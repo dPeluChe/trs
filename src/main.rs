@@ -526,17 +526,17 @@ pub enum TestRunner {
 }
 
 /// Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines).
-/// 
+///
 /// This function transforms arguments like:
 /// - `trs tail -5 file.log` -> `trs tail -n 5 file.log`
 /// - `trs tail -20 file.log` -> `trs tail -n 20 file.log`
 fn preprocess_tail_args(args: &[String]) -> Vec<String> {
     let mut result = Vec::new();
     let mut i = 0;
-    
+
     while i < args.len() {
         let arg = &args[i];
-        
+
         // Check if we're in a tail command context
         if i > 0 && (args[i - 1] == "tail" || is_after_tail_subcommand(args, i)) {
             // Check if this is a -N argument (negative number like -5, -20, etc.)
@@ -550,11 +550,11 @@ fn preprocess_tail_args(args: &[String]) -> Vec<String> {
                 }
             }
         }
-        
+
         result.push(arg.clone());
         i += 1;
     }
-    
+
     result
 }
 
@@ -577,7 +577,7 @@ fn main() {
     // Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines)
     let args: Vec<String> = std::env::args().collect();
     let processed_args = preprocess_tail_args(&args);
-    
+
     let cli = Cli::parse_from(&processed_args);
 
     // Create command context from global CLI options
