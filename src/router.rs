@@ -11475,6 +11475,252 @@ mod tests {
     }
 
     #[test]
+    fn test_html2md_heading_conversion() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_heading_conversion.html");
+        let output_path = temp_dir.join("test_heading_conversion_output.md");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Heading Test</title></head>
+<body>
+<h1>Heading 1</h1>
+<h2>Heading 2</h2>
+<h3>Heading 3</h3>
+<h4>Heading 4</h4>
+<h5>Heading 5</h5>
+<h6>Heading 6</h6>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: Some(output_path.clone()),
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        let output_content = std::fs::read_to_string(&output_path).unwrap();
+        assert!(output_content.contains("# Heading 1"));
+        assert!(output_content.contains("## Heading 2"));
+        assert!(output_content.contains("### Heading 3"));
+        assert!(output_content.contains("#### Heading 4"));
+        assert!(output_content.contains("##### Heading 5"));
+        assert!(output_content.contains("###### Heading 6"));
+
+        let _ = std::fs::remove_file(&html_path);
+        let _ = std::fs::remove_file(&output_path);
+    }
+
+    #[test]
+    fn test_html2md_heading_with_inline_elements() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_heading_inline.html");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Heading Inline Test</title></head>
+<body>
+<h1>Heading with <em>emphasis</em></h1>
+<h2>Heading with <strong>bold</strong></h2>
+<h3>Heading with <code>code</code></h3>
+<h4>Heading with <a href="https://example.com">link</a></h4>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: None,
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        let _ = std::fs::remove_file(&html_path);
+    }
+
+    #[test]
+    fn test_html2md_link_conversion() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_link_conversion.html");
+        let output_path = temp_dir.join("test_link_conversion_output.md");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Link Test</title></head>
+<body>
+<p>Visit <a href="https://example.com">Example</a> for more info.</p>
+<p>Check <a href="https://rust-lang.org">Rust</a> language.</p>
+<p><a href="/relative/path">Relative link</a> works too.</p>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: Some(output_path.clone()),
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        let output_content = std::fs::read_to_string(&output_path).unwrap();
+        assert!(output_content.contains("[Example](https://example.com)"));
+        assert!(output_content.contains("[Rust](https://rust-lang.org)"));
+        assert!(output_content.contains("[Relative link](/relative/path)"));
+
+        let _ = std::fs::remove_file(&html_path);
+        let _ = std::fs::remove_file(&output_path);
+    }
+
+    #[test]
+    fn test_html2md_list_conversion() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_list_conversion.html");
+        let output_path = temp_dir.join("test_list_conversion_output.md");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>List Test</title></head>
+<body>
+<ul>
+  <li>Unordered item 1</li>
+  <li>Unordered item 2</li>
+  <li>Unordered item 3</li>
+</ul>
+<ol>
+  <li>Ordered item 1</li>
+  <li>Ordered item 2</li>
+  <li>Ordered item 3</li>
+</ol>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: Some(output_path.clone()),
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        let output_content = std::fs::read_to_string(&output_path).unwrap();
+        // Check for unordered list items (with asterisks or dashes)
+        assert!(output_content.contains("Unordered item 1"));
+        assert!(output_content.contains("Unordered item 2"));
+        assert!(output_content.contains("Unordered item 3"));
+        // Check for ordered list items
+        assert!(output_content.contains("Ordered item 1"));
+        assert!(output_content.contains("Ordered item 2"));
+        assert!(output_content.contains("Ordered item 3"));
+
+        let _ = std::fs::remove_file(&html_path);
+        let _ = std::fs::remove_file(&output_path);
+    }
+
+    #[test]
+    fn test_html2md_combined_elements() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_combined_elements.html");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Combined Test</title></head>
+<body>
+<h1>Main Heading</h1>
+<p>Introduction paragraph with a <a href="https://example.com">link</a>.</p>
+<h2>Features</h2>
+<ul>
+  <li>Feature 1 with <strong>bold</strong> text</li>
+  <li>Feature 2 with <em>emphasis</em></li>
+</ul>
+<h2>Steps</h2>
+<ol>
+  <li>First step</li>
+  <li>Second step with <code>code</code></li>
+</ol>
+<h3>Conclusion</h3>
+<p>Final paragraph.</p>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: None,
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        let _ = std::fs::remove_file(&html_path);
+    }
+
+    #[test]
     fn test_txt2md_handler() {
         let handler = Txt2mdHandler;
         let ctx = CommandContext {
