@@ -2360,6 +2360,7 @@ impl CommandHandler for ReplaceHandler {
             if ctx.stats {
                 let stats = CommandStats::new()
                     .with_input_bytes(input_bytes)
+                    .with_output_bytes(output.len())
                     .with_items_processed(total_replacements)
                     .with_extra("Files affected", files_count.to_string())
                     .with_extra("Dry run", input.dry_run.to_string());

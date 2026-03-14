@@ -8695,6 +8695,20 @@ fn test_replace_stats_shows_input_bytes() {
 }
 
 #[test]
+fn test_replace_stats_shows_output_bytes() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("replace")
+        .arg(".")
+        .arg("oldstring")
+        .arg("newstring")
+        .arg("--dry-run")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Output bytes:"));
+}
+
+#[test]
 fn test_tail_stats_shows_input_bytes() {
     use std::io::Write;
     let mut temp_file = tempfile::NamedTempFile::new().unwrap();
