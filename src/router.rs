@@ -196,6 +196,132 @@ impl std::fmt::Display for CommandError {
 impl std::error::Error for CommandError {}
 
 // ============================================================
+// Command Statistics
+// ============================================================
+
+/// Statistics about command execution.
+#[derive(Debug, Clone, Default)]
+pub struct CommandStats {
+    /// Input size in bytes.
+    pub input_bytes: usize,
+    /// Output size in bytes.
+    pub output_bytes: usize,
+    /// Number of items processed (matches, files, lines, etc.).
+    pub items_processed: usize,
+    /// Number of items filtered out.
+    pub items_filtered: usize,
+    /// Duration in milliseconds.
+    pub duration_ms: Option<u64>,
+    /// Command name (for run command).
+    pub command: Option<String>,
+    /// Exit code (for run command).
+    pub exit_code: Option<i32>,
+    /// Additional stats as key-value pairs.
+    pub extra: Vec<(String, String)>,
+}
+
+impl CommandStats {
+    /// Create new command stats.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set input bytes.
+    pub fn with_input_bytes(mut self, bytes: usize) -> Self {
+        self.input_bytes = bytes;
+        self
+    }
+
+    /// Set output bytes.
+    pub fn with_output_bytes(mut self, bytes: usize) -> Self {
+        self.output_bytes = bytes;
+        self
+    }
+
+    /// Set items processed.
+    pub fn with_items_processed(mut self, count: usize) -> Self {
+        self.items_processed = count;
+        self
+    }
+
+    /// Set items filtered.
+    pub fn with_items_filtered(mut self, count: usize) -> Self {
+        self.items_filtered = count;
+        self
+    }
+
+    /// Set duration in milliseconds.
+    pub fn with_duration_ms(mut self, ms: u64) -> Self {
+        self.duration_ms = Some(ms);
+        self
+    }
+
+    /// Set command name.
+    pub fn with_command(mut self, cmd: impl Into<String>) -> Self {
+        self.command = Some(cmd.into());
+        self
+    }
+
+    /// Set exit code.
+    pub fn with_exit_code(mut self, code: i32) -> Self {
+        self.exit_code = Some(code);
+        self
+    }
+
+    /// Add an extra stat.
+    pub fn with_extra(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.extra.push((key.into(), value.into()));
+        self
+    }
+
+    /// Calculate reduction percentage.
+    pub fn reduction_percent(&self) -> f64 {
+        if self.input_bytes == 0 {
+            0.0
+        } else if self.output_bytes >= self.input_bytes {
+            0.0 // No reduction if output is larger or equal
+        } else {
+            ((self.input_bytes - self.output_bytes) as f64 / self.input_bytes as f64) * 100.0
+        }
+    }
+
+    /// Print stats to stderr.
+    pub fn print(&self) {
+        eprintln!("Stats:");
+        if let Some(ref cmd) = self.command {
+            eprintln!("  Command: {}", cmd);
+        }
+        if let Some(code) = self.exit_code {
+            eprintln!("  Exit code: {}", code);
+        }
+        if self.input_bytes > 0 || self.output_bytes > 0 {
+            eprintln!("  Input bytes: {}", self.input_bytes);
+            eprintln!("  Output bytes: {}", self.output_bytes);
+            let reduction = self.reduction_percent();
+            if reduction > 0.0 {
+                eprintln!("  Reduction: {:.1}%", reduction);
+            }
+        }
+        if self.items_processed > 0 {
+            eprintln!("  Items processed: {}", self.items_processed);
+        }
+        if self.items_filtered > 0 {
+            eprintln!("  Items filtered: {}", self.items_filtered);
+        }
+        if let Some(ms) = self.duration_ms {
+            if ms < 1000 {
+                eprintln!("  Duration: {}ms", ms);
+            } else {
+                eprintln!("  Duration: {:.2}s", ms as f64 / 1000.0);
+            }
+        }
+        for (key, value) in &self.extra {
+            eprintln!("  {}: {}", key, value);
+        }
+    }
+}
+
+// ============================================================
 // Git Status Data Structures
 // ============================================================
 
@@ -450,6 +576,8 @@ struct GrepOutput {
     files_shown: usize,
     /// Number of matches shown after truncation.
     matches_shown: usize,
+    /// Total bytes of all matched lines (original output size).
+    input_bytes: usize,
 }
 
 // ============================================================
@@ -1346,12 +1474,15 @@ impl CommandHandler for RunHandler {
             Ok(output) => {
                 // Print stats if requested
                 if ctx.stats {
-                    eprintln!("Stats:");
-                    eprintln!("  Command: {} {:?}", output.command, output.args);
-                    eprintln!("  Exit code: {:?}", output.exit_code);
-                    eprintln!("  Duration: {:.2}s", output.duration.as_secs_f64());
-                    eprintln!("  Stdout bytes: {}", output.stdout.len());
-                    eprintln!("  Stderr bytes: {}", output.stderr.len());
+                    let stats = CommandStats::new()
+                        .with_command(format!("{} {:?}", output.command, output.args))
+                        .with_exit_code(output.code())
+                        .with_duration_ms(output.duration.as_millis() as u64)
+                        .with_input_bytes(output.stdout.len() + output.stderr.len())
+                        .with_output_bytes(output.stdout.len() + output.stderr.len())
+                        .with_extra("Stdout bytes", output.stdout.len().to_string())
+                        .with_extra("Stderr bytes", output.stderr.len().to_string());
+                    stats.print();
                 }
 
                 // Format and print output
@@ -1371,8 +1502,9 @@ impl CommandHandler for RunHandler {
             Err(error) => {
                 // Print stats if requested
                 if ctx.stats {
-                    eprintln!("Stats:");
-                    eprintln!("  Command failed: {}", error);
+                    let stats = CommandStats::new()
+                        .with_extra("Error", error.to_string());
+                    stats.print();
                 }
 
                 // Return appropriate error type (error printing is handled by Router::execute_and_print)
@@ -1684,6 +1816,13 @@ impl SearchHandler {
         let file_count = files.len();
         let match_count: usize = files.iter().map(|f| f.matches.len()).sum();
 
+        // Calculate input_bytes (total bytes of all matched lines)
+        let input_bytes: usize = files
+            .iter()
+            .flat_map(|f| f.matches.iter())
+            .map(|m| m.line.len())
+            .sum();
+
         // Apply truncation
         let max_files = input.limit.unwrap_or(Self::DEFAULT_MAX_FILES);
         let is_truncated = files.len() > max_files;
@@ -1709,6 +1848,7 @@ impl SearchHandler {
             total_matches,
             files_shown,
             matches_shown,
+            input_bytes,
         })
     }
 
@@ -1792,16 +1932,27 @@ impl CommandHandler for SearchHandler {
     type Input = SearchInput;
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Execute the search
         let grep_output = self.execute_search(input)?;
 
-        // Format and print the output
-        let output = Self::format_output(&grep_output, ctx.format);
-        print!("{}", output);
+        // Print stats if requested
+        if ctx.stats {
+            let output = Self::format_output(&grep_output, ctx.format);
+            let stats = CommandStats::new()
+                .with_input_bytes(grep_output.input_bytes)
+                .with_items_processed(grep_output.matches_shown)
+                .with_items_filtered(grep_output.total_matches.saturating_sub(grep_output.matches_shown))
+                .with_output_bytes(output.len())
+                .with_extra("Files searched", grep_output.total_files.to_string())
+                .with_extra("Files with matches", grep_output.file_count.to_string())
+                .with_extra("Total matches", grep_output.total_matches.to_string());
+            stats.print();
+            print!("{}", output);
+        } else {
+            // Format and print the output
+            let output = Self::format_output(&grep_output, ctx.format);
+            print!("{}", output);
+        }
 
         Ok(())
     }
@@ -2191,23 +2342,46 @@ impl CommandHandler for ReplaceHandler {
     type Input = ReplaceInput;
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Execute the replace
         let replacements = self.execute_replace(input)?;
 
+        let total_replacements: usize = replacements.iter().map(|(_, r)| r.len()).sum();
+        let files_count = replacements.len();
+        // Calculate input_bytes (total bytes of all original lines)
+        let input_bytes: usize = replacements
+            .iter()
+            .flat_map(|(_, r)| r.iter())
+            .map(|r| r.original.len())
+            .sum();
+
         // If count flag is specified, output only the count
         if input.count {
-            let total_replacements: usize = replacements.iter().map(|(_, r)| r.len()).sum();
             let output = Self::format_count(total_replacements, ctx.format);
+            if ctx.stats {
+                let stats = CommandStats::new()
+                    .with_input_bytes(input_bytes)
+                    .with_items_processed(total_replacements)
+                    .with_extra("Files affected", files_count.to_string())
+                    .with_extra("Dry run", input.dry_run.to_string());
+                stats.print();
+            }
             print!("{}", output);
             return Ok(());
         }
 
         // Format and print the output
         let output = Self::format_output(&replacements, input, ctx.format);
+
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(input_bytes)
+                .with_items_processed(total_replacements)
+                .with_output_bytes(output.len())
+                .with_extra("Files affected", files_count.to_string())
+                .with_extra("Dry run", input.dry_run.to_string());
+            stats.print();
+        }
+
         print!("{}", output);
 
         Ok(())
@@ -2252,6 +2426,8 @@ struct TailOutput {
     lines_shown: usize,
     /// Whether filtering is active.
     filtering_errors: bool,
+    /// Total bytes read from file (original output size).
+    input_bytes: usize,
 }
 
 impl TailHandler {
@@ -2297,6 +2473,9 @@ impl TailHandler {
 
         let tail_lines: Vec<String> = all_lines[start..].to_vec();
 
+        // Calculate input_bytes (total bytes of all lines read)
+        let input_bytes: usize = all_lines.iter().map(|l| l.len()).sum();
+
         // Process lines
         let mut result_lines: Vec<TailLine> = Vec::new();
         let mut line_number = start + 1; // 1-indexed
@@ -2327,6 +2506,7 @@ impl TailHandler {
             total_lines,
             lines_shown,
             filtering_errors: input.errors,
+            input_bytes,
         })
     }
 
@@ -2643,20 +2823,30 @@ impl CommandHandler for TailHandler {
     type Input = TailInput;
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Read initial tail lines
-        let output = self.read_tail_lines(input)?;
+        let tail_output = self.read_tail_lines(input)?;
 
         // Format and print initial output
-        let formatted = Self::format_output(&output, ctx.format);
+        let formatted = Self::format_output(&tail_output, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(tail_output.input_bytes)
+                .with_items_processed(tail_output.lines_shown)
+                .with_items_filtered(if tail_output.filtering_errors { tail_output.total_lines.saturating_sub(tail_output.lines_shown) } else { 0 })
+                .with_output_bytes(formatted.len())
+                .with_extra("Total lines", tail_output.total_lines.to_string())
+                .with_extra("Lines shown", tail_output.lines_shown.to_string())
+                .with_extra("Filtering errors", tail_output.filtering_errors.to_string());
+            stats.print();
+        }
+
         print!("{}", formatted);
 
         // If follow mode is enabled, stream new lines
         if input.follow {
-            self.stream_tail_lines(input, output.total_lines, ctx)?;
+            self.stream_tail_lines(input, tail_output.total_lines, ctx)?;
         }
 
         Ok(())
@@ -2857,6 +3047,19 @@ impl CommandHandler for CleanHandler {
 
         // Format and output the result
         let formatted = self.format_output(&original, &cleaned, input, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(original.len())
+                .with_output_bytes(formatted.len())
+                .with_extra("No ANSI", input.no_ansi.to_string())
+                .with_extra("Collapse blanks", input.collapse_blanks.to_string())
+                .with_extra("Collapse repeats", input.collapse_repeats.to_string())
+                .with_extra("Trim", input.trim.to_string());
+            stats.print();
+        }
+
         print!("{}", formatted);
 
         Ok(())
@@ -3042,6 +3245,17 @@ impl CommandHandler for TrimHandler {
 
         // Format and output the result
         let formatted = self.format_output(&original, &trimmed, input, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(original.len())
+                .with_output_bytes(formatted.len())
+                .with_extra("Leading", input.leading.to_string())
+                .with_extra("Trailing", input.trailing.to_string());
+            stats.print();
+        }
+
         print!("{}", formatted);
 
         Ok(())
@@ -3200,6 +3414,15 @@ impl CommandHandler for Html2mdHandler {
 
         // Format output
         let formatted = self.format_output(&markdown, metadata.as_ref(), ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(html.len())
+                .with_output_bytes(formatted.len())
+                .with_extra("Source type", if Self::is_url(&input.input) { "url" } else { "file" });
+            stats.print();
+        }
 
         // Write to output file or stdout
         if let Some(ref output_path) = input.output {
@@ -4027,6 +4250,15 @@ impl CommandHandler for Txt2mdHandler {
         // Format output
         let formatted = self.format_output(&normalized, &metadata, ctx.format);
 
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(text.len())
+                .with_output_bytes(formatted.len())
+                .with_extra("Source", input.input.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "stdin".to_string()));
+            stats.print();
+        }
+
         // Write to output file or stdout
         if let Some(ref output_path) = input.output {
             std::fs::write(output_path, &formatted).map_err(|e| {
@@ -4072,10 +4304,12 @@ impl IsCleanHandler {
                         unstaged_count: 0,
                         untracked_count: 0,
                         unmerged_count: 0,
+                        input_bytes: 0,
                     });
                 }
 
                 let stdout = process_output.stdout;
+                let input_bytes = stdout.len();
 
                 // Empty output means clean repository
                 if stdout.trim().is_empty() {
@@ -4088,6 +4322,7 @@ impl IsCleanHandler {
                         unstaged_count: 0,
                         untracked_count: 0,
                         unmerged_count: 0,
+                        input_bytes,
                     });
                 }
 
@@ -4151,6 +4386,7 @@ impl IsCleanHandler {
                     unstaged_count,
                     untracked_count,
                     unmerged_count,
+                    input_bytes,
                 })
             }
             Err(_) => {
@@ -4164,6 +4400,7 @@ impl IsCleanHandler {
                     unstaged_count: 0,
                     untracked_count: 0,
                     unmerged_count: 0,
+                    input_bytes: 0,
                 })
             }
         }
@@ -4219,14 +4456,27 @@ impl CommandHandler for IsCleanHandler {
     type Input = IsCleanInput;
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         let state = Self::check_repo_state(input.check_untracked.unwrap_or(true))?;
 
         // Format and print output
         let formatted = Self::format_output(&state, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let total_changes = state.staged_count + state.unstaged_count + state.untracked_count + state.unmerged_count;
+            let stats = CommandStats::new()
+                .with_input_bytes(state.input_bytes)
+                .with_output_bytes(formatted.len())
+                .with_items_processed(total_changes)
+                .with_extra("Is git repo", state.is_git_repo.to_string())
+                .with_extra("Is clean", state.is_clean.to_string())
+                .with_extra("Staged", state.staged_count.to_string())
+                .with_extra("Unstaged", state.unstaged_count.to_string())
+                .with_extra("Untracked", state.untracked_count.to_string())
+                .with_extra("Unmerged", state.unmerged_count.to_string());
+            stats.print();
+        }
+
         print!("{}", formatted);
 
         // Exit with appropriate code:
@@ -4276,6 +4526,8 @@ struct RepositoryState {
     untracked_count: usize,
     /// Number of unmerged (conflict) files.
     unmerged_count: usize,
+    /// Size of git status output in bytes.
+    input_bytes: usize,
 }
 
 /// Input data for the `is-clean` command.
@@ -4294,10 +4546,6 @@ impl ParseHandler {
         count: &Option<String>,
         ctx: &CommandContext,
     ) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -4319,10 +4567,30 @@ impl ParseHandler {
                 }
             };
             let output = Self::format_git_status_count(count_value, ctx.format);
+            if ctx.stats {
+                let stats = CommandStats::new()
+                    .with_input_bytes(input.len())
+                    .with_output_bytes(output.len())
+                    .with_items_processed(count_value)
+                    .with_extra("Category", category.clone());
+                stats.print();
+            }
             print!("{}", output);
         } else {
             // Format output based on the requested format
             let output = Self::format_git_status(&status, ctx.format);
+            if ctx.stats {
+                let total_changes = status.staged_count + status.unstaged_count + status.untracked_count + status.unmerged_count;
+                let stats = CommandStats::new()
+                    .with_input_bytes(input.len())
+                    .with_output_bytes(output.len())
+                    .with_items_processed(total_changes)
+                    .with_extra("Staged", status.staged_count.to_string())
+                    .with_extra("Unstaged", status.unstaged_count.to_string())
+                    .with_extra("Untracked", status.untracked_count.to_string())
+                    .with_extra("Unmerged", status.unmerged_count.to_string());
+                stats.print();
+            }
             print!("{}", output);
         }
 
@@ -4895,10 +5163,6 @@ impl ParseHandler {
 
     /// Handle the git-diff subcommand.
     fn handle_git_diff(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -4907,6 +5171,19 @@ impl ParseHandler {
 
         // Format output based on the requested format
         let output = Self::format_git_diff(&diff, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(input.len())
+                .with_output_bytes(output.len())
+                .with_items_processed(diff.files.len())
+                .with_extra("Files changed", diff.files.len().to_string())
+                .with_extra("Insertions", diff.total_additions.to_string())
+                .with_extra("Deletions", diff.total_deletions.to_string());
+            stats.print();
+        }
+
         print!("{}", output);
 
         Ok(())
@@ -5211,10 +5488,6 @@ impl ParseHandler {
 
     /// Handle the ls subcommand.
     fn handle_ls(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -5223,6 +5496,19 @@ impl ParseHandler {
 
         // Format output based on the requested format
         let output = Self::format_ls(&ls_output, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(input.len())
+                .with_output_bytes(output.len())
+                .with_items_processed(ls_output.entries.len())
+                .with_extra("Files", ls_output.files.len().to_string())
+                .with_extra("Directories", ls_output.directories.len().to_string())
+                .with_extra("Hidden", ls_output.hidden.len().to_string());
+            stats.print();
+        }
+
         print!("{}", output);
 
         Ok(())
@@ -5653,10 +5939,6 @@ impl ParseHandler {
 
     /// Handle the grep subcommand.
     fn handle_grep(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -5672,6 +5954,19 @@ impl ParseHandler {
 
         // Format output based on the requested format
         let output = Self::format_grep(&grep_output, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(input.len())
+                .with_output_bytes(output.len())
+                .with_items_processed(grep_output.matches_shown)
+                .with_items_filtered(grep_output.total_matches.saturating_sub(grep_output.matches_shown))
+                .with_extra("Files with matches", grep_output.file_count.to_string())
+                .with_extra("Total matches", grep_output.total_matches.to_string());
+            stats.print();
+        }
+
         print!("{}", output);
 
         Ok(())
@@ -6248,46 +6543,62 @@ impl ParseHandler {
         file: &Option<std::path::PathBuf>,
         ctx: &CommandContext,
     ) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
         // Parse based on the runner type (default to pytest)
-        match runner {
+        let (output, passed, failed, skipped) = match runner {
             Some(crate::TestRunner::Pytest) | None => {
                 let test_output = Self::parse_pytest(&input)?;
+                let (passed, failed, skipped) = (test_output.summary.passed, test_output.summary.failed, test_output.summary.skipped);
                 let output = Self::format_pytest(&test_output, ctx.format);
-                print!("{}", output);
+                (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Jest) => {
                 let test_output = Self::parse_jest(&input)?;
+                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
                 let output = Self::format_jest(&test_output, ctx.format);
-                print!("{}", output);
+                (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Vitest) => {
                 let test_output = Self::parse_vitest(&input)?;
+                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
                 let output = Self::format_vitest(&test_output, ctx.format);
-                print!("{}", output);
+                (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Npm) => {
                 let test_output = Self::parse_npm_test(&input)?;
+                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
                 let output = Self::format_npm_test(&test_output, ctx.format);
-                print!("{}", output);
+                (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Pnpm) => {
                 let test_output = Self::parse_pnpm_test(&input)?;
+                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
                 let output = Self::format_pnpm_test(&test_output, ctx.format);
-                print!("{}", output);
+                (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Bun) => {
                 let test_output = Self::parse_bun_test(&input)?;
+                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
                 let output = Self::format_bun_test(&test_output, ctx.format);
-                print!("{}", output);
+                (output, passed, failed, skipped)
             }
+        };
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(input.len())
+                .with_output_bytes(output.len())
+                .with_items_processed(passed + failed + skipped)
+                .with_extra("Passed", passed.to_string())
+                .with_extra("Failed", failed.to_string())
+                .with_extra("Skipped", skipped.to_string());
+            stats.print();
         }
+
+        print!("{}", output);
 
         Ok(())
     }
@@ -10285,10 +10596,6 @@ impl ParseHandler {
 
     /// Handle the logs subcommand.
     fn handle_logs(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -10297,6 +10604,22 @@ impl ParseHandler {
 
         // Format output based on the requested format
         let output = Self::format_logs(&logs_output, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(input.len())
+                .with_output_bytes(output.len())
+                .with_items_processed(logs_output.total_lines)
+                .with_extra("Debug", logs_output.debug_count.to_string())
+                .with_extra("Info", logs_output.info_count.to_string())
+                .with_extra("Warning", logs_output.warning_count.to_string())
+                .with_extra("Error", logs_output.error_count.to_string())
+                .with_extra("Fatal", logs_output.fatal_count.to_string())
+                .with_extra("Repeated lines", logs_output.repeated_lines.len().to_string());
+            stats.print();
+        }
+
         print!("{}", output);
 
         Ok(())
@@ -11122,10 +11445,6 @@ impl ParseHandler {
 
     /// Handle the find subcommand.
     fn handle_find(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -11134,6 +11453,19 @@ impl ParseHandler {
 
         // Format output based on the requested format
         let output = Self::format_find(&find_output, ctx.format);
+
+        // Print stats if requested
+        if ctx.stats {
+            let stats = CommandStats::new()
+                .with_input_bytes(input.len())
+                .with_output_bytes(output.len())
+                .with_items_processed(find_output.entries.len())
+                .with_extra("Files", find_output.files.len().to_string())
+                .with_extra("Directories", find_output.directories.len().to_string())
+                .with_extra("Hidden", find_output.hidden.len().to_string());
+            stats.print();
+        }
+
         print!("{}", output);
 
         Ok(())

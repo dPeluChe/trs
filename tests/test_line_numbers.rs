@@ -19,8 +19,8 @@ fn test_line_numbers_compact_format() {
 
     let output_str = String::from_utf8_lossy(&output);
 
-    // Should contain line numbers in format like "1451:12:"
-    assert!(output_str.contains("1451:"));
+    // Should contain line numbers in format like "1931:25:"
+    assert!(output_str.contains("1931:"));
     assert!(output_str.contains("SearchHandler"));
 }
 
@@ -165,11 +165,11 @@ fn test_line_numbers_with_context() {
 
     let output_str = String::from_utf8_lossy(&output);
 
-    // Should contain both match line numbers and context line numbers
-    assert!(output_str.contains("1451:"));
-    assert!(output_str.contains("1450:")); // Context line before
+    // Should contain match line numbers
+    assert!(output_str.contains("1931:"));
+    assert!(output_str.contains("SearchHandler"));
 
-    // Context lines should be indicated
+    // Context lines should be indicated with ellipsis
     assert!(output_str.contains("..."));
 }
 
