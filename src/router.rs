@@ -2299,6 +2299,12 @@ impl ParseHandler {
                 continue;
             }
 
+            // Detect up to date: "Your branch is up to date with 'origin/master'."
+            if line.starts_with("Your branch is up to date") {
+                // No action needed, just skip this line
+                continue;
+            }
+
             // Detect diverged: "Your branch and 'origin/master' have diverged,"
             if line.starts_with("Your branch and ") && line.contains(" have diverged") {
                 // This line indicates divergence, but actual counts are on separate lines

@@ -5545,6 +5545,49 @@ fn test_parse_git_status_with_null_bytes() {
 }
 
 #[test]
+fn test_parse_git_status_with_up_to_date() {
+    // Test git status parsing with "Your branch is up to date" line
+    let status_input = "On branch main\nYour branch is up to date with 'origin/main'.\n\nChanges to be committed:\n  modified:   src/main.rs\n\nUntracked files:\n  new_file.txt\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-status")
+        .write_stdin(status_input)
+        .assert()
+        .success()
+        // Should correctly count 1 staged file
+        .stdout(predicate::str::contains("staged=1"))
+        // Should correctly count 1 untracked file
+        .stdout(predicate::str::contains("untracked=1"))
+        // Should show the staged file
+        .stdout(predicate::str::contains("M src/main.rs"))
+        // Should show the untracked file
+        .stdout(predicate::str::contains("?? new_file.txt"))
+        // Should NOT incorrectly parse "Your branch is up to date" as a file
+        .stdout(predicate::function(|x: &str| !x.contains("Yo")));
+}
+
+#[test]
+fn test_parse_git_status_with_up_to_date_json() {
+    // Test git status JSON output with "Your branch is up to date" line
+    let status_input = "On branch main\nYour branch is up to date with 'origin/main'.\n\nChanges to be committed:\n  modified:   src/main.rs\n\nUntracked files:\n  new_file.txt\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("git-status")
+        .write_stdin(status_input)
+        .assert()
+        .success()
+        // JSON should have correct counts
+        .stdout(predicate::str::contains("\"staged_count\":1"))
+        .stdout(predicate::str::contains("\"untracked_count\":1"))
+        // JSON should have correct staged file
+        .stdout(predicate::str::contains("\"status\":\"M\""))
+        .stdout(predicate::str::contains("\"path\":\"src/main.rs\""))
+        // JSON should NOT contain malformed entries
+        .stdout(predicate::function(|x: &str| !x.contains("Yo")));
+}
+
+#[test]
 fn test_parse_logs_with_control_chars() {
     // Test logs parsing with control characters
     let mut cmd = Command::cargo_bin("trs").unwrap();
