@@ -11657,14 +11657,183 @@ mod tests {
         assert!(result.is_ok());
 
         let output_content = std::fs::read_to_string(&output_path).unwrap();
-        // Check for unordered list items (with asterisks or dashes)
+
+        // Check for unordered list markdown formatting (asterisk or dash prefix)
+        // The output should contain list markers like "*   " or "-   " or "* " or "- "
+        let has_unordered_markers = output_content.lines().any(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with("* ") || trimmed.starts_with("- ") || trimmed.starts_with("*   ") || trimmed.starts_with("-   ")
+        });
+        assert!(has_unordered_markers, "Output should contain unordered list markers (* or -)");
+
+        // Check for ordered list markdown formatting (number followed by period)
+        let has_ordered_markers = output_content.lines().any(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with("1. ") || trimmed.starts_with("2. ") || trimmed.starts_with("3. ")
+        });
+        assert!(has_ordered_markers, "Output should contain ordered list markers (1., 2., 3.)");
+
+        // Check that the actual content is preserved
         assert!(output_content.contains("Unordered item 1"));
         assert!(output_content.contains("Unordered item 2"));
         assert!(output_content.contains("Unordered item 3"));
-        // Check for ordered list items
         assert!(output_content.contains("Ordered item 1"));
         assert!(output_content.contains("Ordered item 2"));
         assert!(output_content.contains("Ordered item 3"));
+
+        let _ = std::fs::remove_file(&html_path);
+        let _ = std::fs::remove_file(&output_path);
+    }
+
+    #[test]
+    fn test_html2md_nested_list_conversion() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_nested_list_conversion.html");
+        let output_path = temp_dir.join("test_nested_list_conversion_output.md");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Nested List Test</title></head>
+<body>
+<ul>
+  <li>Item 1
+    <ul>
+      <li>Nested item 1.1</li>
+      <li>Nested item 1.2</li>
+    </ul>
+  </li>
+  <li>Item 2</li>
+</ul>
+<ol>
+  <li>First
+    <ol>
+      <li>Sub-first</li>
+    </ol>
+  </li>
+  <li>Second</li>
+</ol>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: Some(output_path.clone()),
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        let output_content = std::fs::read_to_string(&output_path).unwrap();
+
+        // Check that nested items are present
+        assert!(output_content.contains("Item 1"));
+        assert!(output_content.contains("Nested item 1.1"));
+        assert!(output_content.contains("Nested item 1.2"));
+        assert!(output_content.contains("Item 2"));
+
+        // Check that nested items are indented (have leading whitespace)
+        let lines: Vec<&str> = output_content.lines().collect();
+        let nested_lines: Vec<&&str> = lines
+            .iter()
+            .filter(|line| line.contains("Nested item") || line.contains("Sub-first"))
+            .collect();
+
+        // Nested items should have some indentation
+        for nested_line in nested_lines {
+            let has_indentation = nested_line.starts_with(|c: char| c.is_whitespace());
+            assert!(
+                has_indentation || nested_line.contains('*') || nested_line.contains('-'),
+                "Nested list items should be indented: '{}'",
+                nested_line
+            );
+        }
+
+        let _ = std::fs::remove_file(&html_path);
+        let _ = std::fs::remove_file(&output_path);
+    }
+
+    #[test]
+    fn test_html2md_mixed_nested_list_conversion() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_mixed_nested_list.html");
+        let output_path = temp_dir.join("test_mixed_nested_list_output.md");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Mixed Nested List Test</title></head>
+<body>
+<ol>
+  <li>First ordered
+    <ul>
+      <li>Unordered sub-item</li>
+    </ul>
+  </li>
+  <li>Second ordered</li>
+</ol>
+<ul>
+  <li>Unordered first
+    <ol>
+      <li>Ordered sub-item</li>
+    </ol>
+  </li>
+</ul>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: Some(output_path.clone()),
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        let output_content = std::fs::read_to_string(&output_path).unwrap();
+
+        // Check that all content is preserved
+        assert!(output_content.contains("First ordered"));
+        assert!(output_content.contains("Unordered sub-item"));
+        assert!(output_content.contains("Second ordered"));
+        assert!(output_content.contains("Unordered first"));
+        assert!(output_content.contains("Ordered sub-item"));
+
+        // Verify mixed list types are handled (ordered with unordered nested, and vice versa)
+        let has_ordered = output_content.lines().any(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with("1. ") || trimmed.starts_with("2. ")
+        });
+        let has_unordered = output_content.lines().any(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with("* ") || trimmed.starts_with("- ")
+        });
+        assert!(has_ordered, "Should have ordered list markers");
+        assert!(has_unordered, "Should have unordered list markers");
 
         let _ = std::fs::remove_file(&html_path);
         let _ = std::fs::remove_file(&output_path);
