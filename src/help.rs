@@ -101,9 +101,11 @@ ARGUMENTS:
 OPTIONS:
     -e, --extension <EXT>    Filter by file extension
     --dry-run, --preview     Preview changes without modifying files
+    --count                  Output only the total replacement count
 
 OUTPUT:
     Shows affected file count and replacement count in all formats.
+    With --count, outputs only the total replacement count.
 
 EXAMPLES:
     # Replace \"foo\" with \"bar\" in all files
@@ -116,7 +118,10 @@ EXAMPLES:
     trs --json replace . \"TODO\" \"DONE\"
 
     # Preview with dry-run (equivalent to --preview)
-    trs replace ./src \"oldName\" \"newName\" -e ts --dry-run";
+    trs replace ./src \"oldName\" \"newName\" -e ts --dry-run
+
+    # Get just the count of replacements
+    trs replace . \"TODO\" \"DONE\" --count";
 
 /// Help text for the tail command.
 #[allow(dead_code)]

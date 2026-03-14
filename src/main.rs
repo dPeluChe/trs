@@ -291,6 +291,10 @@ pub enum Commands {
         /// Preview changes without modifying files
         #[arg(short, long, alias = "preview")]
         dry_run: bool,
+
+        /// Output only the total replacement count
+        #[arg(long)]
+        count: bool,
     },
 
     /// Tail a file with compact log output
@@ -699,12 +703,49 @@ mod tests {
                 replace,
                 extension,
                 dry_run,
+                count,
             } => {
                 assert_eq!(path, &PathBuf::from("/path/to/dir"));
                 assert_eq!(search, "old");
                 assert_eq!(replace, "new");
                 assert_eq!(extension, &Some("ts".to_string()));
                 assert!(*dry_run);
+                assert!(!*count);
+            }
+            _ => panic!("Expected Replace command"),
+        }
+    }
+
+    #[test]
+    fn test_replace_command_parsing_with_count() {
+        let cli = Cli::try_parse_from([
+            "trs",
+            "replace",
+            "/path/to/dir",
+            "old",
+            "new",
+            "--extension",
+            "ts",
+            "--dry-run",
+            "--count",
+        ]);
+        assert!(cli.is_ok());
+        let cli = cli.unwrap();
+        match cli.command.as_ref().unwrap() {
+            Commands::Replace {
+                path,
+                search,
+                replace,
+                extension,
+                dry_run,
+                count,
+            } => {
+                assert_eq!(path, &PathBuf::from("/path/to/dir"));
+                assert_eq!(search, "old");
+                assert_eq!(replace, "new");
+                assert_eq!(extension, &Some("ts".to_string()));
+                assert!(*dry_run);
+                assert!(*count);
             }
             _ => panic!("Expected Replace command"),
         }

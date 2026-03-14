@@ -2904,6 +2904,94 @@ fn test_replace_affected_file_count() {
 }
 
 #[test]
+fn test_replace_count_flag() {
+    use std::fs;
+    use tempfile::TempDir;
+    
+    // Create a temporary directory
+    let temp_dir = TempDir::new().unwrap();
+    let temp_path = temp_dir.path();
+    
+    // Create test files with known patterns
+    fs::write(temp_path.join("file1.txt"), "hello world\nhello again").unwrap();
+    fs::write(temp_path.join("file2.txt"), "hello everyone").unwrap();
+    fs::write(temp_path.join("file3.txt"), "goodbye").unwrap(); // No match
+    
+    // Run replace with --count flag (default output format)
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("replace")
+        .arg(temp_path)
+        .arg("hello")
+        .arg("hi")
+        .arg("--dry-run")
+        .arg("--count")
+        .output()
+        .expect("Failed to execute command");
+    
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Should output just the count (3 total replacements: 2 in file1 + 1 in file2)
+    assert_eq!(stdout.trim(), "3");
+}
+
+#[test]
+fn test_replace_count_flag_json_output() {
+    use std::fs;
+    use tempfile::TempDir;
+    
+    // Create a temporary directory
+    let temp_dir = TempDir::new().unwrap();
+    let temp_path = temp_dir.path();
+    
+    // Create test files with known patterns
+    fs::write(temp_path.join("file1.txt"), "hello world\nhello again").unwrap();
+    fs::write(temp_path.join("file2.txt"), "hello everyone").unwrap();
+    fs::write(temp_path.join("file3.txt"), "goodbye").unwrap(); // No match
+    
+    // Run replace with --count flag and JSON output
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("replace")
+        .arg(temp_path)
+        .arg("hello")
+        .arg("hi")
+        .arg("--dry-run")
+        .arg("--count")
+        .output()
+        .expect("Failed to execute command");
+    
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON output");
+    
+    // Should output just the count in JSON format
+    assert_eq!(json["count"].as_u64().unwrap(), 3);
+}
+
+#[test]
+fn test_replace_count_flag_no_matches() {
+    // Test that --count returns 0 when there are no matches
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("replace")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_12345_UNIQUE")
+        .arg("new")
+        .arg("--dry-run")
+        .arg("--extension")
+        .arg("rs")
+        .arg("--count")
+        .output()
+        .expect("Failed to execute command");
+    
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.trim(), "0");
+}
+
+#[test]
 fn test_tail_json_output_not_implemented() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd

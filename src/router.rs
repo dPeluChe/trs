@@ -2128,6 +2128,19 @@ impl ReplaceHandler {
     fn escape_tsv_field(field: &str) -> String {
         field.replace('\t', "\\t").replace('\n', "\\n").replace('\r', "\\r")
     }
+
+    /// Format replacement count for output (just the number).
+    fn format_count(count: usize, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => serde_json::json!({ "count": count }).to_string(),
+            OutputFormat::Raw | OutputFormat::Compact | OutputFormat::Agent => {
+                format!("{}\n", count)
+            }
+            OutputFormat::Csv | OutputFormat::Tsv => {
+                format!("count\n{}\n", count)
+            }
+        }
+    }
 }
 
 impl CommandHandler for ReplaceHandler {
@@ -2140,6 +2153,14 @@ impl CommandHandler for ReplaceHandler {
 
         // Execute the replace
         let replacements = self.execute_replace(input)?;
+
+        // If count flag is specified, output only the count
+        if input.count {
+            let total_replacements: usize = replacements.iter().map(|(_, r)| r.len()).sum();
+            let output = Self::format_count(total_replacements, ctx.format);
+            print!("{}", output);
+            return Ok(());
+        }
 
         // Format and print the output
         let output = Self::format_output(&replacements, input, ctx.format);
@@ -2157,6 +2178,7 @@ pub struct ReplaceInput {
     pub replace: String,
     pub extension: Option<String>,
     pub dry_run: bool,
+    pub count: bool,
 }
 
 /// Handler for the `tail` command.
@@ -9673,6 +9695,7 @@ impl Router {
                 replace,
                 extension,
                 dry_run,
+                count,
             } => {
                 let input = ReplaceInput {
                     path: path.clone(),
@@ -9680,6 +9703,7 @@ impl Router {
                     replace: replace.clone(),
                     extension: extension.clone(),
                     dry_run: *dry_run,
+                    count: *count,
                 };
                 self.replace_handler.execute(&input, ctx)
             }
@@ -10250,6 +10274,7 @@ mod tests {
             replace: "new".to_string(),
             extension: Some("rs".to_string()),
             dry_run: true,
+            count: false,
         };
 
         // The replace handler should execute successfully (dry run, no actual changes)
@@ -10271,6 +10296,7 @@ mod tests {
             replace: "new".to_string(),
             extension: Some("rs".to_string()),
             dry_run: true,
+            count: false,
         };
 
         let result = handler.execute(&input, &ctx);
