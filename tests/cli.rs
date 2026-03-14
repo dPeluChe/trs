@@ -1468,22 +1468,36 @@ fn test_tail_syntax_with_global_flags() {
 
 #[test]
 fn test_clean_basic() {
+    // Test basic clean with stdin input
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("clean")
+        .write_stdin("  hello world  \n\n\n  line 2  ")
         .assert()
         .success()
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("hello world"))
+        .stdout(predicate::str::contains("line 2"));
 }
 
 #[test]
 fn test_clean_with_options() {
+    // Test clean with all options
+    let input = "\x1b[31mRed text\x1b[0m\n\n\n  repeated line  \n  repeated line  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("clean")
         .arg("--no-ansi")
         .arg("--collapse-blanks")
+        .arg("--collapse-repeats")
         .arg("--trim")
+        .write_stdin(input)
         .assert()
-        .success();
+        .success()
+        .stdout(predicate::str::contains("Red text"))
+        .stdout(predicate::str::contains("repeated line"))
+        .stdout(predicate::function(|s: &str| {
+            // Should have only one occurrence of "repeated line" due to collapse-repeats
+            let count = s.matches("repeated line").count();
+            count == 1
+        }));
 }
 
 #[test]
@@ -3127,12 +3141,13 @@ fn test_router_tail_command() {
 
 #[test]
 fn test_router_clean_command() {
+    // Test that clean command works with stdin
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("clean")
+        .write_stdin("  hello world  ")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Clean:"))
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("hello world"));
 }
 
 #[test]
@@ -3679,17 +3694,332 @@ fn test_replace_count_flag_no_matches() {
 }
 
 #[test]
-fn test_clean_json_output_not_implemented() {
+fn test_clean_json_output() {
+    // Test that clean command produces valid JSON output
+    let input = "  hello world  \n\n\n  line 2  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("--json").arg("clean").assert().success();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-    let json_line = stderr.lines().last().unwrap_or("");
-    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
-    assert_eq!(json["not_implemented"], true);
-    assert!(json["message"]
-        .as_str()
-        .unwrap()
-        .contains("clean command execution"));
+    let output = cmd
+        .arg("--json")
+        .arg("clean")
+        .write_stdin(input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert!(json["content"].is_string());
+    assert!(json["stats"]["input_length"].is_number());
+    assert!(json["stats"]["output_length"].is_number());
+    assert!(json["stats"]["reduction_percent"].is_number());
+}
+
+#[test]
+fn test_clean_file_input() {
+    // Test clean with file input
+    use std::io::Write;
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    let path = temp_file.path();
+
+    let mut file = std::fs::File::create(path).unwrap();
+    writeln!(file, "  line 1  ").unwrap();
+    writeln!(file, "\n\n").unwrap();
+    writeln!(file, "  line 2  ").unwrap();
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--file")
+        .arg(path)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line 1"))
+        .stdout(predicate::str::contains("line 2"));
+}
+
+#[test]
+fn test_clean_file_not_found() {
+    // Test clean with non-existent file
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--file")
+        .arg("/nonexistent/file.txt")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("File not found"));
+}
+
+#[test]
+fn test_clean_no_ansi() {
+    // Test ANSI code removal
+    let input = "\x1b[31mRed\x1b[0m \x1b[32mGreen\x1b[0m";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Red Green"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b[")));
+}
+
+#[test]
+fn test_clean_no_ansi_csi_sequences() {
+    // Test CSI (Control Sequence Introducer) sequences
+    let input = "\x1b[1mBold\x1b[0m \x1b[4mUnderline\x1b[0m \x1b[7mReverse\x1b[0m";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Bold Underline Reverse"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b[")));
+}
+
+#[test]
+fn test_clean_no_ansi_multiple_params() {
+    // Test ANSI codes with multiple parameters
+    let input = "\x1b[1;31;42mBold Red on Green\x1b[0m";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Bold Red on Green"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b[")));
+}
+
+#[test]
+fn test_clean_no_ansi_osc_sequences() {
+    // Test OSC (Operating System Command) sequences
+    let input = "Title\x1b]0;Window Title\x07Text";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("TitleText"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b]")));
+}
+
+#[test]
+fn test_clean_no_ansi_osc_with_st() {
+    // Test OSC sequences with String Terminator (ST)
+    let input = "Title\x1b]0;Window Title\x1b\\Text";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("TitleText"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b]")));
+}
+
+#[test]
+fn test_clean_no_ansi_hyperlinks() {
+    // Test hyperlink sequences (OSC 8)
+    let input = "Click \x1b]8;;http://example.com\x07here\x1b]8;;\x07 now";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Click here now"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b]")));
+}
+
+#[test]
+fn test_clean_no_ansi_simple_escapes() {
+    // Test simple two-character escape sequences
+    let input = "Before\x1bcAfter";  // RIS (Reset to Initial State)
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("BeforeAfter"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1bc")));
+}
+
+#[test]
+fn test_clean_no_ansi_cursor_movement() {
+    // Test cursor movement sequences
+    let input = "Line 1\x1b[2A\x1b[10;20H\x1b[JLine 2";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Line 1Line 2"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b[")));
+}
+
+#[test]
+fn test_clean_no_ansi_character_sets() {
+    // Test character set selection sequences
+    let input = "Text\x1b(BMore\x1b)0Text";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("TextMoreText"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b(")));
+}
+
+#[test]
+fn test_clean_no_ansi_mixed() {
+    // Test mixed ANSI sequences
+    let input = "\x1b[1;31mError:\x1b[0m \x1b]8;;file:///path\x07/path/to/file\x1b]8;;\x07\x1b[K";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Error: /path/to/file"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b")));
+}
+
+#[test]
+fn test_clean_no_ansi_real_world() {
+    // Test real-world terminal output with various ANSI codes
+    let input = "\x1b[?25lHidden cursor\x1b[?25h\x1b[2KProgress: 50%\x1b[0K";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--no-ansi")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Hidden cursorProgress: 50%"))
+        .stdout(predicate::function(|s: &str| !s.contains("\x1b")));
+}
+
+#[test]
+fn test_clean_collapse_blanks() {
+    // Test blank line collapsing
+    let input = "line 1\n\n\n\nline 2\n\n\nline 3";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--collapse-blanks")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line 1"))
+        .stdout(predicate::str::contains("line 2"))
+        .stdout(predicate::str::contains("line 3"));
+}
+
+#[test]
+fn test_clean_collapse_repeats() {
+    // Test repeated line collapsing
+    let input = "line 1\nline 1\nline 2\nline 2\nline 2\nline 3";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--collapse-repeats")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::function(|s: &str| {
+            // Each line should appear only once
+            let line1_count = s.matches("line 1").count();
+            let line2_count = s.matches("line 2").count();
+            let line3_count = s.matches("line 3").count();
+            line1_count == 1 && line2_count == 1 && line3_count == 1
+        }));
+}
+
+#[test]
+fn test_clean_trim() {
+    // Test whitespace trimming
+    let input = "  line 1  \n\t\tline 2\t\t\n   line 3   ";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--trim")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line 1"))
+        .stdout(predicate::str::contains("line 2"))
+        .stdout(predicate::str::contains("line 3"));
+}
+
+#[test]
+fn test_clean_compact_output() {
+    // Test compact format output
+    let input = "  hello  \n\n\n  world  ";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("clean")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hello"))
+        .stdout(predicate::str::contains("world"))
+        .stdout(predicate::str::contains("reduction"));
+}
+
+#[test]
+fn test_clean_raw_output() {
+    // Test raw format output
+    let input = "  line 1  \n  line 2  ";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("clean")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line 1"))
+        .stdout(predicate::str::contains("line 2"));
+}
+
+#[test]
+fn test_clean_agent_output() {
+    // Test agent format output
+    let input = "  hello  \n\n  world  ";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--agent")
+        .arg("clean")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Content"))
+        .stdout(predicate::str::contains("reduction"))
+        .stdout(predicate::str::contains("hello"))
+        .stdout(predicate::str::contains("world"));
+}
+
+#[test]
+fn test_clean_csv_output() {
+    // Test CSV format output
+    let input = "line 1\nline 2";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--csv")
+        .arg("clean")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"line 1\""))
+        .stdout(predicate::str::contains("\"line 2\""));
+}
+
+#[test]
+fn test_clean_tsv_output() {
+    // Test TSV format output
+    let input = "line 1\nline 2";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--tsv")
+        .arg("clean")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line 1"))
+        .stdout(predicate::str::contains("line 2"));
 }
 
 #[test]
