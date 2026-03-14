@@ -199,6 +199,14 @@ impl std::error::Error for CommandError {}
 // Command Statistics
 // ============================================================
 
+/// Estimate the number of tokens from byte count.
+/// Uses the common approximation of ~4 characters per token.
+fn estimate_tokens(bytes: usize) -> usize {
+    // Most tokenizers average around 4 characters per token for English text
+    // This is a rough estimate suitable for statistics display
+    bytes / 4
+}
+
 /// Statistics about command execution.
 #[derive(Debug, Clone, Default)]
 pub struct CommandStats {
@@ -206,6 +214,10 @@ pub struct CommandStats {
     pub input_bytes: usize,
     /// Output size in bytes.
     pub output_bytes: usize,
+    /// Estimated input token count.
+    pub input_tokens: usize,
+    /// Estimated output token count.
+    pub output_tokens: usize,
     /// Number of items processed (matches, files, lines, etc.).
     pub items_processed: usize,
     /// Number of items filtered out.
@@ -226,15 +238,17 @@ impl CommandStats {
         Self::default()
     }
 
-    /// Set input bytes.
+    /// Set input bytes (also calculates estimated tokens).
     pub fn with_input_bytes(mut self, bytes: usize) -> Self {
         self.input_bytes = bytes;
+        self.input_tokens = estimate_tokens(bytes);
         self
     }
 
-    /// Set output bytes.
+    /// Set output bytes (also calculates estimated tokens).
     pub fn with_output_bytes(mut self, bytes: usize) -> Self {
         self.output_bytes = bytes;
+        self.output_tokens = estimate_tokens(bytes);
         self
     }
 
@@ -285,6 +299,17 @@ impl CommandStats {
         }
     }
 
+    /// Calculate token reduction percentage.
+    pub fn token_reduction_percent(&self) -> f64 {
+        if self.input_tokens == 0 {
+            0.0
+        } else if self.output_tokens >= self.input_tokens {
+            0.0 // No reduction if output is larger or equal
+        } else {
+            ((self.input_tokens - self.output_tokens) as f64 / self.input_tokens as f64) * 100.0
+        }
+    }
+
     /// Print stats to stderr.
     pub fn print(&self) {
         eprintln!("Stats:");
@@ -300,6 +325,15 @@ impl CommandStats {
             let reduction = self.reduction_percent();
             if reduction > 0.0 {
                 eprintln!("  Reduction: {:.1}%", reduction);
+            }
+            // Show token estimation
+            if self.input_tokens > 0 || self.output_tokens > 0 {
+                eprintln!("  Input tokens (est.): {}", self.input_tokens);
+                eprintln!("  Output tokens (est.): {}", self.output_tokens);
+                let token_reduction = self.token_reduction_percent();
+                if token_reduction > 0.0 {
+                    eprintln!("  Token reduction: {:.1}%", token_reduction);
+                }
             }
         }
         if self.items_processed > 0 {

@@ -8633,6 +8633,22 @@ fn test_clean_stats_shows_reduction() {
 }
 
 #[test]
+fn test_stats_shows_token_estimation() {
+    // Use repeated lines that will be collapsed - this should result in token reduction
+    let input = "test line\n".repeat(10);
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("clean")
+        .arg("--collapse-repeats")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Input tokens (est.):"))
+        .stderr(predicate::str::contains("Output tokens (est.):"))
+        .stderr(predicate::str::contains("Token reduction:"));
+}
+
+#[test]
 fn test_trim_stats_shows_input_bytes() {
     let input = "  hello world  ";
     let mut cmd = Command::cargo_bin("trs").unwrap();

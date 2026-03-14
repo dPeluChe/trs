@@ -449,6 +449,14 @@ pub struct ReducerMetadata {
     pub custom: Option<HashMap<String, String>>,
 }
 
+/// Estimate the number of tokens from byte count.
+/// Uses the common approximation of ~4 characters per token.
+fn estimate_tokens(bytes: usize) -> usize {
+    // Most tokenizers average around 4 characters per token for English text
+    // This is a rough estimate suitable for statistics display
+    bytes / 4
+}
+
 /// Statistics about input/output transformation.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct ReducerStats {
@@ -462,6 +470,40 @@ pub struct ReducerStats {
     pub input_lines: usize,
     /// Number of lines in output.
     pub output_lines: usize,
+    /// Estimated input token count.
+    pub input_tokens: usize,
+    /// Estimated output token count.
+    pub output_tokens: usize,
+    /// Token reduction ratio (output_tokens / input_tokens).
+    pub token_reduction_ratio: f64,
+}
+
+impl ReducerStats {
+    /// Create new stats with automatic token estimation.
+    pub fn new(input_bytes: usize, output_bytes: usize, input_lines: usize, output_lines: usize) -> Self {
+        let input_tokens = estimate_tokens(input_bytes);
+        let output_tokens = estimate_tokens(output_bytes);
+        let reduction_ratio = if input_bytes > 0 {
+            output_bytes as f64 / input_bytes as f64
+        } else {
+            0.0
+        };
+        let token_reduction_ratio = if input_tokens > 0 {
+            output_tokens as f64 / input_tokens as f64
+        } else {
+            0.0
+        };
+        Self {
+            input_bytes,
+            output_bytes,
+            reduction_ratio,
+            input_lines,
+            output_lines,
+            input_tokens,
+            output_tokens,
+            token_reduction_ratio,
+        }
+    }
 }
 
 /// The main output structure produced by reducers.
@@ -1128,13 +1170,7 @@ mod tests {
 
     #[test]
     fn test_reducer_output_with_stats() {
-        let stats = ReducerStats {
-            input_bytes: 1000,
-            output_bytes: 500,
-            reduction_ratio: 0.5,
-            input_lines: 100,
-            output_lines: 50,
-        };
+        let stats = ReducerStats::new(1000, 500, 100, 50);
 
         let output = ReducerOutput::new(vec![1, 2, 3]).with_stats(stats);
 
@@ -1143,6 +1179,9 @@ mod tests {
         assert_eq!(s.input_bytes, 1000);
         assert_eq!(s.output_bytes, 500);
         assert_eq!(s.reduction_ratio, 0.5);
+        assert_eq!(s.input_tokens, 250);  // 1000 / 4
+        assert_eq!(s.output_tokens, 125); // 500 / 4
+        assert_eq!(s.token_reduction_ratio, 0.5);
     }
 
     #[test]
@@ -1413,6 +1452,31 @@ mod tests {
         assert_eq!(stats.reduction_ratio, 0.0);
         assert_eq!(stats.input_lines, 0);
         assert_eq!(stats.output_lines, 0);
+        assert_eq!(stats.input_tokens, 0);
+        assert_eq!(stats.output_tokens, 0);
+        assert_eq!(stats.token_reduction_ratio, 0.0);
+    }
+
+    #[test]
+    fn test_reducer_stats_new() {
+        let stats = ReducerStats::new(4000, 1000, 200, 50);
+
+        assert_eq!(stats.input_bytes, 4000);
+        assert_eq!(stats.output_bytes, 1000);
+        assert_eq!(stats.reduction_ratio, 0.25);
+        assert_eq!(stats.input_lines, 200);
+        assert_eq!(stats.output_lines, 50);
+        assert_eq!(stats.input_tokens, 1000);  // 4000 / 4
+        assert_eq!(stats.output_tokens, 250);  // 1000 / 4
+        assert_eq!(stats.token_reduction_ratio, 0.25);
+    }
+
+    #[test]
+    fn test_reducer_stats_zero_input() {
+        let stats = ReducerStats::new(0, 0, 0, 0);
+
+        assert_eq!(stats.reduction_ratio, 0.0);
+        assert_eq!(stats.token_reduction_ratio, 0.0);
     }
 
     // ============================================================
