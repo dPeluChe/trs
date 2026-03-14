@@ -3304,6 +3304,44 @@ impl Txt2mdHandler {
                 continue;
             }
 
+            // Detect unordered list items (- or * prefix, possibly nested)
+            // Must be checked BEFORE heading detection to avoid misidentifying list items as headings
+            if let Some((list_char, indent_level)) = Self::is_unordered_list_item_with_indent(line) {
+                in_list = true;
+                let rest = Self::strip_list_prefix(trimmed, list_char);
+                let indent = "  ".repeat(indent_level);
+                result.push(format!("{}- {}", indent, Self::format_inline(rest)));
+
+                // Check for continuation lines
+                i += 1;
+                while i < lines.len() && Self::is_list_continuation(lines[i]) {
+                    let cont_trimmed = lines[i].trim();
+                    let cont_indent = "  ".repeat(indent_level + 1);
+                    result.push(format!("{}{}", cont_indent, Self::format_inline(cont_trimmed)));
+                    i += 1;
+                }
+                continue;
+            }
+
+            // Detect ordered list items (1., 2., etc., possibly nested)
+            // Must be checked BEFORE heading detection to avoid misidentifying list items as headings
+            if let Some((number, indent_level)) = Self::is_ordered_list_item_with_indent(line) {
+                in_list = true;
+                let rest = Self::strip_ordered_prefix(trimmed);
+                let indent = "  ".repeat(indent_level);
+                result.push(format!("{}{}. {}", indent, number, Self::format_inline(rest)));
+
+                // Check for continuation lines
+                i += 1;
+                while i < lines.len() && Self::is_list_continuation(lines[i]) {
+                    let cont_trimmed = lines[i].trim();
+                    let cont_indent = "  ".repeat(indent_level + 1);
+                    result.push(format!("{}{}", cont_indent, Self::format_inline(cont_trimmed)));
+                    i += 1;
+                }
+                continue;
+            }
+
             // Detect heading patterns
             // Pattern 1: Line looks like a heading (ALL CAPS, title case, or simple patterns)
             // Check if this is a single-word section heading (preceded by empty line or at start)
@@ -3333,24 +3371,6 @@ impl Txt2mdHandler {
                     i += 2;
                     continue;
                 }
-            }
-
-            // Detect unordered list items (- or * prefix)
-            if let Some(list_char) = Self::is_unordered_list_item(trimmed) {
-                in_list = true;
-                let rest = Self::strip_list_prefix(trimmed, list_char);
-                result.push(format!("- {}", Self::format_inline(rest)));
-                i += 1;
-                continue;
-            }
-
-            // Detect ordered list items (1., 2., etc.)
-            if Self::is_ordered_list_item(trimmed) {
-                in_list = true;
-                let rest = Self::strip_ordered_prefix(trimmed);
-                result.push(format!("1. {}", Self::format_inline(rest)));
-                i += 1;
-                continue;
             }
 
             // Detect blockquotes (> prefix)
@@ -3741,6 +3761,24 @@ impl Txt2mdHandler {
         line.to_string()
     }
 
+    /// Check if line is an unordered list item (possibly nested).
+    /// Returns Some((prefix_char, indent_level)) if it's a list item.
+    fn is_unordered_list_item_with_indent(line: &str) -> Option<(char, usize)> {
+        // Count leading spaces to determine indent level
+        let spaces = line.chars().take_while(|&c| c == ' ').count();
+        let indent_level = spaces / 2; // Each 2 spaces = 1 indent level
+
+        let trimmed = line.trim();
+
+        if trimmed.starts_with("- ") {
+            Some(('-', indent_level))
+        } else if trimmed.starts_with("* ") {
+            Some(('*', indent_level))
+        } else {
+            None
+        }
+    }
+
     /// Check if line is an unordered list item.
     fn is_unordered_list_item(line: &str) -> Option<char> {
         if line.starts_with("- ") {
@@ -3756,6 +3794,28 @@ impl Txt2mdHandler {
     fn strip_list_prefix(line: &str, prefix: char) -> &str {
         let prefix_str = format!("{} ", prefix);
         line.strip_prefix(&prefix_str).unwrap_or(line)
+    }
+
+    /// Check if line is an ordered list item (possibly nested).
+    /// Returns Some((number, indent_level)) if it's a list item.
+    fn is_ordered_list_item_with_indent(line: &str) -> Option<(u32, usize)> {
+        // Count leading spaces to determine indent level
+        let spaces = line.chars().take_while(|&c| c == ' ').count();
+        let indent_level = spaces / 2; // Each 2 spaces = 1 indent level
+
+        let trimmed = line.trim();
+
+        // Match patterns like "1.", "2.", "10.", etc.
+        let parts: Vec<&str> = trimmed.splitn(2, '.').collect();
+        if parts.len() != 2 {
+            return None;
+        }
+        if let Ok(num) = parts[0].parse::<u32>() {
+            if parts[1].starts_with(' ') {
+                return Some((num, indent_level));
+            }
+        }
+        None
     }
 
     /// Check if line is an ordered list item.
@@ -3775,6 +3835,29 @@ impl Txt2mdHandler {
         } else {
             line
         }
+    }
+
+    /// Check if a line is a continuation of a list item (indented but not a list item itself).
+    fn is_list_continuation(line: &str) -> bool {
+        // A continuation line starts with whitespace but isn't a list item or code
+        let trimmed = line.trim();
+
+        // Empty lines are not continuations
+        if trimmed.is_empty() {
+            return false;
+        }
+
+        // Check if the line has leading whitespace
+        let has_leading_whitespace = line.starts_with(' ') || line.starts_with('\t');
+
+        // Check if it's NOT a list item itself
+        let is_list = Self::is_unordered_list_item(trimmed).is_some()
+            || Self::is_ordered_list_item(trimmed);
+
+        // Check if it's not a code block marker
+        let is_code_marker = trimmed.starts_with("```") || trimmed.starts_with("~~~");
+
+        has_leading_whitespace && !is_list && !is_code_marker
     }
 
     /// Check if line is a horizontal rule.

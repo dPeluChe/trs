@@ -4353,15 +4353,15 @@ fn test_txt2md_unordered_list() {
 
 #[test]
 fn test_txt2md_ordered_list() {
-    // Test ordered list detection
+    // Test ordered list detection - numbers are preserved
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")
         .write_stdin("STEPS\n\n1. First step\n2. Second step\n3. Third step")
         .assert()
         .success()
         .stdout(predicate::str::contains("1. First step"))
-        .stdout(predicate::str::contains("1. Second step"))
-        .stdout(predicate::str::contains("1. Third step"));
+        .stdout(predicate::str::contains("2. Second step"))
+        .stdout(predicate::str::contains("3. Third step"));
 }
 
 #[test]
@@ -4494,6 +4494,93 @@ fn test_txt2md_extended_section_words() {
         .success()
         .stdout(predicate::str::contains("## History"))
         .stdout(predicate::str::contains("## Future"));
+}
+
+#[test]
+fn test_txt2md_nested_unordered_list() {
+    // Test nested unordered list detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("ITEMS\n\n- Main item one\n  - Sub item one\n  - Sub item two\n- Main item two")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("- Main item one"))
+        .stdout(predicate::str::contains("  - Sub item one"))
+        .stdout(predicate::str::contains("  - Sub item two"))
+        .stdout(predicate::str::contains("- Main item two"));
+}
+
+#[test]
+fn test_txt2md_nested_ordered_list() {
+    // Test nested ordered list detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("STEPS\n\n1. First step\n   1. Sub step one\n   2. Sub step two\n2. Second step")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1. First step"))
+        .stdout(predicate::str::contains("  1. Sub step one"))
+        .stdout(predicate::str::contains("  2. Sub step two"))
+        .stdout(predicate::str::contains("2. Second step"));
+}
+
+#[test]
+fn test_txt2md_mixed_nested_list() {
+    // Test mixed nested lists (ordered inside unordered and vice versa)
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("ITEMS\n\n- Main item\n  1. First sub step\n  2. Second sub step\n- Another item")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("- Main item"))
+        .stdout(predicate::str::contains("  1. First sub step"))
+        .stdout(predicate::str::contains("  2. Second sub step"))
+        .stdout(predicate::str::contains("- Another item"));
+}
+
+#[test]
+fn test_txt2md_multiline_list_item() {
+    // Test multi-line list item with continuation
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("ITEMS\n\n- First item with\n  continuation line\n- Second item")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("- First item with"))
+        .stdout(predicate::str::contains("continuation line"))
+        .stdout(predicate::str::contains("- Second item"));
+}
+
+#[test]
+fn test_txt2md_asterisk_list() {
+    // Test asterisk-based unordered list
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("ITEMS\n\n* First item\n* Second item\n* Third item")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("- First item"))
+        .stdout(predicate::str::contains("- Second item"))
+        .stdout(predicate::str::contains("- Third item"));
+}
+
+#[test]
+fn test_txt2md_ordered_list_preserves_numbers() {
+    // Test that ordered list numbers are preserved (not normalized to 1.)
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("txt2md")
+        .write_stdin("STEPS\n\n5. Fifth step\n10. Tenth step\n25. Twenty-fifth step")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output);
+    assert!(stdout.contains("5. Fifth step"), "Should preserve number 5");
+    assert!(stdout.contains("10. Tenth step"), "Should preserve number 10");
+    assert!(stdout.contains("25. Twenty-fifth step"), "Should preserve number 25");
 }
 
 #[test]
