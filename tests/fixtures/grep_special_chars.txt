@@ -1,0 +1,4 @@
+src/file with spaces.rs:10:pub fn space_function() {
+src/special[1].rs:25:fn bracket_test() {
+src/bracket(2).rs:30:fn paren_test() {
+src/unicode_ñame.rs:15:pub fn unicode_fn() {

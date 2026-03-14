@@ -1,0 +1,2 @@
+src/main.rs:fn main() {
+src/lib.rs:pub fn init() {

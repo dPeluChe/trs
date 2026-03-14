@@ -337,6 +337,122 @@ pub fn ls_long_paths() -> String {
     load_fixture("ls_long_paths.txt")
 }
 
+// ============================================================
+// Grep - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty grep output.
+pub fn grep_empty() -> String {
+    load_fixture("grep_empty.txt")
+}
+
+// ============================================================
+// Grep - Simple Format Fixtures
+// ============================================================
+
+/// Returns simple grep output (single match).
+pub fn grep_simple() -> String {
+    load_fixture("grep_simple.txt")
+}
+
+/// Returns grep output with multiple matches in a single file.
+pub fn grep_single_file_multiple_matches() -> String {
+    load_fixture("grep_single_file_multiple_matches.txt")
+}
+
+/// Returns grep output with matches in multiple files.
+pub fn grep_multiple_files() -> String {
+    load_fixture("grep_multiple_files.txt")
+}
+
+// ============================================================
+// Grep - With Column Numbers
+// ============================================================
+
+/// Returns grep output with column numbers (path:line:col:content).
+pub fn grep_with_column() -> String {
+    load_fixture("grep_with_column.txt")
+}
+
+/// Returns grep output without line numbers (path:content).
+pub fn grep_without_line_numbers() -> String {
+    load_fixture("grep_without_line_numbers.txt")
+}
+
+// ============================================================
+// Grep - Binary Files
+// ============================================================
+
+/// Returns grep output with a binary file match.
+pub fn grep_binary_file() -> String {
+    load_fixture("grep_binary_file.txt")
+}
+
+// ============================================================
+// Grep - Context Lines
+// ============================================================
+
+/// Returns grep output with context lines (before and after).
+pub fn grep_context_lines() -> String {
+    load_fixture("grep_context_lines.txt")
+}
+
+/// Returns grep output with context lines before matches.
+pub fn grep_context_before() -> String {
+    load_fixture("grep_context_before.txt")
+}
+
+/// Returns grep output with context lines after matches.
+pub fn grep_context_after() -> String {
+    load_fixture("grep_context_after.txt")
+}
+
+// ============================================================
+// Grep - Edge Cases
+// ============================================================
+
+/// Returns grep output with long file paths.
+pub fn grep_long_paths() -> String {
+    load_fixture("grep_long_paths.txt")
+}
+
+/// Returns grep output with special characters in filenames.
+pub fn grep_special_chars() -> String {
+    load_fixture("grep_special_chars.txt")
+}
+
+/// Returns grep output with colon in content.
+pub fn grep_with_colon_in_content() -> String {
+    load_fixture("grep_with_colon_in_content.txt")
+}
+
+// ============================================================
+// Grep - Large Output
+// ============================================================
+
+/// Returns grep output with many files and matches (for testing truncation).
+pub fn grep_large() -> String {
+    load_fixture("grep_large.txt")
+}
+
+// ============================================================
+// Grep - Mixed Fixtures
+// ============================================================
+
+/// Returns grep output with mixed content (multiple files, context, binary).
+pub fn grep_mixed() -> String {
+    load_fixture("grep_mixed.txt")
+}
+
+// ============================================================
+// Grep - Ripgrep Heading Format
+// ============================================================
+
+/// Returns grep output in ripgrep heading format (--heading).
+pub fn grep_ripgrep_heading() -> String {
+    load_fixture("grep_ripgrep_heading.txt")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -721,5 +837,143 @@ mod tests {
         assert!(content.contains("very/deeply/nested"));
         assert!(content.contains("another/long/path"));
         assert!(content.contains("project/submodule/src"));
+    }
+
+    // ============================================================
+    // Grep Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_grep_empty() {
+        let content = grep_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_grep_simple() {
+        let content = grep_simple();
+        assert!(content.contains("src/main.rs"));
+        assert!(content.contains("fn main()"));
+        assert!(content.contains(":42:"));
+    }
+
+    #[test]
+    fn test_load_grep_single_file_multiple_matches() {
+        let content = grep_single_file_multiple_matches();
+        assert!(content.contains("src/main.rs"));
+        assert!(content.contains("fn init()"));
+        assert!(content.contains("fn process()"));
+        assert!(content.contains("fn main()"));
+        assert!(content.contains("fn cleanup()"));
+    }
+
+    #[test]
+    fn test_load_grep_multiple_files() {
+        let content = grep_multiple_files();
+        assert!(content.contains("src/main.rs"));
+        assert!(content.contains("src/lib.rs"));
+        assert!(content.contains("src/utils.rs"));
+    }
+
+    #[test]
+    fn test_load_grep_with_column() {
+        let content = grep_with_column();
+        assert!(content.contains("src/main.rs:42:10:"));
+        assert!(content.contains("src/lib.rs:15:5:"));
+    }
+
+    #[test]
+    fn test_load_grep_without_line_numbers() {
+        let content = grep_without_line_numbers();
+        assert!(content.contains("src/main.rs:fn main()"));
+        assert!(content.contains("src/lib.rs:pub fn init()"));
+    }
+
+    #[test]
+    fn test_load_grep_binary_file() {
+        let content = grep_binary_file();
+        assert!(content.contains("Binary file"));
+        assert!(content.contains("matches"));
+    }
+
+    #[test]
+    fn test_load_grep_context_lines() {
+        let content = grep_context_lines();
+        assert!(content.contains("src/main.rs:41:fn main()"));
+        assert!(content.contains("src/main.rs-39-"));
+        assert!(content.contains("src/main.rs-43-"));
+    }
+
+    #[test]
+    fn test_load_grep_context_before() {
+        let content = grep_context_before();
+        assert!(content.contains("src/main.rs:41:fn main()"));
+        assert!(content.contains("src/main.rs-39-"));
+        assert!(content.contains("src/main.rs-40-"));
+    }
+
+    #[test]
+    fn test_load_grep_context_after() {
+        let content = grep_context_after();
+        assert!(content.contains("src/main.rs:41:fn main()"));
+        assert!(content.contains("src/main.rs-42-"));
+        assert!(content.contains("src/main.rs-43-"));
+    }
+
+    #[test]
+    fn test_load_grep_long_paths() {
+        let content = grep_long_paths();
+        assert!(content.contains("very/deeply/nested"));
+        assert!(content.contains("another/long/path"));
+        assert!(content.contains("project/submodule/src"));
+    }
+
+    #[test]
+    fn test_load_grep_special_chars() {
+        let content = grep_special_chars();
+        assert!(content.contains("file with spaces.rs"));
+        assert!(content.contains("special[1].rs"));
+        assert!(content.contains("bracket(2).rs"));
+        assert!(content.contains("unicode_ñame.rs"));
+    }
+
+    #[test]
+    fn test_load_grep_with_colon_in_content() {
+        let content = grep_with_colon_in_content();
+        assert!(content.contains("url: \"https://example.com/api\""));
+        assert!(content.contains("host: \"localhost:8080\""));
+        assert!(content.contains("Parse format: key:value"));
+    }
+
+    #[test]
+    fn test_load_grep_large() {
+        let content = grep_large();
+        // Check that we have 55 files
+        assert!(content.contains("src/file01.rs"));
+        assert!(content.contains("src/file55.rs"));
+        // Check multiple matches in file01
+        assert!(content.contains("fn function_01()"));
+        assert!(content.contains("fn function_25()"));
+    }
+
+    #[test]
+    fn test_load_grep_mixed() {
+        let content = grep_mixed();
+        assert!(content.contains("src/main.rs"));
+        assert!(content.contains("src/lib.rs"));
+        assert!(content.contains("src/utils.rs"));
+        assert!(content.contains("Binary file"));
+        assert!(content.contains("very/deep"));
+    }
+
+    #[test]
+    fn test_load_grep_ripgrep_heading() {
+        let content = grep_ripgrep_heading();
+        assert!(content.contains("src/main.rs"));
+        assert!(content.contains("src/lib.rs"));
+        assert!(content.contains("src/utils.rs"));
+        // In heading format, line numbers don't have file prefix
+        assert!(content.contains("42:fn main()"));
+        assert!(content.contains("15:pub fn init()"));
     }
 }

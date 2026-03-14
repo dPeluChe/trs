@@ -1,0 +1,3 @@
+src/main.rs:42:fn main() {
+src/lib.rs:15:pub fn init() {
+src/utils.rs:8:pub fn helper() {

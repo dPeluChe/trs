@@ -1,0 +1,8 @@
+src/main.rs:42:fn main() {
+src/main.rs:58:fn cleanup() {
+src/lib.rs:15:pub fn init() {
+src/lib.rs:30:pub mod parser;
+src/utils.rs:8:pub fn helper() {
+src/utils.rs:22:pub fn another() {
+Binary file assets/logo.png matches
+very/deep/nath.rs:10:pub fn deep_fn() {}

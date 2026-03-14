@@ -1,0 +1,5 @@
+src/main.rs-39-    setup();
+src/main.rs-40-    init();
+src/main.rs:41:fn main() {
+src/main.rs-42-    let args = parse_args();
+src/main.rs-43-    run(args);

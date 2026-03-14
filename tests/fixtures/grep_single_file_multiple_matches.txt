@@ -1,0 +1,4 @@
+src/main.rs:10:fn init() {
+src/main.rs:25:fn process() {
+src/main.rs:42:fn main() {
+src/main.rs:58:fn cleanup() {
