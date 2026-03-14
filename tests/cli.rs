@@ -2866,6 +2866,44 @@ fn test_replace_json_output_format() {
 }
 
 #[test]
+fn test_replace_affected_file_count() {
+    use std::fs;
+    use tempfile::TempDir;
+    
+    // Create a temporary directory
+    let temp_dir = TempDir::new().unwrap();
+    let temp_path = temp_dir.path();
+    
+    // Create test files with known patterns
+    fs::write(temp_path.join("file1.txt"), "hello world\nhello again").unwrap();
+    fs::write(temp_path.join("file2.txt"), "hello everyone").unwrap();
+    fs::write(temp_path.join("file3.txt"), "goodbye").unwrap(); // No match
+    
+    // Run replace in dry-run mode with JSON output
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("replace")
+        .arg(temp_path)
+        .arg("hello")
+        .arg("hi")
+        .arg("--dry-run")
+        .output()
+        .expect("Failed to execute command");
+    
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON output");
+    
+    // Verify the affected file count is correct (2 files with matches)
+    assert_eq!(json["counts"]["files_affected"].as_u64().unwrap(), 2);
+    // Verify total replacements (2 in file1 + 1 in file2 = 3)
+    assert_eq!(json["counts"]["total_replacements"].as_u64().unwrap(), 3);
+    // Verify the files array has the correct length
+    assert_eq!(json["files"].as_array().unwrap().len(), 2);
+}
+
+#[test]
 fn test_tail_json_output_not_implemented() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
