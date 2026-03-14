@@ -1163,6 +1163,83 @@ fn test_tail_file_not_found() {
 }
 
 #[test]
+fn test_tail_syntax_simple() {
+    // Test the simple syntax: trs tail <file>
+    use std::io::Write;
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    let path = temp_file.path();
+
+    let mut file = std::fs::File::create(path).unwrap();
+    writeln!(file, "line 1").unwrap();
+    writeln!(file, "line 2").unwrap();
+    writeln!(file, "line 3").unwrap();
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("tail")
+        .arg(path)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("line 1"))
+        .stdout(predicate::str::contains("line 2"))
+        .stdout(predicate::str::contains("line 3"));
+}
+
+#[test]
+fn test_tail_syntax_with_flags() {
+    // Test syntax with flags: trs tail <file> -n 5 --errors
+    use std::io::Write;
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    let path = temp_file.path();
+
+    let mut file = std::fs::File::create(path).unwrap();
+    writeln!(file, "INFO: starting").unwrap();
+    writeln!(file, "ERROR: failed").unwrap();
+    writeln!(file, "INFO: running").unwrap();
+    writeln!(file, "FATAL: crash").unwrap();
+    writeln!(file, "INFO: done").unwrap();
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("tail")
+        .arg(path)
+        .arg("--errors")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("ERROR"))
+        .stdout(predicate::str::contains("FATAL"))
+        .stdout(predicate::function(|s: &str| !s.contains("INFO")));
+}
+
+#[test]
+fn test_tail_syntax_with_global_flags() {
+    // Test syntax with global flags: trs --json tail <file>
+    use std::io::Write;
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    let path = temp_file.path();
+
+    let mut file = std::fs::File::create(path).unwrap();
+    writeln!(file, "line 1").unwrap();
+    writeln!(file, "line 2").unwrap();
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("tail")
+        .arg(path)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON output");
+
+    assert!(json["file"].is_string());
+    assert!(json["lines"].is_array());
+    assert_eq!(json["total_lines"].as_i64().unwrap(), 2);
+}
+
+#[test]
 fn test_clean_basic() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("clean")
