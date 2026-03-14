@@ -228,6 +228,10 @@ pub struct CommandStats {
     pub command: Option<String>,
     /// Exit code (for run command).
     pub exit_code: Option<i32>,
+    /// Name of the reducer used.
+    pub reducer: Option<String>,
+    /// Output format mode used.
+    pub output_mode: Option<OutputFormat>,
     /// Additional stats as key-value pairs.
     pub extra: Vec<(String, String)>,
 }
@@ -282,6 +286,18 @@ impl CommandStats {
         self
     }
 
+    /// Set reducer name.
+    pub fn with_reducer(mut self, reducer: impl Into<String>) -> Self {
+        self.reducer = Some(reducer.into());
+        self
+    }
+
+    /// Set output format mode.
+    pub fn with_output_mode(mut self, mode: OutputFormat) -> Self {
+        self.output_mode = Some(mode);
+        self
+    }
+
     /// Add an extra stat.
     pub fn with_extra(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.extra.push((key.into(), value.into()));
@@ -319,6 +335,12 @@ impl CommandStats {
         if let Some(code) = self.exit_code {
             eprintln!("  Exit code: {}", code);
         }
+        if let Some(ref reducer) = self.reducer {
+            eprintln!("  Reducer: {}", reducer);
+        }
+        if let Some(mode) = self.output_mode {
+            eprintln!("  Output mode: {}", Self::format_output_mode(mode));
+        }
         if self.input_bytes > 0 || self.output_bytes > 0 {
             eprintln!("  Input bytes: {}", self.input_bytes);
             eprintln!("  Output bytes: {}", self.output_bytes);
@@ -351,6 +373,18 @@ impl CommandStats {
         }
         for (key, value) in &self.extra {
             eprintln!("  {}: {}", key, value);
+        }
+    }
+
+    /// Format output mode for display.
+    fn format_output_mode(mode: OutputFormat) -> &'static str {
+        match mode {
+            OutputFormat::Raw => "raw",
+            OutputFormat::Compact => "compact",
+            OutputFormat::Json => "json",
+            OutputFormat::Csv => "csv",
+            OutputFormat::Tsv => "tsv",
+            OutputFormat::Agent => "agent",
         }
     }
 }
@@ -1514,6 +1548,7 @@ impl CommandHandler for RunHandler {
                         .with_duration_ms(output.duration.as_millis() as u64)
                         .with_input_bytes(output.stdout.len() + output.stderr.len())
                         .with_output_bytes(output.stdout.len() + output.stderr.len())
+                        .with_output_mode(ctx.format)
                         .with_extra("Stdout bytes", output.stdout.len().to_string())
                         .with_extra("Stderr bytes", output.stderr.len().to_string());
                     stats.print();
@@ -1537,6 +1572,7 @@ impl CommandHandler for RunHandler {
                 // Print stats if requested
                 if ctx.stats {
                     let stats = CommandStats::new()
+                        .with_output_mode(ctx.format)
                         .with_extra("Error", error.to_string());
                     stats.print();
                 }
@@ -1973,6 +2009,8 @@ impl CommandHandler for SearchHandler {
         if ctx.stats {
             let output = Self::format_output(&grep_output, ctx.format);
             let stats = CommandStats::new()
+                .with_reducer("search")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(grep_output.input_bytes)
                 .with_items_processed(grep_output.matches_shown)
                 .with_items_filtered(grep_output.total_matches.saturating_sub(grep_output.matches_shown))
@@ -2393,6 +2431,8 @@ impl CommandHandler for ReplaceHandler {
             let output = Self::format_count(total_replacements, ctx.format);
             if ctx.stats {
                 let stats = CommandStats::new()
+                    .with_reducer("replace")
+                    .with_output_mode(ctx.format)
                     .with_input_bytes(input_bytes)
                     .with_output_bytes(output.len())
                     .with_items_processed(total_replacements)
@@ -2409,6 +2449,8 @@ impl CommandHandler for ReplaceHandler {
 
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("replace")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(input_bytes)
                 .with_items_processed(total_replacements)
                 .with_output_bytes(output.len())
@@ -2867,6 +2909,8 @@ impl CommandHandler for TailHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("tail")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(tail_output.input_bytes)
                 .with_items_processed(tail_output.lines_shown)
                 .with_items_filtered(if tail_output.filtering_errors { tail_output.total_lines.saturating_sub(tail_output.lines_shown) } else { 0 })
@@ -3086,6 +3130,8 @@ impl CommandHandler for CleanHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("clean")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(original.len())
                 .with_output_bytes(formatted.len())
                 .with_extra("No ANSI", input.no_ansi.to_string())
@@ -3284,6 +3330,8 @@ impl CommandHandler for TrimHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("trim")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(original.len())
                 .with_output_bytes(formatted.len())
                 .with_extra("Leading", input.leading.to_string())
@@ -3453,6 +3501,8 @@ impl CommandHandler for Html2mdHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("html2md")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(html.len())
                 .with_output_bytes(formatted.len())
                 .with_extra("Source type", if Self::is_url(&input.input) { "url" } else { "file" });
@@ -4288,6 +4338,8 @@ impl CommandHandler for Txt2mdHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("txt2md")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(text.len())
                 .with_output_bytes(formatted.len())
                 .with_extra("Source", input.input.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "stdin".to_string()));
@@ -4500,6 +4552,8 @@ impl CommandHandler for IsCleanHandler {
         if ctx.stats {
             let total_changes = state.staged_count + state.unstaged_count + state.untracked_count + state.unmerged_count;
             let stats = CommandStats::new()
+                .with_reducer("is-clean")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(state.input_bytes)
                 .with_output_bytes(formatted.len())
                 .with_items_processed(total_changes)
@@ -4604,6 +4658,8 @@ impl ParseHandler {
             let output = Self::format_git_status_count(count_value, ctx.format);
             if ctx.stats {
                 let stats = CommandStats::new()
+                    .with_reducer("git-status")
+                    .with_output_mode(ctx.format)
                     .with_input_bytes(input.len())
                     .with_output_bytes(output.len())
                     .with_items_processed(count_value)
@@ -4617,6 +4673,8 @@ impl ParseHandler {
             if ctx.stats {
                 let total_changes = status.staged_count + status.unstaged_count + status.untracked_count + status.unmerged_count;
                 let stats = CommandStats::new()
+                    .with_reducer("git-status")
+                    .with_output_mode(ctx.format)
                     .with_input_bytes(input.len())
                     .with_output_bytes(output.len())
                     .with_items_processed(total_changes)
@@ -5210,6 +5268,8 @@ impl ParseHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("git-diff")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(input.len())
                 .with_output_bytes(output.len())
                 .with_items_processed(diff.files.len())
@@ -5535,6 +5595,8 @@ impl ParseHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("ls")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(input.len())
                 .with_output_bytes(output.len())
                 .with_items_processed(ls_output.entries.len())
@@ -5993,6 +6055,8 @@ impl ParseHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("grep")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(input.len())
                 .with_output_bytes(output.len())
                 .with_items_processed(grep_output.matches_shown)
@@ -6624,6 +6688,8 @@ impl ParseHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("test")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(input.len())
                 .with_output_bytes(output.len())
                 .with_items_processed(passed + failed + skipped)
@@ -10643,6 +10709,8 @@ impl ParseHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("logs")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(input.len())
                 .with_output_bytes(output.len())
                 .with_items_processed(logs_output.total_lines)
@@ -11492,6 +11560,8 @@ impl ParseHandler {
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()
+                .with_reducer("find")
+                .with_output_mode(ctx.format)
                 .with_input_bytes(input.len())
                 .with_output_bytes(output.len())
                 .with_items_processed(find_output.entries.len())
@@ -12190,6 +12260,80 @@ mod tests {
         };
 
         assert!(!ctx.has_conflicting_formats());
+    }
+
+    // ============================================================
+    // CommandStats Tests
+    // ============================================================
+
+    #[test]
+    fn test_command_stats_with_reducer() {
+        let stats = CommandStats::new()
+            .with_reducer("search");
+
+        assert_eq!(stats.reducer, Some("search".to_string()));
+    }
+
+    #[test]
+    fn test_command_stats_with_output_mode() {
+        let stats = CommandStats::new()
+            .with_output_mode(OutputFormat::Json);
+
+        assert_eq!(stats.output_mode, Some(OutputFormat::Json));
+    }
+
+    #[test]
+    fn test_command_stats_with_all_fields() {
+        let stats = CommandStats::new()
+            .with_reducer("git-status")
+            .with_output_mode(OutputFormat::Compact)
+            .with_input_bytes(1000)
+            .with_output_bytes(500)
+            .with_items_processed(10);
+
+        assert_eq!(stats.reducer, Some("git-status".to_string()));
+        assert_eq!(stats.output_mode, Some(OutputFormat::Compact));
+        assert_eq!(stats.input_bytes, 1000);
+        assert_eq!(stats.output_bytes, 500);
+        assert_eq!(stats.items_processed, 10);
+    }
+
+    #[test]
+    fn test_command_stats_format_output_mode() {
+        assert_eq!(CommandStats::format_output_mode(OutputFormat::Raw), "raw");
+        assert_eq!(CommandStats::format_output_mode(OutputFormat::Compact), "compact");
+        assert_eq!(CommandStats::format_output_mode(OutputFormat::Json), "json");
+        assert_eq!(CommandStats::format_output_mode(OutputFormat::Csv), "csv");
+        assert_eq!(CommandStats::format_output_mode(OutputFormat::Tsv), "tsv");
+        assert_eq!(CommandStats::format_output_mode(OutputFormat::Agent), "agent");
+    }
+
+    #[test]
+    fn test_command_stats_default() {
+        let stats = CommandStats::default();
+
+        assert!(stats.reducer.is_none());
+        assert!(stats.output_mode.is_none());
+        assert_eq!(stats.input_bytes, 0);
+        assert_eq!(stats.output_bytes, 0);
+    }
+
+    #[test]
+    fn test_command_stats_reduction_percent() {
+        let stats = CommandStats::new()
+            .with_input_bytes(1000)
+            .with_output_bytes(500);
+
+        assert_eq!(stats.reduction_percent(), 50.0);
+    }
+
+    #[test]
+    fn test_command_stats_no_reduction_when_output_larger() {
+        let stats = CommandStats::new()
+            .with_input_bytes(500)
+            .with_output_bytes(1000);
+
+        assert_eq!(stats.reduction_percent(), 0.0);
     }
 
     #[test]
