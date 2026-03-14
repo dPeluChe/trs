@@ -4196,6 +4196,66 @@ fn test_html2md_json_output() {
 }
 
 #[test]
+fn test_html2md_json_output_includes_metadata() {
+    // Test that JSON output automatically includes metadata without --metadata flag
+    use std::io::Write;
+    let temp_dir = std::env::temp_dir();
+    let html_path = temp_dir.join("test_html2md_json_meta.html");
+
+    let html_content = r#"<!DOCTYPE html>
+<html>
+<head>
+<title>Metadata Test Page</title>
+<meta name="description" content="A test page for metadata extraction">
+</head>
+<body>
+<h1>Test Content</h1>
+<p>This is test content.</p>
+</body>
+</html>"#;
+
+    let mut file = std::fs::File::create(&html_path).unwrap();
+    file.write_all(html_content.as_bytes()).unwrap();
+    drop(file);
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("html2md")
+        .arg(&html_path)
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    // Verify markdown content is present
+    assert!(json["markdown"].as_str().unwrap().contains("Test Content"));
+
+    // Verify metadata is automatically included in JSON output
+    assert!(
+        json["metadata"].is_object(),
+        "metadata should be present in JSON output"
+    );
+    assert_eq!(
+        json["metadata"]["title"].as_str().unwrap(),
+        "Metadata Test Page"
+    );
+    assert_eq!(
+        json["metadata"]["description"].as_str().unwrap(),
+        "A test page for metadata extraction"
+    );
+    assert_eq!(json["metadata"]["type"].as_str().unwrap(), "file");
+    assert!(json["metadata"]["source"]
+        .as_str()
+        .unwrap()
+        .contains("test_html2md_json_meta.html"));
+
+    // Cleanup
+    let _ = std::fs::remove_file(&html_path);
+}
+
+#[test]
 fn test_txt2md_json_output_not_implemented() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd.arg("--json").arg("txt2md").assert().success();

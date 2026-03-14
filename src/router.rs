@@ -3125,16 +3125,7 @@ impl Html2mdHandler {
 
     /// HTML tags considered as "noise" that should be skipped during conversion.
     const NOISE_TAGS: &'static [&'static str] = &[
-        "script",
-        "style",
-        "noscript",
-        "nav",
-        "header",
-        "footer",
-        "aside",
-        "form",
-        "iframe",
-        "svg",
+        "script", "style", "noscript", "nav", "header", "footer", "aside", "form", "iframe", "svg",
     ];
 
     /// Convert HTML to Markdown, filtering out noise elements.
@@ -3196,8 +3187,9 @@ impl CommandHandler for Html2mdHandler {
             self.read_file(&input.input)?
         };
 
-        // Extract metadata if requested
-        let metadata = if input.metadata {
+        // Extract metadata if requested via --metadata flag OR when using JSON output
+        // JSON output always includes metadata for structured data
+        let metadata = if input.metadata || ctx.format == OutputFormat::Json {
             Some(self.extract_metadata(&html, &input.input))
         } else {
             None
@@ -11467,6 +11459,48 @@ mod tests {
     }
 
     #[test]
+    fn test_html2md_handler_json_includes_metadata_automatically() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Json,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        // Create a temporary HTML file for testing
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_html2md_auto_meta.html");
+
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head><title>Auto Metadata Title</title>
+<meta name="description" content="Auto metadata description">
+</head>
+<body>
+<h1>Content</h1>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        // Test with metadata=false but JSON output should still include metadata
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: None,
+            metadata: false, // Explicitly set to false
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        // Cleanup
+        let _ = std::fs::remove_file(&html_path);
+    }
+
+    #[test]
     fn test_html2md_is_url() {
         assert!(Html2mdHandler::is_url("http://example.com"));
         assert!(Html2mdHandler::is_url("https://example.com"));
@@ -11681,16 +11715,25 @@ mod tests {
         // The output should contain list markers like "*   " or "-   " or "* " or "- "
         let has_unordered_markers = output_content.lines().any(|line| {
             let trimmed = line.trim_start();
-            trimmed.starts_with("* ") || trimmed.starts_with("- ") || trimmed.starts_with("*   ") || trimmed.starts_with("-   ")
+            trimmed.starts_with("* ")
+                || trimmed.starts_with("- ")
+                || trimmed.starts_with("*   ")
+                || trimmed.starts_with("-   ")
         });
-        assert!(has_unordered_markers, "Output should contain unordered list markers (* or -)");
+        assert!(
+            has_unordered_markers,
+            "Output should contain unordered list markers (* or -)"
+        );
 
         // Check for ordered list markdown formatting (number followed by period)
         let has_ordered_markers = output_content.lines().any(|line| {
             let trimmed = line.trim_start();
             trimmed.starts_with("1. ") || trimmed.starts_with("2. ") || trimmed.starts_with("3. ")
         });
-        assert!(has_ordered_markers, "Output should contain ordered list markers (1., 2., 3.)");
+        assert!(
+            has_ordered_markers,
+            "Output should contain ordered list markers (1., 2., 3.)"
+        );
 
         // Check that the actual content is preserved
         assert!(output_content.contains("Unordered item 1"));
@@ -11996,7 +12039,10 @@ mod tests {
             output_content.contains("important content"),
             "Should preserve main paragraph"
         );
-        assert!(output_content.contains("Item 1"), "Should preserve list items");
+        assert!(
+            output_content.contains("Item 1"),
+            "Should preserve list items"
+        );
         assert!(
             output_content.contains("Item 2"),
             "Should preserve list items"
@@ -12023,10 +12069,7 @@ mod tests {
             !output_content.contains("Home"),
             "Should remove nav content"
         );
-        assert!(
-            !output_content.contains("About"),
-            "Should remove nav links"
-        );
+        assert!(!output_content.contains("About"), "Should remove nav links");
         assert!(
             !output_content.contains("Copyright"),
             "Should remove footer content"
