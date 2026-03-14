@@ -2651,6 +2651,47 @@ fn test_html2md_basic() {
 }
 
 #[test]
+fn test_html2md_url_input() {
+    // Test with a URL input
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("html2md")
+        .arg("https://httpbin.org/html")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Herman Melville"))
+        .stdout(predicate::str::contains("Moby-Dick"));
+}
+
+#[test]
+fn test_html2md_url_with_metadata() {
+    // Test URL with metadata flag
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("html2md")
+        .arg("https://httpbin.org/html")
+        .arg("--metadata")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("source"))
+        .stdout(predicate::str::contains("httpbin.org"));
+}
+
+#[test]
+fn test_html2md_url_with_json_output() {
+    // Test URL with JSON output
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("html2md")
+        .arg("https://httpbin.org/html")
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert!(json["markdown"].as_str().unwrap().contains("Moby-Dick"));
+}
+
+#[test]
 fn test_txt2md_basic() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")

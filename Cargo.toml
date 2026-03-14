@@ -20,7 +20,7 @@ grep-matcher = "0.1"
 ignore = "0.4"
 regex = "1"
 htmd = "0.5"
-ureq = "3"
+ureq = { version = "3", features = ["rustls-webpki-roots"] }
 
 [dev-dependencies]
 assert_cmd = "2"
