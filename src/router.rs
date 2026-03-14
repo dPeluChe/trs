@@ -8678,8 +8678,8 @@ impl ParseHandler {
     fn format_logs_json(logs_output: &LogsOutput) -> String {
         let total_critical = logs_output.error_count + logs_output.fatal_count;
         serde_json::json!({
-            "total_lines": logs_output.total_lines,
-            "level_counts": {
+            "counts": {
+                "total_lines": logs_output.total_lines,
                 "debug": logs_output.debug_count,
                 "info": logs_output.info_count,
                 "warning": logs_output.warning_count,
@@ -12168,9 +12168,9 @@ Ran 4 tests across 1 files. [0.66ms]"#;
         let output = ParseHandler::format_logs(&result, OutputFormat::Json);
 
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
-        assert_eq!(json["total_lines"], 2);
-        assert_eq!(json["level_counts"]["info"], 1);
-        assert_eq!(json["level_counts"]["error"], 1);
+        assert_eq!(json["counts"]["total_lines"], 2);
+        assert_eq!(json["counts"]["info"], 1);
+        assert_eq!(json["counts"]["error"], 1);
     }
 
     #[test]
