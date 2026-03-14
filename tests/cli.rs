@@ -4402,6 +4402,62 @@ fn test_txt2md_blockquote() {
 }
 
 #[test]
+fn test_txt2md_section_heading() {
+    // Test section/chapter/part heading detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("INTRODUCTION\n\nSection 1: Getting Started\n\nSome content here.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("# Introduction"))
+        .stdout(predicate::str::contains("Section 1: Getting Started"));
+}
+
+#[test]
+fn test_txt2md_chapter_heading() {
+    // Test chapter heading detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("Chapter 1: The Beginning\n\nThis is the first chapter.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Chapter 1: The Beginning"));
+}
+
+#[test]
+fn test_txt2md_title_case_heading() {
+    // Test title case heading detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("Getting Started With The Application\n\nThis is a paragraph about getting started.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("# Getting Started With The Application"));
+}
+
+#[test]
+fn test_txt2md_colon_label() {
+    // Test colon-ended label heading detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("IMPORTANT NOTES:\n\nThese are important notes.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("# Important Notes"));
+}
+
+#[test]
+fn test_txt2md_numbered_section_heading() {
+    // Test numbered section heading with multiple words (should be heading, not list)
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("1. Introduction to the System Architecture Overview\n\nSome content here.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1. Introduction to the System Architecture Overview"));
+}
+
+#[test]
 fn test_parse_grep_json_output() {
     // Test that grep parser now works and produces valid JSON output
     let grep_input = "src/main.rs:42:fn main() {";

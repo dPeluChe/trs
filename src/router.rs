@@ -3305,18 +3305,15 @@ impl Txt2mdHandler {
             }
 
             // Detect heading patterns
-            // Pattern 1: Line is ALL CAPS and relatively short (likely a heading)
+            // Pattern 1: Line looks like a heading (ALL CAPS, title case, or simple patterns)
             if Self::is_heading_line(trimmed) {
                 // Close list if we were in one
                 if in_list {
                     in_list = false;
                 }
                 let level = Self::determine_heading_level(trimmed, i, &lines);
-                result.push(format!(
-                    "{} {}",
-                    "#".repeat(level),
-                    Self::to_title_case(trimmed)
-                ));
+                let heading_text = Self::format_heading_text(trimmed);
+                result.push(format!("{} {}", "#".repeat(level), heading_text));
                 i += 1;
                 continue;
             }
@@ -3380,7 +3377,7 @@ impl Txt2mdHandler {
         result.join("\n")
     }
 
-    /// Check if a line looks like a heading (ALL CAPS or title case, short length).
+    /// Check if a line looks like a heading (ALL CAPS, title case, or simple patterns).
     fn is_heading_line(line: &str) -> bool {
         // Skip lines that are too long to be headings
         if line.len() > 80 {
@@ -3388,11 +3385,25 @@ impl Txt2mdHandler {
         }
 
         // Skip lines that start with list markers
-        if line.starts_with('-') || line.starts_with('*') || line.starts_with('>') {
+        if line.starts_with("- ") || line.starts_with("* ") || line.starts_with('>') {
             return false;
         }
 
-        // Skip lines that start with numbers (could be ordered list)
+        // Pattern: Numbered section headings like "1. Introduction", "Section 1:", "Chapter 3:"
+        if Self::is_numbered_section_heading(line) {
+            return true;
+        }
+
+        // Pattern: Short lines ending with colon (often labels/headers)
+        if line.ends_with(':') && line.len() < 50 {
+            let without_colon = line.trim_end_matches(':').trim();
+            // Must have some alphabetic content
+            if without_colon.chars().any(|c| c.is_alphabetic()) {
+                return true;
+            }
+        }
+
+        // Skip lines that start with numbers (could be ordered list) if not a section heading
         if line
             .chars()
             .next()
@@ -3412,7 +3423,166 @@ impl Txt2mdHandler {
         let ratio = uppercase_count as f64 / alpha_chars.len() as f64;
 
         // If more than 70% uppercase, it's likely a heading
-        ratio > 0.7
+        if ratio > 0.7 {
+            return true;
+        }
+
+        // Pattern: Title Case (each word starts with uppercase)
+        if Self::is_title_case(line) {
+            return true;
+        }
+
+        false
+    }
+
+    /// Check if line is a numbered section heading (e.g., "1. Introduction", "Section 1:", "Chapter 3:").
+    fn is_numbered_section_heading(line: &str) -> bool {
+        let line_lower = line.to_lowercase();
+
+        // Pattern: "Section N", "Chapter N", "Part N", "Appendix N" followed by optional text
+        let section_patterns = [
+            "section ",
+            "chapter ",
+            "part ",
+            "appendix ",
+            "appendix: ",
+        ];
+        for pattern in section_patterns {
+            if let Some(rest) = line_lower.strip_prefix(pattern) {
+                // Check if followed by a number or roman numeral
+                let rest = rest.trim();
+                if rest.is_empty() {
+                    continue;
+                }
+                // Check for digit
+                if rest.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                    return true;
+                }
+                // Check for roman numeral (I, II, III, IV, V, etc.)
+                if Self::starts_with_roman_numeral(rest) {
+                    return true;
+                }
+            }
+        }
+
+        // Pattern: "N. Title" where N is a single digit or small number (not a list item)
+        // Must have at least 4 words after the number to be a heading, not a list
+        // This is more restrictive to avoid false positives on list items
+        if let Some(rest) = Self::strip_numbered_prefix(line) {
+            let word_count = rest.split_whitespace().count();
+            // Headings typically have more descriptive titles (4+ words)
+            // List items usually have 1-3 words
+            if word_count >= 4 {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Strip a numbered prefix like "1. " or "1.1 " from a line.
+    fn strip_numbered_prefix(line: &str) -> Option<&str> {
+        // Pattern: "N. " or "N.N. " or "N.N.N. "
+        let mut chars = line.chars().peekable();
+        let mut end_pos = 0;
+
+        // Match sequence of digits and dots
+        loop {
+            // Skip digits
+            while let Some(&c) = chars.peek() {
+                if c.is_ascii_digit() {
+                    chars.next();
+                    end_pos += 1;
+                } else {
+                    break;
+                }
+            }
+            // Check for dot
+            if let Some(&'.') = chars.peek() {
+                chars.next();
+                end_pos += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Must have at least one digit
+        if end_pos == 0 {
+            return None;
+        }
+
+        // Must end with a space after the final dot
+        if line.chars().nth(end_pos - 1) == Some('.') {
+            if let Some(rest) = line.get(end_pos..) {
+                if rest.starts_with(' ') {
+                    return Some(rest.trim());
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Check if a string starts with a roman numeral.
+    fn starts_with_roman_numeral(s: &str) -> bool {
+        let roman_numerals = [
+            "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x",
+            "xi", "xii", "xiii", "xiv", "xv", "xvi", "xvii", "xviii", "xix", "xx",
+        ];
+        let s_lower = s.to_lowercase();
+        let first_word = s_lower.split_whitespace().next().unwrap_or("");
+        roman_numerals.contains(&first_word.trim_end_matches(':'))
+    }
+
+    /// Check if a line is in Title Case (each major word capitalized).
+    fn is_title_case(line: &str) -> bool {
+        // Skip very short lines
+        if line.len() < 10 {
+            return false;
+        }
+
+        // Skip lines with too many lowercase letters
+        let alpha_chars: Vec<char> = line.chars().filter(|c| c.is_alphabetic()).collect();
+        if alpha_chars.len() < 3 {
+            return false;
+        }
+
+        let words: Vec<&str> = line.split_whitespace().collect();
+        if words.len() < 2 {
+            return false;
+        }
+
+        // Minor words that don't need to be capitalized
+        let minor_words = [
+            "a", "an", "the", "and", "but", "or", "for", "nor", "on", "at",
+            "to", "by", "in", "of", "with", "is", "are", "was", "were", "be",
+        ];
+
+        let mut capitalized_count = 0;
+        let mut total_words = 0;
+
+        for (i, word) in words.iter().enumerate() {
+            let word_lower = word.to_lowercase();
+            // Skip minor words in the middle
+            if i > 0 && minor_words.contains(&word_lower.as_str()) {
+                continue;
+            }
+
+            total_words += 1;
+            let mut chars = word.chars();
+            if let Some(first) = chars.next() {
+                if first.is_uppercase() {
+                    capitalized_count += 1;
+                }
+            }
+        }
+
+        // If most major words are capitalized, it's title case
+        if total_words == 0 {
+            return false;
+        }
+        let ratio = capitalized_count as f64 / total_words as f64;
+        ratio >= 0.8
     }
 
     /// Determine the heading level based on position and content.
@@ -3454,6 +3624,46 @@ impl Txt2mdHandler {
             })
             .collect::<Vec<_>>()
             .join(" ")
+    }
+
+    /// Format heading text appropriately based on its content.
+    fn format_heading_text(line: &str) -> String {
+        // Check if this is a numbered section heading - preserve it as-is
+        if Self::is_numbered_section_heading(line) {
+            // Keep the original format for numbered sections
+            return line.to_string();
+        }
+
+        // Check if line ends with colon - remove it for cleaner heading
+        if line.ends_with(':') {
+            let without_colon = line.trim_end_matches(':').trim();
+            // Check if mostly uppercase
+            let alpha_chars: Vec<char> = without_colon.chars().filter(|c| c.is_alphabetic()).collect();
+            if !alpha_chars.is_empty() {
+                let uppercase_count = alpha_chars.iter().filter(|c| c.is_uppercase()).count();
+                let ratio = uppercase_count as f64 / alpha_chars.len() as f64;
+                if ratio > 0.7 {
+                    // Convert to title case
+                    return Self::to_title_case(without_colon);
+                }
+            }
+            // Return as-is with proper case
+            return without_colon.to_string();
+        }
+
+        // Check if mostly uppercase
+        let alpha_chars: Vec<char> = line.chars().filter(|c| c.is_alphabetic()).collect();
+        if !alpha_chars.is_empty() {
+            let uppercase_count = alpha_chars.iter().filter(|c| c.is_uppercase()).count();
+            let ratio = uppercase_count as f64 / alpha_chars.len() as f64;
+            if ratio > 0.7 {
+                // Convert to title case
+                return Self::to_title_case(line);
+            }
+        }
+
+        // Already title case or mixed case - preserve it
+        line.to_string()
     }
 
     /// Check if line is an unordered list item.
