@@ -3123,12 +3123,31 @@ impl Html2mdHandler {
         metadata
     }
 
-    /// Convert HTML to Markdown.
+    /// HTML tags considered as "noise" that should be skipped during conversion.
+    const NOISE_TAGS: &'static [&'static str] = &[
+        "script",
+        "style",
+        "noscript",
+        "nav",
+        "header",
+        "footer",
+        "aside",
+        "form",
+        "iframe",
+        "svg",
+    ];
+
+    /// Convert HTML to Markdown, filtering out noise elements.
     fn convert_to_markdown(&self, html: &str) -> CommandResult<String> {
-        htmd::convert(html).map_err(|e| CommandError::ExecutionError {
-            message: format!("Failed to convert HTML to Markdown: {}", e),
-            exit_code: Some(1),
-        })
+        let converter = htmd::HtmlToMarkdownBuilder::new()
+            .skip_tags(Self::NOISE_TAGS.to_vec())
+            .build();
+        converter
+            .convert(html)
+            .map_err(|e| CommandError::ExecutionError {
+                message: format!("Failed to convert HTML to Markdown: {}", e),
+                exit_code: Some(1),
+            })
     }
 
     /// Format output based on the output format.
@@ -11887,6 +11906,154 @@ mod tests {
         assert!(result.is_ok());
 
         let _ = std::fs::remove_file(&html_path);
+    }
+
+    #[test]
+    fn test_html2md_noise_removal() {
+        use std::io::Write;
+        let handler = Html2mdHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Raw,
+            stats: false,
+            enabled_formats: vec![],
+        };
+
+        let temp_dir = std::env::temp_dir();
+        let html_path = temp_dir.join("test_noise_removal.html");
+        let output_path = temp_dir.join("test_noise_removal_output.md");
+
+        // HTML with various noise elements that should be filtered out
+        let html_content = r#"<!DOCTYPE html>
+<html>
+<head>
+<title>Content Page</title>
+<script>
+    console.log("This script should be removed");
+    var x = 1 + 2;
+</script>
+<style>
+    body { color: red; }
+    .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+    <nav>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/about">About</a></li>
+        </ul>
+    </nav>
+</header>
+<main>
+    <h1>Main Content</h1>
+    <p>This is the important content that should be preserved.</p>
+    <ul>
+        <li>Item 1</li>
+        <li>Item 2</li>
+    </ul>
+</main>
+<footer>
+    <p>Copyright 2024</p>
+</footer>
+<aside>
+    <p>Sidebar content</p>
+</aside>
+<noscript>
+    <p>Please enable JavaScript</p>
+</noscript>
+<iframe src="https://example.com/frame"></iframe>
+<svg>
+    <circle cx="50" cy="50" r="40"/>
+</svg>
+<form action="/submit">
+    <input type="text" name="field" />
+</form>
+</body>
+</html>"#;
+
+        let mut file = std::fs::File::create(&html_path).unwrap();
+        file.write_all(html_content.as_bytes()).unwrap();
+        drop(file);
+
+        let input = Html2mdInput {
+            input: html_path.to_string_lossy().to_string(),
+            output: Some(output_path.clone()),
+            metadata: false,
+        };
+
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+
+        let output_content = std::fs::read_to_string(&output_path).unwrap();
+
+        // Verify main content is preserved
+        assert!(
+            output_content.contains("Main Content"),
+            "Should preserve main heading"
+        );
+        assert!(
+            output_content.contains("important content"),
+            "Should preserve main paragraph"
+        );
+        assert!(output_content.contains("Item 1"), "Should preserve list items");
+        assert!(
+            output_content.contains("Item 2"),
+            "Should preserve list items"
+        );
+
+        // Verify noise elements are removed
+        assert!(
+            !output_content.contains("console.log"),
+            "Should remove script content"
+        );
+        assert!(
+            !output_content.contains("var x"),
+            "Should remove script variables"
+        );
+        assert!(
+            !output_content.contains("color: red"),
+            "Should remove style content"
+        );
+        assert!(
+            !output_content.contains(".hidden"),
+            "Should remove CSS classes"
+        );
+        assert!(
+            !output_content.contains("Home"),
+            "Should remove nav content"
+        );
+        assert!(
+            !output_content.contains("About"),
+            "Should remove nav links"
+        );
+        assert!(
+            !output_content.contains("Copyright"),
+            "Should remove footer content"
+        );
+        assert!(
+            !output_content.contains("Sidebar"),
+            "Should remove aside content"
+        );
+        assert!(
+            !output_content.contains("enable JavaScript"),
+            "Should remove noscript content"
+        );
+        assert!(
+            !output_content.contains("example.com/frame"),
+            "Should remove iframe"
+        );
+        assert!(
+            !output_content.contains("circle"),
+            "Should remove SVG content"
+        );
+        assert!(
+            !output_content.contains("submit"),
+            "Should remove form content"
+        );
+
+        let _ = std::fs::remove_file(&html_path);
+        let _ = std::fs::remove_file(&output_path);
     }
 
     #[test]
