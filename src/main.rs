@@ -367,6 +367,22 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
 
+    /// Trim whitespace from text lines
+    #[command(long_about = help::TRIM_HELP)]
+    Trim {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+
+        /// Trim leading whitespace only
+        #[arg(long)]
+        leading: bool,
+
+        /// Trim trailing whitespace only
+        #[arg(long)]
+        trailing: bool,
+    },
+
     /// Check if git repository is in a clean state
     ///
     /// Detects whether the git repository has any uncommitted changes.

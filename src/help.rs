@@ -280,6 +280,38 @@ EXAMPLES:
     # Convert and output as JSON
     trs --json txt2md -i notes.txt";
 
+/// Help text for the trim command.
+#[allow(dead_code)]
+pub const TRIM_HELP: &str = "\
+Trim whitespace from text lines.
+
+The trim command removes leading and/or trailing whitespace from each line of text.
+It reads from stdin by default.
+
+USAGE:
+    trs trim [OPTIONS]
+
+OPTIONS:
+    -f, --file <FILE>      Input file (stdin if not specified)
+    --leading              Trim leading whitespace only
+    --trailing             Trim trailing whitespace only (default when no flags)
+
+EXAMPLES:
+    # Trim all whitespace from stdin
+    cat file.txt | trs trim
+
+    # Trim whitespace from a file
+    trs trim -f file.txt
+
+    # Trim only leading whitespace
+    cat file.txt | trs trim --leading
+
+    # Trim only trailing whitespace
+    cat file.txt | trs trim --trailing
+
+    # With JSON output
+    cat file.txt | trs --json trim";
+
 /// Help text for the run command.
 #[allow(dead_code)]
 pub const RUN_HELP: &str = "\
@@ -316,6 +348,7 @@ pub fn get_command_help(command: &str) -> Option<&'static str> {
         "parse" => Some(PARSE_HELP),
         "html2md" => Some(HTML2MD_HELP),
         "txt2md" => Some(TXT2MD_HELP),
+        "trim" => Some(TRIM_HELP),
         "run" => Some(RUN_HELP),
         _ => None,
     }
@@ -385,6 +418,13 @@ mod tests {
         let help = get_command_help("run");
         assert!(help.is_some());
         assert!(help.unwrap().contains("Execute a command"));
+    }
+
+    #[test]
+    fn test_get_command_help_trim() {
+        let help = get_command_help("trim");
+        assert!(help.is_some());
+        assert!(help.unwrap().contains("whitespace"));
     }
 
     #[test]
