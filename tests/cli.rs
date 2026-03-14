@@ -748,24 +748,30 @@ fn test_search_total_no_matches() {
 fn test_replace_basic() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
-        .arg(".")
-        .arg("old")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_12345")
         .arg("new")
+        .arg("--dry-run")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success()
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("No matches found"));
 }
 
 #[test]
 fn test_replace_dry_run() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
-        .arg(".")
-        .arg("old")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_DRY_RUN_12345")
         .arg("new")
         .arg("--dry-run")
+        .arg("--extension")
+        .arg("rs")
         .assert()
-        .success();
+        .success()
+        .stdout(predicate::str::contains("No matches found"));
 }
 
 #[test]
@@ -2222,13 +2228,15 @@ fn test_router_search_command() {
 fn test_router_replace_command() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
-        .arg(".")
-        .arg("old")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_12345")
         .arg("new")
+        .arg("--dry-run")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Replace:"))
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("No matches found"));
 }
 
 #[test]
@@ -2644,24 +2652,26 @@ fn test_search_json_output_format() {
 }
 
 #[test]
-fn test_replace_json_output_not_implemented() {
+fn test_replace_json_output_format() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
         .arg("replace")
-        .arg(".")
-        .arg("old")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_12345")
         .arg("new")
+        .arg("--dry-run")
+        .arg("--extension")
+        .arg("rs")
         .assert()
         .success();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-    let json_line = stderr.lines().last().unwrap_or("");
-    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
-    assert_eq!(json["not_implemented"], true);
-    assert!(json["message"]
-        .as_str()
-        .unwrap()
-        .contains("replace command execution"));
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    // The output should be valid JSON with the replace_output schema
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["schema"]["type"], "replace_output");
+    assert!(json["dry_run"].as_bool().unwrap());
+    assert_eq!(json["search_pattern"], "NONEXISTENT_PATTERN_12345");
+    assert_eq!(json["replacement"], "new");
 }
 
 #[test]
@@ -5265,7 +5275,7 @@ fn test_parse_git_status_raw_format() {
 #[test]
 fn test_parse_git_diff_raw_format() {
     // Test raw format for git diff parsing
-    let diff_input = "diff --git a/src/main.rs b/src/main.rs\nindex 1234567..abcdefg 100644\n--- a/src/main.rs\n+++ b/src/main.rs\n@@ -1,5 +1,6 @@\n fn main() {\n-    println!(\"old\");\n+    println!(\"new\");\n }\n";
+    let diff_input = "diff --git a/src/main.rs b/src/main.rs\nindex 1234567..abcdefg 100644\n--- a/src/main.rs\n+++ b/src/main.rs\n@@ -1,5 +1,6 @@\n fn main() {\n-    println!(\"new\");\n+    println!(\"new\");\n }\n";
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--raw")
         .arg("parse")

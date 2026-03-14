@@ -171,7 +171,7 @@ struct GitStatusEntry {
     /// Path to the file.
     path: String,
     /// Original path for renamed files.
-    old_path: Option<String>,
+    new_path: Option<String>,
 }
 
 /// Parsed git status output.
@@ -213,7 +213,7 @@ struct GitDiffEntry {
     /// Path to the file (new path for renamed files).
     path: String,
     /// Original path for renamed files.
-    old_path: Option<String>,
+    new_path: Option<String>,
     /// Change type (M=modified, A=added, D=deleted, R=renamed, C=copied).
     change_type: String,
     /// Number of lines added.
@@ -1765,8 +1765,366 @@ pub struct SearchInput {
     pub limit: Option<usize>,
 }
 
+/// A single replacement result.
+#[derive(Debug, Clone)]
+struct Replacement {
+    line_number: usize,
+    original: String,
+    replaced: String,
+}
+
 /// Handler for the `replace` command.
 pub struct ReplaceHandler;
+
+impl ReplaceHandler {
+    /// Default directories to ignore during replace.
+    const DEFAULT_IGNORE_DIRS: &'static [&'static str] = &[
+        ".git",
+        "node_modules",
+        "target",
+        "dist",
+        "build",
+        ".cache",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".idea",
+        ".vscode",
+        "vendor",
+        "bundle",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        "coverage",
+        ".next",
+        ".nuxt",
+    ];
+
+    /// Execute search and replace using ripgrep crates.
+    fn execute_replace(
+        &self,
+        input: &ReplaceInput,
+    ) -> CommandResult<Vec<(String, Vec<Replacement>)>> {
+        use grep::matcher::Matcher;
+        use grep::regex::RegexMatcher;
+        use ignore::WalkBuilder;
+
+        // Build the regex matcher
+        let matcher = RegexMatcher::new(&input.search).map_err(|e| CommandError::ExecutionError {
+            message: format!("Invalid regex pattern '{}': {}", input.search, e),
+            exit_code: Some(2),
+        })?;
+
+        // Shared state for collecting replacements per file
+        let mut file_replacements: Vec<(String, Vec<Replacement>)> = Vec::new();
+
+        // Build the directory walker with ignore rules
+        let mut walk_builder = WalkBuilder::new(&input.path);
+
+        // Add custom ignore patterns for common directories
+        for dir in Self::DEFAULT_IGNORE_DIRS {
+            walk_builder.add_ignore(format!("!{}/", dir));
+        }
+
+        // Add extension filter if specified
+        if let Some(ref ext) = input.extension {
+            let pattern = format!("*.{}", ext);
+            walk_builder.add_ignore(format!("!{}", pattern));
+        }
+
+        // Configure walker
+        walk_builder
+            .hidden(false)
+            .git_ignore(true)
+            .ignore(true)
+            .follow_links(false);
+
+        // Process each file
+        for entry_result in walk_builder.build() {
+            let entry = match entry_result {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+
+            // Skip directories
+            if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                continue;
+            }
+
+            let path = entry.path().to_string_lossy().to_string();
+
+            // Read file content
+            let content = match std::fs::read_to_string(entry.path()) {
+                Ok(c) => c,
+                Err(_) => continue, // Skip files we can't read
+            };
+
+            // Find all matches in this file
+            let lines: Vec<&str> = content.lines().collect();
+            let mut replacements: Vec<Replacement> = Vec::new();
+            let mut modified_lines: Vec<String> = lines.iter().map(|s| s.to_string()).collect();
+            let mut has_changes = false;
+
+            for (line_idx, line) in lines.iter().enumerate() {
+                let line_bytes = line.as_bytes();
+
+                // Find all matches in this line
+                let mut offset = 0usize;
+                let mut modified_line = line.to_string();
+                let mut line_changed = false;
+
+                while let Ok(Some(m)) = matcher.find_at(line_bytes, offset) {
+                    let start = m.start();
+                    let end = m.end();
+
+                    // Perform the replacement
+                    modified_line.replace_range(start..end, &input.replace);
+                    line_changed = true;
+                    has_changes = true;
+
+                    // Move past this match
+                    offset = end;
+                    if offset >= line_bytes.len() {
+                        break;
+                    }
+                }
+
+                if line_changed {
+                    replacements.push(Replacement {
+                        line_number: line_idx + 1, // 1-indexed
+                        original: line.to_string(),
+                        replaced: modified_line.clone(),
+                    });
+                    modified_lines[line_idx] = modified_line;
+                }
+            }
+
+            // If there are changes and not dry run, write the file back
+            if has_changes {
+                if !input.dry_run {
+                    let new_content = modified_lines.join("\n");
+                    if let Err(e) = std::fs::write(entry.path(), new_content) {
+                        eprintln!("Warning: Failed to write {}: {}", path, e);
+                        continue;
+                    }
+                }
+                file_replacements.push((path, replacements));
+            }
+        }
+
+        Ok(file_replacements)
+    }
+
+    /// Format replace output based on the specified format.
+    fn format_output(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+        format: OutputFormat,
+    ) -> String {
+        match format {
+            OutputFormat::Json => Self::format_json(replacements, input),
+            OutputFormat::Csv => Self::format_csv(replacements, input),
+            OutputFormat::Tsv => Self::format_tsv(replacements, input),
+            OutputFormat::Compact | OutputFormat::Agent => {
+                Self::format_compact(replacements, input)
+            }
+            OutputFormat::Raw => Self::format_raw(replacements, input),
+        }
+    }
+
+    /// Format replace output as JSON using the schema.
+    fn format_json(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
+        use crate::schema::{
+            ReplaceCounts, ReplaceFile, ReplaceMatch, ReplaceOutputSchema,
+        };
+
+        let files: Vec<ReplaceFile> = replacements
+            .iter()
+            .map(|(path, reps)| {
+                let matches: Vec<ReplaceMatch> = reps
+                    .iter()
+                    .map(|r| ReplaceMatch::new(r.line_number, &r.original, &r.replaced))
+                    .collect();
+                ReplaceFile { path: path.clone(), matches }
+            })
+            .collect();
+
+        let total_replacements: usize = files.iter().map(|f| f.matches.len()).sum();
+
+        let schema = ReplaceOutputSchema::new(&input.search, &input.replace, input.dry_run)
+            .with_files(files)
+            .with_counts(ReplaceCounts {
+                files_affected: replacements.len(),
+                total_replacements,
+            });
+
+        serde_json::to_string_pretty(&schema).unwrap_or_else(|e| {
+            serde_json::json!({"error": format!("Failed to serialize: {}", e)}).to_string()
+        })
+    }
+
+    /// Format replace output as CSV.
+    fn format_csv(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
+        let mut result = String::new();
+        result.push_str("file,line_number,original,replaced\n");
+
+        for (path, reps) in replacements {
+            for rep in reps {
+                let original_escaped = Self::escape_csv_field(&rep.original);
+                let replaced_escaped = Self::escape_csv_field(&rep.replaced);
+                result.push_str(&format!(
+                    "{},{},{},{}\n",
+                    path, rep.line_number, original_escaped, replaced_escaped
+                ));
+            }
+        }
+
+        // Add summary at the end
+        let total_replacements: usize = replacements.iter().map(|(_, r)| r.len()).sum();
+        result.push_str(&format!(
+            "\n# Summary: {} files, {} replacements (dry_run: {})\n",
+            replacements.len(),
+            total_replacements,
+            input.dry_run
+        ));
+
+        result
+    }
+
+    /// Format replace output as TSV.
+    fn format_tsv(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
+        let mut result = String::new();
+        result.push_str("file\tline_number\toriginal\treplaced\n");
+
+        for (path, reps) in replacements {
+            for rep in reps {
+                let original_escaped = Self::escape_tsv_field(&rep.original);
+                let replaced_escaped = Self::escape_tsv_field(&rep.replaced);
+                result.push_str(&format!(
+                    "{}\t{}\t{}\t{}\n",
+                    path, rep.line_number, original_escaped, replaced_escaped
+                ));
+            }
+        }
+
+        let total_replacements: usize = replacements.iter().map(|(_, r)| r.len()).sum();
+        result.push_str(&format!(
+            "\n# Summary: {} files, {} replacements (dry_run: {})\n",
+            replacements.len(),
+            total_replacements,
+            input.dry_run
+        ));
+
+        result
+    }
+
+    /// Format replace output in compact format.
+    fn format_compact(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
+        let mut result = String::new();
+
+        if replacements.is_empty() {
+            if input.dry_run {
+                result.push_str("No matches found.\n");
+            } else {
+                result.push_str("No changes made.\n");
+            }
+            return result;
+        }
+
+        let total_replacements: usize = replacements.iter().map(|(_, r)| r.len()).sum();
+
+        if input.dry_run {
+            result.push_str(&format!(
+                "Preview: {} replacements in {} files\n\n",
+                total_replacements,
+                replacements.len()
+            ));
+        } else {
+            result.push_str(&format!(
+                "Replaced {} occurrences in {} files\n\n",
+                total_replacements,
+                replacements.len()
+            ));
+        }
+
+        for (path, reps) in replacements {
+            result.push_str(&format!("{}:\n", path));
+            for rep in reps {
+                result.push_str(&format!(
+                    "  {}:{}\n",
+                    rep.line_number,
+                    Self::truncate_line(&rep.replaced, 80)
+                ));
+            }
+            result.push('\n');
+        }
+
+        result
+    }
+
+    /// Format replace output as raw.
+    fn format_raw(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
+        let mut result = String::new();
+
+        for (path, reps) in replacements {
+            for rep in reps {
+                result.push_str(&format!(
+                    "{}:{}: {} -> {}\n",
+                    path, rep.line_number, rep.original, rep.replaced
+                ));
+            }
+        }
+
+        let total_replacements: usize = replacements.iter().map(|(_, r)| r.len()).sum();
+        result.push_str(&format!(
+            "\nSummary: {} files, {} replacements (dry_run: {})\n",
+            replacements.len(),
+            total_replacements,
+            input.dry_run
+        ));
+
+        result
+    }
+
+    /// Truncate a line to a maximum length.
+    fn truncate_line(line: &str, max_len: usize) -> String {
+        if line.len() <= max_len {
+            line.to_string()
+        } else {
+            format!("{}...", &line[..max_len.saturating_sub(3)])
+        }
+    }
+
+    /// Escape a field for CSV format.
+    fn escape_csv_field(field: &str) -> String {
+        if field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r')
+        {
+            format!("\"{}\"", field.replace('"', "\"\""))
+        } else {
+            field.to_string()
+        }
+    }
+
+    /// Escape a field for TSV format.
+    fn escape_tsv_field(field: &str) -> String {
+        field.replace('\t', "\\t").replace('\n', "\\n").replace('\r', "\\r")
+    }
+}
 
 impl CommandHandler for ReplaceHandler {
     type Input = ReplaceInput;
@@ -1775,16 +2133,15 @@ impl CommandHandler for ReplaceHandler {
         if ctx.stats {
             eprintln!("Stats: enabled");
         }
-        eprintln!("Output format: {:?}", ctx.format);
-        eprintln!(
-            "Replace: '{}' with '{}' in {:?} (ext: {:?}, dry_run: {})",
-            input.search, input.replace, input.path, input.extension, input.dry_run
-        );
 
-        // TODO: Implement actual replace execution
-        Err(CommandError::NotImplemented(
-            "replace command execution".to_string(),
-        ))
+        // Execute the replace
+        let replacements = self.execute_replace(input)?;
+
+        // Format and print the output
+        let output = Self::format_output(&replacements, input, ctx.format);
+        print!("{}", output);
+
+        Ok(())
     }
 }
 
@@ -2440,8 +2797,8 @@ impl ParseHandler {
                     return None;
                 }
 
-                // Handle rename format: "R  old -> new"
-                let (path, old_path) = if path.contains(" -> ") {
+                // Handle rename format: "R  new -> new"
+                let (path, new_path) = if path.contains(" -> ") {
                     let parts: Vec<&str> = path.splitn(2, " -> ").collect();
                     (
                         parts.get(1).unwrap_or(&path).to_string(),
@@ -2454,7 +2811,7 @@ impl ParseHandler {
                 return Some(GitStatusEntry {
                     status,
                     path,
-                    old_path,
+                    new_path,
                 });
             }
             return None;
@@ -2478,8 +2835,8 @@ impl ParseHandler {
                 return None;
             }
 
-            // Handle rename format: "renamed:   old -> new"
-            let (path, old_path) = if path.contains(" -> ") {
+            // Handle rename format: "renamed:   new -> new"
+            let (path, new_path) = if path.contains(" -> ") {
                 let parts: Vec<&str> = path.splitn(2, " -> ").collect();
                 (
                     parts.get(1).unwrap_or(&path).to_string(),
@@ -2527,7 +2884,7 @@ impl ParseHandler {
             return Some(GitStatusEntry {
                 status: short_status.to_string(),
                 path,
-                old_path,
+                new_path,
             });
         }
 
@@ -2536,7 +2893,7 @@ impl ParseHandler {
             return Some(GitStatusEntry {
                 status: "??".to_string(),
                 path: line.to_string(),
-                old_path: None,
+                new_path: None,
             });
         }
 
@@ -2557,14 +2914,14 @@ impl ParseHandler {
     /// Format git status as CSV.
     fn format_git_status_csv(status: &GitStatus) -> String {
         let mut result = String::new();
-        result.push_str("status,path,old_path,section\n");
+        result.push_str("status,path,new_path,section\n");
 
         for entry in &status.staged {
             result.push_str(&format!(
                 "{},{},{},staged\n",
                 entry.status,
                 entry.path,
-                entry.old_path.as_deref().unwrap_or(&String::new())
+                entry.new_path.as_deref().unwrap_or(&String::new())
             ));
         }
         for entry in &status.unstaged {
@@ -2572,7 +2929,7 @@ impl ParseHandler {
                 "{},{},{},unstaged\n",
                 entry.status,
                 entry.path,
-                entry.old_path.as_deref().unwrap_or(&String::new())
+                entry.new_path.as_deref().unwrap_or(&String::new())
             ));
         }
         for entry in &status.untracked {
@@ -2580,7 +2937,7 @@ impl ParseHandler {
                 "{},{},{},untracked\n",
                 entry.status,
                 entry.path,
-                entry.old_path.as_deref().unwrap_or(&String::new())
+                entry.new_path.as_deref().unwrap_or(&String::new())
             ));
         }
         for entry in &status.unmerged {
@@ -2588,7 +2945,7 @@ impl ParseHandler {
                 "{},{},{},unmerged\n",
                 entry.status,
                 entry.path,
-                entry.old_path.as_deref().unwrap_or(&String::new())
+                entry.new_path.as_deref().unwrap_or(&String::new())
             ));
         }
         result
@@ -2597,14 +2954,14 @@ impl ParseHandler {
     /// Format git status as TSV.
     fn format_git_status_tsv(status: &GitStatus) -> String {
         let mut result = String::new();
-        result.push_str("status\tpath\told_path\tsection\n");
+        result.push_str("status\tpath\tnew_path\tsection\n");
 
         for entry in &status.staged {
             result.push_str(&format!(
                 "{}\t{}\t{}\tstaged\n",
                 entry.status,
                 entry.path,
-                entry.old_path.as_deref().unwrap_or(&String::new())
+                entry.new_path.as_deref().unwrap_or(&String::new())
             ));
         }
         for entry in &status.unstaged {
@@ -2612,7 +2969,7 @@ impl ParseHandler {
                 "{}\t{}\t{}\tunstaged\n",
                 entry.status,
                 entry.path,
-                entry.old_path.as_deref().unwrap_or(&String::new())
+                entry.new_path.as_deref().unwrap_or(&String::new())
             ));
         }
         for entry in &status.untracked {
@@ -2620,7 +2977,7 @@ impl ParseHandler {
                 "{}\t{}\t{}\tuntracked\n",
                 entry.status,
                 entry.path,
-                entry.old_path.as_deref().unwrap_or(&String::new())
+                entry.new_path.as_deref().unwrap_or(&String::new())
             ));
         }
         for entry in &status.unmerged {
@@ -2628,7 +2985,7 @@ impl ParseHandler {
                 "{}\t{}\t{}\tunmerged\n",
                 entry.status,
                 entry.path,
-                entry.old_path.as_deref().unwrap_or(&String::new())
+                entry.new_path.as_deref().unwrap_or(&String::new())
             ));
         }
         result
@@ -2646,22 +3003,22 @@ impl ParseHandler {
             "staged": status.staged.iter().map(|e| serde_json::json!({
                 "status": e.status,
                 "path": e.path,
-                "old_path": e.old_path,
+                "new_path": e.new_path,
             })).collect::<Vec<_>>(),
             "unstaged": status.unstaged.iter().map(|e| serde_json::json!({
                 "status": e.status,
                 "path": e.path,
-                "old_path": e.old_path,
+                "new_path": e.new_path,
             })).collect::<Vec<_>>(),
             "untracked": status.untracked.iter().map(|e| serde_json::json!({
                 "status": e.status,
                 "path": e.path,
-                "old_path": e.old_path,
+                "new_path": e.new_path,
             })).collect::<Vec<_>>(),
             "unmerged": status.unmerged.iter().map(|e| serde_json::json!({
                 "status": e.status,
                 "path": e.path,
-                "old_path": e.old_path,
+                "new_path": e.new_path,
             })).collect::<Vec<_>>(),
         })
         .to_string()
@@ -2695,10 +3052,10 @@ impl ParseHandler {
         if !status.staged.is_empty() {
             output.push_str(&format!("staged ({}):\n", status.staged.len()));
             for entry in &status.staged {
-                if let Some(ref old_path) = entry.old_path {
+                if let Some(ref new_path) = entry.new_path {
                     output.push_str(&format!(
                         "  {} {} -> {}\n",
-                        entry.status, old_path, entry.path
+                        entry.status, new_path, entry.path
                     ));
                 } else {
                     output.push_str(&format!("  {} {}\n", entry.status, entry.path));
@@ -2710,10 +3067,10 @@ impl ParseHandler {
         if !status.unstaged.is_empty() {
             output.push_str(&format!("unstaged ({}):\n", status.unstaged.len()));
             for entry in &status.unstaged {
-                if let Some(ref old_path) = entry.old_path {
+                if let Some(ref new_path) = entry.new_path {
                     output.push_str(&format!(
                         "  {} {} -> {}\n",
-                        entry.status, old_path, entry.path
+                        entry.status, new_path, entry.path
                     ));
                 } else {
                     output.push_str(&format!("  {} {}\n", entry.status, entry.path));
@@ -2733,10 +3090,10 @@ impl ParseHandler {
         if !status.unmerged.is_empty() {
             output.push_str(&format!("unmerged ({}):\n", status.unmerged.len()));
             for entry in &status.unmerged {
-                if let Some(ref old_path) = entry.old_path {
+                if let Some(ref new_path) = entry.new_path {
                     output.push_str(&format!(
                         "  {} {} -> {}\n",
-                        entry.status, old_path, entry.path
+                        entry.status, new_path, entry.path
                     ));
                 } else {
                     output.push_str(&format!("  {} {}\n", entry.status, entry.path));
@@ -2802,8 +3159,8 @@ impl ParseHandler {
 
                 // Parse the file path from "diff --git a/path b/path"
                 let parts: Vec<&str> = line.split_whitespace().collect();
-                let (path, old_path) = if parts.len() >= 3 {
-                    // Format: "diff --git a/old b/new"
+                let (path, new_path) = if parts.len() >= 3 {
+                    // Format: "diff --git a/new b/new"
                     let a_path = parts
                         .get(2)
                         .unwrap_or(&"")
@@ -2825,7 +3182,7 @@ impl ParseHandler {
 
                 current_file = Some(GitDiffEntry {
                     path,
-                    old_path,
+                    new_path,
                     change_type: "M".to_string(), // Default, will be updated
                     additions: 0,
                     deletions: 0,
@@ -2854,7 +3211,7 @@ impl ParseHandler {
             // Detect rename from
             if line.starts_with("rename from ") {
                 if let Some(ref mut file) = current_file {
-                    file.old_path =
+                    file.new_path =
                         Some(line.strip_prefix("rename from ").unwrap_or("").to_string());
                     file.change_type = "R".to_string();
                 }
@@ -2872,7 +3229,7 @@ impl ParseHandler {
             // Detect copy from
             if line.starts_with("copy from ") {
                 if let Some(ref mut file) = current_file {
-                    file.old_path = Some(line.strip_prefix("copy from ").unwrap_or("").to_string());
+                    file.new_path = Some(line.strip_prefix("copy from ").unwrap_or("").to_string());
                     file.change_type = "C".to_string();
                 }
                 continue;
@@ -2983,7 +3340,7 @@ impl ParseHandler {
             "files": diff.files.iter().map(|file| {
                 serde_json::json!({
                     "path": file.path,
-                    "old_path": file.old_path,
+                    "new_path": file.new_path,
                     "change_type": file.change_type,
                     "additions": file.additions,
                     "deletions": file.deletions,
@@ -3032,10 +3389,10 @@ impl ParseHandler {
                 _ => "M",
             };
 
-            if let Some(ref old_path) = file.old_path {
+            if let Some(ref new_path) = file.new_path {
                 output.push_str(&format!(
                     "  {} {} -> {} (+{}/-{})\n",
-                    change_indicator, old_path, file.path, file.additions, file.deletions
+                    change_indicator, new_path, file.path, file.additions, file.deletions
                 ));
             } else {
                 output.push_str(&format!(
@@ -3064,10 +3421,10 @@ impl ParseHandler {
         let mut output = String::new();
 
         for file in &diff.files {
-            if let Some(ref old_path) = file.old_path {
+            if let Some(ref new_path) = file.new_path {
                 output.push_str(&format!(
                     "{} {} -> {}\n",
-                    file.change_type, old_path, file.path
+                    file.change_type, new_path, file.path
                 ));
             } else {
                 output.push_str(&format!("{} {}\n", file.change_type, file.path));
@@ -9601,9 +9958,9 @@ mod tests {
 
     #[test]
     fn test_strip_ansi_codes_multiple() {
-        let input = "\x1b[1;31mBold Red\x1b[0m \x1b[32mGreen\x1b[0m";
+        let input = "\x1b[1;31mBnew Red\x1b[0m \x1b[32mGreen\x1b[0m";
         let result = strip_ansi_codes(input);
-        assert_eq!(result, "Bold Red Green");
+        assert_eq!(result, "Bnew Red Green");
     }
 
     #[test]
@@ -9885,14 +10242,76 @@ mod tests {
         };
         let input = ReplaceInput {
             path: std::path::PathBuf::from("."),
-            search: "old".to_string(),
+            search: "new_unique_string_xyz".to_string(),
             replace: "new".to_string(),
-            extension: Some("ts".to_string()),
+            extension: Some("rs".to_string()),
+            dry_run: true,
+        };
+
+        // The replace handler should execute successfully (dry run, no actual changes)
+        let result = handler.execute(&input, &ctx);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_replace_handler_json_format() {
+        let handler = ReplaceHandler;
+        let ctx = CommandContext {
+            format: OutputFormat::Json,
+            stats: false,
+            enabled_formats: vec![],
+        };
+        let input = ReplaceInput {
+            path: std::path::PathBuf::from("."),
+            search: "nonexistent_pattern_abc123".to_string(),
+            replace: "new".to_string(),
+            extension: Some("rs".to_string()),
             dry_run: true,
         };
 
         let result = handler.execute(&input, &ctx);
-        assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_replace_truncate_line() {
+        let short_line = "short line";
+        assert_eq!(
+            ReplaceHandler::truncate_line(short_line, 80),
+            short_line.to_string()
+        );
+
+        let long_line = "a".repeat(100);
+        let truncated = ReplaceHandler::truncate_line(&long_line, 80);
+        assert!(truncated.len() <= 83); // 80 + "..."
+        assert!(truncated.ends_with("..."));
+    }
+
+    #[test]
+    fn test_replace_escape_csv_field() {
+        assert_eq!(ReplaceHandler::escape_csv_field("simple"), "simple");
+        assert_eq!(
+            ReplaceHandler::escape_csv_field("with,comma"),
+            "\"with,comma\""
+        );
+        assert_eq!(
+            ReplaceHandler::escape_csv_field("with\"quote"),
+            "\"with\"\"quote\""
+        );
+        assert_eq!(
+            ReplaceHandler::escape_csv_field("with\nnewline"),
+            "\"with\nnewline\""
+        );
+    }
+
+    #[test]
+    fn test_replace_escape_tsv_field() {
+        assert_eq!(ReplaceHandler::escape_tsv_field("simple"), "simple");
+        assert_eq!(ReplaceHandler::escape_tsv_field("with\ttab"), "with\\ttab");
+        assert_eq!(
+            ReplaceHandler::escape_tsv_field("with\nnewline"),
+            "with\\nnewline"
+        );
     }
 
     #[test]

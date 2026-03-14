@@ -828,6 +828,128 @@ pub struct GrepCounts {
 }
 
 // ============================================================
+// Replace Output Schema
+// ============================================================
+
+/// Schema for replace command output.
+///
+/// # Example JSON
+///
+/// ```json
+/// {
+///   "schema": { "version": "1.0.0", "type": "replace_output" },
+///   "dry_run": true,
+///   "search_pattern": "old_function",
+///   "replacement": "new_function",
+///   "files": [
+///     {
+///       "path": "src/main.rs",
+///       "matches": [
+///         { "line_number": 10, "original": "old_function()", "replaced": "new_function()" }
+///       ]
+///     }
+///   ],
+///   "counts": {
+///     "files_affected": 1,
+///     "total_replacements": 3
+///   }
+/// }
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ReplaceOutputSchema {
+    /// Schema version information.
+    pub schema: SchemaVersion,
+    /// Whether this was a dry run (preview mode).
+    pub dry_run: bool,
+    /// The search pattern used.
+    pub search_pattern: String,
+    /// The replacement string.
+    pub replacement: String,
+    /// List of files with replacements.
+    #[serde(default)]
+    pub files: Vec<ReplaceFile>,
+    /// Count summary.
+    pub counts: ReplaceCounts,
+}
+
+impl ReplaceOutputSchema {
+    /// Create a new replace output schema.
+    pub fn new(search_pattern: &str, replacement: &str, dry_run: bool) -> Self {
+        Self {
+            schema: SchemaVersion::new("replace_output"),
+            dry_run,
+            search_pattern: search_pattern.to_string(),
+            replacement: replacement.to_string(),
+            files: Vec::new(),
+            counts: ReplaceCounts::default(),
+        }
+    }
+
+    /// Set the files.
+    pub fn with_files(mut self, files: Vec<ReplaceFile>) -> Self {
+        self.files = files;
+        self
+    }
+
+    /// Set the counts.
+    pub fn with_counts(mut self, counts: ReplaceCounts) -> Self {
+        self.counts = counts;
+        self
+    }
+}
+
+/// A file with replacements.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ReplaceFile {
+    /// Path to the file.
+    pub path: String,
+    /// List of replacements in this file.
+    #[serde(default)]
+    pub matches: Vec<ReplaceMatch>,
+}
+
+impl ReplaceFile {
+    /// Create a new replace file entry.
+    pub fn new(path: &str) -> Self {
+        Self {
+            path: path.to_string(),
+            matches: Vec::new(),
+        }
+    }
+}
+
+/// A single replacement match.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ReplaceMatch {
+    /// Line number of the match.
+    pub line_number: usize,
+    /// Original line content (before replacement).
+    pub original: String,
+    /// Replaced line content (after replacement).
+    pub replaced: String,
+}
+
+impl ReplaceMatch {
+    /// Create a new replace match.
+    pub fn new(line_number: usize, original: &str, replaced: &str) -> Self {
+        Self {
+            line_number,
+            original: original.to_string(),
+            replaced: replaced.to_string(),
+        }
+    }
+}
+
+/// Count summary for replace output.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ReplaceCounts {
+    /// Number of files affected.
+    pub files_affected: usize,
+    /// Total number of replacements made.
+    pub total_replacements: usize,
+}
+
+// ============================================================
 // Test Output Schema (Unified)
 // ============================================================
 
@@ -1551,6 +1673,95 @@ mod tests {
         assert_eq!(m.line, "fn main() {");
         assert!(m.line_number.is_none());
         assert!(!m.is_context);
+    }
+
+    // ============================================================
+    // Replace Output Schema Tests
+    // ============================================================
+
+    #[test]
+    fn test_replace_output_schema_new() {
+        let schema = ReplaceOutputSchema::new("old", "new", false);
+        assert!(!schema.dry_run);
+        assert_eq!(schema.search_pattern, "old");
+        assert_eq!(schema.replacement, "new");
+        assert!(schema.files.is_empty());
+        assert_eq!(schema.counts.files_affected, 0);
+        assert_eq!(schema.counts.total_replacements, 0);
+    }
+
+    #[test]
+    fn test_replace_output_schema_dry_run() {
+        let schema = ReplaceOutputSchema::new("pattern", "replacement", true);
+        assert!(schema.dry_run);
+    }
+
+    #[test]
+    fn test_replace_file_new() {
+        let file = ReplaceFile::new("src/main.rs");
+        assert_eq!(file.path, "src/main.rs");
+        assert!(file.matches.is_empty());
+    }
+
+    #[test]
+    fn test_replace_match_new() {
+        let m = ReplaceMatch::new(10, "old_function()", "new_function()");
+        assert_eq!(m.line_number, 10);
+        assert_eq!(m.original, "old_function()");
+        assert_eq!(m.replaced, "new_function()");
+    }
+
+    #[test]
+    fn test_replace_output_schema_serialization() {
+        let schema = ReplaceOutputSchema::new("old", "new", true);
+        let json = serde_json::to_string(&schema).unwrap();
+        assert!(json.contains("\"dry_run\":true"));
+        assert!(json.contains("\"search_pattern\":\"old\""));
+        assert!(json.contains("\"replacement\":\"new\""));
+        assert!(json.contains("\"type\":\"replace_output\""));
+    }
+
+    #[test]
+    fn test_replace_counts_default() {
+        let counts = ReplaceCounts::default();
+        assert_eq!(counts.files_affected, 0);
+        assert_eq!(counts.total_replacements, 0);
+    }
+
+    #[test]
+    fn test_replace_output_schema_with_files() {
+        let mut file = ReplaceFile::new("test.rs");
+        file.matches.push(ReplaceMatch::new(1, "old", "new"));
+
+        let schema = ReplaceOutputSchema::new("old", "new", false)
+            .with_files(vec![file])
+            .with_counts(ReplaceCounts {
+                files_affected: 1,
+                total_replacements: 1,
+            });
+
+        assert_eq!(schema.files.len(), 1);
+        assert_eq!(schema.files[0].path, "test.rs");
+        assert_eq!(schema.counts.files_affected, 1);
+        assert_eq!(schema.counts.total_replacements, 1);
+    }
+
+    #[test]
+    fn test_replace_output_round_trip() {
+        let mut file = ReplaceFile::new("src/lib.rs");
+        file.matches.push(ReplaceMatch::new(5, "foo", "bar"));
+        file.matches.push(ReplaceMatch::new(10, "foo", "bar"));
+
+        let original = ReplaceOutputSchema::new("foo", "bar", true)
+            .with_files(vec![file])
+            .with_counts(ReplaceCounts {
+                files_affected: 1,
+                total_replacements: 2,
+            });
+
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: ReplaceOutputSchema = serde_json::from_str(&json).unwrap();
+        assert_eq!(original, parsed);
     }
 
     // ============================================================
