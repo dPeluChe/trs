@@ -139,12 +139,16 @@ ARGUMENTS:
 
 OPTIONS:
     -n, --lines <NUM>    Number of lines to show (default: 10)
+                         Supports -N shorthand (e.g., -5 for last 5 lines)
     -e, --errors         Filter for error lines only
     -f, --follow         Follow the file for new lines (streaming mode)
 
 EXAMPLES:
     # Show last 20 lines of a log file
     trs tail /var/log/app.log -n 20
+
+    # Show last 5 lines using shorthand
+    trs tail /var/log/app.log -5
 
     # Show only error lines
     trs tail /var/log/app.log --errors

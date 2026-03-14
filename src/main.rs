@@ -303,8 +303,8 @@ pub enum Commands {
         /// File to tail
         file: PathBuf,
 
-        /// Number of lines to show
-        #[arg(short = 'n', long, default_value = "10")]
+        /// Number of lines to show (supports -N shorthand, e.g., -5 for last 5 lines)
+        #[arg(short = 'n', long, default_value = "10", value_name = "N")]
         lines: usize,
 
         /// Filter for error lines only
@@ -509,8 +509,60 @@ pub enum TestRunner {
     Bun,
 }
 
+/// Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines).
+/// 
+/// This function transforms arguments like:
+/// - `trs tail -5 file.log` -> `trs tail -n 5 file.log`
+/// - `trs tail -20 file.log` -> `trs tail -n 20 file.log`
+fn preprocess_tail_args(args: &[String]) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut i = 0;
+    
+    while i < args.len() {
+        let arg = &args[i];
+        
+        // Check if we're in a tail command context
+        if i > 0 && (args[i - 1] == "tail" || is_after_tail_subcommand(args, i)) {
+            // Check if this is a -N argument (negative number like -5, -20, etc.)
+            if let Some(number) = arg.strip_prefix('-') {
+                if let Ok(n) = number.parse::<usize>() {
+                    // Transform -N to -n N
+                    result.push("-n".to_string());
+                    result.push(n.to_string());
+                    i += 1;
+                    continue;
+                }
+            }
+        }
+        
+        result.push(arg.clone());
+        i += 1;
+    }
+    
+    result
+}
+
+/// Check if the current position is after a tail subcommand (accounting for global flags).
+fn is_after_tail_subcommand(args: &[String], pos: usize) -> bool {
+    // Look backwards to find if we have a "tail" command
+    for j in (0..pos).rev() {
+        if args[j] == "tail" {
+            return true;
+        }
+        // If we hit another subcommand, stop looking
+        if j > 0 && !args[j].starts_with('-') && args[j - 1].starts_with('-') {
+            break;
+        }
+    }
+    false
+}
+
 fn main() {
-    let cli = Cli::parse();
+    // Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines)
+    let args: Vec<String> = std::env::args().collect();
+    let processed_args = preprocess_tail_args(&args);
+    
+    let cli = Cli::parse_from(&processed_args);
 
     // Create command context from global CLI options
     let ctx = CommandContext::from_cli(&cli);
