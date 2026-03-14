@@ -155,42 +155,42 @@ The project includes three functional layers:
 
 # Formatter System
 
-- [ ] implement raw formatter
-- [ ] implement compact formatter
-- [ ] implement JSON formatter
-- [ ] implement CSV formatter
-- [ ] implement TSV formatter
-- [ ] implement agent formatter
-- [ ] define stable JSON schema for each reducer
+- [x] implement raw formatter
+- [x] implement compact formatter
+- [x] implement JSON formatter
+- [x] implement CSV formatter
+- [x] implement TSV formatter
+- [x] implement agent formatter
+- [x] define stable JSON schema for each reducer
 
 ---
 
 # STDIN Parsers
 
-- [ ] implement `trs parse` command
-- [ ] implement `trs parse git-status`
-- [ ] implement `trs parse ls`
-- [ ] implement `trs parse grep`
-- [ ] implement `trs parse logs`
-- [ ] support reading input from stdin
-- [ ] handle malformed input gracefully
+- [x] implement `trs parse` command
+- [x] implement `trs parse git-status`
+- [x] implement `trs parse ls`
+- [x] implement `trs parse grep`
+- [x] implement `trs parse logs`
+- [x] support reading input from stdin
+- [x] handle malformed input gracefully
 
 ---
 
 # Search Tool
 
-- [ ] implement `trs search`
-- [ ] support syntax `trs search <path> <query>`
-- [ ] integrate high-performance search using ripgrep or Rust equivalent crates
-- [ ] group matches by file
-- [ ] return line numbers
-- [ ] include short match excerpts
-- [ ] return total match count
-- [ ] return total files matched
-- [ ] support `--json` output
-- [ ] support `--compact` output
-- [ ] implement result truncation threshold
-- [ ] support ignoring common directories (`.git`, `node_modules`, `dist`, `build`, etc.)
+- [x] implement `trs search`
+- [x] support syntax `trs search <path> <query>`
+- [x] integrate high-performance search using ripgrep or Rust equivalent crates
+- [x] group matches by file
+- [x] return line numbers
+- [x] include short match excerpts
+- [x] return total match count
+- [x] return total files matched
+- [x] support `--json` output
+- [x] support `--compact` output
+- [x] implement result truncation threshold
+- [x] support ignoring common directories (`.git`, `node_modules`, `dist`, `build`, etc.)
 
 ---
 
