@@ -2693,11 +2693,13 @@ fn test_html2md_url_with_json_output() {
 
 #[test]
 fn test_txt2md_basic() {
+    // Test with stdin input
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")
+        .write_stdin("HELLO WORLD\n\nThis is some text.")
         .assert()
         .success()
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("# Hello World"));
 }
 
 #[test]
@@ -3251,12 +3253,13 @@ fn test_router_html2md_command() {
 
 #[test]
 fn test_router_txt2md_command() {
+    // Test with stdin input
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")
+        .write_stdin("TITLE\n\nSome paragraph text.")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Txt2md:"))
-        .stdout(predicate::str::contains("not yet implemented"));
+        .stdout(predicate::str::contains("# Title"));
 }
 
 #[test]
@@ -4256,17 +4259,146 @@ fn test_html2md_json_output_includes_metadata() {
 }
 
 #[test]
-fn test_txt2md_json_output_not_implemented() {
+fn test_txt2md_json_output() {
+    // Test that txt2md produces valid JSON output
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd.arg("--json").arg("txt2md").assert().success();
-    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-    let json_line = stderr.lines().last().unwrap_or("");
-    let json: serde_json::Value = serde_json::from_str(json_line).unwrap();
-    assert_eq!(json["not_implemented"], true);
-    assert!(json["message"]
+    let output = cmd
+        .arg("--json")
+        .arg("txt2md")
+        .write_stdin("TITLE\n\nParagraph text.")
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+
+    // Verify markdown content is present
+    assert!(json["markdown"].as_str().unwrap().contains("# Title"));
+
+    // Verify metadata is present
+    assert!(json["metadata"].is_object());
+    assert_eq!(json["metadata"]["type"].as_str().unwrap(), "stdin");
+    assert!(json["metadata"]["title"]
         .as_str()
         .unwrap()
-        .contains("txt2md command execution"));
+        .contains("TITLE"));
+}
+
+#[test]
+fn test_txt2md_file_input() {
+    // Test with file input
+    use std::io::Write;
+    let temp_dir = std::env::temp_dir();
+    let input_path = temp_dir.join("test_txt2md_input.txt");
+
+    let mut file = std::fs::File::create(&input_path).unwrap();
+    writeln!(file, "DOCUMENT TITLE").unwrap();
+    writeln!(file).unwrap();
+    writeln!(file, "This is a paragraph.").unwrap();
+    drop(file);
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .arg("--input")
+        .arg(&input_path)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("# Document Title"));
+
+    // Cleanup
+    let _ = std::fs::remove_file(&input_path);
+}
+
+#[test]
+fn test_txt2md_file_output() {
+    // Test with file output
+    use std::io::Write;
+    let temp_dir = std::env::temp_dir();
+    let output_path = temp_dir.join("test_txt2md_output.md");
+
+    // Clean up any existing file
+    let _ = std::fs::remove_file(&output_path);
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .arg("--output")
+        .arg(&output_path)
+        .write_stdin("SECTION HEADING\n\nSome content.")
+        .assert()
+        .success();
+
+    // Verify file was created
+    assert!(output_path.exists());
+
+    // Verify content
+    let content = std::fs::read_to_string(&output_path).unwrap();
+    assert!(content.contains("# Section Heading"));
+
+    // Cleanup
+    let _ = std::fs::remove_file(&output_path);
+}
+
+#[test]
+fn test_txt2md_unordered_list() {
+    // Test unordered list detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("ITEMS\n\n- First item\n- Second item\n- Third item")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("- First item"))
+        .stdout(predicate::str::contains("- Second item"))
+        .stdout(predicate::str::contains("- Third item"));
+}
+
+#[test]
+fn test_txt2md_ordered_list() {
+    // Test ordered list detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("STEPS\n\n1. First step\n2. Second step\n3. Third step")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("1. First step"))
+        .stdout(predicate::str::contains("1. Second step"))
+        .stdout(predicate::str::contains("1. Third step"));
+}
+
+#[test]
+fn test_txt2md_raw_output() {
+    // Test raw output format
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("txt2md")
+        .write_stdin("TITLE\n\nContent here.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("# Title"))
+        // Raw output should NOT include metadata
+        .stdout(predicate::str::contains("metadata").not());
+}
+
+#[test]
+fn test_txt2md_code_block() {
+    // Test that code blocks are preserved
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("CODE\n\n```\nfunction test() {\n  return 1;\n}\n```")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("```"))
+        .stdout(predicate::str::contains("function test()"));
+}
+
+#[test]
+fn test_txt2md_blockquote() {
+    // Test blockquote detection
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("QUOTE\n\n> This is a quote")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("> This is a quote"));
 }
 
 #[test]

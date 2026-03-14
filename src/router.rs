@@ -3236,20 +3236,406 @@ pub struct Txt2mdInput {
 /// Handler for the `txt2md` command.
 pub struct Txt2mdHandler;
 
+impl Txt2mdHandler {
+    /// Read text content from a file or stdin.
+    fn read_input(&self, input: &Option<std::path::PathBuf>) -> CommandResult<String> {
+        if let Some(ref path) = input {
+            if !path.exists() {
+                return Err(CommandError::IoError(format!(
+                    "File not found: {}",
+                    path.display()
+                )));
+            }
+            std::fs::read_to_string(path).map_err(|e| {
+                CommandError::IoError(format!("Failed to read file '{}': {}", path.display(), e))
+            })
+        } else {
+            use std::io::{self, Read};
+            let mut buffer = String::new();
+            io::stdin()
+                .read_to_string(&mut buffer)
+                .map_err(|e| CommandError::IoError(format!("Failed to read stdin: {}", e)))?;
+            Ok(buffer)
+        }
+    }
+
+    /// Convert plain text to Markdown.
+    fn convert_to_markdown(&self, text: &str) -> String {
+        let lines: Vec<&str> = text.lines().collect();
+        let mut result = Vec::new();
+        let mut i = 0;
+        let mut in_code_block = false;
+        let mut in_list = false;
+
+        while i < lines.len() {
+            let line = lines[i];
+            let trimmed = line.trim();
+
+            // Handle empty lines
+            if trimmed.is_empty() {
+                // Close list if we were in one
+                if in_list {
+                    in_list = false;
+                }
+                result.push(String::new());
+                i += 1;
+                continue;
+            }
+
+            // Check for code block markers (triple backticks or lines with only code-like content)
+            if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+                in_code_block = !in_code_block;
+                result.push(trimmed.to_string());
+                i += 1;
+                continue;
+            }
+
+            // If we're in a code block, preserve the line as-is
+            if in_code_block {
+                result.push(line.to_string());
+                i += 1;
+                continue;
+            }
+
+            // Check for indented code (4 spaces or tab)
+            if line.starts_with("    ") || line.starts_with('\t') {
+                result.push(format!("    {}", trimmed));
+                i += 1;
+                continue;
+            }
+
+            // Detect heading patterns
+            // Pattern 1: Line is ALL CAPS and relatively short (likely a heading)
+            if Self::is_heading_line(trimmed) {
+                // Close list if we were in one
+                if in_list {
+                    in_list = false;
+                }
+                let level = Self::determine_heading_level(trimmed, i, &lines);
+                result.push(format!(
+                    "{} {}",
+                    "#".repeat(level),
+                    Self::to_title_case(trimmed)
+                ));
+                i += 1;
+                continue;
+            }
+
+            // Pattern 2: Underlined headings (with === or ---)
+            if i + 1 < lines.len() {
+                let next_line = lines[i + 1].trim();
+                if next_line.chars().all(|c| c == '=') && next_line.len() >= 3 {
+                    result.push(format!("# {}", trimmed));
+                    i += 2;
+                    continue;
+                }
+                if next_line.chars().all(|c| c == '-') && next_line.len() >= 3 {
+                    result.push(format!("## {}", trimmed));
+                    i += 2;
+                    continue;
+                }
+            }
+
+            // Detect unordered list items (- or * prefix)
+            if let Some(list_char) = Self::is_unordered_list_item(trimmed) {
+                in_list = true;
+                let rest = Self::strip_list_prefix(trimmed, list_char);
+                result.push(format!("- {}", Self::format_inline(rest)));
+                i += 1;
+                continue;
+            }
+
+            // Detect ordered list items (1., 2., etc.)
+            if Self::is_ordered_list_item(trimmed) {
+                in_list = true;
+                let rest = Self::strip_ordered_prefix(trimmed);
+                result.push(format!("1. {}", Self::format_inline(rest)));
+                i += 1;
+                continue;
+            }
+
+            // Detect blockquotes (> prefix)
+            if trimmed.starts_with('>') {
+                let rest = trimmed[1..].trim();
+                result.push(format!("> {}", Self::format_inline(rest)));
+                i += 1;
+                continue;
+            }
+
+            // Detect horizontal rules
+            if Self::is_horizontal_rule(trimmed) {
+                result.push("---".to_string());
+                i += 1;
+                continue;
+            }
+
+            // Regular paragraph text - apply inline formatting
+            if in_list {
+                in_list = false;
+            }
+            result.push(Self::format_inline(trimmed));
+            i += 1;
+        }
+
+        result.join("\n")
+    }
+
+    /// Check if a line looks like a heading (ALL CAPS or title case, short length).
+    fn is_heading_line(line: &str) -> bool {
+        // Skip lines that are too long to be headings
+        if line.len() > 80 {
+            return false;
+        }
+
+        // Skip lines that start with list markers
+        if line.starts_with('-') || line.starts_with('*') || line.starts_with('>') {
+            return false;
+        }
+
+        // Skip lines that start with numbers (could be ordered list)
+        if line
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
+        {
+            return false;
+        }
+
+        // Check if line is mostly uppercase (likely a heading)
+        let alpha_chars: Vec<char> = line.chars().filter(|c| c.is_alphabetic()).collect();
+        if alpha_chars.is_empty() {
+            return false;
+        }
+
+        let uppercase_count = alpha_chars.iter().filter(|c| c.is_uppercase()).count();
+        let ratio = uppercase_count as f64 / alpha_chars.len() as f64;
+
+        // If more than 70% uppercase, it's likely a heading
+        ratio > 0.7
+    }
+
+    /// Determine the heading level based on position and content.
+    fn determine_heading_level(line: &str, index: usize, lines: &[&str]) -> usize {
+        // First line or near the beginning is usually H1
+        if index == 0 {
+            return 1;
+        }
+
+        // Check if previous line is empty (section break)
+        let prev_empty = index > 0 && lines[index - 1].trim().is_empty();
+
+        // Short lines near the beginning are likely H1 or H2
+        if line.len() < 30 && prev_empty {
+            return if index < 10 { 2 } else { 3 };
+        }
+
+        // Default to H2 for section headings
+        if prev_empty {
+            return 2;
+        }
+
+        // Default to H3 for subheadings
+        3
+    }
+
+    /// Convert text to title case for headings.
+    fn to_title_case(s: &str) -> String {
+        s.split_whitespace()
+            .map(|word| {
+                let mut chars = word.chars();
+                match chars.next() {
+                    None => String::new(),
+                    Some(first) => {
+                        first.to_uppercase().collect::<String>()
+                            + &chars.collect::<String>().to_lowercase()
+                    }
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// Check if line is an unordered list item.
+    fn is_unordered_list_item(line: &str) -> Option<char> {
+        if line.starts_with("- ") {
+            Some('-')
+        } else if line.starts_with("* ") {
+            Some('*')
+        } else {
+            None
+        }
+    }
+
+    /// Strip unordered list prefix from line.
+    fn strip_list_prefix(line: &str, prefix: char) -> &str {
+        let prefix_str = format!("{} ", prefix);
+        line.strip_prefix(&prefix_str).unwrap_or(line)
+    }
+
+    /// Check if line is an ordered list item.
+    fn is_ordered_list_item(line: &str) -> bool {
+        // Match patterns like "1.", "2.", "10.", etc.
+        let parts: Vec<&str> = line.splitn(2, '.').collect();
+        if parts.len() != 2 {
+            return false;
+        }
+        parts[0].parse::<u32>().is_ok() && parts[1].starts_with(' ')
+    }
+
+    /// Strip ordered list prefix from line.
+    fn strip_ordered_prefix(line: &str) -> &str {
+        if let Some(pos) = line.find(". ") {
+            &line[pos + 2..]
+        } else {
+            line
+        }
+    }
+
+    /// Check if line is a horizontal rule.
+    fn is_horizontal_rule(line: &str) -> bool {
+        let trimmed = line.trim();
+        if trimmed.len() < 3 {
+            return false;
+        }
+        // Check for patterns like ---, ***, ___
+        let first_char = trimmed.chars().next().unwrap();
+        (first_char == '-' || first_char == '*' || first_char == '_')
+            && trimmed.chars().all(|c| c == first_char)
+    }
+
+    /// Apply inline formatting (bold, italic, code).
+    fn format_inline(text: &str) -> String {
+        let mut result = text.to_string();
+
+        // Detect inline code (text surrounded by backticks)
+        // This is already markdown, so preserve it
+
+        // Detect patterns that look like emphasis
+        // Words surrounded by * or _ should become italic
+        // Words surrounded by ** or __ should become bold
+
+        // For now, we'll do simple pattern detection
+        // Look for text like *word* or _word_ and ensure it's italic
+        // Look for text like **word** or __word__ and ensure it's bold
+
+        // URL detection - make links clickable
+        result = Self::format_urls(&result);
+
+        result
+    }
+
+    /// Format URLs as Markdown links.
+    fn format_urls(text: &str) -> String {
+        // Simple URL pattern matching
+        let url_pattern = regex::Regex::new(r"https?://[^\s]+").unwrap();
+        url_pattern
+            .replace_all(text, |caps: &regex::Captures| {
+                let url = &caps[0];
+                // Remove trailing punctuation that's likely not part of the URL
+                let url = url.trim_end_matches(|c| c == '.' || c == ',' || c == ';' || c == ':');
+                format!("<{}>", url)
+            })
+            .to_string()
+    }
+
+    /// Extract metadata from the text.
+    fn extract_metadata(
+        &self,
+        text: &str,
+        input_path: &Option<std::path::PathBuf>,
+    ) -> serde_json::Value {
+        let lines: Vec<&str> = text.lines().collect();
+        let word_count: usize = text.split_whitespace().count();
+        let line_count = lines.len();
+
+        let mut metadata = serde_json::json!({
+            "lines": line_count,
+            "words": word_count,
+            "characters": text.len(),
+        });
+
+        // Try to extract a title from the first non-empty line
+        for line in &lines {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() {
+                // Use first line as title (truncate if too long)
+                let title = if trimmed.len() > 80 {
+                    format!("{}...", &trimmed[..77])
+                } else {
+                    trimmed.to_string()
+                };
+                metadata["title"] = serde_json::json!(title);
+                break;
+            }
+        }
+
+        // Add source info if input is a file
+        if let Some(ref path) = input_path {
+            metadata["source"] = serde_json::json!(path.display().to_string());
+            metadata["type"] = serde_json::json!("file");
+        } else {
+            metadata["type"] = serde_json::json!("stdin");
+        }
+
+        metadata
+    }
+
+    /// Format output based on the output format.
+    fn format_output(
+        &self,
+        markdown: &str,
+        metadata: &serde_json::Value,
+        format: OutputFormat,
+    ) -> String {
+        match format {
+            OutputFormat::Json => serde_json::json!({
+                "markdown": markdown,
+                "metadata": metadata,
+            })
+            .to_string(),
+            OutputFormat::Compact | OutputFormat::Agent => {
+                format!(
+                    "---\n{}\n---\n\n{}",
+                    serde_json::to_string_pretty(metadata).unwrap(),
+                    markdown
+                )
+            }
+            OutputFormat::Raw | OutputFormat::Csv | OutputFormat::Tsv => markdown.to_string(),
+        }
+    }
+}
+
 impl CommandHandler for Txt2mdHandler {
     type Input = Txt2mdInput;
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
-        if ctx.stats {
-            eprintln!("Stats: enabled");
-        }
-        eprintln!("Output format: {:?}", ctx.format);
-        eprintln!("Txt2md: {:?} -> {:?}", input.input, input.output);
+        // Read input text
+        let text = self.read_input(&input.input)?;
 
-        // TODO: Implement actual txt2md execution
-        Err(CommandError::NotImplemented(
-            "txt2md command execution".to_string(),
-        ))
+        // Convert to Markdown
+        let markdown = self.convert_to_markdown(&text);
+
+        // Extract metadata
+        let metadata = self.extract_metadata(&text, &input.input);
+
+        // Format output
+        let formatted = self.format_output(&markdown, &metadata, ctx.format);
+
+        // Write to output file or stdout
+        if let Some(ref output_path) = input.output {
+            std::fs::write(output_path, &formatted).map_err(|e| {
+                CommandError::IoError(format!(
+                    "Failed to write output file '{}': {}",
+                    output_path.display(),
+                    e
+                ))
+            })?;
+        } else {
+            print!("{}\n", formatted);
+        }
+
+        Ok(())
     }
 }
 
@@ -12101,19 +12487,33 @@ mod tests {
 
     #[test]
     fn test_txt2md_handler() {
+        use std::io::Write;
         let handler = Txt2mdHandler;
         let ctx = CommandContext {
-            format: OutputFormat::Compact,
+            format: OutputFormat::Raw,
             stats: false,
             enabled_formats: vec![],
         };
+
+        // Create a temp input file
+        let temp_dir = std::env::temp_dir();
+        let input_path = temp_dir.join("test_txt2md_handler_input.txt");
+        let mut file = std::fs::File::create(&input_path).unwrap();
+        writeln!(file, "TITLE").unwrap();
+        writeln!(file).unwrap();
+        writeln!(file, "Some text.").unwrap();
+        drop(file);
+
         let input = Txt2mdInput {
-            input: Some(std::path::PathBuf::from("input.txt")),
-            output: Some(std::path::PathBuf::from("output.md")),
+            input: Some(input_path.clone()),
+            output: None,
         };
 
         let result = handler.execute(&input, &ctx);
-        assert!(matches!(result, Err(CommandError::NotImplemented(_))));
+        assert!(result.is_ok());
+
+        // Cleanup
+        let _ = std::fs::remove_file(&input_path);
     }
 
     #[test]
