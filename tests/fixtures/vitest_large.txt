@@ -1,0 +1,15 @@
+ ✓ test/test01.test.ts (2 tests) 150ms
+ ✓ test/test02.test.ts (2 tests) 160ms
+ ✓ test/test03.test.ts (2 tests) 140ms
+ ✓ test/test04.test.ts (2 tests) 155ms
+ ✓ test/test05.test.ts (2 tests) 145ms
+ ✓ test/test06.test.ts (2 tests) 165ms
+ ✓ test/test07.test.ts (2 tests) 150ms
+ ✓ test/test08.test.ts (2 tests) 160ms
+ ✓ test/test09.test.ts (2 tests) 155ms
+ ✓ test/test10.test.ts (2 tests) 145ms
+
+ Test Files  10 passed (10)
+      Tests  20 passed (20)
+   Start at  10:30:00
+   Duration  3.00s

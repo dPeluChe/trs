@@ -1,0 +1,9 @@
+✓ test/example.test.js ✗ should work correctly
+
+ 0 pass
+ 1 fail
+Ran 1 tests across 1 files. [15.00ms]
+
+ FAIL  test/example.test.js
+  ✗ should work correctly
+    AssertionError: expected true to be false

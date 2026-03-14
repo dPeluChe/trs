@@ -1,0 +1,8 @@
+ ✓ test/utils.test.ts (3 tests) 200ms
+ ✓ test/helpers.test.ts (2 tests) 150ms
+ ✓ test/components.test.ts (4 tests) 300ms
+
+ Test Files  3 passed (3)
+      Tests  9 passed (9)
+   Start at  10:30:00
+   Duration  1.20s

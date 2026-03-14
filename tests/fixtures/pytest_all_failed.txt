@@ -1,0 +1,28 @@
+tests/test_main.py::test_one FAILED
+tests/test_main.py::test_two FAILED
+tests/test_main.py::test_three FAILED
+
+=== FAILURES ===
+____ test_one ____
+def test_one():
+>       assert False
+E       AssertionError: assert False
+
+tests/test_main.py:5: AssertionError
+____ test_two ____
+def test_two():
+>       assert 1 == 2
+E       AssertionError: assert 1 == 2
+
+tests/test_main.py:10: AssertionError
+____ test_three ____
+def test_three():
+>       raise ValueError("Test error")
+E       ValueError: Test error
+
+tests/test_main.py:15: ValueError
+=== short test summary info ===
+FAILED tests/test_main.py::test_one - AssertionError: assert False
+FAILED tests/test_main.py::test_two - AssertionError: assert 1 == 2
+FAILED tests/test_main.py::test_three - ValueError: Test error
+3 failed in 0.08s

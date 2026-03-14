@@ -1,0 +1,13 @@
+PASS src/utils.test.js
+  ✓ should add numbers (5 ms)
+  ✓ should subtract numbers (2 ms)
+  ✓ should multiply numbers (3 ms)
+  ✓ should divide numbers (4 ms)
+
+PASS src/helpers.test.js
+  ✓ should format date (1 ms)
+  ✓ should parse JSON (2 ms)
+
+Test Suites: 2 passed, 2 total
+Tests:       6 passed, 6 total
+Time:        0.8 s

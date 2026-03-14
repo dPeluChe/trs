@@ -1,0 +1,12 @@
+tests/test_main.py::test_divide_by_zero FAILED
+
+=== FAILURES ===
+____ test_divide_by_zero ____
+def test_divide_by_zero():
+>       result = 1 / 0
+E       ZeroDivisionError: division by zero
+
+tests/test_main.py:5: ZeroDivisionError
+=== short test summary info ===
+FAILED tests/test_main.py::test_divide_by_zero - ZeroDivisionError: division by zero
+1 failed in 0.02s

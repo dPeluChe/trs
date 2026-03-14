@@ -1,0 +1,7 @@
+▶ test/example.test.js
+  ✔ should work correctly (5.123ms)
+▶ test/example.test.js (10.456ms)
+
+✔ tests 1 passed (1)
+✔ test files 1 passed (1)
+ℹ duration 25ms

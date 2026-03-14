@@ -1,0 +1,14 @@
+✓ test/test1.test.js ✗ should work
+✓ test/test2.test.js ✗ should pass
+
+ 0 pass
+ 2 fail
+Ran 2 tests across 2 files. [30.00ms]
+
+ FAIL  test/test1.test.js
+  ✗ should work
+    AssertionError: test 1 failed
+
+ FAIL  test/test2.test.js
+  ✗ should pass
+    AssertionError: test 2 failed

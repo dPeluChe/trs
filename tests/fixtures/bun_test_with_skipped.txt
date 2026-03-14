@@ -1,0 +1,9 @@
+✓ test/features.test.js ✓ should enable feature A [3.12ms]
+✓ test/features.test.js ✓ should enable feature B [2.45ms]
+✓ test/features.test.js (skip) should enable feature C
+✓ test/features.test.js (skip) should enable feature D
+
+ 2 pass
+ 0 fail
+ 2 skip
+Ran 4 tests across 1 files. [25.00ms]

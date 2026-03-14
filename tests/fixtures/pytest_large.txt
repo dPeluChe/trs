@@ -1,0 +1,21 @@
+tests/test_file01.py::test_function_01 PASSED
+tests/test_file01.py::test_function_02 PASSED
+tests/test_file02.py::test_function_01 PASSED
+tests/test_file02.py::test_function_02 PASSED
+tests/test_file03.py::test_function_01 PASSED
+tests/test_file03.py::test_function_02 PASSED
+tests/test_file04.py::test_function_01 PASSED
+tests/test_file04.py::test_function_02 PASSED
+tests/test_file05.py::test_function_01 PASSED
+tests/test_file05.py::test_function_02 PASSED
+tests/test_file06.py::test_function_01 PASSED
+tests/test_file06.py::test_function_02 PASSED
+tests/test_file07.py::test_function_01 PASSED
+tests/test_file07.py::test_function_02 PASSED
+tests/test_file08.py::test_function_01 PASSED
+tests/test_file08.py::test_function_02 PASSED
+tests/test_file09.py::test_function_01 PASSED
+tests/test_file09.py::test_function_02 PASSED
+tests/test_file10.py::test_function_01 PASSED
+tests/test_file10.py::test_function_02 PASSED
+20 passed in 2.50s

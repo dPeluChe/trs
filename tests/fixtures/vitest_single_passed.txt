@@ -1,0 +1,6 @@
+ ✓ test/example.test.ts (1 test) 150ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  10:30:00
+   Duration  0.50s

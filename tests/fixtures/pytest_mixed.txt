@@ -1,0 +1,17 @@
+tests/test_main.py::test_add PASSED
+tests/test_main.py::test_subtract PASSED
+tests/test_main.py::test_multiply PASSED
+tests/test_main.py::test_divide FAILED
+tests/test_utils.py::test_helper PASSED
+tests/test_utils.py::test_format SKIPPED
+
+=== FAILURES ===
+____ test_divide ____
+def test_divide():
+>       result = 10 / 0
+E       ZeroDivisionError: division by zero
+
+tests/test_main.py:15: ZeroDivisionError
+=== short test summary info ===
+FAILED tests/test_main.py::test_divide - ZeroDivisionError: division by zero
+5 passed, 1 failed, 1 skipped in 1.23s

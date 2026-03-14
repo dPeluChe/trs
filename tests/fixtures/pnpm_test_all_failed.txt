@@ -1,0 +1,13 @@
+▶ test/test1.test.js
+  ✖ should work
+    AssertionError: test 1 failed
+▶ test/test1.test.js (10.123ms)
+
+▶ test/test2.test.js
+  ✖ should pass
+    AssertionError: test 2 failed
+▶ test/test2.test.js (8.456ms)
+
+✖ tests 2 failed (2)
+✖ test files 2 failed (2)
+ℹ duration 30ms

@@ -1,0 +1,8 @@
+▶ test/example.test.js
+  ✖ should work correctly
+    AssertionError: expected true to be false
+▶ test/example.test.js (15.789ms)
+
+✖ tests 1 failed (1)
+✖ test files 1 failed (1)
+ℹ duration 30ms

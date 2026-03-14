@@ -1,0 +1,16 @@
+PASS src/components/Button.test.js
+  ✓ should render button (5 ms)
+  ✓ should handle click (3 ms)
+
+PASS src/components/Input.test.js
+  ✓ should render input (2 ms)
+  ✓ should handle change (4 ms)
+  ✓ should validate input (6 ms)
+
+PASS src/components/Modal.test.js
+  ✓ should render modal (8 ms)
+  ✓ should close on escape (3 ms)
+
+Test Suites: 3 passed, 3 total
+Tests:       7 passed, 7 total
+Time:        2.1 s

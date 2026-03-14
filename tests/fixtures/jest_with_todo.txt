@@ -1,0 +1,7 @@
+PASS src/todos.test.js
+  ✓ should complete todo (5 ms)
+  ○ skipped should archive todo
+  ○ todo should remind user
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 skipped, 1 todo, 3 total

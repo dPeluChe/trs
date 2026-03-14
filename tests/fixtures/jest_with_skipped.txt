@@ -1,0 +1,8 @@
+PASS src/features.test.js
+  ✓ should enable feature A (5 ms)
+  ✓ should enable feature B (3 ms)
+  ○ skipped should enable feature C (not ready)
+  ○ skipped should enable feature D (pending)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 skipped, 4 total

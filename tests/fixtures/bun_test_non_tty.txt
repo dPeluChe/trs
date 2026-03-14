@@ -1,0 +1,7 @@
+test/example.test.js:
+(pass) should work correctly [5.12ms]
+(pass) should also work [3.45ms]
+
+ 2 pass
+ 0 fail
+Ran 2 tests across 1 files. [25.00ms]

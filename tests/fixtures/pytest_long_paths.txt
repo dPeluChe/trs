@@ -1,0 +1,4 @@
+tests/unit/services/authentication/oauth/handlers/test_google_handler.py::test_authenticate PASSED
+tests/integration/api/v1/endpoints/users/test_user_endpoints.py::test_get_user PASSED
+tests/very/deeply/nested/path/to/test_module.py::test_deep_function PASSED
+3 passed in 0.50s

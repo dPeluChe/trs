@@ -453,6 +453,450 @@ pub fn grep_ripgrep_heading() -> String {
     load_fixture("grep_ripgrep_heading.txt")
 }
 
+// ============================================================
+// Pytest - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty pytest output.
+pub fn pytest_empty() -> String {
+    load_fixture("pytest_empty.txt")
+}
+
+// ============================================================
+// Pytest - Basic Fixtures
+// ============================================================
+
+/// Returns pytest output with a single passed test.
+pub fn pytest_single_passed() -> String {
+    load_fixture("pytest_single_passed.txt")
+}
+
+/// Returns pytest output with a single failed test.
+pub fn pytest_single_failed() -> String {
+    load_fixture("pytest_single_failed.txt")
+}
+
+/// Returns pytest output with mixed results (passed, failed, skipped).
+pub fn pytest_mixed() -> String {
+    load_fixture("pytest_mixed.txt")
+}
+
+// ============================================================
+// Pytest - Error Fixtures
+// ============================================================
+
+/// Returns pytest output with an error (e.g., fixture setup error).
+pub fn pytest_with_error() -> String {
+    load_fixture("pytest_with_error.txt")
+}
+
+// ============================================================
+// Pytest - XFail/XPASS Fixtures
+// ============================================================
+
+/// Returns pytest output with xfail and xpass results.
+pub fn pytest_with_xfail() -> String {
+    load_fixture("pytest_with_xfail.txt")
+}
+
+// ============================================================
+// Pytest - All Passed/Failed Fixtures
+// ============================================================
+
+/// Returns pytest output with all tests passed.
+pub fn pytest_all_passed() -> String {
+    load_fixture("pytest_all_passed.txt")
+}
+
+/// Returns pytest output with all tests failed.
+pub fn pytest_all_failed() -> String {
+    load_fixture("pytest_all_failed.txt")
+}
+
+// ============================================================
+// Pytest - Edge Cases
+// ============================================================
+
+/// Returns pytest output with header info (platform, rootdir, etc.).
+pub fn pytest_with_header() -> String {
+    load_fixture("pytest_with_header.txt")
+}
+
+/// Returns pytest output with many test files (for testing truncation).
+pub fn pytest_large() -> String {
+    load_fixture("pytest_large.txt")
+}
+
+/// Returns pytest output with long file paths.
+pub fn pytest_long_paths() -> String {
+    load_fixture("pytest_long_paths.txt")
+}
+
+// ============================================================
+// Jest - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty jest output.
+pub fn jest_empty() -> String {
+    load_fixture("jest_empty.txt")
+}
+
+// ============================================================
+// Jest - Basic Fixtures
+// ============================================================
+
+/// Returns jest output with a single passed test suite.
+pub fn jest_single_suite_passed() -> String {
+    load_fixture("jest_single_suite_passed.txt")
+}
+
+/// Returns jest output with a single failed test suite.
+pub fn jest_single_suite_failed() -> String {
+    load_fixture("jest_single_suite_failed.txt")
+}
+
+/// Returns jest output with mixed results (passed and failed suites).
+pub fn jest_mixed() -> String {
+    load_fixture("jest_mixed.txt")
+}
+
+// ============================================================
+// Jest - All Passed/Failed Fixtures
+// ============================================================
+
+/// Returns jest output with all tests passed.
+pub fn jest_all_passed() -> String {
+    load_fixture("jest_all_passed.txt")
+}
+
+/// Returns jest output with all tests failed.
+pub fn jest_all_failed() -> String {
+    load_fixture("jest_all_failed.txt")
+}
+
+// ============================================================
+// Jest - Skipped/Todo Fixtures
+// ============================================================
+
+/// Returns jest output with skipped tests.
+pub fn jest_with_skipped() -> String {
+    load_fixture("jest_with_skipped.txt")
+}
+
+/// Returns jest output with todo tests.
+pub fn jest_with_todo() -> String {
+    load_fixture("jest_with_todo.txt")
+}
+
+// ============================================================
+// Jest - Edge Cases
+// ============================================================
+
+/// Returns jest output with multiple test suites.
+pub fn jest_multiple_suites() -> String {
+    load_fixture("jest_multiple_suites.txt")
+}
+
+/// Returns jest output with many test files (for testing truncation).
+pub fn jest_large() -> String {
+    load_fixture("jest_large.txt")
+}
+
+/// Returns jest output with nested describe blocks.
+pub fn jest_with_nested_describe() -> String {
+    load_fixture("jest_with_nested_describe.txt")
+}
+
+// ============================================================
+// Vitest - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty vitest output.
+pub fn vitest_empty() -> String {
+    load_fixture("vitest_empty.txt")
+}
+
+// ============================================================
+// Vitest - Basic Fixtures
+// ============================================================
+
+/// Returns vitest output with a single passed test.
+pub fn vitest_single_passed() -> String {
+    load_fixture("vitest_single_passed.txt")
+}
+
+/// Returns vitest output with a single failed test.
+pub fn vitest_single_failed() -> String {
+    load_fixture("vitest_single_failed.txt")
+}
+
+/// Returns vitest output with mixed results (passed and failed).
+pub fn vitest_mixed() -> String {
+    load_fixture("vitest_mixed.txt")
+}
+
+// ============================================================
+// Vitest - All Passed/Failed Fixtures
+// ============================================================
+
+/// Returns vitest output with all tests passed.
+pub fn vitest_all_passed() -> String {
+    load_fixture("vitest_all_passed.txt")
+}
+
+/// Returns vitest output with all tests failed.
+pub fn vitest_all_failed() -> String {
+    load_fixture("vitest_all_failed.txt")
+}
+
+// ============================================================
+// Vitest - Skipped/Todo Fixtures
+// ============================================================
+
+/// Returns vitest output with skipped tests.
+pub fn vitest_with_skipped() -> String {
+    load_fixture("vitest_with_skipped.txt")
+}
+
+/// Returns vitest output with mixed passed and skipped tests.
+pub fn vitest_mixed_skipped() -> String {
+    load_fixture("vitest_mixed_skipped.txt")
+}
+
+/// Returns vitest output with todo tests.
+pub fn vitest_with_todo() -> String {
+    load_fixture("vitest_with_todo.txt")
+}
+
+// ============================================================
+// Vitest - Edge Cases
+// ============================================================
+
+/// Returns vitest output with many test files (for testing truncation).
+pub fn vitest_large() -> String {
+    load_fixture("vitest_large.txt")
+}
+
+// ============================================================
+// NPM Test - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty npm test output.
+pub fn npm_test_empty() -> String {
+    load_fixture("npm_test_empty.txt")
+}
+
+// ============================================================
+// NPM Test - Basic Fixtures
+// ============================================================
+
+/// Returns npm test output with a single passed test.
+pub fn npm_test_single_passed() -> String {
+    load_fixture("npm_test_single_passed.txt")
+}
+
+/// Returns npm test output with a single failed test.
+pub fn npm_test_single_failed() -> String {
+    load_fixture("npm_test_single_failed.txt")
+}
+
+/// Returns npm test output with mixed results (passed, failed, skipped).
+pub fn npm_test_mixed() -> String {
+    load_fixture("npm_test_mixed.txt")
+}
+
+// ============================================================
+// NPM Test - All Passed/Failed Fixtures
+// ============================================================
+
+/// Returns npm test output with all tests passed.
+pub fn npm_test_all_passed() -> String {
+    load_fixture("npm_test_all_passed.txt")
+}
+
+/// Returns npm test output with all tests failed.
+pub fn npm_test_all_failed() -> String {
+    load_fixture("npm_test_all_failed.txt")
+}
+
+// ============================================================
+// NPM Test - Skipped/Todo Fixtures
+// ============================================================
+
+/// Returns npm test output with skipped tests.
+pub fn npm_test_with_skipped() -> String {
+    load_fixture("npm_test_with_skipped.txt")
+}
+
+/// Returns npm test output with todo tests.
+pub fn npm_test_with_todo() -> String {
+    load_fixture("npm_test_with_todo.txt")
+}
+
+// ============================================================
+// NPM Test - Edge Cases
+// ============================================================
+
+/// Returns npm test output with multiple test suites.
+pub fn npm_test_multiple_suites() -> String {
+    load_fixture("npm_test_multiple_suites.txt")
+}
+
+/// Returns npm test output with many test files (for testing truncation).
+pub fn npm_test_large() -> String {
+    load_fixture("npm_test_large.txt")
+}
+
+/// Returns npm test output with header (npm script info).
+pub fn npm_test_with_header() -> String {
+    load_fixture("npm_test_with_header.txt")
+}
+
+// ============================================================
+// PNPM Test - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty pnpm test output.
+pub fn pnpm_test_empty() -> String {
+    load_fixture("pnpm_test_empty.txt")
+}
+
+// ============================================================
+// PNPM Test - Basic Fixtures
+// ============================================================
+
+/// Returns pnpm test output with a single passed test.
+pub fn pnpm_test_single_passed() -> String {
+    load_fixture("pnpm_test_single_passed.txt")
+}
+
+/// Returns pnpm test output with a single failed test.
+pub fn pnpm_test_single_failed() -> String {
+    load_fixture("pnpm_test_single_failed.txt")
+}
+
+/// Returns pnpm test output with mixed results (passed, failed, skipped).
+pub fn pnpm_test_mixed() -> String {
+    load_fixture("pnpm_test_mixed.txt")
+}
+
+// ============================================================
+// PNPM Test - All Passed/Failed Fixtures
+// ============================================================
+
+/// Returns pnpm test output with all tests passed.
+pub fn pnpm_test_all_passed() -> String {
+    load_fixture("pnpm_test_all_passed.txt")
+}
+
+/// Returns pnpm test output with all tests failed.
+pub fn pnpm_test_all_failed() -> String {
+    load_fixture("pnpm_test_all_failed.txt")
+}
+
+// ============================================================
+// PNPM Test - Skipped/Todo Fixtures
+// ============================================================
+
+/// Returns pnpm test output with skipped tests.
+pub fn pnpm_test_with_skipped() -> String {
+    load_fixture("pnpm_test_with_skipped.txt")
+}
+
+/// Returns pnpm test output with todo tests.
+pub fn pnpm_test_with_todo() -> String {
+    load_fixture("pnpm_test_with_todo.txt")
+}
+
+// ============================================================
+// PNPM Test - Edge Cases
+// ============================================================
+
+/// Returns pnpm test output with many test files (for testing truncation).
+pub fn pnpm_test_large() -> String {
+    load_fixture("pnpm_test_large.txt")
+}
+
+/// Returns pnpm test output with header (pnpm version info).
+pub fn pnpm_test_with_header() -> String {
+    load_fixture("pnpm_test_with_header.txt")
+}
+
+// ============================================================
+// Bun Test - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty bun test output.
+pub fn bun_test_empty() -> String {
+    load_fixture("bun_test_empty.txt")
+}
+
+// ============================================================
+// Bun Test - Basic Fixtures
+// ============================================================
+
+/// Returns bun test output with a single passed test.
+pub fn bun_test_single_passed() -> String {
+    load_fixture("bun_test_single_passed.txt")
+}
+
+/// Returns bun test output with a single failed test.
+pub fn bun_test_single_failed() -> String {
+    load_fixture("bun_test_single_failed.txt")
+}
+
+/// Returns bun test output with mixed results (passed and failed).
+pub fn bun_test_mixed() -> String {
+    load_fixture("bun_test_mixed.txt")
+}
+
+// ============================================================
+// Bun Test - All Passed/Failed Fixtures
+// ============================================================
+
+/// Returns bun test output with all tests passed.
+pub fn bun_test_all_passed() -> String {
+    load_fixture("bun_test_all_passed.txt")
+}
+
+/// Returns bun test output with all tests failed.
+pub fn bun_test_all_failed() -> String {
+    load_fixture("bun_test_all_failed.txt")
+}
+
+// ============================================================
+// Bun Test - Skipped/Todo Fixtures
+// ============================================================
+
+/// Returns bun test output with skipped tests.
+pub fn bun_test_with_skipped() -> String {
+    load_fixture("bun_test_with_skipped.txt")
+}
+
+/// Returns bun test output with todo tests.
+pub fn bun_test_with_todo() -> String {
+    load_fixture("bun_test_with_todo.txt")
+}
+
+// ============================================================
+// Bun Test - Edge Cases
+// ============================================================
+
+/// Returns bun test output with multiple test suites.
+pub fn bun_test_multiple_suites() -> String {
+    load_fixture("bun_test_multiple_suites.txt")
+}
+
+/// Returns bun test output with many test files (for testing truncation).
+pub fn bun_test_large() -> String {
+    load_fixture("bun_test_large.txt")
+}
+
+/// Returns bun test output in non-TTY format.
+pub fn bun_test_non_tty() -> String {
+    load_fixture("bun_test_non_tty.txt")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -975,5 +1419,521 @@ mod tests {
         // In heading format, line numbers don't have file prefix
         assert!(content.contains("42:fn main()"));
         assert!(content.contains("15:pub fn init()"));
+    }
+
+    // ============================================================
+    // Pytest Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_pytest_empty() {
+        let content = pytest_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_pytest_single_passed() {
+        let content = pytest_single_passed();
+        assert!(content.contains("test_add PASSED"));
+        assert!(content.contains("1 passed"));
+    }
+
+    #[test]
+    fn test_load_pytest_single_failed() {
+        let content = pytest_single_failed();
+        assert!(content.contains("test_divide_by_zero FAILED"));
+        assert!(content.contains("ZeroDivisionError"));
+        assert!(content.contains("1 failed"));
+    }
+
+    #[test]
+    fn test_load_pytest_mixed() {
+        let content = pytest_mixed();
+        assert!(content.contains("PASSED"));
+        assert!(content.contains("FAILED"));
+        assert!(content.contains("SKIPPED"));
+        assert!(content.contains("5 passed, 1 failed, 1 skipped"));
+    }
+
+    #[test]
+    fn test_load_pytest_with_error() {
+        let content = pytest_with_error();
+        assert!(content.contains("ERROR"));
+        assert!(content.contains("RuntimeError"));
+        assert!(content.contains("1 passed, 1 error"));
+    }
+
+    #[test]
+    fn test_load_pytest_with_xfail() {
+        let content = pytest_with_xfail();
+        assert!(content.contains("XFAIL"));
+        assert!(content.contains("XPASS"));
+        assert!(content.contains("SKIPPED"));
+        assert!(content.contains("xfailed"));
+        assert!(content.contains("xpassed"));
+    }
+
+    #[test]
+    fn test_load_pytest_all_passed() {
+        let content = pytest_all_passed();
+        assert!(content.contains("test_add PASSED"));
+        assert!(content.contains("test_subtract PASSED"));
+        assert!(content.contains("test_multiply PASSED"));
+        assert!(content.contains("test_divide PASSED"));
+        assert!(content.contains("4 passed"));
+    }
+
+    #[test]
+    fn test_load_pytest_all_failed() {
+        let content = pytest_all_failed();
+        assert!(content.contains("test_one FAILED"));
+        assert!(content.contains("test_two FAILED"));
+        assert!(content.contains("test_three FAILED"));
+        assert!(content.contains("3 failed"));
+    }
+
+    #[test]
+    fn test_load_pytest_with_header() {
+        let content = pytest_with_header();
+        assert!(content.contains("platform"));
+        assert!(content.contains("pytest-8.0.0"));
+        assert!(content.contains("rootdir:"));
+        assert!(content.contains("3 passed"));
+    }
+
+    #[test]
+    fn test_load_pytest_large() {
+        let content = pytest_large();
+        assert!(content.contains("test_file01.py"));
+        assert!(content.contains("test_file10.py"));
+        assert!(content.contains("20 passed"));
+    }
+
+    #[test]
+    fn test_load_pytest_long_paths() {
+        let content = pytest_long_paths();
+        assert!(content.contains("very/deeply/nested"));
+        assert!(content.contains("unit/services/authentication"));
+        assert!(content.contains("3 passed"));
+    }
+
+    // ============================================================
+    // Jest Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_jest_empty() {
+        let content = jest_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_jest_single_suite_passed() {
+        let content = jest_single_suite_passed();
+        assert!(content.contains("PASS"));
+        assert!(content.contains("src/utils.test.js"));
+        assert!(content.contains("✓"));
+        assert!(content.contains("1 passed"));
+    }
+
+    #[test]
+    fn test_load_jest_single_suite_failed() {
+        let content = jest_single_suite_failed();
+        assert!(content.contains("FAIL"));
+        assert!(content.contains("✕"));
+        assert!(content.contains("expect(received).toBe(expected)"));
+        assert!(content.contains("1 failed"));
+    }
+
+    #[test]
+    fn test_load_jest_mixed() {
+        let content = jest_mixed();
+        assert!(content.contains("PASS"));
+        assert!(content.contains("FAIL"));
+        assert!(content.contains("✓"));
+        assert!(content.contains("✕"));
+        assert!(content.contains("○ skipped"));
+        assert!(content.contains("1 passed, 1 failed"));
+    }
+
+    #[test]
+    fn test_load_jest_all_passed() {
+        let content = jest_all_passed();
+        assert!(content.contains("PASS"));
+        assert!(content.contains("6 passed"));
+        assert!(content.contains("2 passed, 2 total"));
+    }
+
+    #[test]
+    fn test_load_jest_all_failed() {
+        let content = jest_all_failed();
+        assert!(content.contains("FAIL"));
+        assert!(content.contains("2 failed"));
+    }
+
+    #[test]
+    fn test_load_jest_with_skipped() {
+        let content = jest_with_skipped();
+        assert!(content.contains("○ skipped"));
+        assert!(content.contains("2 skipped"));
+    }
+
+    #[test]
+    fn test_load_jest_with_todo() {
+        let content = jest_with_todo();
+        assert!(content.contains("○ todo"));
+        assert!(content.contains("1 todo"));
+    }
+
+    #[test]
+    fn test_load_jest_multiple_suites() {
+        let content = jest_multiple_suites();
+        assert!(content.contains("Button.test.js"));
+        assert!(content.contains("Input.test.js"));
+        assert!(content.contains("Modal.test.js"));
+        assert!(content.contains("3 passed"));
+        assert!(content.contains("7 passed"));
+    }
+
+    #[test]
+    fn test_load_jest_large() {
+        let content = jest_large();
+        assert!(content.contains("test01.test.js"));
+        assert!(content.contains("test10.test.js"));
+        assert!(content.contains("10 passed"));
+        assert!(content.contains("20 passed"));
+    }
+
+    #[test]
+    fn test_load_jest_with_nested_describe() {
+        let content = jest_with_nested_describe();
+        assert!(content.contains("describe block"));
+        assert!(content.contains("nested describe"));
+        assert!(content.contains("alternative delimiter"));
+    }
+
+    // ============================================================
+    // Vitest Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_vitest_empty() {
+        let content = vitest_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_vitest_single_passed() {
+        let content = vitest_single_passed();
+        assert!(content.contains("✓"));
+        assert!(content.contains("1 passed"));
+    }
+
+    #[test]
+    fn test_load_vitest_single_failed() {
+        let content = vitest_single_failed();
+        assert!(content.contains("❯"));
+        assert!(content.contains("AssertionError"));
+        assert!(content.contains("1 failed"));
+    }
+
+    #[test]
+    fn test_load_vitest_mixed() {
+        let content = vitest_mixed();
+        assert!(content.contains("✓"));
+        assert!(content.contains("❯"));
+        assert!(content.contains("1 passed, 1 failed"));
+    }
+
+    #[test]
+    fn test_load_vitest_all_passed() {
+        let content = vitest_all_passed();
+        assert!(content.contains("✓"));
+        assert!(content.contains("3 passed (3)"));
+        assert!(content.contains("9 passed (9)"));
+    }
+
+    #[test]
+    fn test_load_vitest_all_failed() {
+        let content = vitest_all_failed();
+        assert!(content.contains("❯"));
+        assert!(content.contains("2 failed"));
+    }
+
+    #[test]
+    fn test_load_vitest_with_skipped() {
+        let content = vitest_with_skipped();
+        assert!(content.contains("1 skipped"));
+    }
+
+    #[test]
+    fn test_load_vitest_mixed_skipped() {
+        let content = vitest_mixed_skipped();
+        assert!(content.contains("10 passed"));
+        assert!(content.contains("3 skipped"));
+    }
+
+    #[test]
+    fn test_load_vitest_with_todo() {
+        let content = vitest_with_todo();
+        assert!(content.contains("1 todo"));
+    }
+
+    #[test]
+    fn test_load_vitest_large() {
+        let content = vitest_large();
+        assert!(content.contains("test01.test.ts"));
+        assert!(content.contains("test10.test.ts"));
+        assert!(content.contains("10 passed"));
+        assert!(content.contains("20 passed"));
+    }
+
+    // ============================================================
+    // NPM Test Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_npm_test_empty() {
+        let content = npm_test_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_npm_test_single_passed() {
+        let content = npm_test_single_passed();
+        assert!(content.contains("✔"));
+        assert!(content.contains("1 passed"));
+    }
+
+    #[test]
+    fn test_load_npm_test_single_failed() {
+        let content = npm_test_single_failed();
+        assert!(content.contains("✖"));
+        assert!(content.contains("AssertionError"));
+        assert!(content.contains("1 failed"));
+    }
+
+    #[test]
+    fn test_load_npm_test_mixed() {
+        let content = npm_test_mixed();
+        assert!(content.contains("✔"));
+        assert!(content.contains("✖"));
+        assert!(content.contains("# SKIP"));
+    }
+
+    #[test]
+    fn test_load_npm_test_all_passed() {
+        let content = npm_test_all_passed();
+        assert!(content.contains("✔"));
+        assert!(content.contains("5 passed"));
+    }
+
+    #[test]
+    fn test_load_npm_test_all_failed() {
+        let content = npm_test_all_failed();
+        assert!(content.contains("✖"));
+        assert!(content.contains("2 failed"));
+    }
+
+    #[test]
+    fn test_load_npm_test_with_skipped() {
+        let content = npm_test_with_skipped();
+        assert!(content.contains("# SKIP"));
+        assert!(content.contains("2 passed"));
+    }
+
+    #[test]
+    fn test_load_npm_test_with_todo() {
+        let content = npm_test_with_todo();
+        assert!(content.contains("# TODO"));
+        assert!(content.contains("# SKIP"));
+    }
+
+    #[test]
+    fn test_load_npm_test_multiple_suites() {
+        let content = npm_test_multiple_suites();
+        assert!(content.contains("Button.test.js"));
+        assert!(content.contains("Input.test.js"));
+        assert!(content.contains("Modal.test.js"));
+        assert!(content.contains("7 passed"));
+    }
+
+    #[test]
+    fn test_load_npm_test_large() {
+        let content = npm_test_large();
+        assert!(content.contains("test01.test.js"));
+        assert!(content.contains("test10.test.js"));
+        assert!(content.contains("20 passed"));
+    }
+
+    #[test]
+    fn test_load_npm_test_with_header() {
+        let content = npm_test_with_header();
+        assert!(content.contains("> project@1.0.0 test"));
+        assert!(content.contains("> node --test"));
+    }
+
+    // ============================================================
+    // PNPM Test Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_pnpm_test_empty() {
+        let content = pnpm_test_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_pnpm_test_single_passed() {
+        let content = pnpm_test_single_passed();
+        assert!(content.contains("✔"));
+        assert!(content.contains("1 passed"));
+    }
+
+    #[test]
+    fn test_load_pnpm_test_single_failed() {
+        let content = pnpm_test_single_failed();
+        assert!(content.contains("✖"));
+        assert!(content.contains("AssertionError"));
+        assert!(content.contains("1 failed"));
+    }
+
+    #[test]
+    fn test_load_pnpm_test_mixed() {
+        let content = pnpm_test_mixed();
+        assert!(content.contains("✔"));
+        assert!(content.contains("✖"));
+        assert!(content.contains("# SKIP"));
+    }
+
+    #[test]
+    fn test_load_pnpm_test_all_passed() {
+        let content = pnpm_test_all_passed();
+        assert!(content.contains("✔"));
+        assert!(content.contains("5 passed"));
+    }
+
+    #[test]
+    fn test_load_pnpm_test_all_failed() {
+        let content = pnpm_test_all_failed();
+        assert!(content.contains("✖"));
+        assert!(content.contains("2 failed"));
+    }
+
+    #[test]
+    fn test_load_pnpm_test_with_skipped() {
+        let content = pnpm_test_with_skipped();
+        assert!(content.contains("# SKIP"));
+        assert!(content.contains("2 passed"));
+    }
+
+    #[test]
+    fn test_load_pnpm_test_with_todo() {
+        let content = pnpm_test_with_todo();
+        assert!(content.contains("# TODO"));
+        assert!(content.contains("# SKIP"));
+    }
+
+    #[test]
+    fn test_load_pnpm_test_large() {
+        let content = pnpm_test_large();
+        assert!(content.contains("test01.test.js"));
+        assert!(content.contains("test10.test.js"));
+        assert!(content.contains("20 passed"));
+    }
+
+    #[test]
+    fn test_load_pnpm_test_with_header() {
+        let content = pnpm_test_with_header();
+        assert!(content.contains("pnpm: 9.0.0"));
+    }
+
+    // ============================================================
+    // Bun Test Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_bun_test_empty() {
+        let content = bun_test_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_bun_test_single_passed() {
+        let content = bun_test_single_passed();
+        assert!(content.contains("✓"));
+        assert!(content.contains("1 pass"));
+    }
+
+    #[test]
+    fn test_load_bun_test_single_failed() {
+        let content = bun_test_single_failed();
+        assert!(content.contains("✗"));
+        assert!(content.contains("AssertionError"));
+        assert!(content.contains("1 fail"));
+    }
+
+    #[test]
+    fn test_load_bun_test_mixed() {
+        let content = bun_test_mixed();
+        assert!(content.contains("✓"));
+        assert!(content.contains("✗"));
+        assert!(content.contains("3 pass"));
+        assert!(content.contains("1 fail"));
+    }
+
+    #[test]
+    fn test_load_bun_test_all_passed() {
+        let content = bun_test_all_passed();
+        assert!(content.contains("✓"));
+        assert!(content.contains("5 pass"));
+        assert!(content.contains("0 fail"));
+    }
+
+    #[test]
+    fn test_load_bun_test_all_failed() {
+        let content = bun_test_all_failed();
+        assert!(content.contains("✗"));
+        assert!(content.contains("0 pass"));
+        assert!(content.contains("2 fail"));
+    }
+
+    #[test]
+    fn test_load_bun_test_with_skipped() {
+        let content = bun_test_with_skipped();
+        assert!(content.contains("(skip)"));
+        assert!(content.contains("2 skip"));
+    }
+
+    #[test]
+    fn test_load_bun_test_with_todo() {
+        let content = bun_test_with_todo();
+        assert!(content.contains("(todo)"));
+        assert!(content.contains("(skip)"));
+        assert!(content.contains("1 todo"));
+    }
+
+    #[test]
+    fn test_load_bun_test_multiple_suites() {
+        let content = bun_test_multiple_suites();
+        assert!(content.contains("Button.test.js"));
+        assert!(content.contains("Input.test.js"));
+        assert!(content.contains("Modal.test.js"));
+        assert!(content.contains("7 pass"));
+    }
+
+    #[test]
+    fn test_load_bun_test_large() {
+        let content = bun_test_large();
+        assert!(content.contains("test01.test.js"));
+        assert!(content.contains("test10.test.js"));
+        assert!(content.contains("20 pass"));
+    }
+
+    #[test]
+    fn test_load_bun_test_non_tty() {
+        let content = bun_test_non_tty();
+        assert!(content.contains("(pass)"));
+        assert!(content.contains("2 pass"));
     }
 }

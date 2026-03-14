@@ -1,0 +1,6 @@
+PASS src/utils.test.js
+  ✓ should add numbers (5 ms)
+  ✓ should subtract numbers (2 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total

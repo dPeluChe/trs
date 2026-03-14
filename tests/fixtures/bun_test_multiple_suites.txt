@@ -1,0 +1,11 @@
+✓ test/components/Button.test.js ✓ should render button [3.12ms]
+✓ test/components/Button.test.js ✓ should handle click [4.45ms]
+✓ test/components/Input.test.js ✓ should render input [2.78ms]
+✓ test/components/Input.test.js ✓ should handle change [3.12ms]
+✓ test/components/Input.test.js ✓ should validate input [5.45ms]
+✓ test/components/Modal.test.js ✓ should render modal [6.12ms]
+✓ test/components/Modal.test.js ✓ should close on escape [2.45ms]
+
+ 7 pass
+ 0 fail
+Ran 7 tests across 3 files. [55.00ms]

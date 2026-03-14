@@ -1,0 +1,5 @@
+✓ test/example.test.js ✓ should work correctly [5.12ms]
+
+ 1 pass
+ 0 fail
+Ran 1 tests across 1 files. [25.00ms]

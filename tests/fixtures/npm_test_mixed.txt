@@ -1,0 +1,17 @@
+▶ test/utils.test.js
+  ✔ should add numbers (5.123ms)
+  ✔ should subtract numbers (3.456ms)
+▶ test/utils.test.js (15.789ms)
+
+▶ test/api.test.js
+  ✔ should connect (2.345ms)
+  ✖ should fetch data
+    AssertionError: expected 404 to be 200
+  ℹ should delete # SKIP
+▶ test/api.test.js (25.123ms)
+
+✔ tests 3 passed (4)
+✖ tests 1 failed (4)
+✔ test files 1 passed (2)
+✖ test files 1 failed (2)
+ℹ duration 65ms

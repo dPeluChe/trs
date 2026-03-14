@@ -1,0 +1,9 @@
+✓ test/utils.test.js ✓ should add [2.12ms]
+✓ test/utils.test.js ✓ should subtract [1.45ms]
+✓ test/utils.test.js ✓ should multiply [3.78ms]
+✓ test/helpers.test.js ✓ should format [1.23ms]
+✓ test/helpers.test.js ✓ should parse [2.34ms]
+
+ 5 pass
+ 0 fail
+Ran 5 tests across 2 files. [35.00ms]

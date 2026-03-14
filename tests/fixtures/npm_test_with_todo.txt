@@ -1,0 +1,9 @@
+▶ test/todos.test.js
+  ✔ should complete todo (5.123ms)
+  ℹ should archive todo # SKIP
+  ℹ should remind user # TODO
+▶ test/todos.test.js (12.345ms)
+
+✔ tests 1 passed (3)
+✔ test files 1 passed (1)
+ℹ duration 20ms

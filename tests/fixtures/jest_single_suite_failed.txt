@@ -1,0 +1,21 @@
+FAIL src/api.test.js
+  ✕ should fetch data (10 ms)
+
+  ● should fetch data
+
+    expect(received).toBe(expected)
+
+    Expected: "success"
+    Received: "error"
+
+      5 | test('should fetch data', () => {
+      6 |   const result = fetchData();
+    > 7 |   expect(result).toBe('success');
+        |                   ^
+      8 | });
+      9 |
+
+      at Object.<anonymous> (src/api.test.js:7:19)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total

@@ -1,0 +1,12 @@
+✓ test/utils.test.js ✓ should add numbers [5.12ms]
+✓ test/utils.test.js ✓ should subtract numbers [3.45ms]
+✓ test/api.test.js ✓ should connect [2.34ms]
+✓ test/api.test.js ✗ should fetch data
+
+ 3 pass
+ 1 fail
+Ran 4 tests across 2 files. [65.00ms]
+
+ FAIL  test/api.test.js
+  ✗ should fetch data
+    AssertionError: expected 404 to be 200

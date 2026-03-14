@@ -1,0 +1,43 @@
+PASS src/test01.test.js
+  ✓ test 01-01 (5 ms)
+  ✓ test 01-02 (3 ms)
+
+PASS src/test02.test.js
+  ✓ test 02-01 (4 ms)
+  ✓ test 02-02 (2 ms)
+
+PASS src/test03.test.js
+  ✓ test 03-01 (3 ms)
+  ✓ test 03-02 (4 ms)
+
+PASS src/test04.test.js
+  ✓ test 04-01 (2 ms)
+  ✓ test 04-02 (5 ms)
+
+PASS src/test05.test.js
+  ✓ test 05-01 (3 ms)
+  ✓ test 05-02 (4 ms)
+
+PASS src/test06.test.js
+  ✓ test 06-01 (2 ms)
+  ✓ test 06-02 (3 ms)
+
+PASS src/test07.test.js
+  ✓ test 07-01 (4 ms)
+  ✓ test 07-02 (2 ms)
+
+PASS src/test08.test.js
+  ✓ test 08-01 (3 ms)
+  ✓ test 08-02 (5 ms)
+
+PASS src/test09.test.js
+  ✓ test 09-01 (2 ms)
+  ✓ test 09-02 (4 ms)
+
+PASS src/test10.test.js
+  ✓ test 10-01 (5 ms)
+  ✓ test 10-02 (3 ms)
+
+Test Suites: 10 passed, 10 total
+Tests:       20 passed, 20 total
+Time:        3.5 s

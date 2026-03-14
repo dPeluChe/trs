@@ -1,0 +1,21 @@
+PASS src/utils.test.js
+  ✓ should add numbers (5 ms)
+  ✓ should subtract numbers (2 ms)
+
+FAIL src/api.test.js
+  ✓ should connect (3 ms)
+  ✕ should fetch data (10 ms)
+  ○ skipped should delete
+
+  ● should fetch data
+
+    AssertionError: Expected status 200 but got 404
+
+      10 |   const response = await fetch('/api/data');
+      11 |   expect(response.status).toBe(200);
+         |                            ^
+      12 | });
+
+Test Suites: 1 passed, 1 failed, 2 total
+Tests:       2 passed, 1 failed, 1 skipped, 4 total
+Time:        1.5 s

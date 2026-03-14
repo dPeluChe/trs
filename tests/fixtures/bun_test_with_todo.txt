@@ -1,0 +1,9 @@
+✓ test/todos.test.js ✓ should complete todo [5.12ms]
+✓ test/todos.test.js (skip) should archive todo
+✓ test/todos.test.js (todo) should remind user
+
+ 1 pass
+ 0 fail
+ 1 skip
+ 1 todo
+Ran 3 tests across 1 files. [20.00ms]

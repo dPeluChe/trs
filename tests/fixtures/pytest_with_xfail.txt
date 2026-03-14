@@ -1,0 +1,5 @@
+tests/test_main.py::test_add PASSED
+tests/test_main.py::test_known_bug XFAIL
+tests/test_main.py::test_unexpected_pass XPASS
+tests/test_main.py::test_skip SKIPPED
+3 passed, 1 xfailed, 1 xpassed, 1 skipped in 0.15s

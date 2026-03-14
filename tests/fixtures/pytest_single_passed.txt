@@ -1,0 +1,2 @@
+tests/test_main.py::test_add PASSED
+1 passed in 0.01s

@@ -1,0 +1,7 @@
+PASS src/nested.test.js
+  ✓ describe block > should work correctly (5 ms)
+  ✓ describe block > nested describe > should also work (3 ms)
+  ✓ describe block › alternative delimiter › should parse correctly (2 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total

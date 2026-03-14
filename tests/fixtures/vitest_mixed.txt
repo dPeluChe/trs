@@ -1,0 +1,9 @@
+ ✓ test/utils.test.ts (3 tests) 250ms
+ ❯ test/api.test.ts (3 tests | 1 failed) 300ms
+   ❯ should fetch data
+     AssertionError: expected 404 to be 200
+
+ Test Files  1 passed, 1 failed (2)
+      Tests  5 passed, 1 failed (6)
+   Start at  10:30:00
+   Duration  1.00s

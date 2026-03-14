@@ -1,0 +1,53 @@
+▶ test/test01.test.js
+  ✔ test 01-01 (3.123ms)
+  ✔ test 01-02 (2.456ms)
+▶ test/test01.test.js (10.123ms)
+
+▶ test/test02.test.js
+  ✔ test 02-01 (2.789ms)
+  ✔ test 02-02 (3.123ms)
+▶ test/test02.test.js (10.456ms)
+
+▶ test/test03.test.js
+  ✔ test 03-01 (3.456ms)
+  ✔ test 03-02 (2.789ms)
+▶ test/test03.test.js (10.789ms)
+
+▶ test/test04.test.js
+  ✔ test 04-01 (2.123ms)
+  ✔ test 04-02 (3.456ms)
+▶ test/test04.test.js (10.123ms)
+
+▶ test/test05.test.js
+  ✔ test 05-01 (3.789ms)
+  ✔ test 05-02 (2.123ms)
+▶ test/test05.test.js (10.456ms)
+
+▶ test/test06.test.js
+  ✔ test 06-01 (2.456ms)
+  ✔ test 06-02 (3.789ms)
+▶ test/test06.test.js (10.789ms)
+
+▶ test/test07.test.js
+  ✔ test 07-01 (3.123ms)
+  ✔ test 07-02 (2.456ms)
+▶ test/test07.test.js (10.123ms)
+
+▶ test/test08.test.js
+  ✔ test 08-01 (2.789ms)
+  ✔ test 08-02 (3.123ms)
+▶ test/test08.test.js (10.456ms)
+
+▶ test/test09.test.js
+  ✔ test 09-01 (3.456ms)
+  ✔ test 09-02 (2.789ms)
+▶ test/test09.test.js (10.789ms)
+
+▶ test/test10.test.js
+  ✔ test 10-01 (2.123ms)
+  ✔ test 10-02 (3.456ms)
+▶ test/test10.test.js (10.123ms)
+
+✔ tests 20 passed (20)
+✔ test files 10 passed (10)
+ℹ duration 150ms

@@ -1,0 +1,7 @@
+ ✓ test/example-1.test.ts (5 tests | 1 skipped) 306ms
+ ✓ test/example-2.test.ts (5 tests) 307ms
+
+ Test Files  2 passed (4)
+      Tests  10 passed | 3 skipped (65)
+   Start at  11:01:36
+   Duration  2.00s

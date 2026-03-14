@@ -1,0 +1,10 @@
+▶ test/features.test.js
+  ✔ should enable feature A (3.123ms)
+  ✔ should enable feature B (2.456ms)
+  ℹ should enable feature C # SKIP
+  ℹ should enable feature D # SKIP
+▶ test/features.test.js (15.789ms)
+
+✔ tests 2 passed (4)
+✔ test files 1 passed (1)
+ℹ duration 25ms

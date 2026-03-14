@@ -1,0 +1,14 @@
+tests/test_main.py::test_setup ERROR
+tests/test_main.py::test_normal PASSED
+
+=== ERRORS ===
+ERROR at setup of test_setup
+@pytest.fixture
+def broken_fixture():
+>       raise RuntimeError("Fixture setup failed")
+E       RuntimeError: Fixture setup failed
+
+conftest.py:10: RuntimeError
+=== short test summary info ===
+ERROR tests/test_main.py::test_setup - RuntimeError: Fixture setup failed
+1 passed, 1 error in 0.05s

@@ -1,0 +1,16 @@
+FAIL src/test1.test.js
+  ✕ should work (5 ms)
+
+  ● should work
+
+    AssertionError: test failed
+
+FAIL src/test2.test.js
+  ✕ should pass (3 ms)
+
+  ● should pass
+
+    AssertionError: another failure
+
+Test Suites: 2 failed, 2 total
+Tests:       2 failed, 2 total
