@@ -189,67 +189,67 @@ The project includes three functional layers:
 - [x] return total files matched
 - [x] support `--json` output
 - [x] support `--compact` output
-- [x] implement result truncation threshold
+- [x] implement result truncation threshnew
 - [x] support ignoring common directories (`.git`, `node_modules`, `dist`, `build`, etc.)
 
 ---
 
 # Replace Tool
 
-- [ ] implement `trs replace`
-- [ ] support syntax `trs replace <path> <search> <replace>`
-- [ ] support optional extension filter
-- [ ] support preview mode
-- [ ] return affected file count
-- [ ] return replacement count
-- [ ] support JSON output
+- [x] implement `trs replace`
+- [x] support syntax `trs replace <path> <search> <replace>`
+- [x] support optional extension filter
+- [x] support preview mode
+- [x] return affected file count
+- [x] return replacement count
+- [x] support JSON output
 
 ---
 
 # Tail Tool
 
-- [ ] implement `trs tail`
-- [ ] support syntax `trs tail <file>`
-- [ ] support compact log output
-- [ ] support filtering for error lines
-- [ ] support last N lines option
-- [ ] support streaming mode
+- [x] implement `trs tail`
+- [x] support syntax `trs tail <file>`
+- [x] support compact log output
+- [x] support filtering for error lines
+- [x] support last N lines option
+- [x] support streaming mode
 
 ---
 
 # Clean Tool
 
-- [ ] implement `trs clean`
-- [ ] remove ANSI escape codes
-- [ ] collapse repeated blank lines
-- [ ] trim whitespace
-- [ ] collapse repeated lines
-- [ ] support stdin input
-- [ ] support compact output
+- [x] implement `trs clean`
+- [x] remove ANSI escape codes
+- [x] collapse repeated blank lines
+- [x] trim whitespace
+- [x] collapse repeated lines
+- [x] support stdin input
+- [x] support compact output
 
 ---
 
 # HTML to Markdown Tool
 
-- [ ] implement `trs html2md`
-- [ ] support local HTML files
-- [ ] support URL input
-- [ ] convert headings
-- [ ] convert links
-- [ ] convert lists
-- [ ] remove unnecessary HTML noise
-- [ ] support JSON metadata output
+- [x] implement `trs html2md`
+- [x] support local HTML files
+- [x] support URL input
+- [x] convert headings
+- [x] convert links
+- [x] convert lists
+- [x] remove unnecessary HTML noise
+- [x] support JSON metadata output
 
 ---
 
 # TXT to Markdown Tool
 
-- [ ] implement `trs txt2md`
-- [ ] detect simple heading patterns
-- [ ] convert text sections to markdown headings
-- [ ] convert lists
-- [ ] normalize spacing
-- [ ] support stdin input
+- [x] implement `trs txt2md`
+- [x] detect simple heading patterns
+- [x] convert text sections to markdown headings
+- [x] convert lists
+- [x] normalize spacing
+- [x] support stdin input
 
 ---
 

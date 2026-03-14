@@ -4285,6 +4285,59 @@ fn test_txt2md_json_output() {
 }
 
 #[test]
+fn test_txt2md_stdin_input() {
+    // Test explicit stdin input (no file specified)
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("MY DOCUMENT\n\nThis is content from stdin.\n\n- Item 1\n- Item 2")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("# My Document"))
+        .stdout(predicate::str::contains("This is content from stdin."))
+        .stdout(predicate::str::contains("- Item 1"))
+        .stdout(predicate::str::contains("- Item 2"));
+}
+
+#[test]
+fn test_txt2md_stdin_empty() {
+    // Test stdin with empty input
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("")
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_txt2md_stdin_with_output_flag() {
+    // Test stdin input with output to file
+    use std::io::Write;
+    let temp_dir = std::env::temp_dir();
+    let output_path = temp_dir.join("test_txt2md_stdin_output.md");
+
+    // Clean up any existing file
+    let _ = std::fs::remove_file(&output_path);
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .arg("--output")
+        .arg(&output_path)
+        .write_stdin("SECTION\n\nContent here.")
+        .assert()
+        .success();
+
+    // Verify file was created
+    assert!(output_path.exists());
+
+    // Verify content
+    let content = std::fs::read_to_string(&output_path).unwrap();
+    assert!(content.contains("# Section"));
+
+    // Cleanup
+    let _ = std::fs::remove_file(&output_path);
+}
+
+#[test]
 fn test_txt2md_file_input() {
     // Test with file input
     use std::io::Write;
