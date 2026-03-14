@@ -1,0 +1,3 @@
+total 8
+lrwxr-xr-x   1 user group   16 Jan 15 10:30 broken_link -> /nonexistent/path/to/file
+lrwxr-xr-x   1 user group    8 Jan 15 10:31 old_link -> deleted_file

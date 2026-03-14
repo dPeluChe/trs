@@ -1,0 +1,3 @@
+very/deeply/nested/directory/structure/file.txt
+another/long/path/with/many/segments/data.json
+project/submodule/src/components/features/ui/elements/button.rs

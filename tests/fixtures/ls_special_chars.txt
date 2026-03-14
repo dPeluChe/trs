@@ -1,0 +1,6 @@
+file with spaces.txt
+another file name.txt
+special[1].txt
+bracket(2).txt
+unicode_ñame.txt
+emoji_😀.txt

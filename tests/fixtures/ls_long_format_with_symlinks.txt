@@ -1,0 +1,6 @@
+total 24
+drwxr-xr-x   3 user group 4096 Jan 15 10:30 src
+drwxr-xr-x   2 user group 4096 Jan 15 10:31 tests
+lrwxr-xr-x   1 user group    8 Jan 15 10:32 link_to_src -> src
+lrwxr-xr-x   1 user group   12 Jan 15 10:33 link_to_file -> src/main.rs
+-rw-r--r--   1 user group  128 Jan 15 10:34 Cargo.toml

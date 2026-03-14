@@ -1,6 +1,6 @@
-//! Git status and git diff test fixtures module.
+//! Git status, git diff, and ls test fixtures module.
 //!
-//! This module provides access to various git status and git diff output fixtures
+//! This module provides access to various git status, git diff, and ls output fixtures
 //! for testing the parsers.
 
 use std::path::PathBuf;
@@ -251,6 +251,90 @@ pub fn git_diff_large() -> String {
 /// Returns git diff with very long file paths.
 pub fn git_diff_long_paths() -> String {
     load_fixture("git_diff_long_paths.txt")
+}
+
+// ============================================================
+// Ls - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty ls output.
+pub fn ls_empty() -> String {
+    load_fixture("ls_empty.txt")
+}
+
+// ============================================================
+// Ls - Simple Format Fixtures
+// ============================================================
+
+/// Returns simple ls output (just filenames).
+pub fn ls_simple() -> String {
+    load_fixture("ls_simple.txt")
+}
+
+/// Returns ls output with directories.
+pub fn ls_with_directories() -> String {
+    load_fixture("ls_with_directories.txt")
+}
+
+/// Returns ls output with hidden files.
+pub fn ls_with_hidden() -> String {
+    load_fixture("ls_with_hidden.txt")
+}
+
+// ============================================================
+// Ls - Long Format Fixtures
+// ============================================================
+
+/// Returns ls -l output (long format).
+pub fn ls_long_format() -> String {
+    load_fixture("ls_long_format.txt")
+}
+
+/// Returns ls -l output with symlinks.
+pub fn ls_long_format_with_symlinks() -> String {
+    load_fixture("ls_long_format_with_symlinks.txt")
+}
+
+/// Returns ls -l output with broken symlinks.
+pub fn ls_broken_symlink() -> String {
+    load_fixture("ls_broken_symlink.txt")
+}
+
+// ============================================================
+// Ls - Error Fixtures
+// ============================================================
+
+/// Returns ls output with permission denied errors.
+pub fn ls_permission_denied() -> String {
+    load_fixture("ls_permission_denied.txt")
+}
+
+// ============================================================
+// Ls - Mixed Fixtures
+// ============================================================
+
+/// Returns ls -l output with mixed content (dirs, files, symlinks, hidden, errors).
+pub fn ls_mixed() -> String {
+    load_fixture("ls_mixed.txt")
+}
+
+/// Returns ls output with generated directories (node_modules, target, etc.).
+pub fn ls_generated_dirs() -> String {
+    load_fixture("ls_generated_dirs.txt")
+}
+
+// ============================================================
+// Ls - Edge Cases
+// ============================================================
+
+/// Returns ls output with special characters in filenames.
+pub fn ls_special_chars() -> String {
+    load_fixture("ls_special_chars.txt")
+}
+
+/// Returns ls output with long file paths.
+pub fn ls_long_paths() -> String {
+    load_fixture("ls_long_paths.txt")
 }
 
 #[cfg(test)]
@@ -529,5 +613,113 @@ mod tests {
         assert!(content.contains("very/deeply/nested"));
         assert!(content.contains("file with spaces"));
         assert!(content.contains("special chars"));
+    }
+
+    // ============================================================
+    // Ls Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_ls_empty() {
+        let content = ls_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_ls_simple() {
+        let content = ls_simple();
+        assert!(content.contains("src"));
+        assert!(content.contains("Cargo.toml"));
+        assert!(content.contains("README.md"));
+    }
+
+    #[test]
+    fn test_load_ls_with_directories() {
+        let content = ls_with_directories();
+        assert!(content.contains("src"));
+        assert!(content.contains("tests"));
+        assert!(content.contains("target"));
+        assert!(content.contains("node_modules"));
+    }
+
+    #[test]
+    fn test_load_ls_with_hidden() {
+        let content = ls_with_hidden();
+        assert!(content.contains(".git"));
+        assert!(content.contains(".gitignore"));
+        assert!(content.contains(".cargo"));
+        assert!(content.contains(".hidden_file"));
+    }
+
+    #[test]
+    fn test_load_ls_long_format() {
+        let content = ls_long_format();
+        assert!(content.contains("total 32"));
+        assert!(content.contains("drwxr-xr-x"));
+        assert!(content.contains("-rw-r--r--"));
+    }
+
+    #[test]
+    fn test_load_ls_long_format_with_symlinks() {
+        let content = ls_long_format_with_symlinks();
+        assert!(content.contains("lrwxr-xr-x"));
+        assert!(content.contains("->"));
+        assert!(content.contains("link_to_src"));
+        assert!(content.contains("link_to_file"));
+    }
+
+    #[test]
+    fn test_load_ls_broken_symlink() {
+        let content = ls_broken_symlink();
+        assert!(content.contains("broken_link"));
+        assert!(content.contains("old_link"));
+        assert!(content.contains("->"));
+    }
+
+    #[test]
+    fn test_load_ls_permission_denied() {
+        let content = ls_permission_denied();
+        assert!(content.contains("ls:"));
+        assert!(content.contains("Permission denied"));
+        assert!(content.contains("No such file or directory"));
+    }
+
+    #[test]
+    fn test_load_ls_mixed() {
+        let content = ls_mixed();
+        assert!(content.contains("total 48"));
+        assert!(content.contains("drwxr-xr-x"));
+        assert!(content.contains("lrwxr-xr-x"));
+        assert!(content.contains("-rw-r--r--"));
+        assert!(content.contains(".git"));
+        assert!(content.contains("ls:"));
+        assert!(content.contains("Permission denied"));
+    }
+
+    #[test]
+    fn test_load_ls_generated_dirs() {
+        let content = ls_generated_dirs();
+        assert!(content.contains("node_modules"));
+        assert!(content.contains("target"));
+        assert!(content.contains("dist"));
+        assert!(content.contains("build"));
+        assert!(content.contains("__pycache__"));
+    }
+
+    #[test]
+    fn test_load_ls_special_chars() {
+        let content = ls_special_chars();
+        assert!(content.contains("file with spaces.txt"));
+        assert!(content.contains("special[1].txt"));
+        assert!(content.contains("bracket(2).txt"));
+        assert!(content.contains("unicode_ñame.txt"));
+    }
+
+    #[test]
+    fn test_load_ls_long_paths() {
+        let content = ls_long_paths();
+        assert!(content.contains("very/deeply/nested"));
+        assert!(content.contains("another/long/path"));
+        assert!(content.contains("project/submodule/src"));
     }
 }

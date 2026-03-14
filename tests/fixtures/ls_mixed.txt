@@ -1,0 +1,12 @@
+total 48
+drwxr-xr-x   5 user group 4096 Jan 15 10:30 src
+drwxr-xr-x   2 user group 4096 Jan 15 10:31 tests
+drwxr-xr-x  12 user group 4096 Jan 15 10:32 target
+lrwxr-xr-x   1 user group    8 Jan 15 10:33 link -> src/main.rs
+-rw-r--r--   1 user group  128 Jan 15 10:34 Cargo.toml
+-rw-r--r--   1 user group 1024 Jan 15 10:35 README.md
+drwxr-xr-x   2 user group 4096 Jan 15 10:36 .git
+-rw-r--r--   1 user group   32 Jan 15 10:37 .gitignore
+drwxr-xr-x   3 user group 4096 Jan 15 10:38 .cargo
+-rw-r--r--   1 user group   16 Jan 15 10:39 .hidden_config
+ls: cannot open directory 'protected': Permission denied

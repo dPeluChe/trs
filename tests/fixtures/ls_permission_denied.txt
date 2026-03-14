@@ -1,0 +1,2 @@
+ls: cannot open directory '/root/secure': Permission denied
+ls: cannot access 'nonexistent_file': No such file or directory
