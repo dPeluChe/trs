@@ -5145,11 +5145,11 @@ fn test_is_clean_json_format() {
         .assert()
         // JSON should contain is_clean field (true or false)
         .stdout(
-            predicate::str::contains("\"is_clean\": true")
-                .or(predicate::str::contains("\"is_clean\": false")),
+            predicate::str::contains("\"is_clean\":true")
+                .or(predicate::str::contains("\"is_clean\":false")),
         )
         // JSON should contain is_git_repo field
-        .stdout(predicate::str::contains("\"is_git_repo\": true"));
+        .stdout(predicate::str::contains("\"is_git_repo\":true"));
 }
 
 #[test]
