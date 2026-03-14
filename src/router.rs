@@ -3558,9 +3558,16 @@ impl ParseHandler {
     /// - Without line numbers: `filename:matched_line`
     /// - With column: `filename:line_number:column:matched_line`
     /// - Recursive format (ripgrep): `filename:line_number:matched_line`
+    ///
+    /// Matches are grouped by file, preserving the order of first appearance.
     fn parse_grep(input: &str) -> CommandResult<GrepOutput> {
+        use std::collections::HashMap;
+
         let mut grep_output = GrepOutput::default();
-        let mut current_file: Option<GrepFile> = None;
+        // Use a HashMap to group matches by file path
+        let mut matches_by_file: HashMap<String, Vec<GrepMatch>> = HashMap::new();
+        // Track the order of file appearance
+        let mut file_order: Vec<String> = Vec::new();
 
         for line in input.lines() {
             let line = line.trim();
@@ -3577,28 +3584,20 @@ impl ParseHandler {
 
             // Try to parse the grep line
             if let Some((path, grep_match)) = Self::parse_grep_line(line) {
-                // Check if this is the same file as the current one
-                if let Some(ref mut file) = current_file {
-                    if file.path == path {
-                        file.matches.push(grep_match);
-                        continue;
-                    } else {
-                        // Different file, save the current one
-                        grep_output.files.push(file.clone());
-                    }
+                // Track file order on first appearance
+                if !matches_by_file.contains_key(&path) {
+                    file_order.push(path.clone());
                 }
-
-                // Start a new file
-                current_file = Some(GrepFile {
-                    path,
-                    matches: vec![grep_match],
-                });
+                // Add match to the file's group
+                matches_by_file.entry(path).or_default().push(grep_match);
             }
         }
 
-        // Don't forget the last file
-        if let Some(file) = current_file {
-            grep_output.files.push(file);
+        // Convert HashMap to ordered Vec of GrepFile
+        for path in file_order {
+            if let Some(matches) = matches_by_file.remove(&path) {
+                grep_output.files.push(GrepFile { path, matches });
+            }
         }
 
         // Calculate totals
@@ -10642,6 +10641,34 @@ Tests:       2 passed, 1 skipped, 3 total"#;
         assert_eq!(result.match_count, 2);
         assert_eq!(result.files[0].path, "src/main.rs");
         assert_eq!(result.files[1].path, "src/lib.rs");
+    }
+
+    #[test]
+    fn test_parse_grep_groups_interleaved_files() {
+        // Test that matches from the same file are grouped together
+        // even when they appear interleaved in the input
+        let input = "src/main.rs:10:line one\nsrc/lib.rs:25:line two\nsrc/main.rs:30:line three";
+        let result = ParseHandler::parse_grep(input).unwrap();
+
+        // Should have 2 files, not 3
+        assert_eq!(result.file_count, 2);
+        assert_eq!(result.match_count, 3);
+
+        // Files should preserve order of first appearance
+        assert_eq!(result.files[0].path, "src/main.rs");
+        assert_eq!(result.files[1].path, "src/lib.rs");
+
+        // main.rs should have both its matches grouped together
+        assert_eq!(result.files[0].matches.len(), 2);
+        assert_eq!(result.files[0].matches[0].line_number, Some(10));
+        assert_eq!(result.files[0].matches[0].line, "line one");
+        assert_eq!(result.files[0].matches[1].line_number, Some(30));
+        assert_eq!(result.files[0].matches[1].line, "line three");
+
+        // lib.rs should have its single match
+        assert_eq!(result.files[1].matches.len(), 1);
+        assert_eq!(result.files[1].matches[0].line_number, Some(25));
+        assert_eq!(result.files[1].matches[0].line, "line two");
     }
 
     #[test]

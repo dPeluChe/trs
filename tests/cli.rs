@@ -1684,6 +1684,60 @@ fn test_parse_grep_compact_line_numbers_multiple_files() {
 }
 
 #[test]
+fn test_parse_grep_groups_interleaved_files() {
+    // Test that interleaved matches from same file are grouped together
+    let grep_input = "src/main.rs:10:line one\nsrc/lib.rs:25:line two\nsrc/main.rs:30:line three";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--compact")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        // Should show 2 files, not 3 (main.rs appears twice but grouped)
+        .stdout(predicate::str::contains("matches: 2 files, 3 results"))
+        // main.rs should show both matches grouped (2)
+        .stdout(predicate::str::contains("src/main.rs (2):"))
+        // lib.rs should show 1 match
+        .stdout(predicate::str::contains("src/lib.rs (1):"));
+}
+
+#[test]
+fn test_parse_grep_groups_interleaved_files_json() {
+    // Test that interleaved matches from same file are grouped together in JSON output
+    let grep_input = "src/main.rs:10:line one\nsrc/lib.rs:25:line two\nsrc/main.rs:30:line three";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let output_str = String::from_utf8_lossy(&output);
+    let json: serde_json::Value = serde_json::from_str(&output_str).unwrap();
+
+    // Should have 2 files
+    assert_eq!(json["counts"]["files"], 2);
+    assert_eq!(json["counts"]["matches"], 3);
+
+    let files = json["files"].as_array().unwrap();
+    assert_eq!(files.len(), 2);
+
+    // First file should be main.rs with 2 matches
+    assert_eq!(files[0]["path"], "src/main.rs");
+    assert_eq!(files[0]["matches"].as_array().unwrap().len(), 2);
+
+    // Second file should be lib.rs with 1 match
+    assert_eq!(files[1]["path"], "src/lib.rs");
+    assert_eq!(files[1]["matches"].as_array().unwrap().len(), 1);
+}
+
+#[test]
 fn test_parse_grep_csv() {
     let grep_input = "src/main.rs:42:fn main() {";
     let mut cmd = Command::cargo_bin("trs").unwrap();
