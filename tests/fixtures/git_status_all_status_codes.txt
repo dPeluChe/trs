@@ -1,0 +1,27 @@
+On branch main
+
+Changes to be committed:
+  new file:   added_file.rs
+  modified:   modified_staged.rs
+  deleted:    deleted_staged.rs
+  renamed:    old_name.rs -> new_name.rs
+  copied:     source.rs -> copy.rs
+
+Changes not staged for commit:
+  modified:   modified_unstaged.rs
+  deleted:    deleted_unstaged.rs
+  typechange: type_changed_file
+
+Untracked files:
+  untracked_file.txt
+  another_untracked.rs
+
+Unmerged paths:
+  both modified:      conflict_both_modified.rs
+  both added:         conflict_both_added.rs
+  both deleted:       conflict_both_deleted.rs
+  added by us:        conflict_added_by_us.rs
+  added by them:      conflict_added_by_them.rs
+  deleted by us:      conflict_deleted_by_us.rs
+  deleted by them:    conflict_deleted_by_them.rs
+

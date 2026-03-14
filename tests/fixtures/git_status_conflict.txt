@@ -1,0 +1,12 @@
+On branch merge-conflict
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+  both modified:      src/conflict.rs
+  both added:         src/new_file.rs
+  deleted by them:    src/removed_by_them.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")

@@ -1,0 +1,7 @@
+ M src/router.rs
+ M src/formatter.rs
+A  src/new_file.rs
+D  src/deleted_file.rs
+R  old_path.rs -> new_path.rs
+?? untracked_file.txt
+?? another_untracked.rs

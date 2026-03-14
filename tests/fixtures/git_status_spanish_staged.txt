@@ -1,0 +1,9 @@
+En la rama main
+Tu rama está actualizada con 'origin/main'.
+
+Cambios para confirmar:
+  (use "git restore --staged <file>..." para sacar del área de stage)
+  nuevos archivos: src/new.rs
+  modificados:     src/main.rs
+  borrados:        src/old.rs
+

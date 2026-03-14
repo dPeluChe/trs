@@ -1,0 +1,5 @@
+On branch feature
+Your branch is ahead of 'origin/feature' by 3 commits.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean

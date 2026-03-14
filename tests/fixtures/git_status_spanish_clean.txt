@@ -1,0 +1,4 @@
+En la rama main
+Tu rama está actualizada con 'origin/main'.
+
+nada para hacer commit, árbol de trabajo limpio

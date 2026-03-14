@@ -4727,7 +4727,9 @@ impl ParseHandler {
         let mut current_section = GitStatusSection::None;
 
         for line in input.lines() {
-            let line = line.trim();
+            // Use trim_end() to preserve leading spaces which are significant in porcelain format
+            // (e.g., " M file" means unstaged modification, "M  file" means staged modification)
+            let line = line.trim_end();
 
             // Skip empty lines
             if line.is_empty() {
@@ -4743,6 +4745,12 @@ impl ParseHandler {
             // Detect branch info (Spanish)
             if line.starts_with("En la rama ") {
                 status.branch = line.strip_prefix("En la rama ").unwrap_or("").to_string();
+                continue;
+            }
+
+            // Detect branch info (German): "Auf Branch main"
+            if line.starts_with("Auf Branch ") {
+                status.branch = line.strip_prefix("Auf Branch ").unwrap_or("").to_string();
                 continue;
             }
 
@@ -4789,6 +4797,11 @@ impl ParseHandler {
                 continue;
             }
 
+            // Detect up to date (German): "Ihr Branch ist auf demselben Stand wie 'origin/master'."
+            if line.starts_with("Ihr Branch ist auf demselben Stand") {
+                continue;
+            }
+
             // Detect diverged: "Your branch and 'origin/master' have diverged,"
             if line.starts_with("Your branch and ") && line.contains(" have diverged") {
                 // This line indicates divergence, but actual counts are on separate lines
@@ -4797,15 +4810,18 @@ impl ParseHandler {
             }
 
             // Detect diverged counts: "  and have 3 and 5 different commits each, respectively."
-            if line.contains(" different commits each") {
+            // Also handles "and have 3 and 5 different commits each, respectively."
+            if line.contains(" different commits each") || (line.starts_with("and have") && line.contains(" different commits")) {
                 // Parse: "  and have 3 and 5 different commits each, respectively."
+                // Format: "have <ahead> and <behind> different commits each"
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 for i in 0..parts.len() - 1 {
-                    if parts[i] == "have" && i + 2 < parts.len() {
+                    if parts[i] == "have" && i + 4 < parts.len() {
                         if let Ok(ahead_count) = parts[i + 1].parse::<usize>() {
                             status.ahead = Some(ahead_count);
                         }
-                        if let Ok(behind_count) = parts[i + 2].parse::<usize>() {
+                        // parts[i + 2] is "and"
+                        if let Ok(behind_count) = parts[i + 3].parse::<usize>() {
                             status.behind = Some(behind_count);
                         }
                     }
@@ -4837,6 +4853,16 @@ impl ParseHandler {
 
             // Skip help text (lines starting with '(' or containing 'use "git')
             if line.starts_with('(') || line.contains("use \"git") {
+                continue;
+            }
+
+            // Skip clean status lines and other non-file lines
+            if line.starts_with("nothing to commit")
+                || line.starts_with("no changes added")
+                || line.contains("working tree clean")
+                || line.contains("árbol de trabajo limpio")
+                || line.contains("Arbeitsverzeichnis unverändert")
+            {
                 continue;
             }
 
@@ -5022,7 +5048,7 @@ impl ParseHandler {
         if section == GitStatusSection::Untracked {
             return Some(GitStatusEntry {
                 status: "??".to_string(),
-                path: line.to_string(),
+                path: line.trim().to_string(),
                 new_path: None,
             });
         }
@@ -5126,6 +5152,8 @@ impl ParseHandler {
         serde_json::json!({
             "branch": status.branch,
             "is_clean": status.is_clean,
+            "ahead": status.ahead,
+            "behind": status.behind,
             "staged_count": status.staged_count,
             "unstaged_count": status.unstaged_count,
             "untracked_count": status.untracked_count,
@@ -5161,6 +5189,14 @@ impl ParseHandler {
         // Branch info
         if !status.branch.is_empty() {
             output.push_str(&format!("branch: {}\n", status.branch));
+        }
+
+        // Ahead/behind info
+        if let Some(ahead) = status.ahead {
+            output.push_str(&format!("ahead: {}\n", ahead));
+        }
+        if let Some(behind) = status.behind {
+            output.push_str(&format!("behind: {}\n", behind));
         }
 
         // Clean state

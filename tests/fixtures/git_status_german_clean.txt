@@ -1,0 +1,4 @@
+Auf Branch main
+Ihr Branch ist auf demselben Stand wie 'origin/main'.
+
+nichts zu committen, Arbeitsverzeichnis unverändert

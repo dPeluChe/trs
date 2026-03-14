@@ -1,0 +1,2 @@
+HEAD detached at abc123
+nothing to commit, working tree clean
