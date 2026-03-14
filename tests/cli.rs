@@ -3902,7 +3902,7 @@ fn test_clean_no_ansi_real_world() {
 
 #[test]
 fn test_clean_collapse_blanks() {
-    // Test blank line collapsing
+    // Test blank line collapsing - multiple consecutive blanks become one
     let input = "line 1\n\n\n\nline 2\n\n\nline 3";
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("clean")
@@ -3912,7 +3912,59 @@ fn test_clean_collapse_blanks() {
         .success()
         .stdout(predicate::str::contains("line 1"))
         .stdout(predicate::str::contains("line 2"))
-        .stdout(predicate::str::contains("line 3"));
+        .stdout(predicate::str::contains("line 3"))
+        // Verify no more than one consecutive blank line (no \n\n\n sequences)
+        .stdout(predicate::function(|s: &str| {
+            !s.contains("\n\n\n")
+        }));
+}
+
+#[test]
+fn test_clean_collapse_blanks_many_consecutive() {
+    // Test with many consecutive blank lines
+    let input = "start\n\n\n\n\n\n\n\n\n\nend";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--collapse-blanks")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::function(|s: &str| {
+            // Should have at most one blank line between content lines
+            // The output should be "start\n\nend" (one blank line between)
+            // plus reduction stats at the end
+            let lines: Vec<&str> = s.lines().collect();
+            let mut consecutive_blank_count = 0;
+            let mut max_consecutive_blanks = 0;
+            
+            for line in &lines {
+                if line.trim().is_empty() {
+                    consecutive_blank_count += 1;
+                    max_consecutive_blanks = max_consecutive_blanks.max(consecutive_blank_count);
+                } else {
+                    // Reset counter on non-blank line (including stats line)
+                    consecutive_blank_count = 0;
+                }
+            }
+            // Max consecutive blank lines should be 1
+            max_consecutive_blanks <= 1
+        }));
+}
+
+#[test]
+fn test_clean_collapse_blanks_whitespace_lines() {
+    // Test that whitespace-only lines are treated as blank
+    let input = "line 1\n   \n\t\t\n  \nline 2";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("clean")
+        .arg("--collapse-blanks")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::function(|s: &str| {
+            // No triple newlines should exist
+            !s.contains("\n\n\n")
+        }));
 }
 
 #[test]
