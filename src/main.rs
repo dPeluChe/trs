@@ -4,6 +4,7 @@ use std::path::PathBuf;
 mod formatter;
 mod help;
 mod process;
+mod reducer;
 mod router;
 mod schema;
 
