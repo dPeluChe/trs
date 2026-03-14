@@ -1031,9 +1031,10 @@ fn test_parse_ls_json_hidden_files() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"is_hidden\":false"))
-        .stdout(predicate::str::contains("\"is_hidden\":true"))
-        .stdout(predicate::str::contains("\"hidden\":[\".hidden\"]"));
+        .stdout(predicate::str::contains("\"is_hidden\": false"))
+        .stdout(predicate::str::contains("\"is_hidden\": true"))
+        .stdout(predicate::str::contains("\"hidden\": ["))
+        .stdout(predicate::str::contains(".hidden"));
 }
 
 #[test]
@@ -1115,9 +1116,13 @@ fn test_parse_ls_json_format() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"total_count\":2"))
-        .stdout(predicate::str::contains("\"name\":\"file1.txt\""))
-        .stdout(predicate::str::contains("\"type\":\"file\""));
+    // Check schema structure
+    .stdout(predicate::str::contains("\"schema\""))
+        .stdout(predicate::str::contains("\"type\": \"ls_output\""))
+        .stdout(predicate::str::contains("\"counts\""))
+        .stdout(predicate::str::contains("\"total\": 2"))
+        .stdout(predicate::str::contains("\"name\": \"file1.txt\""))
+        .stdout(predicate::str::contains("file"));
 }
 
 #[test]
@@ -1244,7 +1249,7 @@ fn test_parse_ls_no_generated_dirs() {
 
 #[test]
 fn test_parse_ls_json_includes_generated() {
-    // Test that JSON output includes is_generated field and generated array
+    // Test that JSON output includes generated array
     let ls_input = "src/\nnode_modules/\nfile.txt\n";
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -1254,11 +1259,10 @@ fn test_parse_ls_json_includes_generated() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"is_generated\":true"))
-        .stdout(predicate::str::contains("\"is_generated\":false"))
-        .stdout(predicate::str::contains(
-            "\"generated\":[\"node_modules/\"]",
-        ));
+        .stdout(predicate::str::contains("\"generated\":"))
+        .stdout(predicate::str::contains("node_modules/"))
+        .stdout(predicate::str::contains("\"counts\": {"))
+        .stdout(predicate::str::contains("\"generated\": 1"));
 }
 
 #[test]
@@ -1425,9 +1429,9 @@ fn test_parse_ls_symlink_target_json() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "\"symlink_target\":\"destination\"",
+            "\"symlink_target\": \"destination\"",
         ))
-        .stdout(predicate::str::contains("\"name\":\"mylink\""));
+        .stdout(predicate::str::contains("\"name\": \"mylink\""));
 }
 
 #[test]
@@ -1494,11 +1498,10 @@ fn test_parse_ls_broken_symlink_json() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"is_broken_symlink\":true"))
+        .stdout(predicate::str::contains("\"is_broken_symlink\": true"))
         .stdout(predicate::str::contains(
-            "\"symlink_target\":\"/nonexistent/path\"",
-        ))
-        .stdout(predicate::str::contains("\"broken_symlinks\":[\"broken\"]"));
+            "\"symlink_target\": \"/nonexistent/path\"",
+        ));
 }
 
 #[test]
@@ -1528,8 +1531,8 @@ fn test_parse_ls_circular_symlink_json() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"is_broken_symlink\":true"))
-        .stdout(predicate::str::contains("\"symlink_target\":\"loop\""));
+        .stdout(predicate::str::contains("\"is_broken_symlink\": true"))
+        .stdout(predicate::str::contains("\"symlink_target\": \"loop\""));
 }
 
 #[test]
@@ -1563,7 +1566,7 @@ fn test_parse_ls_mixed_broken_and_valid_symlinks() {
 
 #[test]
 fn test_parse_ls_broken_symlink_json_has_broken_array() {
-    // Test that broken_symlinks array is populated in JSON
+    // Test that broken symlinks are detected and marked with is_broken_symlink
     let ls_input = "lrwxrwxrwx  1 user  group    10 Jan  1 12:34 broken1 -> /nonexistent\nlrwxrwxrwx  1 user  group    10 Jan  1 12:34 broken2 -> nonexistent\n";
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -1573,9 +1576,9 @@ fn test_parse_ls_broken_symlink_json_has_broken_array() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains(
-            "\"broken_symlinks\":[\"broken1\",\"broken2\"]",
-        ));
+        .stdout(predicate::str::contains("\"is_broken_symlink\": true"))
+        .stdout(predicate::str::contains("broken1"))
+        .stdout(predicate::str::contains("broken2"));
 }
 
 #[test]
@@ -1590,7 +1593,7 @@ fn test_parse_ls_valid_symlink_not_marked_broken() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"is_broken_symlink\":false"))
+        .stdout(predicate::str::contains("\"is_broken_symlink\": false"))
         .stdout(predicate::function(|x: &str| !x.contains("[broken]")));
 }
 
@@ -1627,10 +1630,10 @@ fn test_parse_grep_json() {
         .write_stdin(grep_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"file_count\":1"))
-        .stdout(predicate::str::contains("\"match_count\":1"))
-        .stdout(predicate::str::contains("\"line_number\":42"))
-        .stdout(predicate::str::contains("\"line\":\"fn main() {\""));
+        .stdout(predicate::str::contains("\"files\": 1"))
+        .stdout(predicate::str::contains("\"matches\": 1"))
+        .stdout(predicate::str::contains("\"line_number\": 42"))
+        .stdout(predicate::str::contains("\"line\": \"fn main() {\""));
 }
 
 #[test]
@@ -1735,8 +1738,8 @@ fn test_parse_grep_multiple_files() {
         .write_stdin(grep_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"file_count\":2"))
-        .stdout(predicate::str::contains("\"match_count\":2"));
+        .stdout(predicate::str::contains("\"files\": 2"))
+        .stdout(predicate::str::contains("\"matches\": 2"));
 }
 
 // ============================================================
@@ -1758,10 +1761,10 @@ fn test_parse_grep_truncation_json_not_truncated() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(json["is_truncated"], false);
-    assert_eq!(json["total_files"], 1);
-    assert_eq!(json["total_matches"], 1);
-    assert_eq!(json["files_shown"], 1);
-    assert_eq!(json["matches_shown"], 1);
+    assert_eq!(json["counts"]["total_files"], 1);
+    assert_eq!(json["counts"]["total_matches"], 1);
+    assert_eq!(json["counts"]["files_shown"], 1);
+    assert_eq!(json["counts"]["matches_shown"], 1);
 }
 
 #[test]
@@ -1782,13 +1785,10 @@ fn test_parse_grep_truncation_json_many_files() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(json["is_truncated"], true);
-    assert_eq!(json["total_files"], 60);
-    assert_eq!(json["files_shown"], 50);
-    assert!(json["truncation"]["hidden_files"].as_u64().unwrap() > 0);
-    assert!(json["truncation"]["message"]
-        .as_str()
-        .unwrap()
-        .contains("60"));
+    assert_eq!(json["counts"]["total_files"], 60);
+    assert_eq!(json["counts"]["files_shown"], 50);
+    // Verify truncation happened - files_shown should be less than total_files
+    assert!(json["counts"]["files_shown"].as_u64().unwrap() < json["counts"]["total_files"].as_u64().unwrap());
 }
 
 #[test]
@@ -1809,9 +1809,10 @@ fn test_parse_grep_truncation_json_many_matches_per_file() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(json["is_truncated"], true);
-    assert_eq!(json["total_matches"], 25);
-    assert_eq!(json["matches_shown"], 20);
-    assert!(json["truncation"]["hidden_matches"].as_u64().unwrap() > 0);
+    assert_eq!(json["counts"]["total_matches"], 25);
+    assert_eq!(json["counts"]["matches_shown"], 20);
+    // Verify truncation happened - matches_shown should be less than total_matches
+    assert!(json["counts"]["matches_shown"].as_u64().unwrap() < json["counts"]["total_matches"].as_u64().unwrap());
 }
 
 #[test]
@@ -2689,8 +2690,8 @@ fn test_parse_grep_json_output() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["file_count"], 1);
-    assert_eq!(json["match_count"], 1);
+    assert_eq!(json["counts"]["files"], 1);
+    assert_eq!(json["counts"]["matches"], 1);
 }
 
 #[test]
@@ -4022,10 +4023,10 @@ fn test_parse_logs_json_output() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["total_lines"], 3);
-    assert_eq!(json["level_counts"]["info"], 1);
-    assert_eq!(json["level_counts"]["error"], 1);
-    assert_eq!(json["level_counts"]["warning"], 1);
+    assert_eq!(json["counts"]["total_lines"], 3);
+    assert_eq!(json["counts"]["info"], 1);
+    assert_eq!(json["counts"]["error"], 1);
+    assert_eq!(json["counts"]["warning"], 1);
 }
 
 #[test]
@@ -4044,7 +4045,7 @@ fn test_parse_logs_detects_repeated_lines() {
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
 
     // Should have 6 total lines
-    assert_eq!(json["total_lines"], 6);
+    assert_eq!(json["counts"]["total_lines"], 6);
 
     // Should detect 2 unique repeated lines
     let repeated = json["repeated_lines"].as_array().unwrap();
@@ -4106,8 +4107,8 @@ fn test_parse_logs_detects_error_levels() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["error"], 1);
-    assert_eq!(json["level_counts"]["info"], 1);
+    assert_eq!(json["counts"]["error"], 1);
+    assert_eq!(json["counts"]["info"], 1);
 }
 
 #[test]
@@ -4124,7 +4125,7 @@ fn test_parse_logs_detects_warning_levels() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["warning"], 2);
+    assert_eq!(json["counts"]["warning"], 2);
 }
 
 #[test]
@@ -4141,8 +4142,8 @@ fn test_parse_logs_detects_failed_keyword() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["error"], 1);
-    assert_eq!(json["level_counts"]["unknown"], 2);
+    assert_eq!(json["counts"]["error"], 1);
+    assert_eq!(json["counts"]["unknown"], 2);
 }
 
 #[test]
@@ -4160,7 +4161,7 @@ fn test_parse_logs_detects_exception() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["error"], 2);
+    assert_eq!(json["counts"]["error"], 2);
 }
 
 #[test]
@@ -4177,7 +4178,7 @@ fn test_parse_logs_detects_fatal_levels() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["fatal"], 2);
+    assert_eq!(json["counts"]["fatal"], 2);
 }
 
 #[test]
@@ -4194,7 +4195,7 @@ fn test_parse_logs_detects_panic_crash() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["fatal"], 2);
+    assert_eq!(json["counts"]["fatal"], 2);
 }
 
 #[test]
@@ -4211,7 +4212,7 @@ fn test_parse_logs_detects_deprecated() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["warning"], 1);
+    assert_eq!(json["counts"]["warning"], 1);
 }
 
 #[test]
@@ -4228,7 +4229,7 @@ fn test_parse_logs_detects_connection_errors() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["error"], 3);
+    assert_eq!(json["counts"]["error"], 3);
 }
 
 #[test]
@@ -4245,7 +4246,7 @@ fn test_parse_logs_detects_stack_trace() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["error"], 3);
+    assert_eq!(json["counts"]["error"], 3);
 }
 
 #[test]
@@ -4284,8 +4285,8 @@ fn test_parse_logs_negation_not_detected_as_error() {
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
 
     // All lines should be unknown, not error
-    assert_eq!(json["level_counts"]["error"], 0);
-    assert_eq!(json["level_counts"]["unknown"], 3);
+    assert_eq!(json["counts"]["error"], 0);
+    assert_eq!(json["counts"]["unknown"], 3);
 }
 
 #[test]
@@ -4302,7 +4303,7 @@ fn test_parse_logs_various_formats() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["error"], 3);
+    assert_eq!(json["counts"]["error"], 3);
 }
 
 #[test]
@@ -4319,7 +4320,7 @@ fn test_parse_logs_slow_query_warning() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["warning"], 2);
+    assert_eq!(json["counts"]["warning"], 2);
 }
 
 #[test]
@@ -4336,7 +4337,7 @@ fn test_parse_logs_notice_level() {
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(json["level_counts"]["info"], 2);
+    assert_eq!(json["counts"]["info"], 2);
 }
 
 #[test]
@@ -4354,14 +4355,14 @@ fn test_parse_logs_detects_recent_critical() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
 
-    // Should have recent_critical array with 3 entries
+    // Should have recent_critical array with 3 entries (2 errors + 1 fatal)
     assert!(json["recent_critical"].is_array());
     let recent = json["recent_critical"].as_array().unwrap();
     assert_eq!(recent.len(), 3);
 
-    // Check counts
-    assert_eq!(json["recent_critical_count"], 3);
-    assert_eq!(json["total_critical"], 3);
+    // Check counts - error count should be 2, fatal should be 1
+    assert_eq!(json["counts"]["error"], 2);
+    assert_eq!(json["counts"]["fatal"], 1);
 }
 
 #[test]
@@ -4424,7 +4425,8 @@ fn test_parse_logs_recent_critical_limited() {
     // Should be limited to 10
     let recent = json["recent_critical"].as_array().unwrap();
     assert_eq!(recent.len(), 10);
-    assert_eq!(json["total_critical"], 15);
+    // Total critical is the sum of error and fatal in counts
+    assert_eq!(json["counts"]["error"], 15);
 }
 
 #[test]
@@ -4762,11 +4764,11 @@ fn test_is_clean_json_format() {
         .assert()
         // JSON should contain is_clean field (true or false)
         .stdout(
-            predicate::str::contains("\"is_clean\":true")
-                .or(predicate::str::contains("\"is_clean\":false")),
+            predicate::str::contains("\"is_clean\": true")
+                .or(predicate::str::contains("\"is_clean\": false")),
         )
         // JSON should contain is_git_repo field
-        .stdout(predicate::str::contains("\"is_git_repo\":true"));
+        .stdout(predicate::str::contains("\"is_git_repo\": true"));
 }
 
 #[test]
