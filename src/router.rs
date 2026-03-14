@@ -3380,9 +3380,12 @@ impl ParseHandler {
     }
     /// Format ls output as JSON.
     fn format_ls_json(ls_output: &LsOutput) -> String {
-        serde_json::json!({
+        let json = serde_json::json!({
+            "schema": {
+                "version": "1.0.0",
+                "type": "ls_output"
+            },
             "is_empty": ls_output.is_empty,
-            "total_count": ls_output.total_count,
             "entries": ls_output.entries.iter().map(|e| serde_json::json!({
                 "name": e.name,
                 "type": match e.entry_type {
@@ -3420,8 +3423,22 @@ impl ParseHandler {
                 "path": e.path,
                 "message": e.message,
             })).collect::<Vec<_>>(),
-        })
-        .to_string()
+            "counts": {
+                "total": ls_output.total_count,
+                "directories": ls_output.directories.len(),
+                "files": ls_output.files.len(),
+                "symlinks": ls_output.symlinks.len(),
+                "hidden": ls_output.hidden.len(),
+                "generated": ls_output.generated.len(),
+                "errors": ls_output.errors.len(),
+            }
+        });
+        Self::json_to_string(json)
+    }
+
+    /// Convert serde_json::Value to pretty-printed JSON string.
+    fn json_to_string(value: serde_json::Value) -> String {
+        serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
     }
     /// Format ls output in compact format.
     fn format_ls_compact(ls_output: &LsOutput) -> String {
