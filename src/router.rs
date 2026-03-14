@@ -1542,12 +1542,6 @@ impl SearchHandler {
             walk_builder.add_ignore(format!("!{}/", dir));
         }
 
-        // Add extension filter if specified
-        if let Some(ref ext) = input.extension {
-            let pattern = format!("*.{}", ext);
-            walk_builder.add_ignore(format!("!{}", pattern));
-        }
-
         // Configure walker
         walk_builder
             .hidden(false) // Don't skip hidden files by default
@@ -1565,6 +1559,14 @@ impl SearchHandler {
             // Skip directories
             if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
                 continue;
+            }
+
+            // Skip files that don't match the extension filter
+            if let Some(ref ext) = input.extension {
+                let path_ext = entry.path().extension().and_then(|e| e.to_str());
+                if path_ext != Some(ext) {
+                    continue;
+                }
             }
 
             let path = entry.path().to_string_lossy().to_string();
@@ -1826,12 +1828,6 @@ impl ReplaceHandler {
             walk_builder.add_ignore(format!("!{}/", dir));
         }
 
-        // Add extension filter if specified
-        if let Some(ref ext) = input.extension {
-            let pattern = format!("*.{}", ext);
-            walk_builder.add_ignore(format!("!{}", pattern));
-        }
-
         // Configure walker
         walk_builder
             .hidden(false)
@@ -1849,6 +1845,14 @@ impl ReplaceHandler {
             // Skip directories
             if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
                 continue;
+            }
+
+            // Skip files that don't match the extension filter
+            if let Some(ref ext) = input.extension {
+                let path_ext = entry.path().extension().and_then(|e| e.to_str());
+                if path_ext != Some(ext) {
+                    continue;
+                }
             }
 
             let path = entry.path().to_string_lossy().to_string();
