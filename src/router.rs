@@ -2427,9 +2427,14 @@ impl ParseHandler {
         // XY can be two characters representing index and worktree status
         if section == GitStatusSection::None {
             // Porcelain format
-            if line.len() >= 3 {
-                let status = &line[..2];
-                let path = line[3..].trim();
+            // Use chars() for UTF-8 safe iteration
+            let chars: Vec<char> = line.chars().collect();
+            if chars.len() >= 3 {
+                // Get first two characters as status
+                let status: String = chars[..2].iter().collect();
+                // Get the rest as path (skip first 3 chars: 2 status + 1 space)
+                let path: String = chars[3..].iter().collect();
+                let path = path.trim();
 
                 if path.is_empty() {
                     return None;
@@ -2447,7 +2452,7 @@ impl ParseHandler {
                 };
 
                 return Some(GitStatusEntry {
-                    status: status.to_string(),
+                    status,
                     path,
                     old_path,
                 });
@@ -2457,11 +2462,17 @@ impl ParseHandler {
 
         // Handle standard format with tab indentation: "\tmodified:   path" or "\tnew file:   path"
         // Lines can start with tabs, have status, colon, then path
-        if let Some(colon_pos) = line.find(':') {
-            let before_colon = line[..colon_pos].trim();
+        // We need to find the colon position using char_indices for UTF-8 safety
+        if line.contains(':') {
+            // Use char_indices for UTF-8 safe slicing
+            let char_indices: Vec<(usize, char)> = line.char_indices().collect();
+            let colon_char_idx = char_indices.iter().position(|(_, c)| *c == ':')?;
+
+            let before_colon = line[..colon_char_idx].trim();
             // Remove leading tabs from status
             let status = before_colon.trim_start_matches('\t').trim();
-            let path = line[colon_pos + 1..].trim();
+            let path_start = char_indices.get(colon_char_idx + 1).map(|(i, _)| *i).unwrap_or(line.len());
+            let path = line[path_start..].trim();
 
             if path.is_empty() {
                 return None;
