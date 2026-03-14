@@ -4563,6 +4563,681 @@ impl AgentFormatter {
     pub fn start_document(title: &str) -> String {
         format!("# {}\n\n", title)
     }
+
+    // ============================================================
+    // Schema Formatting Methods
+    // ============================================================
+
+    /// Format a GitStatusSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::{GitStatusSchema, GitFileEntry};
+    /// let mut status = GitStatusSchema::new("main");
+    /// status.is_clean = true;
+    /// let output = AgentFormatter::format_git_status(&status);
+    /// assert!(output.contains("# Git Status"));
+    /// assert!(output.contains("branch: main"));
+    /// assert!(output.contains("status: clean"));
+    /// ```
+    pub fn format_git_status(status: &crate::schema::GitStatusSchema) -> String {
+        let mut output = String::new();
+        output.push_str("# Git Status\n\n");
+
+        // Branch info
+        if !status.branch.is_empty() {
+            output.push_str(&format!("- branch: {}\n", status.branch));
+            if let Some(ahead) = status.ahead {
+                if ahead > 0 {
+                    output.push_str(&format!("- ahead: {}\n", ahead));
+                }
+            }
+            if let Some(behind) = status.behind {
+                if behind > 0 {
+                    output.push_str(&format!("- behind: {}\n", behind));
+                }
+            }
+        }
+
+        // Clean state
+        if status.is_clean {
+            output.push_str("- status: clean\n");
+            return output;
+        }
+
+        // Dirty state
+        output.push_str("- status: dirty\n");
+        output.push_str(&format!("- staged: {}\n", status.counts.staged));
+        output.push_str(&format!("- unstaged: {}\n", status.counts.unstaged));
+        output.push_str(&format!("- untracked: {}\n", status.counts.untracked));
+        output.push_str(&format!("- unmerged: {}\n", status.counts.unmerged));
+
+        // Staged changes
+        if !status.staged.is_empty() {
+            output.push_str(&format!("\n## Staged ({})\n", status.staged.len()));
+            for entry in &status.staged {
+                if let Some(ref old_path) = entry.old_path {
+                    output.push_str(&format!(
+                        "  - [{}] {} -> {}\n",
+                        entry.status, old_path, entry.path
+                    ));
+                } else {
+                    output.push_str(&format!("  - [{}] {}\n", entry.status, entry.path));
+                }
+            }
+        }
+
+        // Unstaged changes
+        if !status.unstaged.is_empty() {
+            output.push_str(&format!("\n## Unstaged ({})\n", status.unstaged.len()));
+            for entry in &status.unstaged {
+                if let Some(ref old_path) = entry.old_path {
+                    output.push_str(&format!(
+                        "  - [{}] {} -> {}\n",
+                        entry.status, old_path, entry.path
+                    ));
+                } else {
+                    output.push_str(&format!("  - [{}] {}\n", entry.status, entry.path));
+                }
+            }
+        }
+
+        // Untracked files
+        if !status.untracked.is_empty() {
+            output.push_str(&format!("\n## Untracked ({})\n", status.untracked.len()));
+            for entry in &status.untracked {
+                output.push_str(&format!("  - [{}] {}\n", entry.status, entry.path));
+            }
+        }
+
+        // Unmerged files
+        if !status.unmerged.is_empty() {
+            output.push_str(&format!("\n## Unmerged ({})\n", status.unmerged.len()));
+            for entry in &status.unmerged {
+                if let Some(ref old_path) = entry.old_path {
+                    output.push_str(&format!(
+                        "  - [{}] {} -> {}\n",
+                        entry.status, old_path, entry.path
+                    ));
+                } else {
+                    output.push_str(&format!("  - [{}] {}\n", entry.status, entry.path));
+                }
+            }
+        }
+
+        output
+    }
+
+    /// Format a GitDiffSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::GitDiffSchema;
+    /// let diff = GitDiffSchema::new();
+    /// let output = AgentFormatter::format_git_diff(&diff);
+    /// assert!(output.contains("# Git Diff"));
+    /// assert!(output.contains("status: empty"));
+    /// ```
+    pub fn format_git_diff(diff: &crate::schema::GitDiffSchema) -> String {
+        if diff.is_empty {
+            return "# Git Diff\n\n- status: empty\n".to_string();
+        }
+
+        let mut output = String::new();
+        output.push_str("# Git Diff\n\n");
+
+        // Summary
+        output.push_str(&format!("- files changed: {}\n", diff.counts.total_files));
+        output.push_str(&format!("- insertions: {}\n", diff.total_additions));
+        output.push_str(&format!("- deletions: {}\n", diff.total_deletions));
+
+        // Files
+        output.push_str(&format!("\n## Files ({})\n", diff.files.len()));
+        for file in &diff.files {
+            output.push_str(&format!(
+                "- [{}] {} (+{} -{})\n",
+                file.change_type, file.path, file.additions, file.deletions
+            ));
+        }
+
+        // Truncation warning
+        if diff.is_truncated {
+            output.push_str(&format!(
+                "\n- truncated: showing {} of {} files\n",
+                diff.counts.files_shown, diff.counts.total_files
+            ));
+        }
+
+        output
+    }
+
+    /// Format a LsOutputSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::{LsOutputSchema, LsEntry, LsEntryType};
+    /// let mut ls = LsOutputSchema::new();
+    /// ls.is_empty = false;
+    /// ls.directories.push("src".to_string());
+    /// ls.counts.directories = 1;
+    /// ls.counts.total = 1;
+    /// let output = AgentFormatter::format_ls(&ls);
+    /// assert!(output.contains("# Directory Listing"));
+    /// ```
+    pub fn format_ls(ls: &crate::schema::LsOutputSchema) -> String {
+        if ls.is_empty {
+            return "# Directory Listing\n\n- result: empty\n".to_string();
+        }
+
+        let mut output = String::new();
+        output.push_str("# Directory Listing\n\n");
+
+        // Summary
+        output.push_str(&format!("- total: {}\n", ls.counts.total));
+        output.push_str(&format!("- directories: {}\n", ls.counts.directories));
+        output.push_str(&format!("- files: {}\n", ls.counts.files));
+        output.push_str(&format!("- symlinks: {}\n", ls.counts.symlinks));
+        if ls.counts.hidden > 0 {
+            output.push_str(&format!("- hidden: {}\n", ls.counts.hidden));
+        }
+
+        // Directories
+        if !ls.directories.is_empty() {
+            output.push_str(&format!("\n## Directories ({})\n", ls.directories.len()));
+            for dir in &ls.directories {
+                output.push_str(&format!("- {}\n", dir));
+            }
+        }
+
+        // Files
+        if !ls.files.is_empty() {
+            output.push_str(&format!("\n## Files ({})\n", ls.files.len()));
+            for file in &ls.files {
+                output.push_str(&format!("- {}\n", file));
+            }
+        }
+
+        // Symlinks
+        if !ls.symlinks.is_empty() {
+            output.push_str(&format!("\n## Symlinks ({})\n", ls.symlinks.len()));
+            for symlink in &ls.symlinks {
+                if let Some(entry) = ls.entries.iter().find(|e| &e.name == symlink) {
+                    if let Some(ref target) = entry.symlink_target {
+                        if entry.is_broken_symlink {
+                            output.push_str(&format!("- {} -> {} [broken]\n", symlink, target));
+                        } else {
+                            output.push_str(&format!("- {} -> {}\n", symlink, target));
+                        }
+                    } else {
+                        output.push_str(&format!("- {}\n", symlink));
+                    }
+                } else {
+                    output.push_str(&format!("- {}\n", symlink));
+                }
+            }
+        }
+
+        // Hidden files
+        if !ls.hidden.is_empty() {
+            output.push_str(&format!("\n## Hidden ({})\n", ls.hidden.len()));
+            for hidden in &ls.hidden {
+                output.push_str(&format!("- {}\n", hidden));
+            }
+        }
+
+        // Generated directories
+        if !ls.generated.is_empty() {
+            output.push_str(&format!("\n## Generated ({})\n", ls.generated.len()));
+            for gen in &ls.generated {
+                output.push_str(&format!("- {}\n", gen));
+            }
+        }
+
+        // Errors
+        if !ls.errors.is_empty() {
+            output.push_str(&format!("\n## Errors ({})\n", ls.errors.len()));
+            for error in &ls.errors {
+                output.push_str(&format!("- {}: {}\n", error.path, error.message));
+            }
+        }
+
+        output
+    }
+
+    /// Format a GrepOutputSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::{GrepOutputSchema, GrepFile, GrepMatch};
+    /// let mut grep = GrepOutputSchema::new();
+    /// grep.is_empty = false;
+    /// let mut file = GrepFile::new("src/main.rs");
+    /// file.matches.push(GrepMatch::new("fn main()"));
+    /// grep.files.push(file);
+    /// grep.counts.files = 1;
+    /// grep.counts.matches = 1;
+    /// let output = AgentFormatter::format_grep(&grep);
+    /// assert!(output.contains("# Search Results"));
+    /// ```
+    pub fn format_grep(grep: &crate::schema::GrepOutputSchema) -> String {
+        if grep.is_empty {
+            return "# Search Results\n\n- result: no matches\n".to_string();
+        }
+
+        let mut output = String::new();
+        output.push_str("# Search Results\n\n");
+
+        // Summary
+        output.push_str(&format!("- files: {}\n", grep.counts.files));
+        output.push_str(&format!("- matches: {}\n", grep.counts.matches));
+
+        // Files with matches
+        for file in &grep.files {
+            output.push_str(&format!("\n## {}\n", file.path));
+            output.push_str(&format!("- matches: {}\n", file.matches.len()));
+            for m in &file.matches {
+                if m.is_context {
+                    if let Some(line) = m.line_number {
+                        output.push_str(&format!("  - line {} [context]\n", line));
+                    }
+                } else if let Some(line) = m.line_number {
+                    output.push_str(&format!(
+                        "  - line {}: {}\n",
+                        line,
+                        truncate(m.line.trim(), 80)
+                    ));
+                } else {
+                    output.push_str(&format!("  - {}\n", truncate(m.line.trim(), 80)));
+                }
+            }
+        }
+
+        // Truncation warning
+        if grep.is_truncated {
+            output.push_str(&format!(
+                "\n- truncated: showing {} of {} files\n",
+                grep.counts.files_shown, grep.counts.total_files
+            ));
+        }
+
+        output
+    }
+
+    /// Format a FindOutputSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::{FindOutputSchema, FindEntry};
+    /// let mut find = FindOutputSchema::new();
+    /// find.is_empty = false;
+    /// find.files.push("./src/main.rs".to_string());
+    /// find.counts.files = 1;
+    /// find.counts.total = 1;
+    /// let output = AgentFormatter::format_find(&find);
+    /// assert!(output.contains("# Find Results"));
+    /// ```
+    pub fn format_find(find: &crate::schema::FindOutputSchema) -> String {
+        if find.is_empty {
+            return "# Find Results\n\n- result: no matches\n".to_string();
+        }
+
+        let mut output = String::new();
+        output.push_str("# Find Results\n\n");
+
+        // Summary
+        output.push_str(&format!("- total: {}\n", find.counts.total));
+        output.push_str(&format!("- directories: {}\n", find.counts.directories));
+        output.push_str(&format!("- files: {}\n", find.counts.files));
+
+        // Directories
+        if !find.directories.is_empty() {
+            output.push_str(&format!("\n## Directories ({})\n", find.directories.len()));
+            for dir in &find.directories {
+                output.push_str(&format!("- {}\n", dir));
+            }
+        }
+
+        // Files
+        if !find.files.is_empty() {
+            output.push_str(&format!("\n## Files ({})\n", find.files.len()));
+            for file in &find.files {
+                output.push_str(&format!("- {}\n", file));
+            }
+        }
+
+        // Hidden
+        if !find.hidden.is_empty() {
+            output.push_str(&format!("\n## Hidden ({})\n", find.hidden.len()));
+            for hidden in &find.hidden {
+                output.push_str(&format!("- {}\n", hidden));
+            }
+        }
+
+        // Extensions
+        if !find.extensions.is_empty() {
+            output.push_str(&format!("\n## Extensions\n"));
+            let mut exts: Vec<_> = find.extensions.iter().collect();
+            exts.sort_by(|a, b| b.1.cmp(a.1));
+            for (ext, count) in exts {
+                output.push_str(&format!("- .{}: {}\n", ext, count));
+            }
+        }
+
+        // Errors
+        if !find.errors.is_empty() {
+            output.push_str(&format!("\n## Errors ({})\n", find.errors.len()));
+            for error in &find.errors {
+                output.push_str(&format!("- {}: {}\n", error.path, error.message));
+            }
+        }
+
+        output
+    }
+
+    /// Format a TestOutputSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::{TestOutputSchema, TestRunnerType};
+    /// let mut test = TestOutputSchema::new(TestRunnerType::Pytest);
+    /// test.is_empty = false;
+    /// test.summary.passed = 10;
+    /// test.summary.failed = 0;
+    /// test.summary.total = 10;
+    /// let output = AgentFormatter::format_test_output(&test);
+    /// assert!(output.contains("# Test Results"));
+    /// ```
+    pub fn format_test_output(test: &crate::schema::TestOutputSchema) -> String {
+        if test.is_empty {
+            return "# Test Results\n\n- result: no tests\n".to_string();
+        }
+
+        let mut output = String::new();
+        output.push_str("# Test Results\n\n");
+
+        // Runner info
+        output.push_str(&format!("- runner: {}\n", test.runner));
+        if let Some(ref version) = test.runner_version {
+            output.push_str(&format!("- version: {}\n", version));
+        }
+
+        // Status
+        output.push_str(&format!(
+            "- status: {}\n",
+            if test.success { "passed" } else { "failed" }
+        ));
+
+        // Summary
+        output.push_str(&format!("- total: {}\n", test.summary.total));
+        output.push_str(&format!("- passed: {}\n", test.summary.passed));
+        output.push_str(&format!("- failed: {}\n", test.summary.failed));
+        if test.summary.skipped > 0 {
+            output.push_str(&format!("- skipped: {}\n", test.summary.skipped));
+        }
+        if test.summary.xfailed > 0 {
+            output.push_str(&format!("- xfailed: {}\n", test.summary.xfailed));
+        }
+        if test.summary.xpassed > 0 {
+            output.push_str(&format!("- xpassed: {}\n", test.summary.xpassed));
+        }
+        if test.summary.errors > 0 {
+            output.push_str(&format!("- errors: {}\n", test.summary.errors));
+        }
+        if let Some(duration) = test.summary.duration_ms {
+            output.push_str(&format!("- duration: {}\n", format_duration(duration)));
+        }
+
+        // Suites summary
+        if test.summary.suites_total > 0 {
+            output.push_str(&format!(
+                "\n- suites: {} ({} passed, {} failed)\n",
+                test.summary.suites_total,
+                test.summary.suites_passed,
+                test.summary.suites_failed
+            ));
+        }
+
+        // Failed tests
+        if !test.success {
+            output.push_str("\n## Failed Tests\n");
+            for suite in &test.test_suites {
+                if !suite.passed {
+                    for t in &suite.tests {
+                        if t.status == crate::schema::TestStatus::Failed {
+                            output.push_str(&format!("- {}", t.name));
+                            if let Some(ref file) = t.file {
+                                output.push_str(&format!(" ({})", file));
+                                if let Some(line) = t.line {
+                                    output.push_str(&format!(":{}", line));
+                                }
+                            }
+                            output.push('\n');
+                            if let Some(ref msg) = t.error_message {
+                                for line in msg.lines().take(5) {
+                                    output.push_str(&format!("  > {}\n", line));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        output
+    }
+
+    /// Format a LogsOutputSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::{LogsOutputSchema, LogEntry, LogLevel};
+    /// let mut logs = LogsOutputSchema::new();
+    /// logs.is_empty = false;
+    /// logs.counts.total_lines = 10;
+    /// logs.counts.info = 8;
+    /// logs.counts.error = 2;
+    /// let output = AgentFormatter::format_logs(&logs);
+    /// assert!(output.contains("# Log Output"));
+    /// ```
+    pub fn format_logs(logs: &crate::schema::LogsOutputSchema) -> String {
+        if logs.is_empty {
+            return "# Log Output\n\n- result: empty\n".to_string();
+        }
+
+        let mut output = String::new();
+        output.push_str("# Log Output\n\n");
+
+        // Summary
+        output.push_str(&format!("- total lines: {}\n", logs.counts.total_lines));
+
+        // Level counts
+        output.push_str(&format!("- error: {}\n", logs.counts.error));
+        output.push_str(&format!("- warning: {}\n", logs.counts.warning));
+        output.push_str(&format!("- info: {}\n", logs.counts.info));
+        output.push_str(&format!("- debug: {}\n", logs.counts.debug));
+
+        // Repeated lines
+        if !logs.repeated_lines.is_empty() {
+            output.push_str(&format!(
+                "\n## Repeated Lines ({})\n",
+                logs.repeated_lines.len()
+            ));
+            for repeated in &logs.repeated_lines {
+                output.push_str(&format!(
+                    "- lines {}-{} [x{}]: {}\n",
+                    repeated.first_line, repeated.last_line, repeated.count, repeated.line
+                ));
+            }
+        }
+
+        // Recent critical
+        if !logs.recent_critical.is_empty() {
+            let critical_count = logs.counts.error + logs.counts.fatal;
+            output.push_str(&format!(
+                "\n## Recent Critical ({}/{})\n",
+                logs.recent_critical.len(),
+                critical_count
+            ));
+            for entry in &logs.recent_critical {
+                let level = match entry.level {
+                    crate::schema::LogLevel::Error => "ERROR",
+                    crate::schema::LogLevel::Fatal => "FATAL",
+                    _ => "!",
+                };
+                output.push_str(&format!(
+                    "- line {} [{}]: {}\n",
+                    entry.line_number,
+                    level,
+                    truncate(&entry.message, 80)
+                ));
+            }
+        }
+
+        output
+    }
+
+    /// Format a RepositoryStateSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::RepositoryStateSchema;
+    /// let mut state = RepositoryStateSchema::new();
+    /// state.branch = Some("main".to_string());
+    /// let output = AgentFormatter::format_repository_state(&state);
+    /// assert!(output.contains("# Repository State"));
+    /// ```
+    pub fn format_repository_state(state: &crate::schema::RepositoryStateSchema) -> String {
+        let mut output = String::new();
+        output.push_str("# Repository State\n\n");
+
+        if !state.is_git_repo {
+            output.push_str("- is_git_repo: false\n");
+            return output;
+        }
+
+        output.push_str("- is_git_repo: true\n");
+
+        // Branch info
+        if let Some(ref branch) = state.branch {
+            if state.is_detached {
+                output.push_str(&format!("- branch: {} (detached)\n", branch));
+            } else {
+                output.push_str(&format!("- branch: {}\n", branch));
+            }
+        }
+
+        // Status
+        if state.is_clean {
+            output.push_str("- status: clean\n");
+        } else {
+            output.push_str("- status: dirty\n");
+            output.push_str(&format!("- staged: {}\n", state.counts.staged));
+            output.push_str(&format!("- unstaged: {}\n", state.counts.unstaged));
+            output.push_str(&format!("- untracked: {}\n", state.counts.untracked));
+            output.push_str(&format!("- unmerged: {}\n", state.counts.unmerged));
+        }
+
+        output
+    }
+
+    /// Format a ProcessOutputSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::ProcessOutputSchema;
+    /// let mut proc = ProcessOutputSchema::new("echo");
+    /// proc.stdout = "hello\n".to_string();
+    /// proc.success = true;
+    /// let output = AgentFormatter::format_process(&proc);
+    /// assert!(output.contains("# Process Output"));
+    /// ```
+    pub fn format_process(process: &crate::schema::ProcessOutputSchema) -> String {
+        let mut output = String::new();
+        output.push_str("# Process Output\n\n");
+
+        // Command info
+        output.push_str(&format!("- command: {}\n", process.command));
+        if !process.args.is_empty() {
+            output.push_str(&format!("- args: {}\n", process.args.join(" ")));
+        }
+        output.push_str(&format!(
+            "- status: {}\n",
+            if process.success { "success" } else { "failed" }
+        ));
+        if let Some(code) = process.exit_code {
+            output.push_str(&format!("- exit_code: {}\n", code));
+        }
+        output.push_str(&format!("- duration_ms: {}\n", process.duration_ms));
+        if process.timed_out {
+            output.push_str("- timed_out: true\n");
+        }
+
+        // Stdout
+        if !process.stdout.is_empty() {
+            output.push_str("\n## stdout\n");
+            output.push_str(&format!("```\n{}```\n", process.stdout));
+        }
+
+        // Stderr
+        if !process.stderr.is_empty() {
+            output.push_str("\n## stderr\n");
+            output.push_str(&format!("```\n{}```\n", process.stderr));
+        }
+
+        output
+    }
+
+    /// Format an ErrorSchema into agent-optimized output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use tars_cli::formatter::AgentFormatter;
+    /// use tars_cli::schema::ErrorSchema;
+    /// let error = ErrorSchema::new("Something went wrong");
+    /// let output = AgentFormatter::format_error_schema(&error);
+    /// assert!(output.contains("# Error"));
+    /// ```
+    pub fn format_error_schema(error: &crate::schema::ErrorSchema) -> String {
+        let mut output = String::new();
+        output.push_str("# Error\n\n");
+
+        output.push_str(&format!("- message: {}\n", error.message));
+        if let Some(ref error_type) = error.error_type {
+            output.push_str(&format!("- type: {}\n", error_type));
+        }
+        if let Some(code) = error.exit_code {
+            output.push_str(&format!("- exit_code: {}\n", code));
+        }
+
+        // Additional context
+        if !error.context.is_empty() {
+            output.push_str("\n## Context\n");
+            for (key, value) in &error.context {
+                output.push_str(&format!("- {}: {}\n", key, value));
+            }
+        }
+
+        output
+    }
 }
 
 // ============================================================
@@ -8109,6 +8784,450 @@ mod tests {
     fn test_agent_start_document() {
         let output = AgentFormatter::start_document("Title");
         assert_eq!(output, "# Title\n\n");
+    }
+
+    // ============================================================
+    // Agent Formatter Schema Tests
+    // ============================================================
+
+    #[test]
+    fn test_agent_format_git_status_clean() {
+        use crate::schema::GitStatusSchema;
+        let mut status = GitStatusSchema::new("main");
+        status.is_clean = true;
+        let output = AgentFormatter::format_git_status(&status);
+        assert!(output.contains("# Git Status"));
+        assert!(output.contains("branch: main"));
+        assert!(output.contains("status: clean"));
+    }
+
+    #[test]
+    fn test_agent_format_git_status_dirty() {
+        use crate::schema::{GitStatusSchema, GitFileEntry};
+        let mut status = GitStatusSchema::new("feature");
+        status.is_clean = false;
+        status.ahead = Some(2);
+        status.behind = Some(1);
+        status.staged.push(GitFileEntry::new("M", "src/main.rs"));
+        status.counts.staged = 1;
+        let output = AgentFormatter::format_git_status(&status);
+        assert!(output.contains("status: dirty"));
+        assert!(output.contains("staged: 1"));
+        assert!(output.contains("ahead: 2"));
+        assert!(output.contains("behind: 1"));
+        assert!(output.contains("## Staged"));
+        assert!(output.contains("[M] src/main.rs"));
+    }
+
+    #[test]
+    fn test_agent_format_git_status_renamed() {
+        use crate::schema::{GitStatusSchema, GitFileEntry};
+        let mut status = GitStatusSchema::new("main");
+        status.is_clean = false;
+        status.staged.push(GitFileEntry::renamed("R", "old.rs", "new.rs"));
+        status.counts.staged = 1;
+        let output = AgentFormatter::format_git_status(&status);
+        assert!(output.contains("[R] old.rs -> new.rs"));
+    }
+
+    #[test]
+    fn test_agent_format_git_diff_empty() {
+        use crate::schema::GitDiffSchema;
+        let diff = GitDiffSchema::new();
+        let output = AgentFormatter::format_git_diff(&diff);
+        assert!(output.contains("# Git Diff"));
+        assert!(output.contains("status: empty"));
+    }
+
+    #[test]
+    fn test_agent_format_git_diff_with_changes() {
+        use crate::schema::{GitDiffSchema, GitDiffEntry};
+        let mut diff = GitDiffSchema::new();
+        diff.is_empty = false;
+        diff.counts.total_files = 1;
+        diff.total_additions = 10;
+        diff.total_deletions = 5;
+        let mut entry = GitDiffEntry::new("src/main.rs", "M");
+        entry.additions = 10;
+        entry.deletions = 5;
+        diff.files.push(entry);
+        let output = AgentFormatter::format_git_diff(&diff);
+        assert!(output.contains("files changed: 1"));
+        assert!(output.contains("insertions: 10"));
+        assert!(output.contains("deletions: 5"));
+        assert!(output.contains("[M] src/main.rs"));
+    }
+
+    #[test]
+    fn test_agent_format_git_diff_truncated() {
+        use crate::schema::GitDiffSchema;
+        let mut diff = GitDiffSchema::new();
+        diff.is_empty = false;
+        diff.is_truncated = true;
+        diff.counts.total_files = 100;
+        diff.counts.files_shown = 10;
+        let output = AgentFormatter::format_git_diff(&diff);
+        assert!(output.contains("truncated: showing 10 of 100 files"));
+    }
+
+    #[test]
+    fn test_agent_format_ls_empty() {
+        use crate::schema::LsOutputSchema;
+        let ls = LsOutputSchema::new();
+        let output = AgentFormatter::format_ls(&ls);
+        assert!(output.contains("# Directory Listing"));
+        assert!(output.contains("result: empty"));
+    }
+
+    #[test]
+    fn test_agent_format_ls_with_entries() {
+        use crate::schema::LsOutputSchema;
+        let mut ls = LsOutputSchema::new();
+        ls.is_empty = false;
+        ls.directories.push("src".to_string());
+        ls.files.push("main.rs".to_string());
+        ls.counts.total = 2;
+        ls.counts.directories = 1;
+        ls.counts.files = 1;
+        let output = AgentFormatter::format_ls(&ls);
+        assert!(output.contains("total: 2"));
+        assert!(output.contains("directories: 1"));
+        assert!(output.contains("files: 1"));
+        assert!(output.contains("## Directories"));
+        assert!(output.contains("## Files"));
+        assert!(output.contains("- src"));
+        assert!(output.contains("- main.rs"));
+    }
+
+    #[test]
+    fn test_agent_format_ls_with_symlinks() {
+        use crate::schema::{LsOutputSchema, LsEntry, LsEntryType};
+        let mut ls = LsOutputSchema::new();
+        ls.is_empty = false;
+        ls.symlinks.push("link".to_string());
+        let mut entry = LsEntry::new("link", LsEntryType::Symlink);
+        entry.symlink_target = Some("target".to_string());
+        ls.entries.push(entry);
+        ls.counts.total = 1;
+        ls.counts.symlinks = 1;
+        let output = AgentFormatter::format_ls(&ls);
+        assert!(output.contains("- link -> target"));
+    }
+
+    #[test]
+    fn test_agent_format_ls_with_broken_symlink() {
+        use crate::schema::{LsOutputSchema, LsEntry, LsEntryType};
+        let mut ls = LsOutputSchema::new();
+        ls.is_empty = false;
+        ls.symlinks.push("link".to_string());
+        let mut entry = LsEntry::new("link", LsEntryType::Symlink);
+        entry.symlink_target = Some("target".to_string());
+        entry.is_broken_symlink = true;
+        ls.entries.push(entry);
+        ls.counts.total = 1;
+        ls.counts.symlinks = 1;
+        let output = AgentFormatter::format_ls(&ls);
+        assert!(output.contains("- link -> target [broken]"));
+    }
+
+    #[test]
+    fn test_agent_format_grep_empty() {
+        use crate::schema::GrepOutputSchema;
+        let grep = GrepOutputSchema::new();
+        let output = AgentFormatter::format_grep(&grep);
+        assert!(output.contains("# Search Results"));
+        assert!(output.contains("result: no matches"));
+    }
+
+    #[test]
+    fn test_agent_format_grep_with_matches() {
+        use crate::schema::{GrepOutputSchema, GrepFile, GrepMatch};
+        let mut grep = GrepOutputSchema::new();
+        grep.is_empty = false;
+        let mut file = GrepFile::new("src/main.rs");
+        let mut m = GrepMatch::new("fn main()");
+        m.line_number = Some(10);
+        file.matches.push(m);
+        grep.files.push(file);
+        grep.counts.files = 1;
+        grep.counts.matches = 1;
+        let output = AgentFormatter::format_grep(&grep);
+        assert!(output.contains("files: 1"));
+        assert!(output.contains("matches: 1"));
+        assert!(output.contains("## src/main.rs"));
+        assert!(output.contains("line 10: fn main()"));
+    }
+
+    #[test]
+    fn test_agent_format_grep_truncated() {
+        use crate::schema::GrepOutputSchema;
+        let mut grep = GrepOutputSchema::new();
+        grep.is_empty = false;
+        grep.is_truncated = true;
+        grep.counts.files = 1;
+        grep.counts.matches = 1;
+        grep.counts.total_files = 100;
+        grep.counts.files_shown = 10;
+        let output = AgentFormatter::format_grep(&grep);
+        assert!(output.contains("truncated: showing 10 of 100 files"));
+    }
+
+    #[test]
+    fn test_agent_format_find_empty() {
+        use crate::schema::FindOutputSchema;
+        let find = FindOutputSchema::new();
+        let output = AgentFormatter::format_find(&find);
+        assert!(output.contains("# Find Results"));
+        assert!(output.contains("result: no matches"));
+    }
+
+    #[test]
+    fn test_agent_format_find_with_results() {
+        use crate::schema::FindOutputSchema;
+        let mut find = FindOutputSchema::new();
+        find.is_empty = false;
+        find.directories.push("./src".to_string());
+        find.files.push("./src/main.rs".to_string());
+        find.counts.total = 2;
+        find.counts.directories = 1;
+        find.counts.files = 1;
+        let output = AgentFormatter::format_find(&find);
+        assert!(output.contains("total: 2"));
+        assert!(output.contains("directories: 1"));
+        assert!(output.contains("files: 1"));
+        assert!(output.contains("## Directories"));
+        assert!(output.contains("## Files"));
+    }
+
+    #[test]
+    fn test_agent_format_find_with_extensions() {
+        use crate::schema::FindOutputSchema;
+        let mut find = FindOutputSchema::new();
+        find.is_empty = false;
+        find.files.push("./src/main.rs".to_string());
+        find.files.push("./lib.rs".to_string());
+        find.extensions.insert("rs".to_string(), 2);
+        find.counts.total = 2;
+        find.counts.files = 2;
+        let output = AgentFormatter::format_find(&find);
+        assert!(output.contains("## Extensions"));
+        assert!(output.contains(".rs: 2"));
+    }
+
+    #[test]
+    fn test_agent_format_test_output_empty() {
+        use crate::schema::{TestOutputSchema, TestRunnerType};
+        let test = TestOutputSchema::new(TestRunnerType::Pytest);
+        let output = AgentFormatter::format_test_output(&test);
+        assert!(output.contains("# Test Results"));
+        assert!(output.contains("result: no tests"));
+    }
+
+    #[test]
+    fn test_agent_format_test_output_passed() {
+        use crate::schema::{TestOutputSchema, TestRunnerType};
+        let mut test = TestOutputSchema::new(TestRunnerType::Pytest);
+        test.is_empty = false;
+        test.success = true;
+        test.summary.passed = 10;
+        test.summary.total = 10;
+        test.summary.duration_ms = Some(1500);
+        let output = AgentFormatter::format_test_output(&test);
+        assert!(output.contains("runner: pytest"));
+        assert!(output.contains("status: passed"));
+        assert!(output.contains("total: 10"));
+        assert!(output.contains("passed: 10"));
+        assert!(output.contains("duration: 1.50s"));
+    }
+
+    #[test]
+    fn test_agent_format_test_output_failed() {
+        use crate::schema::{TestOutputSchema, TestRunnerType, TestSuite, TestResult, TestStatus};
+        let mut test = TestOutputSchema::new(TestRunnerType::Jest);
+        test.is_empty = false;
+        test.success = false;
+        test.summary.passed = 8;
+        test.summary.failed = 2;
+        test.summary.total = 10;
+        let mut suite = TestSuite::new("test/main.test.js");
+        suite.passed = false;
+        let mut failed_test = TestResult::new("test_example", TestStatus::Failed);
+        failed_test.error_message = Some("Expected true to be false".to_string());
+        suite.tests.push(failed_test);
+        test.test_suites.push(suite);
+        let output = AgentFormatter::format_test_output(&test);
+        assert!(output.contains("status: failed"));
+        assert!(output.contains("failed: 2"));
+        assert!(output.contains("## Failed Tests"));
+        assert!(output.contains("test_example"));
+    }
+
+    #[test]
+    fn test_agent_format_logs_empty() {
+        use crate::schema::LogsOutputSchema;
+        let logs = LogsOutputSchema::new();
+        let output = AgentFormatter::format_logs(&logs);
+        assert!(output.contains("# Log Output"));
+        assert!(output.contains("result: empty"));
+    }
+
+    #[test]
+    fn test_agent_format_logs_with_entries() {
+        use crate::schema::LogsOutputSchema;
+        let mut logs = LogsOutputSchema::new();
+        logs.is_empty = false;
+        logs.counts.total_lines = 100;
+        logs.counts.error = 2;
+        logs.counts.warning = 5;
+        logs.counts.info = 80;
+        logs.counts.debug = 13;
+        let output = AgentFormatter::format_logs(&logs);
+        assert!(output.contains("total lines: 100"));
+        assert!(output.contains("error: 2"));
+        assert!(output.contains("warning: 5"));
+        assert!(output.contains("info: 80"));
+        assert!(output.contains("debug: 13"));
+    }
+
+    #[test]
+    fn test_agent_format_logs_with_critical() {
+        use crate::schema::{LogsOutputSchema, LogEntry, LogLevel};
+        let mut logs = LogsOutputSchema::new();
+        logs.is_empty = false;
+        logs.counts.total_lines = 10;
+        logs.counts.error = 1;
+        let mut entry = LogEntry::new("[ERROR] Something failed", 10);
+        entry.level = LogLevel::Error;
+        entry.message = "Something failed".to_string();
+        logs.recent_critical.push(entry);
+        let output = AgentFormatter::format_logs(&logs);
+        assert!(output.contains("## Recent Critical"));
+        assert!(output.contains("[ERROR]"));
+        assert!(output.contains("Something failed"));
+    }
+
+    #[test]
+    fn test_agent_format_repository_state_clean() {
+        use crate::schema::RepositoryStateSchema;
+        let mut state = RepositoryStateSchema::new();
+        state.branch = Some("main".to_string());
+        let output = AgentFormatter::format_repository_state(&state);
+        assert!(output.contains("# Repository State"));
+        assert!(output.contains("is_git_repo: true"));
+        assert!(output.contains("branch: main"));
+        assert!(output.contains("status: clean"));
+    }
+
+    #[test]
+    fn test_agent_format_repository_state_dirty() {
+        use crate::schema::RepositoryStateSchema;
+        let mut state = RepositoryStateSchema::new();
+        state.is_clean = false;
+        state.branch = Some("feature".to_string());
+        state.counts.staged = 1;
+        state.counts.unstaged = 2;
+        let output = AgentFormatter::format_repository_state(&state);
+        assert!(output.contains("status: dirty"));
+        assert!(output.contains("staged: 1"));
+        assert!(output.contains("unstaged: 2"));
+    }
+
+    #[test]
+    fn test_agent_format_repository_state_not_git() {
+        use crate::schema::RepositoryStateSchema;
+        let mut state = RepositoryStateSchema::new();
+        state.is_git_repo = false;
+        let output = AgentFormatter::format_repository_state(&state);
+        assert!(output.contains("is_git_repo: false"));
+        assert!(!output.contains("status:"));
+    }
+
+    #[test]
+    fn test_agent_format_repository_state_detached() {
+        use crate::schema::RepositoryStateSchema;
+        let mut state = RepositoryStateSchema::new();
+        state.is_detached = true;
+        state.branch = Some("abc123".to_string());
+        let output = AgentFormatter::format_repository_state(&state);
+        assert!(output.contains("branch: abc123 (detached)"));
+    }
+
+    #[test]
+    fn test_agent_format_process_success() {
+        use crate::schema::ProcessOutputSchema;
+        let mut proc = ProcessOutputSchema::new("echo");
+        proc.args = vec!["hello".to_string(), "world".to_string()];
+        proc.stdout = "hello world\n".to_string();
+        proc.success = true;
+        proc.exit_code = Some(0);
+        proc.duration_ms = 10;
+        let output = AgentFormatter::format_process(&proc);
+        assert!(output.contains("# Process Output"));
+        assert!(output.contains("command: echo"));
+        assert!(output.contains("args: hello world"));
+        assert!(output.contains("status: success"));
+        assert!(output.contains("exit_code: 0"));
+        assert!(output.contains("## stdout"));
+        assert!(output.contains("hello world"));
+    }
+
+    #[test]
+    fn test_agent_format_process_failed() {
+        use crate::schema::ProcessOutputSchema;
+        let mut proc = ProcessOutputSchema::new("false");
+        proc.success = false;
+        proc.exit_code = Some(1);
+        proc.stderr = "error: command failed\n".to_string();
+        let output = AgentFormatter::format_process(&proc);
+        assert!(output.contains("status: failed"));
+        assert!(output.contains("exit_code: 1"));
+        assert!(output.contains("## stderr"));
+    }
+
+    #[test]
+    fn test_agent_format_process_timeout() {
+        use crate::schema::ProcessOutputSchema;
+        let mut proc = ProcessOutputSchema::new("sleep");
+        proc.args = vec!["100".to_string()];
+        proc.timed_out = true;
+        let output = AgentFormatter::format_process(&proc);
+        assert!(output.contains("timed_out: true"));
+    }
+
+    #[test]
+    fn test_agent_format_error_schema() {
+        use crate::schema::ErrorSchema;
+        let error = ErrorSchema::new("Something went wrong");
+        let output = AgentFormatter::format_error_schema(&error);
+        assert!(output.contains("# Error"));
+        assert!(output.contains("message: Something went wrong"));
+    }
+
+    #[test]
+    fn test_agent_format_error_schema_with_type() {
+        use crate::schema::ErrorSchema;
+        let error = ErrorSchema::with_type("Command failed", "command_error");
+        let output = AgentFormatter::format_error_schema(&error);
+        assert!(output.contains("type: command_error"));
+    }
+
+    #[test]
+    fn test_agent_format_error_schema_with_exit_code() {
+        use crate::schema::ErrorSchema;
+        let mut error = ErrorSchema::new("Command failed");
+        error.exit_code = Some(127);
+        let output = AgentFormatter::format_error_schema(&error);
+        assert!(output.contains("exit_code: 127"));
+    }
+
+    #[test]
+    fn test_agent_format_error_schema_with_context() {
+        use crate::schema::ErrorSchema;
+        let mut error = ErrorSchema::new("Build failed");
+        error.context.insert("file".to_string(), "main.rs".to_string());
+        error.context.insert("line".to_string(), "42".to_string());
+        let output = AgentFormatter::format_error_schema(&error);
+        assert!(output.contains("## Context"));
     }
 
     // ============================================================
