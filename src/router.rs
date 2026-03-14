@@ -2306,6 +2306,120 @@ impl TailHandler {
             || line_trimmed.starts_with("CRITICAL:")
     }
 
+    /// Stream new lines from a file (follow mode).
+    fn stream_tail_lines(
+        &self,
+        input: &TailInput,
+        last_line_count: usize,
+        ctx: &CommandContext,
+    ) -> CommandResult<()> {
+        use std::io::{BufRead, BufReader};
+        use std::time::Duration;
+
+        // Open file for streaming
+        let file = std::fs::File::open(&input.file).map_err(|e| {
+            CommandError::IoError(format!("Failed to open file {}: {}", input.file.display(), e))
+        })?;
+
+        let mut reader = BufReader::new(file);
+        let mut line_number = last_line_count + 1;
+
+        // Skip to the position we've already read
+        for _ in 0..last_line_count {
+            let mut line = String::new();
+            reader.read_line(&mut line).map_err(|e| {
+                CommandError::IoError(format!("Failed to read file: {}", e))
+            })?;
+        }
+
+        // Continuously poll for new lines
+        loop {
+            let mut line = String::new();
+            match reader.read_line(&mut line) {
+                Ok(0) => {
+                    // No new data, wait and retry
+                    std::thread::sleep(Duration::from_millis(100));
+                    continue;
+                }
+                Ok(_) => {
+                    // New line available
+                    let line = line.trim_end_matches('\n').trim_end_matches('\r');
+                    let is_error = Self::is_error_line(line);
+
+                    // If filtering for errors, skip non-error lines
+                    if input.errors && !is_error {
+                        line_number += 1;
+                        continue;
+                    }
+
+                    // Format and print the line
+                    let tail_line = TailLine {
+                        line_number,
+                        line: line.to_string(),
+                        is_error,
+                    };
+
+                    let formatted = Self::format_streaming_line(&tail_line, ctx.format);
+                    print!("{}", formatted);
+                    std::io::Write::flush(&mut std::io::stdout()).map_err(|e| {
+                        CommandError::IoError(format!("Failed to flush stdout: {}", e))
+                    })?;
+
+                    line_number += 1;
+                }
+                Err(e) => {
+                    return Err(CommandError::IoError(format!("Failed to read file: {}", e)));
+                }
+            }
+        }
+    }
+
+    /// Format a single line for streaming output.
+    fn format_streaming_line(line: &TailLine, format: OutputFormat) -> String {
+        match format {
+            OutputFormat::Json => {
+                serde_json::json!({
+                    "line_number": line.line_number,
+                    "line": line.line,
+                    "is_error": line.is_error,
+                })
+                .to_string()
+                    + "\n"
+            }
+            OutputFormat::Csv => {
+                let line_escaped = Self::escape_csv_field(&line.line);
+                format!(
+                    "{},{},{}\n",
+                    line.line_number, line_escaped, line.is_error
+                )
+            }
+            OutputFormat::Tsv => {
+                let line_escaped = Self::escape_tsv_field(&line.line);
+                format!(
+                    "{}\t{}\t{}\n",
+                    line.line_number, line_escaped, line.is_error
+                )
+            }
+            OutputFormat::Agent => {
+                if line.is_error {
+                    format!("❌ {}:{}\n", line.line_number, line.line)
+                } else {
+                    format!("   {}:{}\n", line.line_number, line.line)
+                }
+            }
+            OutputFormat::Compact => {
+                if line.is_error {
+                    format!("  ❌ {}:{}\n", line.line_number, line.line)
+                } else {
+                    format!("  {}:{}\n", line.line_number, line.line)
+                }
+            }
+            OutputFormat::Raw => {
+                format!("{}:{}\n", line.line_number, line.line)
+            }
+        }
+    }
+
     /// Format tail output based on the specified format.
     fn format_output(output: &TailOutput, format: OutputFormat) -> String {
         match format {
@@ -2486,12 +2600,17 @@ impl CommandHandler for TailHandler {
             eprintln!("Stats: enabled");
         }
 
-        // Read tail lines
+        // Read initial tail lines
         let output = self.read_tail_lines(input)?;
 
-        // Format and print output
+        // Format and print initial output
         let formatted = Self::format_output(&output, ctx.format);
         print!("{}", formatted);
+
+        // If follow mode is enabled, stream new lines
+        if input.follow {
+            self.stream_tail_lines(input, output.total_lines, ctx)?;
+        }
 
         Ok(())
     }
