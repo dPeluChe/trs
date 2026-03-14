@@ -5763,7 +5763,7 @@ mod tests {
 
     #[test]
     fn test_compact_format_git_status_renamed() {
-        use crate::schema::{GitFileEntry, GitStatusCounts, GitStatusSchema};
+        use crate::schema::{GitFileEntry, GitStatusSchema};
         let mut status = GitStatusSchema::new("main");
         status.is_clean = false;
         status
@@ -5832,7 +5832,7 @@ mod tests {
 
     #[test]
     fn test_compact_format_ls_with_entries() {
-        use crate::schema::{LsCounts, LsEntry, LsEntryType, LsOutputSchema};
+        use crate::schema::{LsCounts, LsOutputSchema};
         let mut ls = LsOutputSchema::new();
         ls.is_empty = false;
         ls.directories.push("src".to_string());
@@ -6057,7 +6057,7 @@ mod tests {
 
     #[test]
     fn test_compact_format_logs_with_entries() {
-        use crate::schema::{LogCounts, LogEntry, LogLevel, LogsOutputSchema};
+        use crate::schema::{LogCounts, LogsOutputSchema};
         let mut logs = LogsOutputSchema::new();
         logs.is_empty = false;
         logs.counts = LogCounts {

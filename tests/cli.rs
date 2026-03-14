@@ -2586,7 +2586,7 @@ fn test_search_json_output_format() {
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(json["schema"]["type"], "grep_output");
     assert!(!json["is_empty"].as_bool().unwrap());
-    assert!(json["files"].as_array().unwrap().len() > 0);
+    assert!(!json["files"].as_array().unwrap().is_empty());
 }
 
 #[test]
