@@ -3306,7 +3306,9 @@ impl Txt2mdHandler {
 
             // Detect heading patterns
             // Pattern 1: Line looks like a heading (ALL CAPS, title case, or simple patterns)
-            if Self::is_heading_line(trimmed) {
+            // Check if this is a single-word section heading (preceded by empty line or at start)
+            let prev_empty = i == 0 || lines[i - 1].trim().is_empty();
+            if Self::is_heading_line(trimmed) || (prev_empty && Self::is_single_word_section_heading(trimmed, i, &lines)) {
                 // Close list if we were in one
                 if in_list {
                     in_list = false;
@@ -3583,6 +3585,79 @@ impl Txt2mdHandler {
         }
         let ratio = capitalized_count as f64 / total_words as f64;
         ratio >= 0.8
+    }
+
+    /// Check if a line is a single-word section heading (like "Introduction", "Methods", "Results").
+    fn is_single_word_section_heading(line: &str, index: usize, lines: &[&str]) -> bool {
+        // Skip lines that are too long
+        if line.len() > 30 {
+            return false;
+        }
+
+        // Skip lines that start with list markers or special characters
+        if line.starts_with("- ") || line.starts_with("* ") || line.starts_with('>') || line.starts_with('#') {
+            return false;
+        }
+
+        // Skip lines that start with numbers (could be ordered list)
+        if line.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+            return false;
+        }
+
+        // Must be a single word (no spaces)
+        if line.contains(' ') {
+            return false;
+        }
+
+        // Must have alphabetic content
+        if !line.chars().any(|c| c.is_alphabetic()) {
+            return false;
+        }
+
+        // First character must be uppercase
+        if !line.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
+            return false;
+        }
+
+        // Common section heading words that are likely to be headings
+        let common_section_words = [
+            "introduction", "methods", "results", "discussion", "conclusion",
+            "abstract", "summary", "overview", "background", "motivation",
+            "approach", "implementation", "evaluation", "related", "future",
+            "appendix", "references", "acknowledgments", "preface", "foreword",
+            "contents", "index", "glossary", "bibliography", "notes",
+            "chapter", "section", "part", "prologue", "epilogue",
+            "setup", "installation", "usage", "examples", "configuration",
+            "api", "tutorial", "guide", "faq", "changelog",
+            "history", "purpose", "scope", "limitations", "benefits",
+            "features", "requirements", "design", "architecture", "testing",
+            "deployment", "maintenance", "troubleshooting", "support", "license",
+        ];
+
+        let line_lower = line.to_lowercase();
+
+        // Check if it's a common section word
+        if common_section_words.contains(&line_lower.as_str()) {
+            return true;
+        }
+
+        // Must be preceded by an empty line (section break) - this is checked by caller
+        // Look for the next non-empty line to verify this is a heading
+        let mut next_idx = index + 1;
+        while next_idx < lines.len() && lines[next_idx].trim().is_empty() {
+            next_idx += 1;
+        }
+
+        // If we're at the end of document, this is a heading
+        if next_idx >= lines.len() {
+            return true;
+        }
+
+        let next_content = lines[next_idx].trim();
+
+        // If next content line looks like content (not a heading pattern), this is likely a heading
+        // The content should be longer than the potential heading (a real section heading is short)
+        !Self::is_heading_line(next_content) && next_content.len() > line.len()
     }
 
     /// Determine the heading level based on position and content.

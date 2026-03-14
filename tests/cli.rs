@@ -4458,6 +4458,45 @@ fn test_txt2md_numbered_section_heading() {
 }
 
 #[test]
+fn test_txt2md_single_word_section_heading() {
+    // Test single-word section headings like "Introduction", "Methods", "Results"
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("Document Title\n\nIntroduction\n\nThis is the intro.\n\nMethods\n\nHere are methods.\n\nResults\n\nHere are results.\n\nConclusion\n\nHere is conclusion.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("# Document Title"))
+        .stdout(predicate::str::contains("## Introduction"))
+        .stdout(predicate::str::contains("## Methods"))
+        .stdout(predicate::str::contains("## Results"))
+        .stdout(predicate::str::contains("## Conclusion"));
+}
+
+#[test]
+fn test_txt2md_common_section_words() {
+    // Test common section words are detected as headings
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("Document\n\nAbstract\n\nThis is the abstract.\n\nSummary\n\nThis is the summary.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("## Abstract"))
+        .stdout(predicate::str::contains("## Summary"));
+}
+
+#[test]
+fn test_txt2md_extended_section_words() {
+    // Test extended section words like History, Future, Design
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("txt2md")
+        .write_stdin("Project\n\nHistory\n\nThis is the history.\n\nFuture\n\nThis is the future.")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("## History"))
+        .stdout(predicate::str::contains("## Future"));
+}
+
+#[test]
 fn test_parse_grep_json_output() {
     // Test that grep parser now works and produces valid JSON output
     let grep_input = "src/main.rs:42:fn main() {";
