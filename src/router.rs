@@ -3806,8 +3806,12 @@ impl ParseHandler {
         }
     }
 
-    /// Format grep output as JSON.
+    /// Format grep output as JSON using the schema.
     fn format_grep_json(grep_output: &GrepOutput) -> String {
+        use crate::schema::{
+            GrepCounts, GrepFile as SchemaGrepFile, GrepMatch as SchemaGrepMatch, GrepOutputSchema,
+        };
+
         // Count only non-context matches
         let match_count: usize = grep_output
             .files
@@ -3815,43 +3819,42 @@ impl ParseHandler {
             .map(|f| f.matches.iter().filter(|m| !m.is_context).count())
             .sum();
 
-        serde_json::json!({
-            "is_empty": grep_output.is_empty,
-            "is_truncated": grep_output.is_truncated,
-            "total_files": grep_output.total_files,
-            "total_matches": grep_output.total_matches,
-            "files_shown": grep_output.files_shown,
-            "matches_shown": grep_output.matches_shown,
-            "file_count": grep_output.file_count,
-            "match_count": match_count,
-            "files": grep_output.files.iter().map(|file| {
-                serde_json::json!({
-                    "path": file.path,
-                    "matches": file.matches.iter().map(|m| serde_json::json!({
-                        "line_number": m.line_number,
-                        "column": m.column,
-                        "line": m.line,
-                        "is_context": m.is_context,
-                    })).collect::<Vec<_>>(),
-                })
-            }).collect::<Vec<_>>(),
-            "truncation": if grep_output.is_truncated {
-                Some(serde_json::json!({
-                    "hidden_files": grep_output.total_files.saturating_sub(grep_output.files_shown),
-                    "hidden_matches": grep_output.total_matches.saturating_sub(grep_output.matches_shown),
-                    "message": format!(
-                        "Output truncated: showing {} of {} files, {} of {} matches",
-                        grep_output.files_shown,
-                        grep_output.total_files,
-                        grep_output.matches_shown,
-                        grep_output.total_matches
-                    ),
-                }))
-            } else {
-                None
-            },
+        let mut schema = GrepOutputSchema::new();
+        schema.is_empty = grep_output.is_empty;
+        schema.is_truncated = grep_output.is_truncated;
+
+        // Convert internal GrepFile to schema GrepFile
+        schema.files = grep_output
+            .files
+            .iter()
+            .map(|f| SchemaGrepFile {
+                path: f.path.clone(),
+                matches: f
+                    .matches
+                    .iter()
+                    .map(|m| SchemaGrepMatch {
+                        line_number: m.line_number,
+                        column: m.column,
+                        line: m.line.clone(),
+                        is_context: m.is_context,
+                        excerpt: m.excerpt.clone(),
+                    })
+                    .collect(),
+            })
+            .collect();
+
+        schema.counts = GrepCounts {
+            files: grep_output.file_count,
+            matches: match_count,
+            total_files: grep_output.total_files,
+            total_matches: grep_output.total_matches,
+            files_shown: grep_output.files_shown,
+            matches_shown: grep_output.matches_shown,
+        };
+
+        serde_json::to_string_pretty(&schema).unwrap_or_else(|e| {
+            serde_json::json!({"error": format!("Failed to serialize: {}", e)}).to_string()
         })
-        .to_string()
     }
 
     /// Format grep output as CSV.
@@ -10678,8 +10681,9 @@ Tests:       2 passed, 1 skipped, 3 total"#;
         let output = ParseHandler::format_grep(&result, OutputFormat::Json);
 
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
-        assert_eq!(json["file_count"], 1);
-        assert_eq!(json["match_count"], 1);
+        assert_eq!(json["schema"]["type"], "grep_output");
+        assert_eq!(json["counts"]["files"], 1);
+        assert_eq!(json["counts"]["matches"], 1);
         assert_eq!(json["files"][0]["path"], "src/main.rs");
         assert_eq!(json["files"][0]["matches"][0]["line_number"], 42);
         assert_eq!(json["files"][0]["matches"][0]["line"], "fn main() {");
@@ -10982,17 +10986,8 @@ Tests:       2 passed, 1 skipped, 3 total"#;
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
 
         assert_eq!(json["is_truncated"], true);
-        assert_eq!(json["total_files"], 60);
-        assert_eq!(json["files_shown"], 50);
-        assert_eq!(json["truncation"]["hidden_files"], 10);
-        assert!(json["truncation"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("60"));
-        assert!(json["truncation"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("50"));
+        assert_eq!(json["counts"]["total_files"], 60);
+        assert_eq!(json["counts"]["files_shown"], 50);
     }
 
     #[test]
