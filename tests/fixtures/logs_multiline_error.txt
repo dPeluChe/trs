@@ -1,0 +1,24 @@
+[INFO] Processing user request
+[ERROR] Failed to process request
+java.lang.IllegalArgumentException: Invalid user ID
+  at com.example.UserService.validateUserId(UserService.java:25)
+  at com.example.UserService.getUser(UserService.java:45)
+  at com.example.ApiController.handleGetUser(ApiController.java:120)
+  at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+  at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+  at java.lang.Thread.run(Thread.java:748)
+Caused by: java.lang.NumberFormatException: For input string: "abc"
+  at java.lang.Integer.parseInt(Integer.java:652)
+  at com.example.UserService.validateUserId(UserService.java:22)
+  ... 5 more
+[INFO] Request processing failed, returning error response
+[ERROR] Another error occurred
+Traceback (most recent call last):
+  File "/app/handlers.py", line 50, in handle_request
+    data = json.loads(request.body)
+  File "/usr/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+[INFO] Returning 400 Bad Request

@@ -1,0 +1,6 @@
+{"timestamp": "2024-01-15T10:30:00Z", "level": "INFO", "message": "Application started", "service": "api"}
+{"timestamp": "2024-01-15T10:30:01Z", "level": "DEBUG", "message": "Loading configuration", "service": "config"}
+{"timestamp": "2024-01-15T10:30:02Z", "level": "INFO", "message": "Server ready", "service": "server"}
+{"timestamp": "2024-01-15T10:30:05Z", "level": "WARN", "message": "High latency detected", "service": "monitor"}
+{"timestamp": "2024-01-15T10:30:10Z", "level": "ERROR", "message": "Database query failed", "service": "db", "error": "connection timeout"}
+{"timestamp": "2024-01-15T10:30:15Z", "level": "FATAL", "message": "Critical system failure", "service": "core"}

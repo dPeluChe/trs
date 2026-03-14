@@ -1,0 +1,6 @@
+2024-01-15T10:30:00Z [INFO] [auth] User authentication successful
+2024-01-15T10:30:01Z [DEBUG] [database] Executing query: SELECT * FROM users
+2024-01-15T10:30:02Z [INFO] [api] Request processed in 45ms
+2024-01-15T10:30:03Z [WARN] [cache] Cache eviction triggered
+2024-01-15T10:30:04Z [ERROR] [payment] Transaction failed: insufficient funds
+2024-01-15T10:30:05Z [FATAL] [system] Disk I/O error

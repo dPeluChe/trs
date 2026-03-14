@@ -1,0 +1,12 @@
+2024-01-15 10:30:00 [INFO] Server starting
+2024/01/15 10:30:01 DEBUG: Loading plugins
+10:30:02 INFO Server ready on port 3000
+|INFO| Accepted connection from 192.168.1.100
+[2024-01-15T10:30:05Z] [WARN] Rate limit approaching
+WARNING: High CPU usage detected (85%)
+Jan 15 10:30:10 web01 nginx[1234]: ERROR upstream timed out
+error: failed to fetch data from API
+[ERROR] Retry attempt 3 of 5 failed
+CRITICAL: Service health check failed
+[FATAL] Maximum retries exceeded, giving up
+PANIC: Corruption detected in data file

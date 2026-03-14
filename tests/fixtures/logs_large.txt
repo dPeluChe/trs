@@ -1,0 +1,47 @@
+[INFO] Application starting
+[DEBUG] Initializing module auth
+[DEBUG] Initializing module database
+[DEBUG] Initializing module cache
+[DEBUG] Initializing module api
+[INFO] Server listening on port 8080
+[INFO] Worker 1 started
+[INFO] Worker 2 started
+[INFO] Worker 3 started
+[INFO] Worker 4 started
+[DEBUG] Request GET /api/health from 127.0.0.1
+[INFO] Health check passed
+[DEBUG] Request GET /api/users from 127.0.0.1
+[INFO] Fetched 50 users in 23ms
+[DEBUG] Request POST /api/users from 127.0.0.1
+[INFO] Created user with id 123
+[WARN] Slow query detected: 1500ms
+[DEBUG] Request GET /api/products from 192.168.1.100
+[INFO] Fetched 200 products in 45ms
+[DEBUG] Request PUT /api/users/123 from 127.0.0.1
+[INFO] Updated user 123
+[WARN] Rate limit warning for client 192.168.1.100
+[DEBUG] Request DELETE /api/users/456 from 127.0.0.1
+[INFO] Deleted user 456
+[ERROR] Database connection pool exhausted
+[WARN] Retrying database connection
+[INFO] Database connection restored
+[DEBUG] Request GET /api/orders from 127.0.0.1
+[INFO] Fetched 75 orders in 30ms
+[ERROR] Failed to send email notification
+[WARN] Email queue backed up: 50 pending
+[DEBUG] Request POST /api/orders from 192.168.1.101
+[INFO] Created order #789
+[DEBUG] Processing payment for order #789
+[INFO] Payment successful for order #789
+[WARN] Memory usage at 80%
+[DEBUG] Running garbage collection
+[INFO] Garbage collection freed 500MB
+[ERROR] External API timeout
+[WARN] Falling back to cached data
+[DEBUG] Request GET /api/analytics from 127.0.0.1
+[INFO] Generated analytics report in 200ms
+[FATAL] Out of memory error
+[INFO] Attempting graceful shutdown
+[INFO] Closing HTTP connections
+[INFO] Flushing pending writes
+[INFO] Shutdown complete

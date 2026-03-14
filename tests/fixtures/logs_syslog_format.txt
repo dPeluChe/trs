@@ -1,0 +1,6 @@
+Jan 15 10:30:00 server01 app[1234]: INFO Application started
+Jan 15 10:30:01 server01 app[1234]: DEBUG Processing request
+Jan 15 10:30:02 server01 app[1234]: INFO Request completed in 50ms
+Jan 15 10:30:03 server01 app[1234]: WARN Slow query detected
+Jan 15 10:30:04 server01 app[1234]: ERROR Database connection failed
+Jan 15 10:30:05 server01 app[1234]: CRITICAL Service unavailable

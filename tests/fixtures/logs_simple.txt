@@ -1,0 +1,6 @@
+[INFO] Application started
+[DEBUG] Loading configuration
+[INFO] Server listening on port 8080
+[WARN] Cache miss for key: user_session
+[ERROR] Failed to connect to database
+[FATAL] Unrecoverable error, shutting down

@@ -1,0 +1,16 @@
+[TRACE] Entering function main()
+[DEBUG] Variable x = 42
+[VERBOSE] Processing batch item 1 of 100
+[INFO] User logged in successfully
+[NOTICE] Scheduled maintenance in 1 hour
+[WARN] Deprecated API endpoint used: /api/v1/users
+[WARNING] Cache size approaching limit
+[CAUTION] Disk space low: 10% remaining
+[ERROR] Failed to process payment
+[ERR] Invalid request format
+[CRITICAL] System temperature too high
+[CRIT] Memory exhaustion detected
+[FATAL] Application crash - core dumped
+[PANIC] Unrecoverable state reached
+[EMERG] System shutdown imminent
+[ALERT] Security breach detected

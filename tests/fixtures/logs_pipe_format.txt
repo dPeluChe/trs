@@ -1,0 +1,8 @@
+|DEBUG| Entering main function
+|INFO| Application version 3.0.0
+|DEBUG| Initializing subsystems
+|INFO| All subsystems ready
+|WARN| Configuration file uses deprecated keys
+|ERROR| Failed to bind to port 8080
+|CRIT| Port already in use
+|FATAL| Cannot start server

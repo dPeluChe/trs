@@ -1,0 +1,40 @@
+[INFO] ========================================
+[INFO] Starting MyApp v2.1.0
+[INFO] Environment: production
+[INFO] Node version: v20.10.0
+[INFO] ========================================
+[DEBUG] Loading environment variables
+[DEBUG] Connecting to database at postgres://localhost:5432/myapp
+[INFO] Database connection established
+[DEBUG] Initializing Redis client
+[INFO] Redis connected successfully
+[INFO] Loading 15 plugins...
+[DEBUG] Plugin auth loaded
+[DEBUG] Plugin logging loaded
+[DEBUG] Plugin metrics loaded
+[INFO] All plugins loaded successfully
+[INFO] Starting HTTP server on port 3000
+[INFO] Server ready to accept connections
+[WARN] SLOW REQUEST: GET /api/reports took 2500ms
+[DEBUG] GET /api/users 200 45ms
+[DEBUG] POST /api/users 201 120ms
+[DEBUG] GET /api/products 200 89ms
+[ERROR] Connection error: ECONNREFUSED 127.0.0.1:6379
+[WARN] Retrying Redis connection (attempt 1/3)
+[INFO] Redis connection restored
+[ERROR] FAILED to process batch job #1234
+[ERROR] Exception: Timeout exceeded
+  at BatchProcessor.run (src/batch.js:100)
+  at async Queue.process (src/queue.js:50)
+[WARN] CAUTION: Memory usage at 85%
+[INFO] Triggering garbage collection
+[INFO] Memory usage reduced to 60%
+[INFO] Scheduled maintenance starting in 30 minutes
+[NOTICE] NOTICE: System will restart at 11:00 PM UTC
+[INFO] Graceful shutdown initiated
+[INFO] Closing HTTP server
+[INFO] Waiting for 5 active connections to complete
+[INFO] All connections closed
+[INFO] Disconnecting from database
+[INFO] Database connection closed
+[INFO] Application shutdown complete

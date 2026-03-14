@@ -1,0 +1,6 @@
+2024-01-15T10:30:00.123Z [INFO] Application starting
+2024-01-15T10:30:00.456Z [DEBUG] Loading modules
+2024-01-15T10:30:01.000Z [INFO] Server ready
+2024-01-15T10:30:05.789+00:00 [WARN] High memory usage detected
+2024-01-15T10:30:10.123+00:00 [ERROR] Connection timeout
+2024-01-15T10:30:15.000Z [FATAL] Out of memory

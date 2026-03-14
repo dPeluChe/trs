@@ -1,0 +1,21 @@
+2024-01-15T10:30:00Z [INFO] Starting application
+2024-01-15T10:30:01Z [ERROR] Exception in thread "main"
+java.lang.NullPointerException: Cannot invoke method on null object
+  at com.example.UserService.getUser(UserService.java:45)
+  at com.example.AuthController.login(AuthController.java:120)
+  at com.example.Router.handle(Router.java:89)
+  at com.example.Server.processRequest(Server.java:234)
+2024-01-15T10:30:02Z [ERROR] Stack trace follows:
+Traceback (most recent call last):
+  File "/app/handlers.py", line 42, in process_request
+    result = database.query(sql)
+  File "/app/database.py", line 100, in query
+    raise ConnectionError("Database unavailable")
+ConnectionError: Database unavailable
+2024-01-15T10:30:03Z [FATAL] PANIC: Unrecoverable error detected
+  at panic() in src/main.rs:100
+  at handle_error() in src/error.rs:50
+2024-01-15T10:30:04Z [ERROR] Backtrace:
+#0  0x0000555555555123 in main ()
+#1  0x00007ffff7a00000 in __libc_start_main ()
+#2  0x0000555555555080 in _start ()

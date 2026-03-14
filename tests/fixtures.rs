@@ -897,6 +897,115 @@ pub fn bun_test_non_tty() -> String {
     load_fixture("bun_test_non_tty.txt")
 }
 
+// ============================================================
+// Logs - Empty/Clean Fixtures
+// ============================================================
+
+/// Returns empty logs output.
+pub fn logs_empty() -> String {
+    load_fixture("logs_empty.txt")
+}
+
+// ============================================================
+// Logs - Simple Format Fixtures
+// ============================================================
+
+/// Returns simple log output with all levels.
+pub fn logs_simple() -> String {
+    load_fixture("logs_simple.txt")
+}
+
+/// Returns logs with ISO 8601 timestamps.
+pub fn logs_iso8601_timestamp() -> String {
+    load_fixture("logs_iso8601_timestamp.txt")
+}
+
+/// Returns logs in syslog format.
+pub fn logs_syslog_format() -> String {
+    load_fixture("logs_syslog_format.txt")
+}
+
+// ============================================================
+// Logs - All Levels Fixtures
+// ============================================================
+
+/// Returns logs with all log levels represented.
+pub fn logs_all_levels() -> String {
+    load_fixture("logs_all_levels.txt")
+}
+
+/// Returns logs with only error-level entries.
+pub fn logs_errors_only() -> String {
+    load_fixture("logs_errors_only.txt")
+}
+
+// ============================================================
+// Logs - Exception/Stack Trace Fixtures
+// ============================================================
+
+/// Returns logs with Java and Python exceptions/stack traces.
+pub fn logs_with_exceptions() -> String {
+    load_fixture("logs_with_exceptions.txt")
+}
+
+/// Returns logs with multiline error messages and stack traces.
+pub fn logs_multiline_error() -> String {
+    load_fixture("logs_multiline_error.txt")
+}
+
+// ============================================================
+// Logs - Mixed Format Fixtures
+// ============================================================
+
+/// Returns logs with mixed format styles (timestamps, levels).
+pub fn logs_mixed_format() -> String {
+    load_fixture("logs_mixed_format.txt")
+}
+
+/// Returns logs with colon-level format (LEVEL: message).
+pub fn logs_colon_format() -> String {
+    load_fixture("logs_colon_format.txt")
+}
+
+/// Returns logs with pipe-level format (|LEVEL| message).
+pub fn logs_pipe_format() -> String {
+    load_fixture("logs_pipe_format.txt")
+}
+
+// ============================================================
+// Logs - Edge Cases
+// ============================================================
+
+/// Returns logs with repeated lines (for testing deduplication).
+pub fn logs_repeated_lines() -> String {
+    load_fixture("logs_repeated_lines.txt")
+}
+
+/// Returns logs with many entries (for testing truncation).
+pub fn logs_large() -> String {
+    load_fixture("logs_large.txt")
+}
+
+/// Returns logs in JSON format.
+pub fn logs_json_format() -> String {
+    load_fixture("logs_json_format.txt")
+}
+
+/// Returns logs with source/logger names.
+pub fn logs_with_source() -> String {
+    load_fixture("logs_with_source.txt")
+}
+
+/// Returns application startup/shutdown logs.
+pub fn logs_application() -> String {
+    load_fixture("logs_application.txt")
+}
+
+/// Returns HTTP access logs (Apache/nginx style).
+pub fn logs_access() -> String {
+    load_fixture("logs_access.txt")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1935,5 +2044,180 @@ mod tests {
         let content = bun_test_non_tty();
         assert!(content.contains("(pass)"));
         assert!(content.contains("2 pass"));
+    }
+
+    // ============================================================
+    // Logs Fixture Tests
+    // ============================================================
+
+    #[test]
+    fn test_load_logs_empty() {
+        let content = logs_empty();
+        assert!(content.is_empty());
+    }
+
+    #[test]
+    fn test_load_logs_simple() {
+        let content = logs_simple();
+        assert!(content.contains("[INFO]"));
+        assert!(content.contains("[DEBUG]"));
+        assert!(content.contains("[WARN]"));
+        assert!(content.contains("[ERROR]"));
+        assert!(content.contains("[FATAL]"));
+    }
+
+    #[test]
+    fn test_load_logs_iso8601_timestamp() {
+        let content = logs_iso8601_timestamp();
+        assert!(content.contains("2024-01-15T10:30:00"));
+        assert!(content.contains("[INFO]"));
+        assert!(content.contains("[ERROR]"));
+    }
+
+    #[test]
+    fn test_load_logs_syslog_format() {
+        let content = logs_syslog_format();
+        assert!(content.contains("Jan 15 10:30:00"));
+        assert!(content.contains("server01"));
+        assert!(content.contains("INFO"));
+        assert!(content.contains("ERROR"));
+        assert!(content.contains("CRITICAL"));
+    }
+
+    #[test]
+    fn test_load_logs_all_levels() {
+        let content = logs_all_levels();
+        assert!(content.contains("[TRACE]"));
+        assert!(content.contains("[DEBUG]"));
+        assert!(content.contains("[VERBOSE]"));
+        assert!(content.contains("[INFO]"));
+        assert!(content.contains("[NOTICE]"));
+        assert!(content.contains("[WARN]"));
+        assert!(content.contains("[WARNING]"));
+        assert!(content.contains("[ERROR]"));
+        assert!(content.contains("[CRITICAL]"));
+        assert!(content.contains("[FATAL]"));
+        assert!(content.contains("[PANIC]"));
+    }
+
+    #[test]
+    fn test_load_logs_errors_only() {
+        let content = logs_errors_only();
+        assert!(content.contains("[ERROR]"));
+        assert!(content.contains("ERROR:"));
+        assert!(content.contains("Exception"));
+        assert!(content.contains("FAILED"));
+        assert!(content.contains("STACK TRACE"));
+        assert!(content.contains("Connection refused"));
+        assert!(content.contains("ACCESS DENIED"));
+    }
+
+    #[test]
+    fn test_load_logs_with_exceptions() {
+        let content = logs_with_exceptions();
+        assert!(content.contains("java.lang.NullPointerException"));
+        assert!(content.contains("Traceback"));
+        assert!(content.contains("ConnectionError"));
+        assert!(content.contains("PANIC"));
+        assert!(content.contains("Backtrace"));
+    }
+
+    #[test]
+    fn test_load_logs_mixed_format() {
+        let content = logs_mixed_format();
+        assert!(content.contains("2024-01-15 10:30:00"));
+        assert!(content.contains("2024/01/15"));
+        assert!(content.contains("|INFO|"));
+        assert!(content.contains("[WARN]"));
+        assert!(content.contains("WARNING:"));
+    }
+
+    #[test]
+    fn test_load_logs_repeated_lines() {
+        let content = logs_repeated_lines();
+        assert!(content.contains("[DEBUG] Processing request"));
+        assert!(content.contains("[WARN] Cache miss"));
+        assert!(content.contains("[ERROR] Connection failed"));
+    }
+
+    #[test]
+    fn test_load_logs_large() {
+        let content = logs_large();
+        assert!(content.contains("[INFO] Application starting"));
+        assert!(content.contains("[DEBUG] Initializing module"));
+        assert!(content.contains("[ERROR] Database connection pool exhausted"));
+        assert!(content.contains("[FATAL] Out of memory error"));
+        assert!(content.contains("Shutdown complete"));
+    }
+
+    #[test]
+    fn test_load_logs_json_format() {
+        let content = logs_json_format();
+        assert!(content.contains("\"level\": \"INFO\""));
+        assert!(content.contains("\"level\": \"ERROR\""));
+        assert!(content.contains("\"level\": \"FATAL\""));
+        assert!(content.contains("\"message\""));
+        assert!(content.contains("\"timestamp\""));
+    }
+
+    #[test]
+    fn test_load_logs_with_source() {
+        let content = logs_with_source();
+        assert!(content.contains("[auth]"));
+        assert!(content.contains("[database]"));
+        assert!(content.contains("[api]"));
+        assert!(content.contains("[cache]"));
+        assert!(content.contains("[payment]"));
+    }
+
+    #[test]
+    fn test_load_logs_application() {
+        let content = logs_application();
+        assert!(content.contains("Starting MyApp"));
+        assert!(content.contains("Database connection established"));
+        assert!(content.contains("Server ready"));
+        assert!(content.contains("Graceful shutdown"));
+    }
+
+    #[test]
+    fn test_load_logs_access() {
+        let content = logs_access();
+        assert!(content.contains("192.168.1.100"));
+        assert!(content.contains("GET /api/health"));
+        assert!(content.contains("HTTP/1.1"));
+        assert!(content.contains("200"));
+        assert!(content.contains("404"));
+        assert!(content.contains("500"));
+    }
+
+    #[test]
+    fn test_load_logs_colon_format() {
+        let content = logs_colon_format();
+        assert!(content.contains("DEBUG:"));
+        assert!(content.contains("INFO:"));
+        assert!(content.contains("WARNING:"));
+        assert!(content.contains("ERROR:"));
+        assert!(content.contains("CRITICAL:"));
+        assert!(content.contains("FATAL:"));
+    }
+
+    #[test]
+    fn test_load_logs_pipe_format() {
+        let content = logs_pipe_format();
+        assert!(content.contains("|DEBUG|"));
+        assert!(content.contains("|INFO|"));
+        assert!(content.contains("|WARN|"));
+        assert!(content.contains("|ERROR|"));
+        assert!(content.contains("|CRIT|"));
+        assert!(content.contains("|FATAL|"));
+    }
+
+    #[test]
+    fn test_load_logs_multiline_error() {
+        let content = logs_multiline_error();
+        assert!(content.contains("java.lang.IllegalArgumentException"));
+        assert!(content.contains("Caused by:"));
+        assert!(content.contains("Traceback"));
+        assert!(content.contains("json.decoder.JSONDecodeError"));
     }
 }

@@ -1,0 +1,15 @@
+[ERROR] Failed to connect to database
+ERROR: Connection refused to localhost:5432
+|ERROR| Unable to read configuration file
+Exception: NullPointerException at com.example.Service.process(Service.java:42)
+java.io.IOException: File not found: /data/config.json
+FAILED: Assertion failed - expected 200, got 500
+Test failure: Expected true, got false
+STACK TRACE:
+  at com.example.MyClass.myMethod(MyClass.java:100)
+  at com.example.Main.main(Main.java:50)
+Error: ECONNREFUSED 127.0.0.1:3306
+Connection refused
+ACCESS DENIED for user 'admin'@'localhost'
+TIMEOUT ERROR: Request exceeded 30000ms
+SEGFAULT at 0x00000000

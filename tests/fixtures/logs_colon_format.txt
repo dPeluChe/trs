@@ -1,0 +1,10 @@
+DEBUG: Starting application initialization
+INFO: Loading configuration from /etc/app/config.yaml
+DEBUG: Parsed 25 configuration items
+INFO: Connecting to database
+DEBUG: Connection string: postgres://localhost:5432/production
+INFO: Database connection established
+WARNING: Cache hit ratio below threshold (65%)
+ERROR: Failed to send notification email
+CRITICAL: Payment gateway unavailable
+FATAL: Cannot proceed without payment service
