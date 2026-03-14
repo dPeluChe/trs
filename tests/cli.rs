@@ -6490,6 +6490,57 @@ fn test_run_stats_shows_stderr_bytes() {
         .stderr(predicate::str::contains("Stderr bytes:"));
 }
 
+#[test]
+fn test_run_stats_shows_output_mode() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Output mode:"));
+}
+
+#[test]
+fn test_run_stats_shows_output_mode_json() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("--json")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Output mode: json"));
+}
+
+#[test]
+fn test_run_stats_shows_output_mode_raw() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("--raw")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Output mode: raw"));
+}
+
+#[test]
+fn test_run_stats_shows_output_mode_compact() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--stats")
+        .arg("--compact")
+        .arg("run")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Output mode: compact"));
+}
+
 // ============================================================
 // Error Handling Tests for Command Execution
 // ============================================================
