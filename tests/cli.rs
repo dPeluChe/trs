@@ -924,6 +924,45 @@ fn test_replace_dry_run() {
 }
 
 #[test]
+fn test_replace_preview_flag() {
+    // Test that --preview flag works as an alias for --dry-run
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("replace")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_PREVIEW_12345")
+        .arg("new")
+        .arg("--preview")
+        .arg("--extension")
+        .arg("rs")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No matches found"));
+}
+
+#[test]
+fn test_replace_preview_json_output() {
+    // Test that --preview flag sets dry_run to true in JSON output
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("replace")
+        .arg("src")
+        .arg("NONEXISTENT_PATTERN_PREVIEW_JSON_12345")
+        .arg("new")
+        .arg("--preview")
+        .arg("--extension")
+        .arg("rs")
+        .output()
+        .expect("Failed to execute command");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON output");
+    assert_eq!(json["schema"]["type"], "replace_output");
+    assert!(json["dry_run"].as_bool().unwrap());
+}
+
+#[test]
 fn test_tail_basic() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("tail")
@@ -2821,6 +2860,9 @@ fn test_replace_json_output_format() {
     assert!(json["dry_run"].as_bool().unwrap());
     assert_eq!(json["search_pattern"], "NONEXISTENT_PATTERN_12345");
     assert_eq!(json["replacement"], "new");
+    // Verify counts are present
+    assert!(json["counts"]["files_affected"].is_number());
+    assert!(json["counts"]["total_replacements"].is_number());
 }
 
 #[test]

@@ -100,17 +100,23 @@ ARGUMENTS:
 
 OPTIONS:
     -e, --extension <EXT>    Filter by file extension
-    --dry-run                Preview changes without modifying files
+    --dry-run, --preview     Preview changes without modifying files
+
+OUTPUT:
+    Shows affected file count and replacement count in all formats.
 
 EXAMPLES:
     # Replace \"foo\" with \"bar\" in all files
     trs replace . \"foo\" \"bar\"
 
     # Preview changes in TypeScript files
-    trs replace ./src \"oldName\" \"newName\" -e ts --dry-run
+    trs replace ./src \"oldName\" \"newName\" -e ts --preview
 
     # Replace with JSON output showing affected files
-    trs --json replace . \"TODO\" \"DONE\"";
+    trs --json replace . \"TODO\" \"DONE\"
+
+    # Preview with dry-run (equivalent to --preview)
+    trs replace ./src \"oldName\" \"newName\" -e ts --dry-run";
 
 /// Help text for the tail command.
 #[allow(dead_code)]

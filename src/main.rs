@@ -289,7 +289,7 @@ pub enum Commands {
         extension: Option<String>,
 
         /// Preview changes without modifying files
-        #[arg(short, long)]
+        #[arg(short, long, alias = "preview")]
         dry_run: bool,
     },
 
