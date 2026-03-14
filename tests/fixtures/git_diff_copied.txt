@@ -1,0 +1,5 @@
+diff --git a/src/template.rs b/src/implementation.rs
+similarity index 100%
+copy from src/template.rs
+copy to src/implementation.rs
+index 1234567..1234567 100644

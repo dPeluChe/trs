@@ -1,0 +1,11 @@
+diff --git a/src/utils.rs b/src/utils.rs
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/src/utils.rs
+@@ -0,0 +1,5 @@
++pub fn helper() {
++    println!("Helper function");
++}
++
++pub fn another_helper() {}

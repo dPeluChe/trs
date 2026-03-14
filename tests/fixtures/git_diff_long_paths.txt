@@ -1,0 +1,19 @@
+diff --git a/src/very/deeply/nested/directory/structure/with/many/components/file.rs b/src/very/deeply/nested/directory/structure/with/many/components/file.rs
+index 1111111..2222222 100644
+--- a/src/very/deeply/nested/directory/structure/with/many/components/file.rs
++++ b/src/very/deeply/nested/directory/structure/with/many/components/file.rs
+@@ -1,3 +1,4 @@
+ pub fn nested() {
+     println!("deep");
++    // Added line
+ }
+diff --git a/path/to/file with spaces and special chars (test).rs b/path/to/file with spaces and special chars (test).rs
+index 3333333..4444444 100644
+--- a/path/to/file with spaces and special chars (test).rs
++++ b/path/to/file with spaces and special chars (test).rs
+@@ -1,3 +1,4 @@
+ // File with spaces
+-pub fn test() {}
++pub fn test() {
++    println!("updated");
++}

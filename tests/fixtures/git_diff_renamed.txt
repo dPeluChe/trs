@@ -1,0 +1,12 @@
+diff --git a/src/old_name.rs b/src/new_name.rs
+similarity index 90%
+rename from src/old_name.rs
+rename to src/new_name.rs
+index 1234567..abcdefg 100644
+--- a/src/old_name.rs
++++ b/src/new_name.rs
+@@ -5,7 +5,7 @@ pub fn process() {
+     let data = load();
+-    process_data(data);
++    process_data(&data);
+ }

@@ -4306,10 +4306,7 @@ fn test_txt2md_stdin_input() {
 fn test_txt2md_stdin_empty() {
     // Test stdin with empty input
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("txt2md")
-        .write_stdin("")
-        .assert()
-        .success();
+    cmd.arg("txt2md").write_stdin("").assert().success();
 }
 
 #[test]
@@ -4486,10 +4483,14 @@ fn test_txt2md_title_case_heading() {
     // Test title case heading detection
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")
-        .write_stdin("Getting Started With The Application\n\nThis is a paragraph about getting started.")
+        .write_stdin(
+            "Getting Started With The Application\n\nThis is a paragraph about getting started.",
+        )
         .assert()
         .success()
-        .stdout(predicate::str::contains("# Getting Started With The Application"));
+        .stdout(predicate::str::contains(
+            "# Getting Started With The Application",
+        ));
 }
 
 #[test]
@@ -4511,7 +4512,9 @@ fn test_txt2md_numbered_section_heading() {
         .write_stdin("1. Introduction to the System Architecture Overview\n\nSome content here.")
         .assert()
         .success()
-        .stdout(predicate::str::contains("1. Introduction to the System Architecture Overview"));
+        .stdout(predicate::str::contains(
+            "1. Introduction to the System Architecture Overview",
+        ));
 }
 
 #[test]
@@ -4534,7 +4537,9 @@ fn test_txt2md_common_section_words() {
     // Test common section words are detected as headings
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")
-        .write_stdin("Document\n\nAbstract\n\nThis is the abstract.\n\nSummary\n\nThis is the summary.")
+        .write_stdin(
+            "Document\n\nAbstract\n\nThis is the abstract.\n\nSummary\n\nThis is the summary.",
+        )
         .assert()
         .success()
         .stdout(predicate::str::contains("## Abstract"))
@@ -4558,7 +4563,9 @@ fn test_txt2md_nested_unordered_list() {
     // Test nested unordered list detection
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")
-        .write_stdin("ITEMS\n\n- Main item one\n  - Sub item one\n  - Sub item two\n- Main item two")
+        .write_stdin(
+            "ITEMS\n\n- Main item one\n  - Sub item one\n  - Sub item two\n- Main item two",
+        )
         .assert()
         .success()
         .stdout(predicate::str::contains("- Main item one"))
@@ -4572,7 +4579,9 @@ fn test_txt2md_nested_ordered_list() {
     // Test nested ordered list detection
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")
-        .write_stdin("STEPS\n\n1. First step\n   1. Sub step one\n   2. Sub step two\n2. Second step")
+        .write_stdin(
+            "STEPS\n\n1. First step\n   1. Sub step one\n   2. Sub step two\n2. Second step",
+        )
         .assert()
         .success()
         .stdout(predicate::str::contains("1. First step"))
@@ -4586,7 +4595,9 @@ fn test_txt2md_mixed_nested_list() {
     // Test mixed nested lists (ordered inside unordered and vice versa)
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")
-        .write_stdin("ITEMS\n\n- Main item\n  1. First sub step\n  2. Second sub step\n- Another item")
+        .write_stdin(
+            "ITEMS\n\n- Main item\n  1. First sub step\n  2. Second sub step\n- Another item",
+        )
         .assert()
         .success()
         .stdout(predicate::str::contains("- Main item"))
@@ -4636,8 +4647,14 @@ fn test_txt2md_ordered_list_preserves_numbers() {
 
     let stdout = String::from_utf8_lossy(&output);
     assert!(stdout.contains("5. Fifth step"), "Should preserve number 5");
-    assert!(stdout.contains("10. Tenth step"), "Should preserve number 10");
-    assert!(stdout.contains("25. Twenty-fifth step"), "Should preserve number 25");
+    assert!(
+        stdout.contains("10. Tenth step"),
+        "Should preserve number 10"
+    );
+    assert!(
+        stdout.contains("25. Twenty-fifth step"),
+        "Should preserve number 25"
+    );
 }
 
 #[test]
@@ -8758,7 +8775,10 @@ fn test_replace_stats_shows_input_bytes() {
         .arg("--dry-run")
         .assert()
         .success()
-        .stderr(predicate::str::contains("Input bytes:").or(predicate::str::contains("Files affected:")));
+        .stderr(
+            predicate::str::contains("Input bytes:")
+                .or(predicate::str::contains("Files affected:")),
+        );
 }
 
 #[test]
@@ -8813,7 +8833,8 @@ fn test_tail_stats_shows_output_bytes() {
 
 #[test]
 fn test_html2md_stats_shows_input_bytes() {
-    let html_content = "<html><head><title>Test</title></head><body><h1>Hello</h1><p>World</p></body></html>";
+    let html_content =
+        "<html><head><title>Test</title></head><body><h1>Hello</h1><p>World</p></body></html>";
     let mut temp_file = tempfile::NamedTempFile::with_suffix(".html").unwrap();
     std::io::Write::write_all(&mut temp_file, html_content.as_bytes()).unwrap();
     temp_file.flush().unwrap();
@@ -8829,7 +8850,8 @@ fn test_html2md_stats_shows_input_bytes() {
 
 #[test]
 fn test_html2md_stats_shows_output_bytes() {
-    let html_content = "<html><head><title>Test</title></head><body><h1>Hello</h1><p>World</p></body></html>";
+    let html_content =
+        "<html><head><title>Test</title></head><body><h1>Hello</h1><p>World</p></body></html>";
     let mut temp_file = tempfile::NamedTempFile::with_suffix(".html").unwrap();
     std::io::Write::write_all(&mut temp_file, html_content.as_bytes()).unwrap();
     temp_file.flush().unwrap();
@@ -9285,4 +9307,302 @@ fn test_fixture_git_status_staged_raw() {
         .success()
         .stdout(predicate::str::contains("src/main.rs"))
         .stdout(predicate::str::contains("src/utils.rs"));
+}
+
+// ============================================================
+// Git Diff Fixture Tests
+// ============================================================
+
+#[test]
+fn test_fixture_git_diff_empty() {
+    let input = git_diff_empty();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("diff: empty"));
+}
+
+#[test]
+fn test_fixture_git_diff_modified() {
+    let input = git_diff_modified();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("M src/main.rs"))
+        .stdout(predicate::str::contains("+2"));
+}
+
+#[test]
+fn test_fixture_git_diff_added() {
+    let input = git_diff_added();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("+ src/utils.rs"))
+        .stdout(predicate::str::contains("+5"));
+}
+
+#[test]
+fn test_fixture_git_diff_deleted() {
+    let input = git_diff_deleted();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("- src/deprecated.rs"))
+        .stdout(predicate::str::contains("-5"));
+}
+
+#[test]
+fn test_fixture_git_diff_renamed() {
+    let input = git_diff_renamed();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("R"))
+        .stdout(predicate::str::contains("old_name.rs"))
+        .stdout(predicate::str::contains("new_name.rs"));
+}
+
+#[test]
+fn test_fixture_git_diff_copied() {
+    let input = git_diff_copied();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("C"))
+        .stdout(predicate::str::contains("template.rs"))
+        .stdout(predicate::str::contains("implementation.rs"));
+}
+
+#[test]
+fn test_fixture_git_diff_binary() {
+    let input = git_diff_binary();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("M assets/image.png"));
+}
+
+#[test]
+fn test_fixture_git_diff_multiple() {
+    let input = git_diff_multiple();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (3)"))
+        .stdout(predicate::str::contains("M src/main.rs"))
+        .stdout(predicate::str::contains("+ src/utils.rs"))
+        .stdout(predicate::str::contains("- src/old.rs"));
+}
+
+#[test]
+fn test_fixture_git_diff_mixed() {
+    let input = git_diff_mixed();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (5)"))
+        .stdout(predicate::str::contains("M src/main.rs"))
+        .stdout(predicate::str::contains("M src/lib.rs"))
+        .stdout(predicate::str::contains("+ src/utils.rs"))
+        .stdout(predicate::str::contains("- src/deprecated.rs"));
+}
+
+#[test]
+fn test_fixture_git_diff_large() {
+    let input = git_diff_large();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (10)"))
+        .stdout(predicate::str::contains("src/file01.rs"))
+        .stdout(predicate::str::contains("src/file10.rs"));
+}
+
+#[test]
+fn test_fixture_git_diff_long_paths() {
+    let input = git_diff_long_paths();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("files (2)"))
+        .stdout(predicate::str::contains("nested"));
+}
+
+// ============================================================
+// Git Diff Fixture JSON Output Tests
+// ============================================================
+
+#[test]
+fn test_fixture_git_diff_modified_json() {
+    let input = git_diff_modified();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"is_empty\":false"))
+        .stdout(predicate::str::contains("\"total_files\":1"))
+        .stdout(predicate::str::contains("\"path\":\"src/main.rs\""))
+        .stdout(predicate::str::contains("\"change_type\":\"M\""))
+        .stdout(predicate::str::contains("\"additions\":2"));
+}
+
+#[test]
+fn test_fixture_git_diff_added_json() {
+    let input = git_diff_added();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"change_type\":\"A\""))
+        .stdout(predicate::str::contains("\"path\":\"src/utils.rs\""));
+}
+
+#[test]
+fn test_fixture_git_diff_deleted_json() {
+    let input = git_diff_deleted();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"change_type\":\"D\""))
+        .stdout(predicate::str::contains("\"path\":\"src/deprecated.rs\""));
+}
+
+#[test]
+fn test_fixture_git_diff_renamed_json() {
+    let input = git_diff_renamed();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"change_type\":\"R\""))
+        .stdout(predicate::str::contains("\"new_path\""));
+}
+
+#[test]
+fn test_fixture_git_diff_binary_json() {
+    let input = git_diff_binary();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"is_binary\":true"))
+        .stdout(predicate::str::contains("\"path\":\"assets/image.png\""));
+}
+
+#[test]
+fn test_fixture_git_diff_multiple_json() {
+    let input = git_diff_multiple();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total_files\":3"))
+        .stdout(predicate::str::contains("\"total_additions\":4"))
+        .stdout(predicate::str::contains("\"total_deletions\":2"));
+}
+
+// ============================================================
+// Git Diff Fixture Raw Output Tests
+// ============================================================
+
+#[test]
+fn test_fixture_git_diff_modified_raw() {
+    let input = git_diff_modified();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("M src/main.rs"));
+}
+
+#[test]
+fn test_fixture_git_diff_multiple_raw() {
+    let input = git_diff_multiple();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("M src/main.rs"))
+        .stdout(predicate::str::contains("A src/utils.rs"))
+        .stdout(predicate::str::contains("D src/old.rs"));
+}
+
+#[test]
+fn test_fixture_git_diff_renamed_raw() {
+    let input = git_diff_renamed();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--raw")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.as_bytes())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "R src/old_name.rs -> src/new_name.rs",
+        ));
 }

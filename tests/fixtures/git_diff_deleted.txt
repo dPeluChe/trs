@@ -1,0 +1,11 @@
+diff --git a/src/deprecated.rs b/src/deprecated.rs
+deleted file mode 100644
+index 1234567..0000000
+--- a/src/deprecated.rs
++++ /dev/null
+@@ -1,5 +0,0 @@
+-pub fn old_function() {
+-    println!("This is deprecated");
+-}
+-
+-pub fn another_old() {}

@@ -2013,7 +2013,11 @@ impl CommandHandler for SearchHandler {
                 .with_output_mode(ctx.format)
                 .with_input_bytes(grep_output.input_bytes)
                 .with_items_processed(grep_output.matches_shown)
-                .with_items_filtered(grep_output.total_matches.saturating_sub(grep_output.matches_shown))
+                .with_items_filtered(
+                    grep_output
+                        .total_matches
+                        .saturating_sub(grep_output.matches_shown),
+                )
                 .with_output_bytes(output.len())
                 .with_extra("Files searched", grep_output.total_files.to_string())
                 .with_extra("Files with matches", grep_output.file_count.to_string())
@@ -2913,7 +2917,13 @@ impl CommandHandler for TailHandler {
                 .with_output_mode(ctx.format)
                 .with_input_bytes(tail_output.input_bytes)
                 .with_items_processed(tail_output.lines_shown)
-                .with_items_filtered(if tail_output.filtering_errors { tail_output.total_lines.saturating_sub(tail_output.lines_shown) } else { 0 })
+                .with_items_filtered(if tail_output.filtering_errors {
+                    tail_output
+                        .total_lines
+                        .saturating_sub(tail_output.lines_shown)
+                } else {
+                    0
+                })
                 .with_output_bytes(formatted.len())
                 .with_extra("Total lines", tail_output.total_lines.to_string())
                 .with_extra("Lines shown", tail_output.lines_shown.to_string())
@@ -3505,7 +3515,14 @@ impl CommandHandler for Html2mdHandler {
                 .with_output_mode(ctx.format)
                 .with_input_bytes(html.len())
                 .with_output_bytes(formatted.len())
-                .with_extra("Source type", if Self::is_url(&input.input) { "url" } else { "file" });
+                .with_extra(
+                    "Source type",
+                    if Self::is_url(&input.input) {
+                        "url"
+                    } else {
+                        "file"
+                    },
+                );
             stats.print();
         }
 
@@ -3614,7 +3631,8 @@ impl Txt2mdHandler {
 
             // Detect unordered list items (- or * prefix, possibly nested)
             // Must be checked BEFORE heading detection to avoid misidentifying list items as headings
-            if let Some((list_char, indent_level)) = Self::is_unordered_list_item_with_indent(line) {
+            if let Some((list_char, indent_level)) = Self::is_unordered_list_item_with_indent(line)
+            {
                 in_list = true;
                 let rest = Self::strip_list_prefix(trimmed, list_char);
                 let indent = "  ".repeat(indent_level);
@@ -3625,7 +3643,11 @@ impl Txt2mdHandler {
                 while i < lines.len() && Self::is_list_continuation(lines[i]) {
                     let cont_trimmed = lines[i].trim();
                     let cont_indent = "  ".repeat(indent_level + 1);
-                    result.push(format!("{}{}", cont_indent, Self::format_inline(cont_trimmed)));
+                    result.push(format!(
+                        "{}{}",
+                        cont_indent,
+                        Self::format_inline(cont_trimmed)
+                    ));
                     i += 1;
                 }
                 continue;
@@ -3637,14 +3659,23 @@ impl Txt2mdHandler {
                 in_list = true;
                 let rest = Self::strip_ordered_prefix(trimmed);
                 let indent = "  ".repeat(indent_level);
-                result.push(format!("{}{}. {}", indent, number, Self::format_inline(rest)));
+                result.push(format!(
+                    "{}{}. {}",
+                    indent,
+                    number,
+                    Self::format_inline(rest)
+                ));
 
                 // Check for continuation lines
                 i += 1;
                 while i < lines.len() && Self::is_list_continuation(lines[i]) {
                     let cont_trimmed = lines[i].trim();
                     let cont_indent = "  ".repeat(indent_level + 1);
-                    result.push(format!("{}{}", cont_indent, Self::format_inline(cont_trimmed)));
+                    result.push(format!(
+                        "{}{}",
+                        cont_indent,
+                        Self::format_inline(cont_trimmed)
+                    ));
                     i += 1;
                 }
                 continue;
@@ -3654,7 +3685,9 @@ impl Txt2mdHandler {
             // Pattern 1: Line looks like a heading (ALL CAPS, title case, or simple patterns)
             // Check if this is a single-word section heading (preceded by empty line or at start)
             let prev_empty = i == 0 || lines[i - 1].trim().is_empty();
-            if Self::is_heading_line(trimmed) || (prev_empty && Self::is_single_word_section_heading(trimmed, i, &lines)) {
+            if Self::is_heading_line(trimmed)
+                || (prev_empty && Self::is_single_word_section_heading(trimmed, i, &lines))
+            {
                 // Close list if we were in one
                 if in_list {
                     in_list = false;
@@ -3770,13 +3803,7 @@ impl Txt2mdHandler {
         let line_lower = line.to_lowercase();
 
         // Pattern: "Section N", "Chapter N", "Part N", "Appendix N" followed by optional text
-        let section_patterns = [
-            "section ",
-            "chapter ",
-            "part ",
-            "appendix ",
-            "appendix: ",
-        ];
+        let section_patterns = ["section ", "chapter ", "part ", "appendix ", "appendix: "];
         for pattern in section_patterns {
             if let Some(rest) = line_lower.strip_prefix(pattern) {
                 // Check if followed by a number or roman numeral
@@ -3785,7 +3812,12 @@ impl Txt2mdHandler {
                     continue;
                 }
                 // Check for digit
-                if rest.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                if rest
+                    .chars()
+                    .next()
+                    .map(|c| c.is_ascii_digit())
+                    .unwrap_or(false)
+                {
                     return true;
                 }
                 // Check for roman numeral (I, II, III, IV, V, etc.)
@@ -3856,8 +3888,8 @@ impl Txt2mdHandler {
     /// Check if a string starts with a roman numeral.
     fn starts_with_roman_numeral(s: &str) -> bool {
         let roman_numerals = [
-            "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x",
-            "xi", "xii", "xiii", "xiv", "xv", "xvi", "xvii", "xviii", "xix", "xx",
+            "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii",
+            "xiv", "xv", "xvi", "xvii", "xviii", "xix", "xx",
         ];
         let s_lower = s.to_lowercase();
         let first_word = s_lower.split_whitespace().next().unwrap_or("");
@@ -3884,8 +3916,8 @@ impl Txt2mdHandler {
 
         // Minor words that don't need to be capitalized
         let minor_words = [
-            "a", "an", "the", "and", "but", "or", "for", "nor", "on", "at",
-            "to", "by", "in", "of", "with", "is", "are", "was", "were", "be",
+            "a", "an", "the", "and", "but", "or", "for", "nor", "on", "at", "to", "by", "in", "of",
+            "with", "is", "are", "was", "were", "be",
         ];
 
         let mut capitalized_count = 0;
@@ -3923,12 +3955,21 @@ impl Txt2mdHandler {
         }
 
         // Skip lines that start with list markers or special characters
-        if line.starts_with("- ") || line.starts_with("* ") || line.starts_with('>') || line.starts_with('#') {
+        if line.starts_with("- ")
+            || line.starts_with("* ")
+            || line.starts_with('>')
+            || line.starts_with('#')
+        {
             return false;
         }
 
         // Skip lines that start with numbers (could be ordered list)
-        if line.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+        if line
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
+        {
             return false;
         }
 
@@ -3943,23 +3984,72 @@ impl Txt2mdHandler {
         }
 
         // First character must be uppercase
-        if !line.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
+        if !line
+            .chars()
+            .next()
+            .map(|c| c.is_uppercase())
+            .unwrap_or(false)
+        {
             return false;
         }
 
         // Common section heading words that are likely to be headings
         let common_section_words = [
-            "introduction", "methods", "results", "discussion", "conclusion",
-            "abstract", "summary", "overview", "background", "motivation",
-            "approach", "implementation", "evaluation", "related", "future",
-            "appendix", "references", "acknowledgments", "preface", "foreword",
-            "contents", "index", "glossary", "bibliography", "notes",
-            "chapter", "section", "part", "prologue", "epilogue",
-            "setup", "installation", "usage", "examples", "configuration",
-            "api", "tutorial", "guide", "faq", "changelog",
-            "history", "purpose", "scope", "limitations", "benefits",
-            "features", "requirements", "design", "architecture", "testing",
-            "deployment", "maintenance", "troubleshooting", "support", "license",
+            "introduction",
+            "methods",
+            "results",
+            "discussion",
+            "conclusion",
+            "abstract",
+            "summary",
+            "overview",
+            "background",
+            "motivation",
+            "approach",
+            "implementation",
+            "evaluation",
+            "related",
+            "future",
+            "appendix",
+            "references",
+            "acknowledgments",
+            "preface",
+            "foreword",
+            "contents",
+            "index",
+            "glossary",
+            "bibliography",
+            "notes",
+            "chapter",
+            "section",
+            "part",
+            "prologue",
+            "epilogue",
+            "setup",
+            "installation",
+            "usage",
+            "examples",
+            "configuration",
+            "api",
+            "tutorial",
+            "guide",
+            "faq",
+            "changelog",
+            "history",
+            "purpose",
+            "scope",
+            "limitations",
+            "benefits",
+            "features",
+            "requirements",
+            "design",
+            "architecture",
+            "testing",
+            "deployment",
+            "maintenance",
+            "troubleshooting",
+            "support",
+            "license",
         ];
 
         let line_lower = line.to_lowercase();
@@ -4041,7 +4131,10 @@ impl Txt2mdHandler {
         if line.ends_with(':') {
             let without_colon = line.trim_end_matches(':').trim();
             // Check if mostly uppercase
-            let alpha_chars: Vec<char> = without_colon.chars().filter(|c| c.is_alphabetic()).collect();
+            let alpha_chars: Vec<char> = without_colon
+                .chars()
+                .filter(|c| c.is_alphabetic())
+                .collect();
             if !alpha_chars.is_empty() {
                 let uppercase_count = alpha_chars.iter().filter(|c| c.is_uppercase()).count();
                 let ratio = uppercase_count as f64 / alpha_chars.len() as f64;
@@ -4159,8 +4252,8 @@ impl Txt2mdHandler {
         let has_leading_whitespace = line.starts_with(' ') || line.starts_with('\t');
 
         // Check if it's NOT a list item itself
-        let is_list = Self::is_unordered_list_item(trimmed).is_some()
-            || Self::is_ordered_list_item(trimmed);
+        let is_list =
+            Self::is_unordered_list_item(trimmed).is_some() || Self::is_ordered_list_item(trimmed);
 
         // Check if it's not a code block marker
         let is_code_marker = trimmed.starts_with("```") || trimmed.starts_with("~~~");
@@ -4342,7 +4435,14 @@ impl CommandHandler for Txt2mdHandler {
                 .with_output_mode(ctx.format)
                 .with_input_bytes(text.len())
                 .with_output_bytes(formatted.len())
-                .with_extra("Source", input.input.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "stdin".to_string()));
+                .with_extra(
+                    "Source",
+                    input
+                        .input
+                        .as_ref()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_else(|| "stdin".to_string()),
+                );
             stats.print();
         }
 
@@ -4550,7 +4650,10 @@ impl CommandHandler for IsCleanHandler {
 
         // Print stats if requested
         if ctx.stats {
-            let total_changes = state.staged_count + state.unstaged_count + state.untracked_count + state.unmerged_count;
+            let total_changes = state.staged_count
+                + state.unstaged_count
+                + state.untracked_count
+                + state.unmerged_count;
             let stats = CommandStats::new()
                 .with_reducer("is-clean")
                 .with_output_mode(ctx.format)
@@ -4671,7 +4774,10 @@ impl ParseHandler {
             // Format output based on the requested format
             let output = Self::format_git_status(&status, ctx.format);
             if ctx.stats {
-                let total_changes = status.staged_count + status.unstaged_count + status.untracked_count + status.unmerged_count;
+                let total_changes = status.staged_count
+                    + status.unstaged_count
+                    + status.untracked_count
+                    + status.unmerged_count;
                 let stats = CommandStats::new()
                     .with_reducer("git-status")
                     .with_output_mode(ctx.format)
@@ -4811,7 +4917,9 @@ impl ParseHandler {
 
             // Detect diverged counts: "  and have 3 and 5 different commits each, respectively."
             // Also handles "and have 3 and 5 different commits each, respectively."
-            if line.contains(" different commits each") || (line.starts_with("and have") && line.contains(" different commits")) {
+            if line.contains(" different commits each")
+                || (line.starts_with("and have") && line.contains(" different commits"))
+            {
                 // Parse: "  and have 3 and 5 different commits each, respectively."
                 // Format: "have <ahead> and <behind> different commits each"
                 let parts: Vec<&str> = line.split_whitespace().collect();
@@ -6096,7 +6204,11 @@ impl ParseHandler {
                 .with_input_bytes(input.len())
                 .with_output_bytes(output.len())
                 .with_items_processed(grep_output.matches_shown)
-                .with_items_filtered(grep_output.total_matches.saturating_sub(grep_output.matches_shown))
+                .with_items_filtered(
+                    grep_output
+                        .total_matches
+                        .saturating_sub(grep_output.matches_shown),
+                )
                 .with_extra("Files with matches", grep_output.file_count.to_string())
                 .with_extra("Total matches", grep_output.total_matches.to_string());
             stats.print();
@@ -6685,37 +6797,61 @@ impl ParseHandler {
         let (output, passed, failed, skipped) = match runner {
             Some(crate::TestRunner::Pytest) | None => {
                 let test_output = Self::parse_pytest(&input)?;
-                let (passed, failed, skipped) = (test_output.summary.passed, test_output.summary.failed, test_output.summary.skipped);
+                let (passed, failed, skipped) = (
+                    test_output.summary.passed,
+                    test_output.summary.failed,
+                    test_output.summary.skipped,
+                );
                 let output = Self::format_pytest(&test_output, ctx.format);
                 (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Jest) => {
                 let test_output = Self::parse_jest(&input)?;
-                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
+                let (passed, failed, skipped) = (
+                    test_output.summary.tests_passed,
+                    test_output.summary.tests_failed,
+                    test_output.summary.tests_skipped,
+                );
                 let output = Self::format_jest(&test_output, ctx.format);
                 (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Vitest) => {
                 let test_output = Self::parse_vitest(&input)?;
-                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
+                let (passed, failed, skipped) = (
+                    test_output.summary.tests_passed,
+                    test_output.summary.tests_failed,
+                    test_output.summary.tests_skipped,
+                );
                 let output = Self::format_vitest(&test_output, ctx.format);
                 (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Npm) => {
                 let test_output = Self::parse_npm_test(&input)?;
-                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
+                let (passed, failed, skipped) = (
+                    test_output.summary.tests_passed,
+                    test_output.summary.tests_failed,
+                    test_output.summary.tests_skipped,
+                );
                 let output = Self::format_npm_test(&test_output, ctx.format);
                 (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Pnpm) => {
                 let test_output = Self::parse_pnpm_test(&input)?;
-                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
+                let (passed, failed, skipped) = (
+                    test_output.summary.tests_passed,
+                    test_output.summary.tests_failed,
+                    test_output.summary.tests_skipped,
+                );
                 let output = Self::format_pnpm_test(&test_output, ctx.format);
                 (output, passed, failed, skipped)
             }
             Some(crate::TestRunner::Bun) => {
                 let test_output = Self::parse_bun_test(&input)?;
-                let (passed, failed, skipped) = (test_output.summary.tests_passed, test_output.summary.tests_failed, test_output.summary.tests_skipped);
+                let (passed, failed, skipped) = (
+                    test_output.summary.tests_passed,
+                    test_output.summary.tests_failed,
+                    test_output.summary.tests_skipped,
+                );
                 let output = Self::format_bun_test(&test_output, ctx.format);
                 (output, passed, failed, skipped)
             }
@@ -10755,7 +10891,10 @@ impl ParseHandler {
                 .with_extra("Warning", logs_output.warning_count.to_string())
                 .with_extra("Error", logs_output.error_count.to_string())
                 .with_extra("Fatal", logs_output.fatal_count.to_string())
-                .with_extra("Repeated lines", logs_output.repeated_lines.len().to_string());
+                .with_extra(
+                    "Repeated lines",
+                    logs_output.repeated_lines.len().to_string(),
+                );
             stats.print();
         }
 
@@ -12304,16 +12443,14 @@ mod tests {
 
     #[test]
     fn test_command_stats_with_reducer() {
-        let stats = CommandStats::new()
-            .with_reducer("search");
+        let stats = CommandStats::new().with_reducer("search");
 
         assert_eq!(stats.reducer, Some("search".to_string()));
     }
 
     #[test]
     fn test_command_stats_with_output_mode() {
-        let stats = CommandStats::new()
-            .with_output_mode(OutputFormat::Json);
+        let stats = CommandStats::new().with_output_mode(OutputFormat::Json);
 
         assert_eq!(stats.output_mode, Some(OutputFormat::Json));
     }
@@ -12337,11 +12474,17 @@ mod tests {
     #[test]
     fn test_command_stats_format_output_mode() {
         assert_eq!(CommandStats::format_output_mode(OutputFormat::Raw), "raw");
-        assert_eq!(CommandStats::format_output_mode(OutputFormat::Compact), "compact");
+        assert_eq!(
+            CommandStats::format_output_mode(OutputFormat::Compact),
+            "compact"
+        );
         assert_eq!(CommandStats::format_output_mode(OutputFormat::Json), "json");
         assert_eq!(CommandStats::format_output_mode(OutputFormat::Csv), "csv");
         assert_eq!(CommandStats::format_output_mode(OutputFormat::Tsv), "tsv");
-        assert_eq!(CommandStats::format_output_mode(OutputFormat::Agent), "agent");
+        assert_eq!(
+            CommandStats::format_output_mode(OutputFormat::Agent),
+            "agent"
+        );
     }
 
     #[test]

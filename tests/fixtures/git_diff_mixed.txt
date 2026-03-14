@@ -1,0 +1,53 @@
+diff --git a/src/main.rs b/src/main.rs
+index 1111111..2222222 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -5,8 +5,10 @@ fn main() {
+     init();
+-    process();
++    let result = process();
++    handle(result);
+     cleanup();
+ }
+diff --git a/src/lib.rs b/src/lib.rs
+index 3333333..4444444 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,4 +1,5 @@
+ pub mod main;
++pub mod utils;
+ pub mod parser;
+ pub mod formatter;
+diff --git a/src/utils.rs b/src/utils.rs
+new file mode 100644
+index 0000000..5555555
+--- /dev/null
++++ b/src/utils.rs
+@@ -0,0 +1,10 @@
++/// Utility functions
++pub fn helper() -> i32 {
++    42
++}
++
++/// Another helper
++pub fn another() -> String {
++    String::from("test")
++}
++
+diff --git a/src/deprecated.rs b/src/deprecated.rs
+deleted file mode 100644
+index 6666666..0000000
+--- a/src/deprecated.rs
++++ /dev/null
+@@ -1,8 +0,0 @@
+-// Deprecated module
+-// This is no longer needed
+-
+-pub fn old() {
+-    println!("old");
+-}
+-
+-// End of file
+diff --git a/assets/logo.png b/assets/logo.png
+index 7777777..8888888 100644
+Binary files a/assets/logo.png and b/assets/logo.png differ

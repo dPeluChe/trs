@@ -1,0 +1,10 @@
+diff --git a/src/main.rs b/src/main.rs
+index 1234567..abcdefg 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -10,6 +10,8 @@ fn main() {
+     println!("Hello");
++    let x = 1;
++    let y = 2;
+     println!("World");
+ }
