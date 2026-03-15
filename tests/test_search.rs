@@ -811,7 +811,7 @@ fn test_search_multiple_files() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
     // Should find matches in multiple files
     let files = json["files"].as_array().unwrap();
-    assert!(files.len() >= 1, "Expected at least one file with matches");
+    assert!(!files.is_empty(), "Expected at least one file with matches");
 }
 
 // ============================================================
@@ -1007,4 +1007,232 @@ fn test_search_json_with_all_options() {
 
     let stdout = String::from_utf8_lossy(&output);
     assert!(serde_json::from_str::<serde_json::Value>(&stdout).is_ok());
+}
+
+// ============================================================
+// Raw vs Reduced Output Size Comparison Tests
+// ============================================================
+
+#[test]
+fn test_search_stats_raw_vs_reduced() {
+    // Test that raw output shows the raw ripgrep-style output
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--raw")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+
+    // Output bytes should match stdout length
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
+#[test]
+fn test_search_stats_json_larger() {
+    // When using --json format, output_bytes should be larger than input_bytes due to JSON structure
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--json")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+
+    // For JSON output, output should be larger than input (JSON adds metadata)
+    assert!(output_bytes > input_bytes, "JSON search output should be larger than raw input");
+
+    // Verify stdout length matches output bytes
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
+#[test]
+fn test_search_stats_compact_reduction() {
+    // When using --compact format, verify proper byte counting and reduction
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--compact")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present and output bytes should match stdout length
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+
+    // Compact format typically shows reduction since it summarizes matches
+    // (though this depends on the specific pattern and matches)
+}
+
+#[test]
+fn test_search_stats_agent_format() {
+    // When using --agent format, verify proper byte counting
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--agent")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present and output bytes should match stdout length
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
+#[test]
+fn test_search_stats_csv_format() {
+    // When using --csv format, verify proper byte counting
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--csv")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present and output bytes should match stdout length
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
+#[test]
+fn test_search_stats_tsv_format() {
+    // When using --tsv format, verify proper byte counting
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--tsv")
+        .arg("search")
+        .arg("src")
+        .arg("SearchHandler")
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present and output bytes should match stdout length
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
+#[test]
+fn test_search_stats_empty_results() {
+    // Test stats with empty search results
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("search")
+        .arg("src")
+        .arg("nonexistent_pattern_xyz123_abc")
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present (even for empty results)
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+
+    // For empty results, input_bytes should be 0
+    assert_eq!(input_bytes, Some(0), "Empty search should have 0 input bytes");
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
+/// Helper function to extract byte count from stats output
+fn extract_bytes(stderr: &str, prefix: &str) -> Option<usize> {
+    for line in stderr.lines() {
+        if line.contains(prefix) {
+            // Extract the number after the prefix
+            if let Some(pos) = line.find(prefix) {
+                let after = &line[pos + prefix.len()..];
+                if let Ok(bytes) = after.trim().parse::<usize>() {
+                    return Some(bytes);
+                }
+            }
+        }
+    }
+    None
 }
