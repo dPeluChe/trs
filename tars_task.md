@@ -255,48 +255,48 @@ The project includes three functional layers:
 
 # Command Statistics
 
-- [ ] implement `--stats` flag
-- [ ] measure original output size
-- [ ] measure reduced output size
-- [ ] estimate token reduction
-- [ ] display reducer used
-- [ ] display output mode used
+- [x] implement `--stats` flag
+- [x] measure original output size
+- [x] measure reduced output size
+- [x] estimate token reduction
+- [x] display reducer used
+- [x] display output mode used
 
 ---
 
 # Testing
 
-- [ ] create fixtures for `git status`
-- [ ] create fixtures for `git diff`
-- [ ] create fixtures for `ls`
-- [ ] create fixtures for `grep`
-- [ ] create fixtures for test runners
-- [ ] create fixtures for logs
-- [ ] add reducer tests
-- [ ] add formatter tests
-- [ ] add command execution tests
-- [ ] add parser tests
-- [ ] add search tool tests
-- [ ] add replace tool tests
-- [ ] add tail tool tests
-- [ ] add clean tool tests
-- [ ] add conversion tool tests
+- [x] create fixtures for `git status`
+- [x] create fixtures for `git diff`
+- [x] create fixtures for `ls`
+- [x] create fixtures for `grep`
+- [x] create fixtures for test runners
+- [x] create fixtures for logs
+- [x] add reducer tests
+- [x] add formatter tests
+- [x] add command execution tests
+- [x] add parser tests
+- [x] add search tool tests
+- [x] add replace tool tests
+- [x] add tail tool tests
+- [x] add clean tool tests
+- [x] add conversion tool tests
 
 ---
 
 # Output Comparison Tests
 
-- [ ] compare raw vs reduced output size for `git status`
-- [ ] compare raw vs reduced output size for `git diff`
-- [ ] compare raw vs reduced output size for `ls`
-- [ ] compare raw vs reduced output size for search results
-- [ ] validate signal preservation after reduction
+- [x] compare raw vs reduced output size for `git status`
+- [x] compare raw vs reduced output size for `git diff`
+- [x] compare raw vs reduced output size for `ls`
+- [x] compare raw vs reduced output size for search results
+- [x] validate signal preservation after reduction
 
 ---
 
 # Local Execution
 
-- [ ] ensure binary runs as `trs`
-- [ ] validate CLI works locally
-- [ ] validate command routing
-- [ ] validate structured output modes
+- [x] ensure binary runs as `trs`
+- [x] validate CLI works locally
+- [x] validate command routing
+- [x] validate structured output modes
