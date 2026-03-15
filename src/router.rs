@@ -1540,22 +1540,26 @@ impl CommandHandler for RunHandler {
 
         match result {
             Ok(output) => {
+                // Format output first to calculate reduced size
+                let formatted = Self::format_output(&output, ctx.format);
+
                 // Print stats if requested
                 if ctx.stats {
+                    let input_bytes = output.stdout.len() + output.stderr.len();
+                    let output_bytes = formatted.len();
                     let stats = CommandStats::new()
                         .with_command(format!("{} {:?}", output.command, output.args))
                         .with_exit_code(output.code())
                         .with_duration_ms(output.duration.as_millis() as u64)
-                        .with_input_bytes(output.stdout.len() + output.stderr.len())
-                        .with_output_bytes(output.stdout.len() + output.stderr.len())
+                        .with_input_bytes(input_bytes)
+                        .with_output_bytes(output_bytes)
                         .with_output_mode(ctx.format)
                         .with_extra("Stdout bytes", output.stdout.len().to_string())
                         .with_extra("Stderr bytes", output.stderr.len().to_string());
                     stats.print();
                 }
 
-                // Format and print output
-                let formatted = Self::format_output(&output, ctx.format);
+                // Print output
                 print!("{}", formatted);
 
                 // Propagate exit code (only if we captured it)
