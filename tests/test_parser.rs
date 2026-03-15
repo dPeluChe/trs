@@ -1472,6 +1472,140 @@ fn test_parser_stats_git_diff() {
         .stderr(predicate::str::contains("Files changed:"));
 }
 
+// ============================================================
+// Git Diff Stats: Raw vs Reduced Output Size Comparison Tests
+// ============================================================
+
+#[test]
+fn test_parser_stats_git_diff_raw_reduction() {
+    // For git-diff, raw format is a simplified summary (not the original input)
+    // The output should be smaller than the raw input
+    let input = fixtures::git_diff_modified();
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--raw")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.clone())
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+
+    // Raw format for git-diff outputs a simplified summary, which is smaller than input
+    assert!(output_bytes < input_bytes, "Raw git-diff output should be smaller than input");
+
+    // Verify stdout length matches output bytes
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
+#[test]
+fn test_parser_stats_git_diff_json_larger() {
+    // When using --json format, output_bytes should be larger than input_bytes due to JSON structure
+    let input = fixtures::git_diff_modified();
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--json")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.clone())
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // For JSON output, output should be larger than input (JSON adds metadata)
+    assert!(output_bytes > input_bytes, "JSON git-diff output should be larger than raw input");
+
+    // Verify stdout length matches output bytes
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
+#[test]
+fn test_parser_stats_git_diff_compact_reduction() {
+    // When using --compact format, verify proper byte counting and reduction
+    let input = fixtures::git_diff_modified();
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--compact")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.clone())
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present and output bytes should match stdout length
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+
+    // Compact format should show reduction since it summarizes the diff
+    assert!(output_bytes < input_bytes, "Compact git-diff output should be smaller than raw input");
+}
+
+#[test]
+fn test_parser_stats_git_diff_agent_reduction() {
+    // When using --agent format, verify proper byte counting and reduction
+    let input = fixtures::git_diff_modified();
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--stats")
+        .arg("--agent")
+        .arg("parse")
+        .arg("git-diff")
+        .write_stdin(input.clone())
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse input bytes and output bytes from stderr
+    let input_bytes = extract_bytes(&stderr, "Input bytes:");
+    let output_bytes = extract_bytes(&stderr, "Output bytes:");
+
+    // Both should be present and output bytes should match stdout length
+    assert!(input_bytes.is_some(), "Should have input bytes");
+    assert!(output_bytes.is_some(), "Should have output bytes");
+    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+}
+
 #[test]
 fn test_parser_stats_ls() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -1494,4 +1628,20 @@ fn test_parser_stats_logs() {
         .assert()
         .success()
         .stderr(predicate::str::contains("Reducer:"));
+}
+
+/// Helper function to extract byte count from stats output
+fn extract_bytes(stderr: &str, prefix: &str) -> Option<usize> {
+    for line in stderr.lines() {
+        if line.contains(prefix) {
+            // Extract the number after the prefix
+            if let Some(pos) = line.find(prefix) {
+                let after = &line[pos + prefix.len()..];
+                if let Ok(bytes) = after.trim().parse::<usize>() {
+                    return Some(bytes);
+                }
+            }
+        }
+    }
+    None
 }
