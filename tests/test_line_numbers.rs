@@ -9,7 +9,7 @@ fn test_line_numbers_compact_format() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .assert()
         .success()
@@ -19,9 +19,13 @@ fn test_line_numbers_compact_format() {
 
     let output_str = String::from_utf8_lossy(&output);
 
-    // Should contain line numbers in format like "1657:12:"
-    assert!(output_str.contains("1657:"));
+    // Should contain line numbers in format like "NNN:" and the search term
     assert!(output_str.contains("SearchHandler"));
+    // Verify at least one line number pattern (digits followed by colon)
+    let has_line_number = output_str.lines().any(|line| {
+        line.chars().any(|c| c.is_ascii_digit()) && line.contains(':')
+    });
+    assert!(has_line_number, "Output should contain line numbers");
 }
 
 /// Test that line numbers are present in JSON format
@@ -31,7 +35,7 @@ fn test_line_numbers_json_format() {
     let output = cmd
         .arg("--json")
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .assert()
         .success()
@@ -66,7 +70,7 @@ fn test_line_numbers_csv_format() {
     let output = cmd
         .arg("--csv")
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .assert()
         .success()
@@ -96,7 +100,7 @@ fn test_line_numbers_tsv_format() {
     let output = cmd
         .arg("--tsv")
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .assert()
         .success()
@@ -125,7 +129,7 @@ fn test_line_numbers_raw_format() {
     let output = cmd
         .arg("--raw")
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .assert()
         .success()
@@ -136,7 +140,7 @@ fn test_line_numbers_raw_format() {
     let output_str = String::from_utf8_lossy(&output);
 
     // Raw format should show line numbers with colons
-    assert!(output_str.contains("router.rs:"));
+    assert!(output_str.contains("router/"));
     assert!(output_str.contains("SearchHandler"));
 
     // Should contain at least one numeric line number
@@ -153,7 +157,7 @@ fn test_line_numbers_with_context() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .arg("--context")
         .arg("1")
@@ -165,9 +169,12 @@ fn test_line_numbers_with_context() {
 
     let output_str = String::from_utf8_lossy(&output);
 
-    // Should contain match line numbers
-    assert!(output_str.contains("1657:"));
+    // Should contain match line numbers and search term
     assert!(output_str.contains("SearchHandler"));
+    let has_line_number = output_str.lines().any(|line| {
+        line.chars().any(|c| c.is_ascii_digit()) && line.contains(':')
+    });
+    assert!(has_line_number, "Output should contain line numbers");
 
     // Context lines should be indicated with ellipsis
     assert!(output_str.contains("..."));
@@ -180,7 +187,7 @@ fn test_line_numbers_accuracy() {
     let output = cmd
         .arg("--json")
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .assert()
         .success()

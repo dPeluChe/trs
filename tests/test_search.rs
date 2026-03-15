@@ -37,7 +37,7 @@ fn test_search_in_specific_path() {
         .arg("SearchHandler")
         .assert()
         .success()
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 #[test]
@@ -423,7 +423,7 @@ fn test_search_csv_has_file_path() {
         .arg("SearchHandler")
         .assert()
         .success()
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 // ============================================================
@@ -439,7 +439,7 @@ fn test_search_tsv_has_file_path() {
         .arg("SearchHandler")
         .assert()
         .success()
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 // ============================================================

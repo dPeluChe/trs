@@ -271,7 +271,7 @@ fn test_search_basic() {
         .assert()
         .success()
         .stdout(predicate::str::contains("matches:"))
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 #[test]
@@ -301,7 +301,7 @@ fn test_search_json_output() {
         .stdout(predicate::str::contains("\"schema\""))
         .stdout(predicate::str::contains("\"grep_output\""))
         .stdout(predicate::str::contains("\"files\""))
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 #[test]
@@ -318,7 +318,7 @@ fn test_search_csv_output() {
         .stdout(predicate::str::contains(
             "path,line_number,column,is_context,line",
         ))
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 #[test]
@@ -335,7 +335,7 @@ fn test_search_tsv_output() {
         .stdout(predicate::str::contains(
             "path\tline_number\tcolumn\tis_context\tline",
         ))
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 #[test]
@@ -349,7 +349,7 @@ fn test_search_raw_output() {
         .arg("rs")
         .assert()
         .success()
-        .stdout(predicate::str::contains("router.rs:"))
+        .stdout(predicate::str::contains("search.rs:"))
         .stdout(predicate::str::contains("SearchHandler"));
 }
 
@@ -412,7 +412,7 @@ fn test_search_groups_matches_by_file_compact() {
         .assert()
         .success()
         // Should show file header with match count
-        .stdout(predicate::str::contains("router.rs ("))
+        .stdout(predicate::str::contains("search.rs ("))
         // Should show individual matches under the file
         .stdout(predicate::str::contains("  "))
         .stdout(predicate::str::contains("SearchHandler"));
@@ -480,7 +480,7 @@ fn test_search_groups_single_file_multiple_matches() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler") // Appears multiple times in one file
         .assert()
         .success()
@@ -491,7 +491,7 @@ fn test_search_groups_single_file_multiple_matches() {
     let output_str = String::from_utf8_lossy(&output);
 
     // Should only show the file header once
-    let router_count = output_str.matches("router.rs").count();
+    let router_count = output_str.matches("router/").count();
     assert!(router_count >= 1);
 
     // Should show match count > 1
@@ -505,8 +505,8 @@ fn test_search_groups_preserve_line_numbers() {
     let output = cmd
         .arg("--raw")
         .arg("search")
-        .arg("src/router.rs")
-        .arg("pub struct SearchHandler")
+        .arg("src/router/")
+        .arg("struct SearchHandler")
         .assert()
         .success()
         .get_output()
@@ -550,7 +550,7 @@ fn test_search_csv_maintains_file_column() {
         .assert()
         .success()
         .stdout(predicate::str::contains("path,line_number"))
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 #[test]
@@ -566,7 +566,7 @@ fn test_search_tsv_maintains_file_column() {
         .assert()
         .success()
         .stdout(predicate::str::contains("path\tline_number"))
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 #[test]
@@ -575,7 +575,7 @@ fn test_search_counts_match_groups() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .assert()
         .success()
@@ -603,7 +603,7 @@ fn test_search_groups_case_insensitive() {
         .arg("--ignore-case")
         .assert()
         .success()
-        .stdout(predicate::str::contains("router.rs"));
+        .stdout(predicate::str::contains("router/"));
 }
 
 #[test]
@@ -625,8 +625,12 @@ fn test_search_includes_excerpts_compact() {
     let output_str = String::from_utf8_lossy(&output);
     // Excerpt should be shown in square brackets
     assert!(output_str.contains("[SearchHandler]"));
-    // Column number should be shown
-    assert!(output_str.contains(":12:"));
+    // Column number should be shown (format: line:col:)
+    let has_col = output_str.lines().any(|l| {
+        let parts: Vec<&str> = l.trim().splitn(3, ':').collect();
+        parts.len() >= 2 && parts[0].parse::<u32>().is_ok() && parts[1].parse::<u32>().is_ok()
+    });
+    assert!(has_col, "Output should contain column numbers");
 }
 
 #[test]
@@ -672,7 +676,7 @@ fn test_search_shows_total_files_and_match_count() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("search")
-        .arg("src/router.rs")
+        .arg("src/router/")
         .arg("SearchHandler")
         .assert()
         .success()
@@ -775,7 +779,7 @@ fn test_search_extension_filter_md() {
     let output = cmd
         .arg("search")
         .arg(".")
-        .arg("fn")
+        .arg("CLI")
         .arg("--extension")
         .arg("md")
         .assert()

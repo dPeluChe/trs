@@ -625,7 +625,7 @@ impl ReducerOutput {
         if !self.items.is_empty() {
             let mut csv = String::new();
             // Header
-            if let Some(first) = self.items.first() {
+            if let Some(_first) = self.items.first() {
                 csv.push_str(&format!("key,value,label\n"));
             }
             // Rows

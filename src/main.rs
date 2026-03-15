@@ -3,9 +3,12 @@ use std::path::PathBuf;
 
 mod formatter;
 mod help;
+#[allow(dead_code)]
 mod process;
+#[allow(dead_code)]
 mod reducer;
 mod router;
+#[allow(dead_code)]
 mod schema;
 
 use router::{CommandContext, Router};

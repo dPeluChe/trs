@@ -1809,7 +1809,7 @@ fn test_replace_ignores_node_modules_directory() {
     );
     
     // Create node_modules directory with a file
-    fs::create_dir(temp_dir.path().join("node_modules")).unwrap();
+    fs::create_dir_all(temp_dir.path().join("node_modules/package")).unwrap();
     create_temp_file(
         &temp_dir,
         "node_modules/package/index.js",
