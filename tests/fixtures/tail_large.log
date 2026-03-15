@@ -1,0 +1,20 @@
+[INFO] Line 1 - Application starting
+[DEBUG] Line 2 - Debug information
+[INFO] Line 3 - Processing request
+[DEBUG] Line 4 - More debug info
+[WARN] Line 5 - Warning message
+[INFO] Line 6 - Request completed
+[DEBUG] Line 7 - Cleanup started
+[ERROR] Line 8 - Error occurred
+[INFO] Line 9 - Retrying
+[FATAL] Line 10 - Fatal error
+[INFO] Line 11 - Shutdown initiated
+[DEBUG] Line 12 - Cleanup completed
+[INFO] Line 13 - Goodbye
+[WARN] Line 14 - Final warning
+[ERROR] Line 15 - Final error
+[INFO] Line 16 - End of log
+[DEBUG] Line 17 - Extra debug
+[INFO] Line 18 - More info
+[WARN] Line 19 - Another warning
+[INFO] Line 20 - Last line
