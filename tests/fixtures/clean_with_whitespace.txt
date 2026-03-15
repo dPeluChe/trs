@@ -1,0 +1,6 @@
+   Leading whitespace
+Trailing whitespace   
+   Both leading and trailing   
+	Tab at start
+Tab at end	
+   Mixed 	 whitespace   	

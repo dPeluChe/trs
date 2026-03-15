@@ -1,0 +1,10 @@
+[INFO] Application started
+[DEBUG] Processing request
+[DEBUG] Processing request
+[DEBUG] Processing request
+[INFO] Request completed
+[WARN] Cache miss
+[WARN] Cache miss
+[ERROR] Connection failed
+[INFO] Retrying...
+[DEBUG] Processing request

@@ -1,0 +1,6 @@
+[32m[INFO][0m Application started
+[1;34m[DEBUG][0m Processing request
+[33m[WARN][0m Cache miss
+[31m[ERROR][0m Connection failed
+[31;1m[FATAL][0m Max retries exceeded
+[0m[INFO] Request completed

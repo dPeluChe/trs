@@ -1,0 +1,16 @@
+   [32m[INFO][0m Application started   
+
+[DEBUG] Processing request
+[DEBUG] Processing request
+
+
+[WARN] Cache miss
+[WARN] Cache miss
+[WARN] Cache miss
+
+
+
+[31m[ERROR][0m   Connection failed   
+
+
+[INFO] Request completed
