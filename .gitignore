@@ -1,1 +1,46 @@
-/target
+# Build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo lock file for binary projects (keep for libraries)
+# Uncomment if this becomes a library:
+# Cargo.lock
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Archives
+*.zip
+*.tar.gz
+*.tar
+*.rar
+
+# IDE/Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Tool-specific directories
+.claude/
+.cursor/
+.factory/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Test coverage
+*.profraw
+*.profdata
+coverage/
+
+# Debug files
+*.dSYM/
+*.su
