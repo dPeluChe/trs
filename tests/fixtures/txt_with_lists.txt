@@ -1,0 +1,22 @@
+DOCUMENT TITLE
+
+Introduction paragraph.
+
+UNORDERED LIST
+
+- First item
+- Second item
+- Third item
+
+ORDERED LIST
+
+1. Step one
+2. Step two
+3. Step three
+
+NESTED LIST
+
+- Main item
+  - Sub item one
+  - Sub item two
+- Another main item

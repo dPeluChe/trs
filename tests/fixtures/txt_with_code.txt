@@ -1,0 +1,14 @@
+CODE EXAMPLE
+
+Here is some inline code example.
+
+```
+function test() {
+    return 42;
+}
+```
+
+And a blockquote:
+
+> This is a quote
+> that spans multiple lines.

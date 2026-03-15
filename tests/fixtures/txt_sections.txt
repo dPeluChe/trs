@@ -1,0 +1,17 @@
+DOCUMENT TITLE
+
+Introduction
+
+This is the introduction section.
+
+Methods
+
+The methods used in this study.
+
+Results
+
+The results of the analysis.
+
+Conclusion
+
+Final thoughts and conclusions.

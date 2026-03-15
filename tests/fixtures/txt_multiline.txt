@@ -1,0 +1,15 @@
+CHAPTER 1: THE BEGINNING
+
+This is the first chapter of our story.
+
+Section 1: Overview
+
+This section provides an overview.
+
+IMPORTANT NOTES:
+
+Please read these notes carefully.
+
+1. Introduction to the System Architecture Overview
+
+This is a long numbered heading that should be detected as a heading, not a list item.
