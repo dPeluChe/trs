@@ -60,19 +60,46 @@ trs --json git status    # also works
 `trs` automatically detects the command and applies the right parser:
 
 ```bash
-trs git status        # → git-status parser
-trs git diff          # → git-diff parser
-trs ls -la            # → ls parser
-trs grep -rn "pat" .  # → grep parser
-trs find . -name "*.rs"  # → find parser
-trs pytest            # → pytest parser
-trs npm test          # → npm test parser
-trs jest              # → jest parser
-trs vitest            # → vitest parser
-trs pnpm test         # → pnpm test parser
-trs bun test          # → bun test parser
-trs tail /var/log/app.log  # → log parser
-trs echo "hello"      # → passthrough (no parser needed)
+# Git
+trs git status              # → git-status parser
+trs git diff                # → git-diff parser
+trs git log -10             # → git-log parser
+trs git branch -a           # → git-branch parser
+
+# File system
+trs ls -la                  # → ls parser
+trs tree -L 2               # → tree parser
+trs find . -name "*.rs"     # → find parser
+
+# Search
+trs grep -rn "pattern" .    # → grep parser
+
+# Test runners
+trs pytest                  # → pytest parser
+trs npm test                # → npm test parser
+trs jest / vitest / bun test
+
+# Package managers
+trs npm ls                  # → dependency list
+trs pip list                # → dependency list
+trs npm install             # → install summary
+trs pip install requests    # → install summary
+
+# Build tools
+trs cargo build             # → build output (errors/warnings)
+trs tsc                     # → TypeScript errors
+trs make                    # → build output
+
+# Docker
+trs docker ps               # → container status
+trs docker logs <name>      # → log parser
+
+# System
+trs env                     # → sorted, truncated values
+trs tail /var/log/app.log   # → log parser
+
+# Unsupported commands pass through
+trs echo "hello"            # → passthrough
 ```
 
 ## Built-in Tools
@@ -156,10 +183,17 @@ When multiple format flags are specified, precedence applies:
 
 | Command | Raw | trs compact | Reduction |
 |---------|-----|-------------|-----------|
-| `git status` | 370 B | 101 B | **72%** |
-| `git diff` (2 files) | 617 B | 74 B | **88%** |
-| `ls -la` (1029 entries) | 108 KB | 54 KB | **49%** |
-| HTML page to Markdown | 455 B | 306 B | **32%** |
+| `git status` | 465 B | 131 B | **71%** |
+| `git diff` | 34 KB | 125 B | **99%** |
+| `git log -10` | 6.4 KB | 1.2 KB | **81%** |
+| `ls -la` | 1.3 KB | 122 B | **57%** |
+| `env` | 3.5 KB | 2.2 KB | **38%** |
+
+Run the benchmark yourself:
+
+```bash
+./scripts/benchmark.sh
+```
 
 ## For AI Agents
 
