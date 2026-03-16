@@ -412,6 +412,10 @@ pub enum Commands {
         #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
         check_untracked: Option<bool>,
     },
+
+    /// External command (auto-detected via allow_external_subcommands)
+    #[command(external_subcommand)]
+    External(Vec<String>),
 }
 
 #[derive(Debug, Subcommand)]
@@ -577,6 +581,187 @@ fn is_after_tail_subcommand(args: &[String], pos: usize) -> bool {
     false
 }
 
+/// Classify an external command and return the appropriate parser to pipe through.
+/// Returns (command, args, parser) where parser is the ParseCommands variant to use,
+/// or None if no parser matches (passthrough mode).
+fn classify_command(cmd: &str, args: &[String]) -> Option<ParseCommands> {
+    match cmd {
+        "git" => {
+            let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
+            match subcmd {
+                "status" => Some(ParseCommands::GitStatus {
+                    file: None,
+                    count: None,
+                }),
+                "diff" => Some(ParseCommands::GitDiff { file: None }),
+                _ => None,
+            }
+        }
+        "ls" => Some(ParseCommands::Ls { file: None }),
+        "grep" | "rg" | "ag" | "ack" => Some(ParseCommands::Grep { file: None }),
+        "find" | "fd" => Some(ParseCommands::Find { file: None }),
+        "tail" | "journalctl" => Some(ParseCommands::Logs { file: None }),
+        "pytest" => Some(ParseCommands::Test {
+            runner: Some(TestRunner::Pytest),
+            file: None,
+        }),
+        "jest" | "npx" if args.first().map(|s| s.as_str()) == Some("jest") => {
+            Some(ParseCommands::Test {
+                runner: Some(TestRunner::Jest),
+                file: None,
+            })
+        }
+        "vitest" | "npx" if args.first().map(|s| s.as_str()) == Some("vitest") => {
+            Some(ParseCommands::Test {
+                runner: Some(TestRunner::Vitest),
+                file: None,
+            })
+        }
+        "npm" if args.first().map(|s| s.as_str()) == Some("test") => {
+            Some(ParseCommands::Test {
+                runner: Some(TestRunner::Npm),
+                file: None,
+            })
+        }
+        "pnpm" if args.first().map(|s| s.as_str()) == Some("test") => {
+            Some(ParseCommands::Test {
+                runner: Some(TestRunner::Pnpm),
+                file: None,
+            })
+        }
+        "bun" if args.first().map(|s| s.as_str()) == Some("test") => {
+            Some(ParseCommands::Test {
+                runner: Some(TestRunner::Bun),
+                file: None,
+            })
+        }
+        _ => None,
+    }
+}
+
+/// Execute an external command, optionally pipe through a parser, and print output.
+fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext) {
+    use std::process::{Command, Stdio};
+
+    // Execute the command
+    let output = match Command::new(cmd)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+    {
+        Ok(o) => o,
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                eprintln!("Command not found: {}", cmd);
+            } else {
+                eprintln!("Failed to execute '{}': {}", cmd, e);
+            }
+            std::process::exit(127);
+        }
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Print stderr passthrough (warnings, progress, etc.)
+    if !stderr.is_empty() {
+        eprint!("{}", stderr);
+    }
+
+    // Try to classify and parse the output
+    if let Some(parser) = classify_command(cmd, args) {
+        let router = Router::new();
+        let parse_cmd = Commands::Parse { parser };
+        // Feed stdin to the parser by writing to a temp approach —
+        // actually, parsers read from stdin. We need to use the file option or
+        // write to a temp file. Better: write stdout to a temp file and pass it.
+        let tmpdir = std::env::temp_dir();
+        let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
+        if std::fs::write(&tmpfile, stdout.as_bytes()).is_ok() {
+            // Re-create the parse command with the file path
+            let parser_with_file = match cmd {
+                "git" => {
+                    let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
+                    match subcmd {
+                        "status" => Commands::Parse {
+                            parser: ParseCommands::GitStatus {
+                                file: Some(tmpfile.clone()),
+                                count: None,
+                            },
+                        },
+                        "diff" => Commands::Parse {
+                            parser: ParseCommands::GitDiff {
+                                file: Some(tmpfile.clone()),
+                            },
+                        },
+                        _ => unreachable!(),
+                    }
+                }
+                "ls" => Commands::Parse {
+                    parser: ParseCommands::Ls {
+                        file: Some(tmpfile.clone()),
+                    },
+                },
+                "grep" | "rg" | "ag" | "ack" => Commands::Parse {
+                    parser: ParseCommands::Grep {
+                        file: Some(tmpfile.clone()),
+                    },
+                },
+                "find" | "fd" => Commands::Parse {
+                    parser: ParseCommands::Find {
+                        file: Some(tmpfile.clone()),
+                    },
+                },
+                "tail" | "journalctl" => Commands::Parse {
+                    parser: ParseCommands::Logs {
+                        file: Some(tmpfile.clone()),
+                    },
+                },
+                "pytest" => Commands::Parse {
+                    parser: ParseCommands::Test {
+                        runner: Some(TestRunner::Pytest),
+                        file: Some(tmpfile.clone()),
+                    },
+                },
+                _ if cmd == "npm" || cmd == "pnpm" || cmd == "bun"
+                    || cmd == "jest" || cmd == "vitest" || cmd == "npx" =>
+                {
+                    let runner = match cmd {
+                        "npm" => Some(TestRunner::Npm),
+                        "pnpm" => Some(TestRunner::Pnpm),
+                        "bun" => Some(TestRunner::Bun),
+                        "jest" => Some(TestRunner::Jest),
+                        "vitest" | "npx" => Some(TestRunner::Vitest),
+                        _ => None,
+                    };
+                    Commands::Parse {
+                        parser: ParseCommands::Test {
+                            runner,
+                            file: Some(tmpfile.clone()),
+                        },
+                    }
+                }
+                _ => unreachable!(),
+            };
+
+            router.execute_and_print(&parser_with_file, ctx);
+            let _ = std::fs::remove_file(&tmpfile);
+        } else {
+            // Fallback: just print raw output
+            print!("{}", stdout);
+        }
+    } else {
+        // No parser matched — passthrough the output as-is
+        print!("{}", stdout);
+    }
+
+    // Propagate exit code
+    if !output.status.success() {
+        std::process::exit(output.status.code().unwrap_or(1));
+    }
+}
+
 fn main() {
     // Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines)
     let args: Vec<String> = std::env::args().collect();
@@ -591,10 +776,26 @@ fn main() {
     let router = Router::new();
 
     match &cli.command {
-        Some(command) => router.execute_and_print(command, &ctx),
+        Some(Commands::Parse { .. }
+            | Commands::Search { .. }
+            | Commands::Replace { .. }
+            | Commands::Run { .. }
+            | Commands::Tail { .. }
+            | Commands::Clean { .. }
+            | Commands::Trim { .. }
+            | Commands::Html2md { .. }
+            | Commands::Txt2md { .. }
+            | Commands::IsClean { .. }) => {
+            router.execute_and_print(cli.command.as_ref().unwrap(), &ctx);
+        }
+        Some(Commands::External(ext_args)) => {
+            // External command: classify, execute, and parse
+            if let Some((cmd, args)) = ext_args.split_first() {
+                execute_and_parse(cmd, args, &ctx);
+            }
+        }
         None => {
             // Read from stdin when no command is provided
-            // Handle both UTF-8 and binary input gracefully
             use std::io::{self, Read};
             let mut buffer = Vec::new();
             if let Err(e) = io::stdin().read_to_end(&mut buffer) {
@@ -602,10 +803,8 @@ fn main() {
                 std::process::exit(1);
             }
 
-            // Convert to string, replacing invalid UTF-8 sequences with replacement character
             let input = String::from_utf8_lossy(&buffer);
 
-            // Process the input (similar to clean command)
             match router.process_stdin(&input, &ctx) {
                 Ok(output) => print!("{}", output),
                 Err(e) => {
