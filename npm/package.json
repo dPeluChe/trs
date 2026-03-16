@@ -1,0 +1,46 @@
+{
+  "name": "tars-cli",
+  "version": "0.1.0",
+  "description": "Transform noisy terminal output into compact, structured signal. A CLI toolkit for developers, automation pipelines, and AI agents.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dPeluChe/tars-cli"
+  },
+  "keywords": [
+    "cli",
+    "terminal",
+    "output",
+    "parser",
+    "git",
+    "ai",
+    "agent",
+    "token",
+    "reduction",
+    "structured",
+    "json"
+  ],
+  "bin": {
+    "trs": "bin/trs"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/",
+    "install.js",
+    "README.md"
+  ],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "engines": {
+    "node": ">=14"
+  }
+}
