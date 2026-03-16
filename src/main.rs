@@ -514,6 +514,87 @@ pub enum ParseCommands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+
+    /// Parse git log output
+    ///
+    /// Example: git log | trs parse git-log
+    GitLog {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse git branch output
+    ///
+    /// Example: git branch -a | trs parse git-branch
+    GitBranch {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse tree command output
+    ///
+    /// Example: tree | trs parse tree
+    Tree {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse docker ps output
+    ///
+    /// Example: docker ps | trs parse docker-ps
+    DockerPs {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse docker logs output
+    ///
+    /// Example: docker logs container | trs parse docker-logs
+    DockerLogs {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse dependency list output (npm ls, pip list, cargo tree)
+    ///
+    /// Example: npm ls | trs parse deps
+    Deps {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse package install output (npm install, pip install, cargo build)
+    ///
+    /// Example: npm install | trs parse install
+    Install {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse build output (cargo build, tsc, gcc, make)
+    ///
+    /// Example: cargo build | trs parse build
+    Build {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse environment variables
+    ///
+    /// Example: env | trs parse env
+    Env {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
 }
 
 /// Supported test runners
@@ -585,57 +666,124 @@ fn is_after_tail_subcommand(args: &[String], pos: usize) -> bool {
 /// Returns (command, args, parser) where parser is the ParseCommands variant to use,
 /// or None if no parser matches (passthrough mode).
 fn classify_command(cmd: &str, args: &[String]) -> Option<ParseCommands> {
+    let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
+
     match cmd {
-        "git" => {
-            let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
-            match subcmd {
-                "status" => Some(ParseCommands::GitStatus {
-                    file: None,
-                    count: None,
-                }),
-                "diff" => Some(ParseCommands::GitDiff { file: None }),
-                _ => None,
-            }
-        }
-        "ls" => Some(ParseCommands::Ls { file: None }),
+        // Git commands
+        "git" => match subcmd {
+            "status" => Some(ParseCommands::GitStatus { file: None, count: None }),
+            "diff" => Some(ParseCommands::GitDiff { file: None }),
+            "log" => Some(ParseCommands::GitLog { file: None }),
+            "branch" => Some(ParseCommands::GitBranch { file: None }),
+            _ => None,
+        },
+
+        // File listing
+        "ls" | "lsd" | "exa" | "eza" => Some(ParseCommands::Ls { file: None }),
+        "tree" => Some(ParseCommands::Tree { file: None }),
+
+        // Search
         "grep" | "rg" | "ag" | "ack" => Some(ParseCommands::Grep { file: None }),
         "find" | "fd" => Some(ParseCommands::Find { file: None }),
+
+        // Logs
         "tail" | "journalctl" => Some(ParseCommands::Logs { file: None }),
-        "pytest" => Some(ParseCommands::Test {
-            runner: Some(TestRunner::Pytest),
-            file: None,
-        }),
-        "jest" | "npx" if args.first().map(|s| s.as_str()) == Some("jest") => {
-            Some(ParseCommands::Test {
-                runner: Some(TestRunner::Jest),
-                file: None,
-            })
+
+        // Docker
+        "docker" => match subcmd {
+            "ps" => Some(ParseCommands::DockerPs { file: None }),
+            "logs" => Some(ParseCommands::DockerLogs { file: None }),
+            "build" => Some(ParseCommands::Build { file: None }),
+            _ => None,
+        },
+
+        // Test runners
+        "pytest" => Some(ParseCommands::Test { runner: Some(TestRunner::Pytest), file: None }),
+        "jest" => Some(ParseCommands::Test { runner: Some(TestRunner::Jest), file: None }),
+        "vitest" => Some(ParseCommands::Test { runner: Some(TestRunner::Vitest), file: None }),
+
+        // Package managers — subcommand-aware
+        "npm" => match subcmd {
+            "test" => Some(ParseCommands::Test { runner: Some(TestRunner::Npm), file: None }),
+            "ls" | "list" => Some(ParseCommands::Deps { file: None }),
+            "install" | "i" | "ci" => Some(ParseCommands::Install { file: None }),
+            "audit" | "outdated" => Some(ParseCommands::Deps { file: None }),
+            _ => None,
+        },
+        "pnpm" => match subcmd {
+            "test" => Some(ParseCommands::Test { runner: Some(TestRunner::Pnpm), file: None }),
+            "ls" | "list" => Some(ParseCommands::Deps { file: None }),
+            "install" | "i" => Some(ParseCommands::Install { file: None }),
+            _ => None,
+        },
+        "bun" => match subcmd {
+            "test" => Some(ParseCommands::Test { runner: Some(TestRunner::Bun), file: None }),
+            "install" | "i" => Some(ParseCommands::Install { file: None }),
+            _ => None,
+        },
+        "yarn" => match subcmd {
+            "test" => Some(ParseCommands::Test { runner: Some(TestRunner::Jest), file: None }),
+            "list" => Some(ParseCommands::Deps { file: None }),
+            "install" | "add" => Some(ParseCommands::Install { file: None }),
+            _ => None,
+        },
+
+        // Python package managers
+        "pip" | "pip3" => match subcmd {
+            "list" | "freeze" => Some(ParseCommands::Deps { file: None }),
+            "install" => Some(ParseCommands::Install { file: None }),
+            _ => None,
+        },
+
+        // Build tools
+        "cargo" => match subcmd {
+            "build" | "check" | "clippy" => Some(ParseCommands::Build { file: None }),
+            "test" => Some(ParseCommands::Test { runner: Some(TestRunner::Pytest), file: None }),
+            "tree" => Some(ParseCommands::Deps { file: None }),
+            "install" => Some(ParseCommands::Install { file: None }),
+            _ => None,
+        },
+        "make" | "cmake" => Some(ParseCommands::Build { file: None }),
+        "tsc" | "gcc" | "g++" | "clang" | "javac" | "go" if subcmd == "build" => {
+            Some(ParseCommands::Build { file: None })
         }
-        "vitest" | "npx" if args.first().map(|s| s.as_str()) == Some("vitest") => {
-            Some(ParseCommands::Test {
-                runner: Some(TestRunner::Vitest),
-                file: None,
-            })
-        }
-        "npm" if args.first().map(|s| s.as_str()) == Some("test") => {
-            Some(ParseCommands::Test {
-                runner: Some(TestRunner::Npm),
-                file: None,
-            })
-        }
-        "pnpm" if args.first().map(|s| s.as_str()) == Some("test") => {
-            Some(ParseCommands::Test {
-                runner: Some(TestRunner::Pnpm),
-                file: None,
-            })
-        }
-        "bun" if args.first().map(|s| s.as_str()) == Some("test") => {
-            Some(ParseCommands::Test {
-                runner: Some(TestRunner::Bun),
-                file: None,
-            })
-        }
+        "tsc" => Some(ParseCommands::Build { file: None }),
+
+        // Environment
+        "env" | "printenv" => Some(ParseCommands::Env { file: None }),
+
+        // npx with subcommands
+        "npx" => match subcmd {
+            "jest" => Some(ParseCommands::Test { runner: Some(TestRunner::Jest), file: None }),
+            "vitest" => Some(ParseCommands::Test { runner: Some(TestRunner::Vitest), file: None }),
+            "tsc" => Some(ParseCommands::Build { file: None }),
+            _ => None,
+        },
+
         _ => None,
+    }
+}
+
+/// Inject a file path into a ParseCommands variant.
+/// This replaces the `file: None` with `file: Some(path)` for all variants.
+fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCommands {
+    match parser {
+        ParseCommands::GitStatus { count, .. } => ParseCommands::GitStatus { file: Some(path), count },
+        ParseCommands::GitDiff { .. } => ParseCommands::GitDiff { file: Some(path) },
+        ParseCommands::GitLog { .. } => ParseCommands::GitLog { file: Some(path) },
+        ParseCommands::GitBranch { .. } => ParseCommands::GitBranch { file: Some(path) },
+        ParseCommands::Ls { .. } => ParseCommands::Ls { file: Some(path) },
+        ParseCommands::Grep { .. } => ParseCommands::Grep { file: Some(path) },
+        ParseCommands::Find { .. } => ParseCommands::Find { file: Some(path) },
+        ParseCommands::Test { runner, .. } => ParseCommands::Test { runner, file: Some(path) },
+        ParseCommands::Logs { .. } => ParseCommands::Logs { file: Some(path) },
+        ParseCommands::Tree { .. } => ParseCommands::Tree { file: Some(path) },
+        ParseCommands::DockerPs { .. } => ParseCommands::DockerPs { file: Some(path) },
+        ParseCommands::DockerLogs { .. } => ParseCommands::DockerLogs { file: Some(path) },
+        ParseCommands::Deps { .. } => ParseCommands::Deps { file: Some(path) },
+        ParseCommands::Install { .. } => ParseCommands::Install { file: Some(path) },
+        ParseCommands::Build { .. } => ParseCommands::Build { file: Some(path) },
+        ParseCommands::Env { .. } => ParseCommands::Env { file: Some(path) },
     }
 }
 
@@ -672,83 +820,15 @@ fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext) {
     // Try to classify and parse the output
     if let Some(parser) = classify_command(cmd, args) {
         let router = Router::new();
-        let _parse_cmd = Commands::Parse { parser };
-        // Feed stdin to the parser by writing to a temp file —
-        // parsers read from stdin or file. We use the file option to pass
-        // write to a temp file. Better: write stdout to a temp file and pass it.
         let tmpdir = std::env::temp_dir();
         let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
         if std::fs::write(&tmpfile, stdout.as_bytes()).is_ok() {
-            // Re-create the parse command with the file path
-            let parser_with_file = match cmd {
-                "git" => {
-                    let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
-                    match subcmd {
-                        "status" => Commands::Parse {
-                            parser: ParseCommands::GitStatus {
-                                file: Some(tmpfile.clone()),
-                                count: None,
-                            },
-                        },
-                        "diff" => Commands::Parse {
-                            parser: ParseCommands::GitDiff {
-                                file: Some(tmpfile.clone()),
-                            },
-                        },
-                        _ => unreachable!(),
-                    }
-                }
-                "ls" => Commands::Parse {
-                    parser: ParseCommands::Ls {
-                        file: Some(tmpfile.clone()),
-                    },
-                },
-                "grep" | "rg" | "ag" | "ack" => Commands::Parse {
-                    parser: ParseCommands::Grep {
-                        file: Some(tmpfile.clone()),
-                    },
-                },
-                "find" | "fd" => Commands::Parse {
-                    parser: ParseCommands::Find {
-                        file: Some(tmpfile.clone()),
-                    },
-                },
-                "tail" | "journalctl" => Commands::Parse {
-                    parser: ParseCommands::Logs {
-                        file: Some(tmpfile.clone()),
-                    },
-                },
-                "pytest" => Commands::Parse {
-                    parser: ParseCommands::Test {
-                        runner: Some(TestRunner::Pytest),
-                        file: Some(tmpfile.clone()),
-                    },
-                },
-                _ if cmd == "npm" || cmd == "pnpm" || cmd == "bun"
-                    || cmd == "jest" || cmd == "vitest" || cmd == "npx" =>
-                {
-                    let runner = match cmd {
-                        "npm" => Some(TestRunner::Npm),
-                        "pnpm" => Some(TestRunner::Pnpm),
-                        "bun" => Some(TestRunner::Bun),
-                        "jest" => Some(TestRunner::Jest),
-                        "vitest" | "npx" => Some(TestRunner::Vitest),
-                        _ => None,
-                    };
-                    Commands::Parse {
-                        parser: ParseCommands::Test {
-                            runner,
-                            file: Some(tmpfile.clone()),
-                        },
-                    }
-                }
-                _ => unreachable!(),
-            };
-
-            router.execute_and_print(&parser_with_file, ctx);
+            // Inject the temp file path into the parser variant
+            let parser_with_file = inject_file_path(parser, tmpfile.clone());
+            let parse_cmd = Commands::Parse { parser: parser_with_file };
+            router.execute_and_print(&parse_cmd, ctx);
             let _ = std::fs::remove_file(&tmpfile);
         } else {
-            // Fallback: just print raw output
             print!("{}", stdout);
         }
     } else {

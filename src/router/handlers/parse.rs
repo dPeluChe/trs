@@ -7234,6 +7234,312 @@ impl ParseHandler {
 
         output
     }
+
+    // ============================================================
+    // New Parsers: git-log, git-branch, tree, docker, deps, install, build, env
+    // ============================================================
+
+    pub(crate) fn handle_git_log(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+        let mut commits: Vec<(String, String, String, String)> = Vec::new();
+        let mut hash = String::new();
+        let mut author = String::new();
+        let mut date = String::new();
+        let mut msg: Vec<String> = Vec::new();
+        let mut in_commit = false;
+
+        // Detect format: --oneline (hash message) vs full (commit hash\nAuthor:\nDate:\n\nmessage)
+        let is_oneline = !input.contains("Author: ") && !input.contains("commit ");
+
+        if is_oneline {
+            // Parse --oneline format: "abc1234 commit message here"
+            for line in input.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() { continue; }
+                if let Some(space_pos) = trimmed.find(' ') {
+                    let h = &trimmed[..space_pos];
+                    let m = &trimmed[space_pos+1..];
+                    commits.push((h.to_string(), String::new(), String::new(), m.to_string()));
+                }
+            }
+        } else {
+            for line in input.lines() {
+                if let Some(h) = line.strip_prefix("commit ") {
+                    if in_commit {
+                        let full_msg = msg.join(" ").trim().to_string();
+                        // Only take the first line of the message (subject)
+                        let subject = full_msg.lines().next().unwrap_or("").to_string();
+                        let subject = if subject.len() > 72 { format!("{}...", &subject[..69]) } else { subject };
+                        commits.push((hash.clone(), date.clone(), author.clone(), subject));
+                        msg.clear();
+                    }
+                    hash = h.chars().take(7).collect();
+                    in_commit = true;
+                } else if let Some(a) = line.strip_prefix("Author: ") {
+                    author = a.split('<').next().unwrap_or(a).trim().to_string();
+                } else if let Some(d) = line.strip_prefix("Date:") {
+                    date = d.trim().chars().take(16).collect();
+                } else if in_commit && !line.trim().is_empty() {
+                    msg.push(line.trim().to_string());
+                }
+            }
+            if in_commit {
+                let full_msg = msg.join(" ").trim().to_string();
+                let subject = full_msg.lines().next().unwrap_or("").to_string();
+                let subject = if subject.len() > 72 { format!("{}...", &subject[..69]) } else { subject };
+                commits.push((hash, date, author, subject));
+            }
+        }
+
+        let output = match ctx.format {
+            OutputFormat::Json => {
+                let jc: Vec<serde_json::Value> = commits.iter().map(|(h,d,a,m)| serde_json::json!({"hash":h,"date":d,"author":a,"message":m})).collect();
+                serde_json::json!({"commits": jc, "count": commits.len()}).to_string()
+            }
+            _ => {
+                let mut out = format!("commits: {}\n", commits.len());
+                for (h, d, a, m) in &commits { out.push_str(&format!("  {} {} ({}) {}\n", h, d, a, m)); }
+                out
+            }
+        };
+        print!("{}", output);
+        if ctx.stats { CommandStats::new().with_reducer("git-log").with_output_mode(ctx.format).with_input_bytes(input_bytes).with_output_bytes(output.len()).with_items_processed(commits.len()).print(); }
+        Ok(())
+    }
+
+    pub(crate) fn handle_git_branch(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+        let mut current = String::new();
+        let mut local: Vec<String> = Vec::new();
+        let mut remote: Vec<String> = Vec::new();
+
+        for line in input.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.contains("->") { continue; }
+            let is_current = trimmed.starts_with('*');
+            let name = trimmed.trim_start_matches("* ").trim().to_string();
+            if is_current { current = name.clone(); }
+            if name.starts_with("remotes/") || name.starts_with("origin/") {
+                remote.push(name.trim_start_matches("remotes/").to_string());
+            } else { local.push(name); }
+        }
+
+        let output = match ctx.format {
+            OutputFormat::Json => serde_json::json!({"current": current, "local": local, "remote": remote, "local_count": local.len(), "remote_count": remote.len()}).to_string(),
+            _ => {
+                let mut out = format!("current: {}\n", current);
+                if !local.is_empty() { out.push_str(&format!("local ({}):", local.len())); for b in &local { out.push_str(&format!(" {}", b)); } out.push('\n'); }
+                if !remote.is_empty() { out.push_str(&format!("remote ({}):", remote.len())); for b in &remote { out.push_str(&format!(" {}", b)); } out.push('\n'); }
+                out
+            }
+        };
+        print!("{}", output);
+        if ctx.stats { CommandStats::new().with_reducer("git-branch").with_input_bytes(input_bytes).with_output_bytes(output.len()).print(); }
+        Ok(())
+    }
+
+    pub(crate) fn handle_tree(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+        let mut dirs: Vec<String> = Vec::new();
+        let mut files: Vec<String> = Vec::new();
+        let mut total_dirs = 0usize;
+        let mut total_files = 0usize;
+
+        for line in input.lines() {
+            if line.contains("director") && line.contains("file") {
+                for part in line.split(',') {
+                    let t = part.trim();
+                    if t.ends_with("directories") || t.ends_with("directory") { total_dirs = t.split_whitespace().next().and_then(|n| n.parse().ok()).unwrap_or(0); }
+                    else if t.ends_with("files") || t.ends_with("file") { total_files = t.split_whitespace().next().and_then(|n| n.parse().ok()).unwrap_or(0); }
+                }
+                continue;
+            }
+            let name: String = line.chars().filter(|c| !matches!(c, '│' | '├' | '└' | '─' | '─')).collect::<String>().trim().to_string();
+            if name.is_empty() || name == "." { continue; }
+            if name.ends_with('/') { dirs.push(name.trim_end_matches('/').to_string()); }
+            else { files.push(name); }
+        }
+
+        let output = match ctx.format {
+            OutputFormat::Json => serde_json::json!({"directories": dirs, "files": files, "total_directories": total_dirs, "total_files": total_files}).to_string(),
+            _ => {
+                let mut out = format!("{} directories, {} files\n", total_dirs, total_files);
+                if !dirs.is_empty() { out.push_str(&format!("dirs:")); for d in dirs.iter().take(20) { out.push_str(&format!(" {}", d)); } if dirs.len() > 20 { out.push_str(&format!(" ...+{}", dirs.len()-20)); } out.push('\n'); }
+                if !files.is_empty() { out.push_str(&format!("files:")); for f in files.iter().take(30) { out.push_str(&format!(" {}", f)); } if files.len() > 30 { out.push_str(&format!(" ...+{}", files.len()-30)); } out.push('\n'); }
+                out
+            }
+        };
+        print!("{}", output);
+        if ctx.stats { CommandStats::new().with_reducer("tree").with_input_bytes(input_bytes).with_output_bytes(output.len()).print(); }
+        Ok(())
+    }
+
+    pub(crate) fn handle_docker_ps(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+        let mut containers: Vec<serde_json::Value> = Vec::new();
+        let lines: Vec<&str> = input.lines().collect();
+        if lines.len() > 1 {
+            for line in &lines[1..] {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    let id = parts[0];
+                    let image = parts[1];
+                    let status = line.find("Up ").or_else(|| line.find("Exited ")).map(|s| line[s..].split("  ").next().unwrap_or("").trim()).unwrap_or("unknown");
+                    let name = parts.last().unwrap_or(&"");
+                    containers.push(serde_json::json!({"id": id, "image": image, "status": status, "name": name}));
+                }
+            }
+        }
+        let output = match ctx.format {
+            OutputFormat::Json => serde_json::json!({"containers": containers, "count": containers.len()}).to_string(),
+            _ => {
+                let mut out = format!("containers: {}\n", containers.len());
+                for c in &containers {
+                    let st = c["status"].as_str().unwrap_or("");
+                    let mk = if st.starts_with("Up") { "+" } else { "-" };
+                    out.push_str(&format!("  {} {} {} ({})\n", mk, c["name"].as_str().unwrap_or(""), c["image"].as_str().unwrap_or(""), st));
+                }
+                out
+            }
+        };
+        print!("{}", output);
+        if ctx.stats { CommandStats::new().with_reducer("docker-ps").with_input_bytes(input_bytes).with_output_bytes(output.len()).print(); }
+        Ok(())
+    }
+
+    pub(crate) fn handle_docker_logs(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        Self::handle_logs(file, ctx)
+    }
+
+    pub(crate) fn handle_deps(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+        let mut deps: Vec<(String, String)> = Vec::new();
+
+        for line in input.lines() {
+            let clean = line.replace('│', "").replace('├', "").replace('└', "").replace('─', "").replace("deduped", "").trim().to_string();
+            if clean.is_empty() { continue; }
+            // npm: name@version
+            if let Some(at) = clean.rfind('@') {
+                if at > 0 { let n = clean[..at].trim().to_string(); let v = clean[at+1..].trim().to_string(); if !n.is_empty() { deps.push((n, v)); continue; } }
+            }
+            // pip/cargo: name version
+            let parts: Vec<&str> = clean.split_whitespace().collect();
+            if parts.len() >= 2 {
+                let n = parts[0].to_string();
+                if n == "Package" || n == "---" || n.starts_with("==") { continue; }
+                deps.push((n, parts[1].trim_start_matches('v').to_string()));
+            }
+        }
+
+        let output = match ctx.format {
+            OutputFormat::Json => { let jd: Vec<serde_json::Value> = deps.iter().map(|(n,v)| serde_json::json!({"name":n,"version":v})).collect(); serde_json::json!({"dependencies": jd, "count": deps.len()}).to_string() }
+            _ => { let mut out = format!("dependencies: {}\n", deps.len()); for (n,v) in &deps { if v.is_empty() { out.push_str(&format!("  {}\n", n)); } else { out.push_str(&format!("  {}@{}\n", n, v)); } } out }
+        };
+        print!("{}", output);
+        if ctx.stats { CommandStats::new().with_reducer("deps").with_input_bytes(input_bytes).with_output_bytes(output.len()).with_items_processed(deps.len()).print(); }
+        Ok(())
+    }
+
+    pub(crate) fn handle_install(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+        let mut added: Vec<String> = Vec::new();
+        let mut warnings = 0usize;
+        let mut errors: Vec<String> = Vec::new();
+        let mut summary = String::new();
+
+        for line in input.lines() {
+            let t = line.trim();
+            if t.is_empty() { continue; }
+            let lower = t.to_lowercase();
+            if (lower.contains("added") || lower.contains("removed")) && lower.contains("package") { summary = t.to_string(); }
+            else if lower.starts_with("successfully installed") { for pkg in t.split_whitespace().skip(2) { added.push(pkg.to_string()); } }
+            else if lower.starts_with("npm warn") || lower.starts_with("warn ") { warnings += 1; }
+            else if lower.starts_with("npm error") || lower.starts_with("error") || lower.starts_with("err!") { errors.push(t.to_string()); }
+        }
+
+        let output = match ctx.format {
+            OutputFormat::Json => serde_json::json!({"summary": summary, "added": added, "added_count": added.len(), "warnings": warnings, "errors": errors.len()}).to_string(),
+            _ => {
+                let mut out = String::new();
+                if !summary.is_empty() { out.push_str(&format!("{}\n", summary)); }
+                if !added.is_empty() { out.push_str(&format!("added ({}): {}\n", added.len(), added.join(", "))); }
+                if warnings > 0 { out.push_str(&format!("warnings: {}\n", warnings)); }
+                if !errors.is_empty() { out.push_str(&format!("errors ({}):\n", errors.len())); for e in &errors { out.push_str(&format!("  {}\n", e)); } }
+                if out.is_empty() { out = "install: ok\n".to_string(); }
+                out
+            }
+        };
+        print!("{}", output);
+        if ctx.stats { CommandStats::new().with_reducer("install").with_input_bytes(input_bytes).with_output_bytes(output.len()).print(); }
+        Ok(())
+    }
+
+    pub(crate) fn handle_build(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+        let mut errors: Vec<String> = Vec::new();
+        let mut warnings: Vec<String> = Vec::new();
+        let mut info_last = String::new();
+        let mut success = true;
+
+        for line in input.lines() {
+            let t = line.trim();
+            if t.is_empty() { continue; }
+            let lower = t.to_lowercase();
+            if lower.contains("error[") || lower.starts_with("error:") || lower.contains("): error ") || lower.contains(": error:") {
+                errors.push(t.to_string()); success = false;
+            } else if lower.contains("warning[") || lower.starts_with("warning:") || lower.contains(": warning:") {
+                warnings.push(t.to_string());
+            } else if lower.starts_with("compiling ") || lower.starts_with("finished ") {
+                info_last = t.to_string();
+            }
+        }
+        warnings.dedup();
+
+        let output = match ctx.format {
+            OutputFormat::Json => serde_json::json!({"success": success, "errors": errors, "error_count": errors.len(), "warnings": warnings, "warning_count": warnings.len()}).to_string(),
+            _ => {
+                let mut out = format!("build: {} ({} errors, {} warnings)\n", if success {"ok"} else {"FAILED"}, errors.len(), warnings.len());
+                if !errors.is_empty() { out.push_str(&format!("errors ({}):\n", errors.len())); for e in errors.iter().take(20) { out.push_str(&format!("  {}\n", e)); } if errors.len() > 20 { out.push_str(&format!("  ...+{} more\n", errors.len()-20)); } }
+                if !warnings.is_empty() { out.push_str(&format!("warnings ({}):\n", warnings.len())); for w in warnings.iter().take(10) { out.push_str(&format!("  {}\n", w)); } if warnings.len() > 10 { out.push_str(&format!("  ...+{} more\n", warnings.len()-10)); } }
+                if !info_last.is_empty() { out.push_str(&format!("{}\n", info_last)); }
+                out
+            }
+        };
+        print!("{}", output);
+        if ctx.stats { CommandStats::new().with_reducer("build").with_input_bytes(input_bytes).with_output_bytes(output.len()).print(); }
+        Ok(())
+    }
+
+    pub(crate) fn handle_env(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+        let mut vars: Vec<(String, String)> = Vec::new();
+
+        for line in input.lines() {
+            if let Some(eq) = line.find('=') {
+                let key = line[..eq].to_string();
+                let val = &line[eq+1..];
+                let display = if val.len() > 80 { format!("{}...", &val[..77]) } else { val.to_string() };
+                vars.push((key, display));
+            }
+        }
+        vars.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let output = match ctx.format {
+            OutputFormat::Json => { let jv: serde_json::Map<String, serde_json::Value> = vars.iter().map(|(k,v)| (k.clone(), serde_json::Value::String(v.clone()))).collect(); serde_json::json!({"variables": jv, "count": vars.len()}).to_string() }
+            _ => { let mut out = format!("variables: {}\n", vars.len()); for (k,v) in &vars { out.push_str(&format!("  {}={}\n", k, v)); } out }
+        };
+        print!("{}", output);
+        if ctx.stats { CommandStats::new().with_reducer("env").with_input_bytes(input_bytes).with_output_bytes(output.len()).with_items_processed(vars.len()).print(); }
+        Ok(())
+    }
 }
 
 impl CommandHandler for ParseHandler {
@@ -7243,11 +7549,20 @@ impl CommandHandler for ParseHandler {
         match input {
             ParseCommands::GitStatus { file, count } => Self::handle_git_status(file, count, ctx),
             ParseCommands::GitDiff { file } => Self::handle_git_diff(file, ctx),
+            ParseCommands::GitLog { file } => Self::handle_git_log(file, ctx),
+            ParseCommands::GitBranch { file } => Self::handle_git_branch(file, ctx),
             ParseCommands::Ls { file } => Self::handle_ls(file, ctx),
             ParseCommands::Grep { file } => Self::handle_grep(file, ctx),
             ParseCommands::Find { file } => Self::handle_find(file, ctx),
             ParseCommands::Test { runner, file } => Self::handle_test(runner, file, ctx),
             ParseCommands::Logs { file } => Self::handle_logs(file, ctx),
+            ParseCommands::Tree { file } => Self::handle_tree(file, ctx),
+            ParseCommands::DockerPs { file } => Self::handle_docker_ps(file, ctx),
+            ParseCommands::DockerLogs { file } => Self::handle_docker_logs(file, ctx),
+            ParseCommands::Deps { file } => Self::handle_deps(file, ctx),
+            ParseCommands::Install { file } => Self::handle_install(file, ctx),
+            ParseCommands::Build { file } => Self::handle_build(file, ctx),
+            ParseCommands::Env { file } => Self::handle_env(file, ctx),
         }
     }
 }
