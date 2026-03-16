@@ -672,9 +672,9 @@ fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext) {
     // Try to classify and parse the output
     if let Some(parser) = classify_command(cmd, args) {
         let router = Router::new();
-        let parse_cmd = Commands::Parse { parser };
-        // Feed stdin to the parser by writing to a temp approach —
-        // actually, parsers read from stdin. We need to use the file option or
+        let _parse_cmd = Commands::Parse { parser };
+        // Feed stdin to the parser by writing to a temp file —
+        // parsers read from stdin or file. We use the file option to pass
         // write to a temp file. Better: write stdout to a temp file and pass it.
         let tmpdir = std::env::temp_dir();
         let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
@@ -790,7 +790,28 @@ fn main() {
         }
         Some(Commands::External(ext_args)) => {
             // External command: classify, execute, and parse
-            if let Some((cmd, args)) = ext_args.split_first() {
+            // Extract trs flags (--json, --csv, etc.) from the external args
+            // so users can write: trs git status --json
+            let trs_flags = ["--json", "--csv", "--tsv", "--agent", "--compact", "--raw", "--stats"];
+            let mut cmd_args: Vec<String> = Vec::new();
+            let mut ctx = ctx;
+            for arg in ext_args {
+                if trs_flags.contains(&arg.as_str()) {
+                    match arg.as_str() {
+                        "--json" => ctx.format = OutputFormat::Json,
+                        "--csv" => ctx.format = OutputFormat::Csv,
+                        "--tsv" => ctx.format = OutputFormat::Tsv,
+                        "--agent" => ctx.format = OutputFormat::Agent,
+                        "--compact" => ctx.format = OutputFormat::Compact,
+                        "--raw" => ctx.format = OutputFormat::Raw,
+                        "--stats" => ctx.stats = true,
+                        _ => {}
+                    }
+                } else {
+                    cmd_args.push(arg.clone());
+                }
+            }
+            if let Some((cmd, args)) = cmd_args.split_first() {
                 execute_and_parse(cmd, args, &ctx);
             }
         }

@@ -22,7 +22,9 @@ use handlers::txt2md::*;
 use handlers::isclean::*;
 use handlers::parse::*;
 
-use crate::{Commands, OutputFormat, ParseCommands};
+use crate::{Commands, OutputFormat};
+#[allow(unused_imports)]
+use crate::ParseCommands;
 
 pub struct Router {
     run_handler: RunHandler,
