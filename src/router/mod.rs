@@ -3,7 +3,7 @@
 //! This module provides the Router that dispatches CLI commands to their
 //! respective handlers. Handler implementations are in the `handlers` submodule.
 
-mod handlers;
+pub(crate) mod handlers;
 
 // Re-export public types needed by main.rs
 pub use handlers::common::{CommandContext, CommandError, CommandResult};

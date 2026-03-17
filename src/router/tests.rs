@@ -1,6 +1,21 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
+    #![allow(unused_imports)]
+    use crate::{OutputFormat, Commands, ParseCommands};
+    use crate::router::Router;
+    use crate::router::handlers::common::{CommandContext, CommandError, CommandResult, CommandStats,
+        strip_ansi_codes, sanitize_control_chars};
+    use crate::router::handlers::types::*;
+    use crate::router::handlers::run::{RunHandler, RunInput};
+    use crate::router::handlers::search::{SearchHandler, SearchInput};
+    use crate::router::handlers::replace::{ReplaceHandler, ReplaceInput};
+    use crate::router::handlers::tail::{TailHandler, TailInput};
+    use crate::router::handlers::clean::{CleanHandler, CleanInput};
+    use crate::router::handlers::trim::{TrimHandler, TrimInput};
+    use crate::router::handlers::html2md::{Html2mdHandler, Html2mdInput};
+    use crate::router::handlers::txt2md::{Txt2mdHandler, Txt2mdInput};
+    use crate::router::handlers::isclean::{IsCleanHandler, IsCleanInput};
+    use crate::router::handlers::parse::ParseHandler;
 
     // ============================================================
     // Malformed Input Handling Tests

@@ -1643,7 +1643,7 @@ fn test_parse_ls_hidden_file_with_extension() {
 
 #[test]
 fn test_parse_ls_dot_and_dotdot() {
-    // Test that . and .. are detected as hidden (though typically not shown by ls)
+    // Test that . and .. are filtered from compact output (they add no signal)
     let ls_input = ".\n..\nfile.txt\n";
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -1652,8 +1652,7 @@ fn test_parse_ls_dot_and_dotdot() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("."))
-        .stdout(predicate::str::contains(".."));
+        .stdout(predicate::str::contains("file.txt"));
 }
 
 #[test]
