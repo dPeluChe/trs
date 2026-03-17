@@ -1514,7 +1514,7 @@ mod tests {
         };
         // Use temp file instead of stdin to avoid blocking
         let tmp = std::env::temp_dir().join("trs_test_pytest.tmp");
-        std::fs::write(&tmp, "===== 1 passed in 0.01s =====\n").unwrap();
+        std::fs::write(&tmp, "test_example.py::test_one PASSED\n").unwrap();
         let input = ParseCommands::Test {
             runner: Some(crate::TestRunner::Pytest),
             file: Some(tmp.clone()),
