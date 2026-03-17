@@ -178,7 +178,6 @@ impl ParseHandler {
     pub(crate) fn format_find_compact(find_output: &FindOutput) -> String {
         let mut output = String::new();
 
-        // Show errors first (if any)
         if !find_output.errors.is_empty() {
             for error in &find_output.errors {
                 output.push_str(&format!("error: {}\n", error.message));
@@ -190,10 +189,22 @@ impl ParseHandler {
             return output;
         }
 
-        // Just output the paths, no headers
+        // Group by parent directory for tree-like output
+        let mut groups: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
         for entry in &find_output.entries {
-            output.push_str(&entry.path);
-            output.push('\n');
+            let path = std::path::Path::new(&entry.path);
+            let parent = path.parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+            let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| entry.path.clone());
+            groups.entry(parent).or_default().push(name);
+        }
+
+        for (dir, files) in &groups {
+            if dir.is_empty() {
+                for f in files { output.push_str(&format!("{}\n", f)); }
+            } else {
+                output.push_str(&format!("{}/\n", dir));
+                for f in files { output.push_str(&format!("  {}\n", f)); }
+            }
         }
 
         // Only add summary for large result sets (20+ entries)

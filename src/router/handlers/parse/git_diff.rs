@@ -40,6 +40,12 @@ impl ParseHandler {
         let mut current_file: Option<GitDiffEntry> = None;
         let mut in_hunk = false;
 
+        // Detect --stat format: lines contain " | " with +/- counts
+        let is_stat = input.lines().any(|l| l.contains(" | ") && (l.contains('+') || l.contains('-') || l.contains("Bin ")));
+        if is_stat {
+            return Self::parse_git_diff_stat(input);
+        }
+
         for line in input.lines() {
             // Detect diff header for a new file
             if line.starts_with("diff --git ") {
@@ -196,6 +202,45 @@ impl ParseHandler {
         // Check if empty
         diff.is_empty = diff.files.is_empty();
 
+        Ok(diff)
+    }
+
+    /// Parse git diff --stat format.
+    /// Lines like: " src/main.rs | 10 +++---"
+    /// Summary: " 3 files changed, 5 insertions(+), 3 deletions(-)"
+    fn parse_git_diff_stat(input: &str) -> CommandResult<GitDiff> {
+        let mut diff = GitDiff::default();
+        for line in input.lines() {
+            let trimmed = line.trim();
+            // Summary line: "N file(s) changed, N insertion(s), N deletion(s)"
+            if trimmed.contains("file") && trimmed.contains("changed") {
+                for part in trimmed.split(',') {
+                    let p = part.trim();
+                    if p.contains("insertion") {
+                        diff.total_additions = p.split_whitespace().next().and_then(|n| n.parse().ok()).unwrap_or(0);
+                    } else if p.contains("deletion") {
+                        diff.total_deletions = p.split_whitespace().next().and_then(|n| n.parse().ok()).unwrap_or(0);
+                    }
+                }
+                continue;
+            }
+            // File line: " path | N +++---" or " path | Bin X -> Y bytes"
+            if let Some(pipe_pos) = trimmed.find(" | ") {
+                let path = trimmed[..pipe_pos].trim().to_string();
+                let rest = trimmed[pipe_pos + 3..].trim();
+                let is_binary = rest.starts_with("Bin ");
+                let additions = rest.chars().filter(|c| *c == '+').count();
+                let deletions = rest.chars().filter(|c| *c == '-').count();
+                let change_type = if is_binary { "M" } else if deletions == 0 && additions > 0 { "A" } else if additions == 0 && deletions > 0 { "D" } else { "M" };
+                diff.files.push(GitDiffEntry {
+                    path, new_path: None, change_type: change_type.to_string(),
+                    additions, deletions, is_binary,
+                });
+            }
+        }
+        diff.total_files = diff.files.len();
+        diff.files_shown = diff.files.len();
+        diff.is_empty = diff.files.is_empty();
         Ok(diff)
     }
 
