@@ -569,33 +569,28 @@ impl ParseHandler {
     pub(crate) fn format_git_status_compact(status: &GitStatus) -> String {
         let mut output = String::new();
 
-        // Branch info
+        // Branch info with ahead/behind inline
         if !status.branch.is_empty() {
-            output.push_str(&format!("branch: {}\n", status.branch));
-        }
-
-        // Ahead/behind info
-        if let Some(ahead) = status.ahead {
-            output.push_str(&format!("ahead: {}\n", ahead));
-        }
-        if let Some(behind) = status.behind {
-            output.push_str(&format!("behind: {}\n", behind));
+            let mut branch_line = format!("branch: {}", status.branch);
+            let mut markers = Vec::new();
+            if let Some(ahead) = status.ahead {
+                markers.push(format!("ahead {}", ahead));
+            }
+            if let Some(behind) = status.behind {
+                markers.push(format!("behind {}", behind));
+            }
+            if !markers.is_empty() {
+                branch_line.push_str(&format!(" [{}]", markers.join(", ")));
+            }
+            output.push_str(&branch_line);
+            output.push('\n');
         }
 
         // Clean state
         if status.is_clean {
-            output.push_str("status: clean\n");
+            output.push_str("clean\n");
             return output;
         }
-
-        // Summary line with counts
-        output.push_str(&format!(
-            "counts: staged={} unstaged={} untracked={} unmerged={}\n",
-            status.staged_count,
-            status.unstaged_count,
-            status.untracked_count,
-            status.unmerged_count
-        ));
 
         // Staged changes
         if !status.staged.is_empty() {
@@ -1195,17 +1190,32 @@ impl ParseHandler {
     pub(crate) fn parse_long_format_line(line: &str) -> LsEntry {
         let parts: Vec<&str> = line.split_whitespace().collect();
 
-        // Long format: perms links owner group size date time name
-        // Example: drwxr-xr-x  2 user  group  4096 Jan  1 12:34 dirname
-        //          0          1  2     3     4    5   6  7    8
-        // For symlinks: lrwxrwxrwx  1 user  group    10 Jan  1 12:34 link -> target
+        // Long format: perms links owner group size month day time/year name
+        // The name starts after the time/year field. We find it by looking for
+        // a time pattern (HH:MM) or a year (4 digits) after the day field.
 
         if parts.len() < 9 {
             return LsEntry::default();
         }
 
         let perms = parts[0];
-        let name_part = parts[8..].join(" ");
+
+        // Find the name by scanning for the date/time pattern
+        // Date is: Month Day Time/Year — we look for month names
+        let months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        let mut name_start_idx = 8; // default
+        for i in 5..parts.len().saturating_sub(2) {
+            if months.contains(&parts[i]) {
+                // parts[i] = month, parts[i+1] = day, parts[i+2] = time/year
+                name_start_idx = i + 3;
+                break;
+            }
+        }
+        let name_part = if name_start_idx < parts.len() {
+            parts[name_start_idx..].join(" ")
+        } else {
+            parts.last().unwrap_or(&"").to_string()
+        };
 
         // Detect entry type from permissions
         let entry_type = Self::detect_entry_type_from_perms(perms);
@@ -1381,6 +1391,19 @@ impl ParseHandler {
     pub(crate) fn json_to_string(value: serde_json::Value) -> String {
         serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
     }
+    /// Format a byte size into a human-readable string (e.g. 1.2K, 3.5M).
+    fn format_human_size(bytes: u64) -> String {
+        if bytes < 1024 {
+            format!("{}B", bytes)
+        } else if bytes < 1024 * 1024 {
+            format!("{:.1}K", bytes as f64 / 1024.0)
+        } else if bytes < 1024 * 1024 * 1024 {
+            format!("{:.1}M", bytes as f64 / (1024.0 * 1024.0))
+        } else {
+            format!("{:.1}G", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+        }
+    }
+
     /// Format ls output in compact format.
     pub(crate) fn format_ls_compact(ls_output: &LsOutput) -> String {
         let mut output = String::new();
@@ -1392,55 +1415,59 @@ impl ParseHandler {
             }
         }
 
-        if ls_output.is_empty {
-            output.push_str("ls: empty\n");
+        if ls_output.entries.is_empty() {
+            if ls_output.errors.is_empty() {
+                output.push_str("(empty)\n");
+            }
             return output;
         }
 
-        output.push_str(&format!("total: {}\n", ls_output.total_count));
-
-        if !ls_output.directories.is_empty() {
-            output.push_str(&format!("directories ({}):\n", ls_output.directories.len()));
-            for entry in &ls_output.directories {
-                output.push_str(&format!("  {}\n", entry.name));
-            }
+        // Directories first, with / suffix (skip . and .. and empty names)
+        for entry in &ls_output.directories {
+            if entry.name == "." || entry.name == ".." || entry.name.is_empty() { continue; }
+            // Skip entries that look like raw ls lines (contain permissions)
+            if entry.name.contains("drwx") || entry.name.contains("lrwx") { continue; }
+            let name = if entry.name.ends_with('/') {
+                entry.name.clone()
+            } else {
+                format!("{}/", entry.name)
+            };
+            output.push_str(&name);
+            output.push('\n');
         }
 
-        if !ls_output.files.is_empty() {
-            output.push_str(&format!("files ({}):\n", ls_output.files.len()));
-            for entry in &ls_output.files {
-                output.push_str(&format!("  {}\n", entry.name));
-            }
-        }
-
-        if !ls_output.symlinks.is_empty() {
-            output.push_str(&format!("symlinks ({}):\n", ls_output.symlinks.len()));
-            for entry in &ls_output.symlinks {
-                if let Some(ref target) = entry.symlink_target {
-                    if entry.is_broken_symlink {
-                        output.push_str(&format!("  {} -> {} [broken]\n", entry.name, target));
-                    } else {
-                        output.push_str(&format!("  {} -> {}\n", entry.name, target));
-                    }
+        // Symlinks
+        for entry in &ls_output.symlinks {
+            if let Some(ref target) = entry.symlink_target {
+                if entry.is_broken_symlink {
+                    output.push_str(&format!("{} -> {} [broken]\n", entry.name, target));
                 } else {
-                    output.push_str(&format!("  {}\n", entry.name));
+                    output.push_str(&format!("{} -> {}\n", entry.name, target));
                 }
+            } else {
+                output.push_str(&format!("{}\n", entry.name));
             }
         }
 
-        if !ls_output.hidden.is_empty() {
-            output.push_str(&format!("hidden ({}):\n", ls_output.hidden.len()));
-            for entry in &ls_output.hidden {
-                output.push_str(&format!("  {}\n", entry.name));
+        // Files with size
+        for entry in &ls_output.files {
+            if let Some(size) = entry.size {
+                output.push_str(&format!("{}  {}\n", entry.name, Self::format_human_size(size)));
+            } else {
+                output.push_str(&format!("{}\n", entry.name));
             }
         }
 
-        if !ls_output.generated.is_empty() {
-            output.push_str(&format!("generated ({}):\n", ls_output.generated.len()));
-            for entry in &ls_output.generated {
-                output.push_str(&format!("  {}\n", entry.name));
-            }
-        }
+        // Summary line
+        let dir_count = ls_output.directories.len();
+        let file_count = ls_output.files.len();
+        let sym_count = ls_output.symlinks.len();
+        let mut summary_parts = Vec::new();
+        if file_count > 0 { summary_parts.push(format!("{} files", file_count)); }
+        if dir_count > 0 { summary_parts.push(format!("{} dirs", dir_count)); }
+        if sym_count > 0 { summary_parts.push(format!("{} symlinks", sym_count)); }
+        if !ls_output.generated.is_empty() { summary_parts.push(format!("{} generated", ls_output.generated.len())); }
+        output.push_str(&format!("[{}]\n", summary_parts.join(", ")));
 
         output
     }
@@ -7180,45 +7207,30 @@ impl ParseHandler {
         }
 
         if find_output.is_empty && find_output.errors.is_empty() {
-            output.push_str("find: empty\n");
+            output.push_str("(no results)\n");
             return output;
         }
 
-        if !find_output.is_empty {
-            output.push_str(&format!("total: {}\n", find_output.total_count));
+        // Just output the paths, no headers
+        for entry in &find_output.entries {
+            output.push_str(&entry.path);
+            output.push('\n');
         }
 
-        if !find_output.directories.is_empty() {
-            output.push_str(&format!(
-                "directories ({}):\n",
-                find_output.directories.len()
-            ));
-            for path in &find_output.directories {
-                output.push_str(&format!("  {}\n", path));
+        // Only add summary for large result sets (20+ entries)
+        if find_output.total_count >= 20 {
+            let dir_count = find_output.directories.len();
+            let file_count = find_output.files.len();
+            let mut summary_parts = Vec::new();
+            if file_count > 0 { summary_parts.push(format!("{} files", file_count)); }
+            if dir_count > 0 { summary_parts.push(format!("{} dirs", dir_count)); }
+            if !find_output.extensions.is_empty() {
+                let mut exts: Vec<_> = find_output.extensions.iter().collect();
+                exts.sort_by(|a, b| b.1.cmp(a.1));
+                let top: Vec<String> = exts.iter().take(5).map(|(e, c)| format!(".{}({})", e, c)).collect();
+                summary_parts.push(top.join(" "));
             }
-        }
-
-        if !find_output.files.is_empty() {
-            output.push_str(&format!("files ({}):\n", find_output.files.len()));
-            for path in &find_output.files {
-                output.push_str(&format!("  {}\n", path));
-            }
-        }
-
-        if !find_output.hidden.is_empty() {
-            output.push_str(&format!("hidden ({}):\n", find_output.hidden.len()));
-            for path in &find_output.hidden {
-                output.push_str(&format!("  {}\n", path));
-            }
-        }
-
-        if !find_output.extensions.is_empty() {
-            output.push_str(&format!("extensions ({}):\n", find_output.extensions.len()));
-            let mut exts: Vec<_> = find_output.extensions.iter().collect();
-            exts.sort_by(|a, b| b.1.cmp(a.1));
-            for (ext, count) in exts {
-                output.push_str(&format!("  {}: {}\n", ext, count));
-            }
+            output.push_str(&format!("[{}]\n", summary_parts.join(", ")));
         }
 
         output
@@ -7329,9 +7341,21 @@ impl ParseHandler {
         let output = match ctx.format {
             OutputFormat::Json => serde_json::json!({"current": current, "local": local, "remote": remote, "local_count": local.len(), "remote_count": remote.len()}).to_string(),
             _ => {
-                let mut out = format!("current: {}\n", current);
-                if !local.is_empty() { out.push_str(&format!("local ({}):", local.len())); for b in &local { out.push_str(&format!(" {}", b)); } out.push('\n'); }
-                if !remote.is_empty() { out.push_str(&format!("remote ({}):", remote.len())); for b in &remote { out.push_str(&format!(" {}", b)); } out.push('\n'); }
+                let mut out = String::new();
+                // Filter out remote branches that duplicate local ones
+                let unique_remote: Vec<&String> = remote.iter().filter(|r| {
+                    let short = r.split('/').last().unwrap_or(r);
+                    !local.iter().any(|l| l == short)
+                }).collect();
+                // Minimal: if only one local branch and no unique remotes, just show current
+                let other_local: Vec<&String> = local.iter().filter(|b| *b != &current).collect();
+                out.push_str(&format!("* {}\n", current));
+                if !other_local.is_empty() {
+                    for b in &other_local { out.push_str(&format!("  {}\n", b)); }
+                }
+                if !unique_remote.is_empty() {
+                    for b in &unique_remote { out.push_str(&format!("  {}\n", b)); }
+                }
                 out
             }
         };
@@ -7517,27 +7541,139 @@ impl ParseHandler {
         Ok(())
     }
 
+    /// Check if an env var key is internal noise that should be filtered.
+    fn is_env_noise(key: &str) -> bool {
+        // Internal shell/terminal noise prefixes
+        let noise_prefixes = [
+            "_P9K_", "P9K_", "LESS", "LS_COLORS", "LSCOLORS",
+            "_", "__", "COMP_", "BASH_FUNC_",
+            "ZSH_HIGHLIGHT", "ZSH_AUTOSUGGEST",
+            "POWERLEVEL", "ITERM", "TERM_SESSION",
+            "SECURITYSESSION", "TMPDIR",
+            "LaunchInstanceID", "LOGNAME",
+            "Apple_PubSub", "DISPLAY",
+            "COMMAND_MODE", "COLORTERM",
+            "MANPATH", "INFOPATH", "FPATH",
+            "SSH_AUTH_SOCK", "SSH_AGENT_PID",
+            "TERM_PROGRAM", "TERM_PROGRAM_VERSION",
+            "ORIGINAL_XDG", "XPC_",
+            "SUPERSET_", "ZDOTDIR",
+            "CARGO_PKG_", "CARGO_MANIFEST", "CARGO_BIN",
+            "CARGO_CRATE", "CARGO_PRIMARY",
+            "NoDefault", "SSL_CERT",
+            "rvm_", "GEM_",
+        ];
+        for prefix in &noise_prefixes {
+            if key.starts_with(prefix) && key != "PATH" && key != "LANG" {
+                return true;
+            }
+        }
+        // Single underscore var
+        if key == "_" { return true; }
+        false
+    }
+
+    /// Categorize an env var for grouping.
+    fn env_category(key: &str) -> &'static str {
+        if key == "PATH" || key.ends_with("_PATH") || key.ends_with("PATH") || key == "MANPATH" || key == "INFOPATH" || key == "FPATH" {
+            return "path";
+        }
+        if matches!(key, "LANG" | "LC_ALL" | "LC_CTYPE" | "LC_MESSAGES" | "LANGUAGE" | "TZ" | "TERM" | "SHELL" | "USER" | "HOME" | "HOSTNAME" | "PWD" | "OLDPWD" | "SHLVL" | "EDITOR" | "VISUAL" | "PAGER" | "XDG_CONFIG_HOME" | "XDG_DATA_HOME" | "XDG_CACHE_HOME" | "XDG_RUNTIME_DIR") {
+            return "system";
+        }
+        if matches!(key, "GOPATH" | "GOROOT" | "CARGO_HOME" | "RUSTUP_HOME" | "PYENV_ROOT" | "RBENV_ROOT" | "NVM_DIR" | "JAVA_HOME" | "ANDROID_HOME" | "CONDA_DEFAULT_ENV" | "VIRTUAL_ENV" | "NODE_OPTIONS" | "NODE_ENV" | "PYTHONPATH" | "RUBY_VERSION" | "RUSTC_WRAPPER" | "npm_config_prefix")
+            || key.starts_with("PYTHON") || key.starts_with("RUBY") || key.starts_with("GO") || key.starts_with("RUST") || key.starts_with("NODE") || key.starts_with("NVM") || key.starts_with("JAVA") || key.starts_with("CONDA") {
+            return "lang";
+        }
+        "user"
+    }
+
     pub(crate) fn handle_env(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
         let input = Self::read_input(file)?;
         let input_bytes = input.len();
-        let mut vars: Vec<(String, String)> = Vec::new();
+        let mut all_vars: Vec<(String, String)> = Vec::new();
 
         for line in input.lines() {
             if let Some(eq) = line.find('=') {
                 let key = line[..eq].to_string();
-                let val = &line[eq+1..];
-                let display = if val.len() > 80 { format!("{}...", &val[..77]) } else { val.to_string() };
-                vars.push((key, display));
+                let val = line[eq+1..].to_string();
+                all_vars.push((key, val));
             }
         }
-        vars.sort_by(|a, b| a.0.cmp(&b.0));
 
+        // JSON output: include everything (unfiltered, just sorted)
         let output = match ctx.format {
-            OutputFormat::Json => { let jv: serde_json::Map<String, serde_json::Value> = vars.iter().map(|(k,v)| (k.clone(), serde_json::Value::String(v.clone()))).collect(); serde_json::json!({"variables": jv, "count": vars.len()}).to_string() }
-            _ => { let mut out = format!("variables: {}\n", vars.len()); for (k,v) in &vars { out.push_str(&format!("  {}={}\n", k, v)); } out }
+            OutputFormat::Json => {
+                let mut sorted = all_vars.clone();
+                sorted.sort_by(|a, b| a.0.cmp(&b.0));
+                let jv: serde_json::Map<String, serde_json::Value> = sorted.iter().map(|(k,v)| {
+                    let display = if v.len() > 80 { format!("{}...", &v[..77]) } else { v.clone() };
+                    (k.clone(), serde_json::Value::String(display))
+                }).collect();
+                serde_json::json!({"variables": jv, "count": sorted.len()}).to_string()
+            }
+            _ => {
+                // Compact: filter noise and empty values, group by category
+                let mut path_vars: Vec<(String, String)> = Vec::new();
+                let mut system_vars: Vec<(String, String)> = Vec::new();
+                let mut lang_vars: Vec<(String, String)> = Vec::new();
+                let mut user_vars: Vec<(String, String)> = Vec::new();
+                let mut filtered_count = 0usize;
+
+                for (key, val) in &all_vars {
+                    // Skip empty values
+                    if val.is_empty() { filtered_count += 1; continue; }
+                    // Skip noise
+                    if Self::is_env_noise(key) { filtered_count += 1; continue; }
+
+                    let category = Self::env_category(key);
+                    let display_val = if key == "PATH" || key.ends_with("PATH") || key == "FPATH" {
+                        // For PATH-like vars, show entry count
+                        let entries: Vec<&str> = val.split(':').filter(|s| !s.is_empty()).collect();
+                        format!("({} entries)", entries.len())
+                    } else if val.len() > 60 {
+                        format!("{}...", &val[..57])
+                    } else {
+                        val.clone()
+                    };
+
+                    match category {
+                        "path" => path_vars.push((key.clone(), display_val)),
+                        "system" => system_vars.push((key.clone(), display_val)),
+                        "lang" => lang_vars.push((key.clone(), display_val)),
+                        _ => user_vars.push((key.clone(), display_val)),
+                    }
+                }
+
+                path_vars.sort_by(|a, b| a.0.cmp(&b.0));
+                system_vars.sort_by(|a, b| a.0.cmp(&b.0));
+                lang_vars.sort_by(|a, b| a.0.cmp(&b.0));
+                user_vars.sort_by(|a, b| a.0.cmp(&b.0));
+
+                let shown = path_vars.len() + system_vars.len() + lang_vars.len() + user_vars.len();
+                let mut out = format!("{} vars ({} filtered)\n", shown, filtered_count);
+
+                if !path_vars.is_empty() {
+                    // Show PATH vars inline: just PATH=46 entries
+                    for (k, v) in &path_vars { out.push_str(&format!("  {}={}\n", k, v)); }
+                }
+                if !system_vars.is_empty() {
+                    out.push_str("[system]\n");
+                    for (k, v) in &system_vars { out.push_str(&format!("  {}={}\n", k, v)); }
+                }
+                if !lang_vars.is_empty() {
+                    out.push_str("[lang/runtime]\n");
+                    for (k, v) in &lang_vars { out.push_str(&format!("  {}={}\n", k, v)); }
+                }
+                if !user_vars.is_empty() {
+                    out.push_str("[user/other]\n");
+                    for (k, v) in &user_vars { out.push_str(&format!("  {}={}\n", k, v)); }
+                }
+                out
+            }
         };
         print!("{}", output);
-        if ctx.stats { CommandStats::new().with_reducer("env").with_input_bytes(input_bytes).with_output_bytes(output.len()).with_items_processed(vars.len()).print(); }
+        if ctx.stats { CommandStats::new().with_reducer("env").with_input_bytes(input_bytes).with_output_bytes(output.len()).with_items_processed(all_vars.len()).print(); }
         Ok(())
     }
 }
