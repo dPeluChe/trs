@@ -12,6 +12,7 @@ mod reducer;
 mod router;
 #[allow(dead_code)]
 mod schema;
+pub(crate) mod tracker;
 
 pub use cli::{Cli, OutputFormat};
 #[allow(unused_imports)]
@@ -35,6 +36,15 @@ fn main() {
     let router = Router::new();
 
     match &cli.command {
+        Some(Commands::Stats { history, project, json }) => {
+            use router::handlers::stats::{StatsInput, handle_stats};
+            let input = StatsInput {
+                history: *history,
+                project: *project,
+                json: *json,
+            };
+            handle_stats(&input);
+        }
         Some(Commands::Parse { .. }
             | Commands::Search { .. }
             | Commands::Replace { .. }

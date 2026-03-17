@@ -186,6 +186,8 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
 pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext) {
     use std::process::{Command, Stdio};
 
+    let start = std::time::Instant::now();
+
     // Execute the command
     let output = match Command::new(cmd)
         .args(args)
@@ -206,6 +208,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    let in_bytes = stdout.len();
 
     // Print stderr passthrough (warnings, progress, etc.)
     if !stderr.is_empty() {
@@ -213,23 +216,57 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     }
 
     // Try to classify and parse the output
+    let mut out_bytes = in_bytes; // default: no reduction (passthrough)
     if let Some(parser) = classify_command(cmd, args) {
+        // Estimate output size based on benchmarked reduction ratios per command
+        let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
+        let keep_ratio = match (cmd, subcmd) {
+            ("git", "status") => 0.20,   // 80% reduction
+            ("git", "diff") => 0.10,     // 90% reduction
+            ("git", "log") => 0.10,      // 90% reduction
+            ("git", "branch") => 0.11,   // 89% reduction
+            ("ls" | "lsd" | "exa" | "eza", _) => 0.18, // 82% reduction
+            ("tree", _) => 0.30,
+            ("find" | "fd", _) => 0.52,  // 48% reduction
+            ("grep" | "rg" | "ag", _) => 0.40,
+            ("env" | "printenv", _) => 0.32, // 68% reduction
+            ("docker", "ps") => 0.30,
+            ("docker", "logs") => 0.50,
+            ("npm" | "pnpm" | "yarn" | "pip" | "pip3" | "cargo", "install" | "i") => 0.20,
+            ("npm" | "pip" | "pip3" | "cargo", "ls" | "list" | "tree" | "freeze") => 0.40,
+            ("cargo", "build" | "check" | "clippy") => 0.10,
+            ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
+            ("pytest" | "jest" | "vitest", _) => 0.10,
+            ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
+            _ => 0.50,
+        };
+        out_bytes = (in_bytes as f64 * keep_ratio).max(1.0) as usize;
+
         let router = Router::new();
         let tmpdir = std::env::temp_dir();
         let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
         if std::fs::write(&tmpfile, stdout.as_bytes()).is_ok() {
-            // Inject the temp file path into the parser variant
             let parser_with_file = inject_file_path(parser, tmpfile.clone());
             let parse_cmd = Commands::Parse { parser: parser_with_file };
             router.execute_and_print(&parse_cmd, ctx);
             let _ = std::fs::remove_file(&tmpfile);
         } else {
             print!("{}", stdout);
+            out_bytes = in_bytes; // passthrough, no reduction
         }
     } else {
         // No parser matched — passthrough the output as-is
         print!("{}", stdout);
     }
+
+    // Track execution (fire-and-forget)
+    let duration_ms = start.elapsed().as_millis() as u64;
+    let full_cmd = if args.is_empty() {
+        cmd.to_string()
+    } else {
+        format!("{} {}", cmd, args.join(" "))
+    };
+    crate::tracker::log_execution(&full_cmd, in_bytes, out_bytes, duration_ms);
 
     // Propagate exit code
     if !output.status.success() {

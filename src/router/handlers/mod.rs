@@ -10,3 +10,4 @@ pub mod html2md;
 pub mod txt2md;
 pub mod isclean;
 pub mod parse;
+pub mod stats;

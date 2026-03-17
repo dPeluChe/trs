@@ -204,6 +204,19 @@ pub enum Commands {
         check_untracked: Option<bool>,
     },
 
+    /// Show token savings statistics
+    Stats {
+        /// Show recent command history
+        #[arg(long, short = 'H')]
+        history: bool,
+        /// Filter to current project only
+        #[arg(long, short)]
+        project: bool,
+        /// Output format (text or json)
+        #[arg(long)]
+        json: bool,
+    },
+
     /// External command (auto-detected via allow_external_subcommands)
     #[command(external_subcommand)]
     External(Vec<String>),
