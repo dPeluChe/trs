@@ -576,16 +576,19 @@ mod tests {
             stats: false,
             enabled_formats: vec![],
         };
+        // Use a temp file instead of stdin to avoid blocking
+        let tmp = std::env::temp_dir().join("trs_test_clean.tmp");
+        std::fs::write(&tmp, "hello\x1b[31m world\x1b[0m\n\n\ntest\n").unwrap();
         let input = CleanInput {
-            file: None,
+            file: Some(tmp.clone()),
             no_ansi: true,
             collapse_blanks: true,
             collapse_repeats: false,
             trim: true,
         };
 
-        // The handler should succeed now that it's implemented
         let result = handler.execute(&input, &ctx);
+        let _ = std::fs::remove_file(&tmp);
         assert!(result.is_ok());
     }
 
@@ -1483,23 +1486,21 @@ mod tests {
 
     #[test]
     fn test_parse_handler_git_status() {
-        // Test with empty input (simulating empty stdin)
-        // This should result in a clean status with empty branch
         let handler = ParseHandler;
         let ctx = CommandContext {
             format: OutputFormat::Json,
             stats: false,
             enabled_formats: vec![OutputFormat::Json],
         };
+        // Use temp file instead of stdin to avoid blocking
+        let tmp = std::env::temp_dir().join("trs_test_git_status.tmp");
+        std::fs::write(&tmp, "On branch main\nnothing to commit, working tree clean\n").unwrap();
         let input = ParseCommands::GitStatus {
-            file: None,
+            file: Some(tmp.clone()),
             count: None,
         };
-
-        // Note: This test reads from stdin which is empty, so it will succeed
-        // with an empty/clean status
         let result = handler.execute(&input, &ctx);
-        // The implementation is now complete, so it should succeed
+        let _ = std::fs::remove_file(&tmp);
         assert!(result.is_ok());
     }
 
@@ -1511,15 +1512,15 @@ mod tests {
             stats: false,
             enabled_formats: vec![],
         };
+        // Use temp file instead of stdin to avoid blocking
+        let tmp = std::env::temp_dir().join("trs_test_pytest.tmp");
+        std::fs::write(&tmp, "===== 1 passed in 0.01s =====\n").unwrap();
         let input = ParseCommands::Test {
             runner: Some(crate::TestRunner::Pytest),
-            file: None,
+            file: Some(tmp.clone()),
         };
-
-        // Note: This test reads from stdin which is empty, so it will return
-        // an empty test result but should succeed
         let result = handler.execute(&input, &ctx);
-        // The implementation is now complete, so it should succeed
+        let _ = std::fs::remove_file(&tmp);
         assert!(result.is_ok());
     }
 
