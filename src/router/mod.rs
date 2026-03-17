@@ -182,6 +182,9 @@ impl Router {
                 self.is_clean_handler.execute(&input, ctx)
             }
             Commands::Parse { parser } => self.parse_handler.execute(parser, ctx),
+            Commands::Err { command, args } => {
+                handlers::err::handle_err(command, args, ctx)
+            }
             Commands::Stats { .. } => {
                 // Stats is handled directly in main.rs before reaching the router
                 Ok(())

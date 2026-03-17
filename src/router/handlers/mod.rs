@@ -11,3 +11,4 @@ pub mod txt2md;
 pub mod isclean;
 pub mod parse;
 pub mod stats;
+pub mod err;

@@ -147,6 +147,15 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // Environment
         "env" | "printenv" => Some(ParseCommands::Env { file: None }),
 
+        // Word count
+        "wc" => Some(ParseCommands::Wc { file: None }),
+
+        // Download tools
+        "wget" => Some(ParseCommands::Download { file: None }),
+        "curl" if args.iter().any(|a| a == "-v" || a == "--verbose" || a == "-I" || a == "--head") => {
+            Some(ParseCommands::Download { file: None })
+        }
+
         // npx with subcommands
         "npx" => match subcmd {
             "jest" => Some(ParseCommands::Test { runner: Some(TestRunner::Jest), file: None }),
@@ -179,6 +188,8 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::Install { .. } => ParseCommands::Install { file: Some(path) },
         ParseCommands::Build { .. } => ParseCommands::Build { file: Some(path) },
         ParseCommands::Env { .. } => ParseCommands::Env { file: Some(path) },
+        ParseCommands::Wc { .. } => ParseCommands::Wc { file: Some(path) },
+        ParseCommands::Download { .. } => ParseCommands::Download { file: Some(path) },
     }
 }
 
@@ -238,6 +249,9 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
             ("pytest" | "jest" | "vitest", _) => 0.10,
             ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
+            ("wc", _) => 0.50,
+            ("wget", _) => 0.15,
+            ("curl", _) => 0.15,
             _ => 0.50,
         };
         out_bytes = (in_bytes as f64 * keep_ratio).max(1.0) as usize;

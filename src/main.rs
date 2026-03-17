@@ -54,7 +54,8 @@ fn main() {
             | Commands::Trim { .. }
             | Commands::Html2md { .. }
             | Commands::Txt2md { .. }
-            | Commands::IsClean { .. }) => {
+            | Commands::IsClean { .. }
+            | Commands::Err { .. }) => {
             router.execute_and_print(cli.command.as_ref().unwrap(), &ctx);
         }
         Some(Commands::External(ext_args)) => {

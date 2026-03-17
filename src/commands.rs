@@ -217,6 +217,17 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Run a command and show only errors and warnings
+    #[command(long_about = "Run any command and filter output to show only errors and warnings.\n\nExamples:\n  trs err cargo build\n  trs err npm test\n  trs err make all")]
+    Err {
+        /// Command to run
+        #[arg(required = true)]
+        command: String,
+        /// Arguments for the command
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
     /// External command (auto-detected via allow_external_subcommands)
     #[command(external_subcommand)]
     External(Vec<String>),
@@ -395,6 +406,24 @@ pub enum ParseCommands {
     ///
     /// Example: env | trs parse env
     Env {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse wc (word count) output
+    ///
+    /// Example: wc file.txt | trs parse wc
+    Wc {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse wget/curl download output
+    ///
+    /// Example: curl -v https://example.com 2>&1 | trs parse download
+    Download {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
         file: Option<PathBuf>,

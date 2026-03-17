@@ -84,6 +84,8 @@ impl CommandHandler for ParseHandler {
             ParseCommands::Install { file } => Self::handle_install(file, ctx),
             ParseCommands::Build { file } => Self::handle_build(file, ctx),
             ParseCommands::Env { file } => Self::handle_env(file, ctx),
+            ParseCommands::Wc { file } => Self::handle_wc(file, ctx),
+            ParseCommands::Download { file } => Self::handle_download(file, ctx),
         }
     }
 }
