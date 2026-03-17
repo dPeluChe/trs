@@ -27,10 +27,15 @@
 //! ```
 
 mod compact;
+mod compact_schema;
 mod json;
+mod json_schema;
 mod csv;
+mod csv_schema;
 mod tsv;
+mod tsv_schema;
 mod agent;
+mod agent_schema;
 mod raw;
 pub mod helpers;
 

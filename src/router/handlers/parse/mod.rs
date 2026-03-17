@@ -9,6 +9,7 @@ pub(crate) mod git_log;
 pub(crate) mod git_branch;
 pub(crate) mod ls;
 pub(crate) mod grep;
+pub(crate) mod grep_format;
 pub(crate) mod find;
 pub(crate) mod test;
 pub(crate) mod test_pytest;
@@ -18,6 +19,8 @@ pub(crate) mod test_npm;
 pub(crate) mod test_pnpm;
 pub(crate) mod test_bun;
 pub(crate) mod logs;
+pub(crate) mod logs_helpers;
+pub(crate) mod logs_format;
 pub(crate) mod extra;
 
 pub(crate) struct ParseHandler;
