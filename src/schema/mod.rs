@@ -39,21 +39,26 @@ mod tests;
 
 use serde::{Deserialize, Serialize};
 
-// Re-export all public types
+// Re-export all public types (used by formatters and tests)
+#[allow(unused_imports)]
 pub use fs::{
     FindCounts, FindEntry, FindError, FindOutputSchema, LsCounts, LsEntry, LsEntryType, LsError,
     LsOutputSchema,
 };
+#[allow(unused_imports)]
 pub use git::{
     GitDiffCounts, GitDiffEntry, GitDiffSchema, GitFileEntry, GitStatusCounts, GitStatusSchema,
     RepositoryStateSchema,
 };
+#[allow(unused_imports)]
 pub use logs::{LogCounts, LogEntry, LogLevel, LogsOutputSchema, RepeatedLine};
 pub use process::{ErrorSchema, ProcessOutputSchema};
+#[allow(unused_imports)]
 pub use search::{
     GrepCounts, GrepFile, GrepMatch, GrepOutputSchema, ReplaceCounts, ReplaceFile, ReplaceMatch,
     ReplaceOutputSchema,
 };
+#[allow(unused_imports)]
 pub use test::{TestOutputSchema, TestResult, TestRunnerType, TestStatus, TestSuite, TestSummary};
 
 // ============================================================

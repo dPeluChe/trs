@@ -14,6 +14,7 @@ mod router;
 mod schema;
 
 pub use cli::{Cli, OutputFormat};
+#[allow(unused_imports)]
 pub(crate) use cli::format_precedence;
 pub use commands::{Commands, ParseCommands, TestRunner};
 

@@ -20,7 +20,7 @@ impl ParseHandler {
                 }
                 continue;
             }
-            let name: String = line.chars().filter(|c| !matches!(c, '│' | '├' | '└' | '─' | '─')).collect::<String>().trim().to_string();
+            let name: String = line.chars().filter(|c| !matches!(c, '│' | '├' | '└' | '─')).collect::<String>().trim().to_string();
             if name.is_empty() || name == "." { continue; }
             if name.ends_with('/') { dirs.push(name.trim_end_matches('/').to_string()); }
             else { files.push(name); }

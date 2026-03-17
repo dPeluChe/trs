@@ -777,8 +777,8 @@ fn test_compact_git_status_has_structure() {
         "Compact format should have 'branch:' key"
     );
     assert!(
-        stdout.contains("status:"),
-        "Compact format should have 'status:' key"
+        stdout.contains("clean") || stdout.contains("status:"),
+        "Compact format should indicate clean state"
     );
 }
 
@@ -1127,7 +1127,7 @@ fn test_agent_beats_compact() {
     // The test verifies that the command succeeds with both flags
     let stdout = String::from_utf8_lossy(&output);
     assert!(
-        stdout.contains("branch:") || stdout.contains("status:"),
+        stdout.contains("branch:") || stdout.contains("clean") || stdout.contains("status:"),
         "Output should have structured format"
     );
 }

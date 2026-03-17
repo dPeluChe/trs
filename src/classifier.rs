@@ -4,7 +4,9 @@
 //! the execute → parse → format pipeline.
 
 use std::path::PathBuf;
-use crate::{Commands, OutputFormat, ParseCommands, TestRunner};
+use crate::{Commands, ParseCommands, TestRunner};
+#[allow(unused_imports)]
+use crate::OutputFormat;
 use crate::router::{CommandContext, Router};
 
 /// Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines).

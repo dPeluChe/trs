@@ -48,6 +48,7 @@ pub use csv::CsvFormatter;
 pub use tsv::TsvFormatter;
 pub use agent::AgentFormatter;
 pub use raw::RawFormatter;
+#[allow(unused_imports)]
 pub use helpers::*;
 
 use crate::OutputFormat;
