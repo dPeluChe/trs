@@ -157,7 +157,8 @@ fn test_tsv_output_parse_ls() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total:"));
+        .stdout(predicate::str::contains("src/"))
+        .stdout(predicate::str::contains("main.rs"));
 }
 
 // ============================================================
@@ -172,7 +173,7 @@ fn test_agent_output_has_markdown_headers() {
         .arg("git-status")
         .assert()
         .success()
-        .stdout(predicate::str::contains("status:"));
+        .stdout(predicate::str::contains("clean"));
 }
 
 #[test]
@@ -202,7 +203,8 @@ fn test_agent_output_parse_ls_structure() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total:"));
+        .stdout(predicate::str::contains("src/"))
+        .stdout(predicate::str::contains("main.rs"));
 }
 
 // ============================================================
@@ -248,7 +250,7 @@ fn test_compact_output_parse_git_status() {
         .arg("git-status")
         .assert()
         .success()
-        .stdout(predicate::str::contains("status:"));
+        .stdout(predicate::str::contains("clean"));
 }
 
 #[test]
@@ -275,11 +277,11 @@ fn test_all_formats_produce_output() {
     // Test that all formats produce some output for the same command
     // Note: --raw produces empty output for clean repos, so we skip it
     let formats = vec![
-        ("--compact", "status:"),
+        ("--compact", "clean"),
         ("--json", "is_clean"),
         ("--csv", "status"),
         ("--tsv", "status"),
-        ("--agent", "status:"),
+        ("--agent", "clean"),
     ];
 
     for (flag, expected) in formats {

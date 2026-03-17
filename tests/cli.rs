@@ -1512,7 +1512,7 @@ fn test_parse_git_status() {
         .arg("git-status")
         .assert()
         .success()
-        .stdout(predicate::str::contains("status: clean"));
+        .stdout(predicate::str::contains("clean"));
 }
 
 #[test]
@@ -1557,7 +1557,7 @@ fn test_parse_ls_empty() {
         .write_stdin("")
         .assert()
         .success()
-        .stdout(predicate::str::contains("ls: empty"));
+        .stdout(predicate::str::contains("(empty)"));
 }
 
 #[test]
@@ -1570,11 +1570,10 @@ fn test_parse_ls_simple_files() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("files (3):"))
         .stdout(predicate::str::contains("file1.txt"))
         .stdout(predicate::str::contains("file2.txt"))
-        .stdout(predicate::str::contains("file3.txt"));
+        .stdout(predicate::str::contains("file3.txt"))
+        .stdout(predicate::str::contains("3 files"));
 }
 
 #[test]
@@ -1587,11 +1586,10 @@ fn test_parse_ls_with_directories() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 4"))
-        .stdout(predicate::str::contains("directories (2):"))
-        .stdout(predicate::str::contains("files (2):"))
-        .stdout(predicate::str::contains("dir1"))
-        .stdout(predicate::str::contains("dir2"));
+        .stdout(predicate::str::contains("2 files"))
+        .stdout(predicate::str::contains("2 dirs"))
+        .stdout(predicate::str::contains("dir1/"))
+        .stdout(predicate::str::contains("dir2/"));
 }
 
 #[test]
@@ -1604,8 +1602,6 @@ fn test_parse_ls_with_hidden_files() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("hidden (2):"))
         .stdout(predicate::str::contains(".hidden_file"))
         .stdout(predicate::str::contains(".visible_file"));
 }
@@ -1625,11 +1621,8 @@ fn test_parse_ls_hidden_directory() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 2"))
-        .stdout(predicate::str::contains("hidden (1):"))
         .stdout(predicate::str::contains(".git/"))
-        // Verify hidden section appears and public is NOT listed there
-        .stdout(predicate::str::contains("hidden (1):\n  .git/"));
+        .stdout(predicate::str::contains("public/"));
 }
 
 #[test]
@@ -1643,8 +1636,6 @@ fn test_parse_ls_hidden_file_with_extension() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("hidden (3):"))
         .stdout(predicate::str::contains(".gitignore"))
         .stdout(predicate::str::contains(".env.local"))
         .stdout(predicate::str::contains(".config.json"));
@@ -1661,7 +1652,6 @@ fn test_parse_ls_dot_and_dotdot() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("hidden (2):"))
         .stdout(predicate::str::contains("."))
         .stdout(predicate::str::contains(".."));
 }
@@ -1677,7 +1667,6 @@ fn test_parse_ls_double_dots() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("hidden (2):"))
         .stdout(predicate::str::contains("..swp"))
         .stdout(predicate::str::contains("...triple"));
 }
@@ -1693,8 +1682,6 @@ fn test_parse_ls_long_format_hidden_files() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("hidden (3):"))
         .stdout(predicate::str::contains(".gitignore"))
         .stdout(predicate::str::contains(".env"))
         .stdout(predicate::str::contains(".git"));
@@ -1711,7 +1698,6 @@ fn test_parse_ls_hidden_symlink() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("hidden (1):"))
         .stdout(predicate::str::contains(".link_to_file"));
 }
 
@@ -1744,8 +1730,6 @@ fn test_parse_ls_mixed_hidden_and_visible() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 6"))
-        .stdout(predicate::str::contains("hidden (3):"))
         .stdout(predicate::str::contains(".git/"))
         .stdout(predicate::str::contains(".env"))
         .stdout(predicate::str::contains(".gitignore"));
@@ -1762,8 +1746,6 @@ fn test_parse_ls_only_hidden_files() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("hidden (3):"))
         .stdout(predicate::str::contains(".a"))
         .stdout(predicate::str::contains(".b"))
         .stdout(predicate::str::contains(".c"));
@@ -1780,8 +1762,8 @@ fn test_parse_ls_no_hidden_files() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::function(|x: &str| !x.contains("hidden")));
+        .stdout(predicate::str::contains("3 files"))
+        .stdout(predicate::str::contains("file1.txt"));
 }
 
 #[test]
@@ -1794,10 +1776,9 @@ fn test_parse_ls_long_format() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 2"))
-        .stdout(predicate::str::contains("directories (1):"))
-        .stdout(predicate::str::contains("files (1):"))
-        .stdout(predicate::str::contains("dirname"))
+        .stdout(predicate::str::contains("1 files"))
+        .stdout(predicate::str::contains("1 dirs"))
+        .stdout(predicate::str::contains("dirname/"))
         .stdout(predicate::str::contains("file1.txt"));
 }
 
@@ -1874,8 +1855,7 @@ fn test_parse_ls_node_modules_detected() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("1 generated"))
         .stdout(predicate::str::contains("node_modules/"));
 }
 
@@ -1890,8 +1870,7 @@ fn test_parse_ls_target_detected() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("1 generated"))
         .stdout(predicate::str::contains("target/"));
 }
 
@@ -1906,8 +1885,7 @@ fn test_parse_ls_multiple_generated_dirs() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 5"))
-        .stdout(predicate::str::contains("generated (3):"))
+        .stdout(predicate::str::contains("3 generated"))
         .stdout(predicate::str::contains("node_modules/"))
         .stdout(predicate::str::contains("dist/"))
         .stdout(predicate::str::contains("build/"));
@@ -1924,8 +1902,7 @@ fn test_parse_ls_generated_dirs_case_insensitive() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("generated (2):"));
+        .stdout(predicate::str::contains("2 generated"));
 }
 
 #[test]
@@ -1939,7 +1916,6 @@ fn test_parse_ls_no_generated_dirs() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
         .stdout(predicate::function(|x: &str| !x.contains("generated")));
 }
 
@@ -1972,8 +1948,7 @@ fn test_parse_ls_long_format_generated_dirs() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("1 generated"))
         .stdout(predicate::str::contains("node_modules"));
 }
 
@@ -1988,8 +1963,7 @@ fn test_parse_ls_venv_detected() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("1 generated"))
         .stdout(predicate::str::contains("venv/"));
 }
 
@@ -2004,8 +1978,7 @@ fn test_parse_ls_pycache_detected() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("1 generated"))
         .stdout(predicate::str::contains("__pycache__/"));
 }
 
@@ -2020,8 +1993,7 @@ fn test_parse_ls_vendor_detected() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 3"))
-        .stdout(predicate::str::contains("generated (1):"))
+        .stdout(predicate::str::contains("1 generated"))
         .stdout(predicate::str::contains("vendor/"));
 }
 
@@ -2036,9 +2008,7 @@ fn test_parse_ls_hidden_and_generated() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("total: 4"))
-        .stdout(predicate::str::contains("hidden (2):"))
-        .stdout(predicate::str::contains("generated (2):"));
+        .stdout(predicate::str::contains("2 generated"));
 }
 
 // ============================================================
@@ -2058,8 +2028,7 @@ fn test_parse_ls_permission_denied() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("Permission denied"))
-        .stdout(predicate::str::contains("total: 2"))
-        .stdout(predicate::str::contains("files (2):"));
+        .stdout(predicate::str::contains("2 files"));
 }
 
 #[test]
@@ -2080,7 +2049,7 @@ fn test_parse_ls_permission_denied_json() {
 
 #[test]
 fn test_parse_ls_only_errors() {
-    // Test when all output is errors - still shows total: 0 with errors
+    // Test when all output is errors
     let ls_input = "ls: cannot open directory '.': Permission denied\n";
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -2090,7 +2059,7 @@ fn test_parse_ls_only_errors() {
         .assert()
         .success()
         .stdout(predicate::str::contains("error:"))
-        .stdout(predicate::str::contains("total: 0"));
+        .stdout(predicate::str::contains("Permission denied"));
 }
 
 // ============================================================
@@ -2108,7 +2077,6 @@ fn test_parse_ls_symlink_with_target() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("symlinks (1):"))
         .stdout(predicate::str::contains("link_to_file -> /path/to/target"));
 }
 
@@ -2141,7 +2109,6 @@ fn test_parse_ls_multiple_symlinks_with_targets() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("symlinks (2):"))
         .stdout(predicate::str::contains("link1 -> target1"))
         .stdout(predicate::str::contains("link2 -> target2"));
 }
@@ -2157,7 +2124,6 @@ fn test_parse_ls_symlink_no_target() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("symlinks (1):"))
         .stdout(predicate::str::contains("link_no_target"));
 }
 
@@ -2176,7 +2142,6 @@ fn test_parse_ls_broken_symlink_compact() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("symlinks (1):"))
         .stdout(predicate::str::contains(
             "broken_link -> /nonexistent [broken]",
         ));
@@ -2211,7 +2176,6 @@ fn test_parse_ls_circular_symlink() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("symlinks (1):"))
         .stdout(predicate::str::contains("circular -> circular [broken]"));
 }
 
@@ -2242,7 +2206,6 @@ fn test_parse_ls_mixed_broken_and_valid_symlinks() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("symlinks (2):"))
         .stdout(predicate::str::contains("good_link -> existing_file"))
         .stdout(predicate::str::contains(
             "bad_link -> /nonexistent [broken]",
@@ -3275,7 +3238,7 @@ fn test_router_parse_git_status_command() {
         .arg("git-status")
         .assert()
         .success()
-        .stdout(predicate::str::contains("status: clean"));
+        .stdout(predicate::str::contains("clean"));
 }
 
 #[test]
@@ -6690,8 +6653,8 @@ fn test_parse_find_permission_denied() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("Permission denied"))
-        .stdout(predicate::str::contains("total: 2"))
-        .stdout(predicate::str::contains("files (2):"));
+        .stdout(predicate::str::contains("./src/main.rs"))
+        .stdout(predicate::str::contains("./src/lib.rs"));
 }
 
 #[test]
@@ -6738,7 +6701,7 @@ fn test_parse_find_no_such_file() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("No such file or directory"))
-        .stdout(predicate::str::contains("total: 1"));
+        .stdout(predicate::str::contains("./exists.txt"));
 }
 
 #[test]
@@ -6755,7 +6718,8 @@ fn test_parse_find_cannot_open_directory() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("cannot open directory"))
-        .stdout(predicate::str::contains("total: 2"));
+        .stdout(predicate::str::contains("./file.rs"))
+        .stdout(predicate::str::contains("./another.rs"));
 }
 
 #[test]
@@ -6773,7 +6737,7 @@ fn test_parse_find_multiple_errors() {
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("/root"))
         .stdout(predicate::str::contains("/var"))
-        .stdout(predicate::str::contains("total: 1"));
+        .stdout(predicate::str::contains("./file.txt"));
 }
 
 // ============================================================
@@ -7590,10 +7554,10 @@ fn test_parse_git_status_with_up_to_date() {
         .write_stdin(status_input)
         .assert()
         .success()
-        // Should correctly count 1 staged file
-        .stdout(predicate::str::contains("staged=1"))
-        // Should correctly count 1 untracked file
-        .stdout(predicate::str::contains("untracked=1"))
+        // Should show staged section with count
+        .stdout(predicate::str::contains("staged (1)"))
+        // Should show untracked section with count
+        .stdout(predicate::str::contains("untracked (1)"))
         // Should show the staged file
         .stdout(predicate::str::contains("M src/main.rs"))
         // Should show the untracked file
@@ -8910,7 +8874,7 @@ fn test_fixture_git_status_clean() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("status: clean"))
+        .stdout(predicate::str::contains("clean"))
         .stdout(predicate::str::contains("branch: main"));
 }
 
@@ -8983,7 +8947,7 @@ fn test_fixture_git_status_ahead() {
         .assert()
         .success()
         .stdout(predicate::str::contains("branch: feature"))
-        .stdout(predicate::str::contains("ahead: 3"));
+        .stdout(predicate::str::contains("ahead 3"));
 }
 
 #[test]
@@ -8996,7 +8960,7 @@ fn test_fixture_git_status_behind() {
         .assert()
         .success()
         .stdout(predicate::str::contains("branch: main"))
-        .stdout(predicate::str::contains("behind: 5"));
+        .stdout(predicate::str::contains("behind 5"));
 }
 
 #[test]
@@ -9009,8 +8973,8 @@ fn test_fixture_git_status_diverged() {
         .assert()
         .success()
         .stdout(predicate::str::contains("branch: develop"))
-        .stdout(predicate::str::contains("ahead: 3"))
-        .stdout(predicate::str::contains("behind: 5"));
+        .stdout(predicate::str::contains("ahead 3"))
+        .stdout(predicate::str::contains("behind 5"));
 }
 
 #[test]

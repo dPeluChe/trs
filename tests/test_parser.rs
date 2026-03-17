@@ -28,7 +28,7 @@ fn test_parse_git_status_clean() {
         .success()
         .stdout(predicate::str::contains("branch:"))
         .stdout(predicate::str::contains("main"))
-        .stdout(predicate::str::contains("status: clean"));
+        .stdout(predicate::str::contains("clean"));
 }
 
 #[test]
@@ -1295,7 +1295,7 @@ fn test_parser_all_formats_ls() {
         .write_stdin(fixtures::ls_mixed())
         .assert()
         .success()
-        .stdout(predicate::str::contains("total:"));
+        .stdout(predicate::str::contains("files"));
 
     // Test JSON format
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -1315,7 +1315,7 @@ fn test_parser_all_formats_ls() {
         .write_stdin(fixtures::ls_mixed())
         .assert()
         .success()
-        .stdout(predicate::str::contains("total:"));
+        .stdout(predicate::str::contains("files"));
 }
 
 #[test]

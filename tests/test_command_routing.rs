@@ -166,7 +166,8 @@ fn test_parse_find_routes_correctly() {
         .write_stdin("./src/main.rs\n./src/router.rs")
         .assert()
         .success()
-        .stdout(predicate::str::contains("files").or(predicate::str::contains("total")));
+        .stdout(predicate::str::contains("./src/main.rs"))
+        .stdout(predicate::str::contains("./src/router.rs"));
 }
 
 #[test]
