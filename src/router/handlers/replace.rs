@@ -120,26 +120,32 @@ impl ReplaceHandler {
             for (line_idx, line) in lines.iter().enumerate() {
                 let line_bytes = line.as_bytes();
 
-                // Find all matches in this line
+                // Count matches first, then replace all at once
                 let mut offset = 0usize;
-                let mut modified_line = line.to_string();
                 let mut line_match_count = 0usize;
 
                 while let Ok(Some(m)) = matcher.find_at(line_bytes, offset) {
-                    let start = m.start();
-                    let end = m.end();
-
-                    // Perform the replacement
-                    modified_line.replace_range(start..end, &input.replace);
                     line_match_count += 1;
-                    has_changes = true;
-
-                    // Move past this match
-                    offset = end;
+                    let end = m.end();
+                    let start = m.start();
+                    if end == start {
+                        offset = end + 1;
+                    } else {
+                        offset = end;
+                    }
                     if offset >= line_bytes.len() {
                         break;
                     }
                 }
+
+                // Use regex crate to do the actual replacement (handles offsets correctly)
+                let modified_line = if line_match_count > 0 {
+                    has_changes = true;
+                    let re = regex::Regex::new(&input.search).unwrap();
+                    re.replace_all(line, &input.replace as &str).to_string()
+                } else {
+                    line.to_string()
+                };
 
                 if line_match_count > 0 {
                     replacements.push(Replacement {
@@ -155,7 +161,11 @@ impl ReplaceHandler {
             // If there are changes and not dry run, write the file back
             if has_changes {
                 if !input.dry_run {
-                    let new_content = modified_lines.join("\n");
+                    let mut new_content = modified_lines.join("\n");
+                    // Preserve trailing newline if original had one
+                    if content.ends_with('\n') && !new_content.ends_with('\n') {
+                        new_content.push('\n');
+                    }
                     if let Err(e) = std::fs::write(entry.path(), new_content) {
                         eprintln!("Warning: Failed to write {}: {}", path, e);
                         continue;
