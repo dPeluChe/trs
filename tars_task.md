@@ -49,6 +49,10 @@ TARS is a CLI toolkit that transforms noisy terminal output into compact and str
 - [x] txt2md (heading/list detection, metadata)
 - [x] trim (leading/trailing whitespace)
 - [x] is-clean (git repo state check)
+- [x] err (run command, show only errors/warnings)
+- [x] stats (token savings tracker with history)
+- [x] wc (compact word count)
+- [x] curl/wget (HTTP headers parsing, progress bar stripping)
 
 ## Output Formats
 - [x] Compact (default, human-readable)

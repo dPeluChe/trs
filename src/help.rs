@@ -7,26 +7,30 @@
 pub const LONG_ABOUT: &str = "\
 TARS CLI - Transform noisy terminal output into compact, structured signal
 
-A CLI toolkit for developers, automation pipelines, and AI agents.
+Reduces token consumption by 68-90% for developers, AI agents, and automation.
+Just prefix any command with trs:
 
-OUTPUT FORMAT FLAGS (in precedence order):
-    --json     Structured JSON output (highest precedence)
+    trs git status               # 80% reduction
+    trs git log -10              # 90% reduction
+    trs ls -la                   # 82% reduction
+    trs npm test                 # 90% reduction
+    trs env                      # 68% reduction
+
+FORMAT FLAGS (work before or after the command):
+    --json     Structured JSON output
     --csv      CSV tabular output
     --tsv      TSV tabular output
-    --agent    AI-optimized structured format
-    --compact  Compact human-readable format (default)
-    --raw      Raw, unprocessed output
-
-GLOBAL FLAGS:
-    --stats    Show execution statistics (size reduction, tokens)
+    --agent    AI-optimized format
+    --compact  Human-readable (default)
+    --raw      Unprocessed passthrough
+    --stats    Show reduction metrics
 
 EXAMPLES:
-    trs --json search . \"pattern\"              # Search with JSON output
-    git status | trs parse git-status           # Parse git status
-    cat messy.log | trs clean --no-ansi --trim  # Clean text output
-    trs html2md https://example.com -o page.md  # Convert HTML to Markdown
-
-Documentation: https://github.com/example/tars-cli";
+    trs git status --json        # JSON output
+    trs err cargo build          # Show only errors
+    trs search src \"TODO\"        # Ripgrep search
+    trs curl -I https://api.com  # HTTP headers compact
+    trs stats                    # View token savings";
 
 /// Help text for output format precedence.
 #[allow(dead_code)]
@@ -337,6 +341,46 @@ EXAMPLES:
     # Run npm test with structured output
     trs --json run npm test";
 
+/// Help text for the err command.
+#[allow(dead_code)]
+pub const ERR_HELP: &str = "\
+Run a command and show only errors and warnings.
+
+Filters stdout and stderr to lines containing error, warning,
+panic, fatal, or failed patterns. Includes 1 line of context
+after each error for stack traces.
+
+USAGE:
+    trs err <COMMAND> [ARGS]...
+
+EXAMPLES:
+    trs err cargo build          # Show only build errors
+    trs err npm install          # Show only install warnings/errors
+    trs err make                 # Show only make failures
+    trs err cargo test           # Show only test failures";
+
+/// Help text for the stats command.
+#[allow(dead_code)]
+pub const STATS_HELP: &str = "\
+Show token savings statistics.
+
+Displays cumulative savings from using trs, grouped by command.
+Data is stored in ~/.trs/history.jsonl.
+
+USAGE:
+    trs stats [OPTIONS]
+
+OPTIONS:
+    -H, --history    Show recent command history
+    -p, --project    Filter to current project directory
+        --json       Output in JSON format
+
+EXAMPLES:
+    trs stats                    # Global savings summary
+    trs stats --history          # Recent commands with reduction %
+    trs stats --project          # Savings for current project only
+    trs stats --json             # JSON output for dashboards";
+
 /// Returns the help text for a specific command.
 #[allow(dead_code)]
 pub fn get_command_help(command: &str) -> Option<&'static str> {
@@ -350,6 +394,8 @@ pub fn get_command_help(command: &str) -> Option<&'static str> {
         "txt2md" => Some(TXT2MD_HELP),
         "trim" => Some(TRIM_HELP),
         "run" => Some(RUN_HELP),
+        "err" => Some(ERR_HELP),
+        "stats" => Some(STATS_HELP),
         _ => None,
     }
 }

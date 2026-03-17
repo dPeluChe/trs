@@ -104,8 +104,16 @@ trs docker logs <name>      # log level detection
 # System
 trs env                     # grouped, filtered, PATH summarized
 
+# HTTP
+trs curl -I https://api.com    # compact headers
+trs curl -v https://api.com    # verbose → compact
+trs wget https://file.com      # strip progress bars
+
+# Word count
+trs wc src/*.rs                # compact: file, lines, words, bytes
+
 # Unknown commands pass through unchanged
-trs echo "hello"            # just prints "hello"
+trs echo "hello"               # just prints "hello"
 ```
 
 ## Built-in Tools
@@ -119,6 +127,10 @@ trs search . "error" -i --context 2
 trs replace src "old" "new" --dry-run    # preview
 trs replace src "old" "new"              # execute
 trs replace . "TODO" "DONE" --count      # count only
+
+# Error filter (any command)
+trs err cargo build                      # only errors/warnings
+trs err npm install                      # only problems
 
 # Tail
 trs tail app.log -n 20                   # last N lines
@@ -135,6 +147,11 @@ cat notes.txt | trs txt2md               # text to Markdown
 # Git state
 trs is-clean                             # exit 0=clean, 1=dirty
 trs is-clean --json                      # {"is_clean": true}
+
+# Token savings tracker
+trs stats                                # cumulative savings
+trs stats --history                      # recent commands
+trs stats --project                      # current project only
 ```
 
 ## Output Formats

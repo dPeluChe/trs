@@ -38,6 +38,8 @@ src/
         ├── html2md.rs    # trs html2md
         ├── txt2md/       # trs txt2md (parser + format + detect)
         ├── isclean.rs    # trs is-clean
+        ├── err.rs        # trs err (error filter for any command)
+        ├── stats.rs      # trs stats (token savings dashboard)
         └── parse/        # All input parsers
             ├── git_*.rs  # git status, diff, log, branch
             ├── ls.rs     # ls parser
@@ -45,7 +47,7 @@ src/
             ├── find.rs   # find parser
             ├── logs*.rs  # log parser + helpers + formatter
             ├── test*.rs  # pytest, jest, vitest, npm, pnpm, bun
-            └── extra.rs  # tree, docker, deps, install, build, env
+            └── extra.rs  # tree, docker, deps, install, build, env, wc, curl/wget
 ```
 
 ## Key Design Decisions
@@ -54,7 +56,8 @@ src/
 - **Flags anywhere**: `trs git status --json` and `trs --json git status` both work
 - **Pipe support**: `git status | trs parse git-status` also works
 - **No runtime deps**: Single binary, ~7MB, works on macOS/Linux/Windows
-- **Max 500 LOC per file**: 63 production files, none over 621 lines
+- **Max 500 LOC per file**: 65+ production files, none over 621 lines
+- **Token tracking**: Every execution logged to ~/.trs/history.jsonl
 
 ## Development
 
