@@ -2,7 +2,11 @@ use super::common::{CommandContext, CommandError, CommandResult};
 use super::types::*;
 use crate::ParseCommands;
 
-pub(crate) mod git;
+pub(crate) mod git_status;
+pub(crate) mod git_status_format;
+pub(crate) mod git_diff;
+pub(crate) mod git_log;
+pub(crate) mod git_branch;
 pub(crate) mod ls;
 pub(crate) mod grep;
 pub(crate) mod find;
