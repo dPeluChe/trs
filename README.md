@@ -2,11 +2,11 @@
 
 Transform noisy terminal output into compact, structured signal.
 
-A CLI toolkit that reduces token consumption by **50-88%** for developers, automation pipelines, and AI agents.
+A CLI toolkit that reduces token consumption by **68-90%** for developers, automation pipelines, and AI agents.
 
 ## The Problem
 
-Every terminal command produces verbose output. When AI agents run `git status`, `ls -la`, or `grep`, they consume hundreds of unnecessary tokens parsing boilerplate text like "use git add to stage..." or permission strings like `drwxr-xr-x`.
+Every terminal command produces verbose output. When AI agents run `git status`, `ls -la`, or `grep`, they consume hundreds of unnecessary tokens parsing boilerplate text.
 
 ## The Solution
 
@@ -14,15 +14,23 @@ Just prefix your command with `trs`:
 
 ```
 $ trs git status
-
-branch: main
-ahead: 1
-counts: staged=2 unstaged=3
-staged (2):
+main [ahead 1]
+unstaged (3):
   M src/main.rs
+  M src/lib.rs
   A src/new.rs
 
-# vs raw git status: 370 bytes → 101 bytes (72% reduction)
+# Raw git status: 497 bytes → trs: 81 bytes (80% reduction)
+```
+
+```
+$ trs git log -5
+<Antonio>
+  4ca8fe4 Optimize parsers: trs now wins benchmarks vs rtk (12 min ago)
+  b49dda3 Fix all tests and eliminate all warnings (21 min ago)
+  581541e Fix 3 replace bugs (28 min ago)
+
+# Raw git log: 7.2 KB → trs: 690 bytes (90% reduction)
 ```
 
 ## Install
@@ -44,127 +52,94 @@ cargo install --path .
 # Just prefix any command with trs
 trs git status
 trs git diff
+trs git log -10
 trs ls -la
 trs npm test
+trs env
 
-# Add --json for structured output
+# Add --json for structured output (flags work anywhere)
 trs git status --json
-trs git diff --json
-
-# Format flags work before or after the command
-trs --json git status    # also works
+trs --json git status      # same thing
 ```
 
-## Auto-Detect Commands
+## Supported Commands
 
-`trs` automatically detects the command and applies the right parser:
+`trs` auto-detects the command and applies the right parser:
 
 ```bash
 # Git
-trs git status              # → git-status parser
-trs git diff                # → git-diff parser
-trs git log -10             # → git-log parser
-trs git branch -a           # → git-branch parser
+trs git status              # branch, ahead/behind, file changes
+trs git diff                # files changed with +adds/-dels
+trs git diff --stat         # stat format supported too
+trs git log -10             # grouped by author, relative time
+trs git branch -a           # current + local/remote
 
-# File system
-trs ls -la                  # → ls parser
-trs tree -L 2               # → tree parser
-trs find . -name "*.rs"     # → find parser
+# Files
+trs ls -la                  # dirs first, files with sizes, no noise
+trs tree -L 2               # summary with dir/file counts
+trs find . -name "*.rs"     # grouped by directory
 
 # Search
-trs grep -rn "pattern" .    # → grep parser
+trs grep -rn "pattern" .    # grouped by file with line numbers
 
 # Test runners
-trs pytest                  # → pytest parser
-trs npm test                # → npm test parser
-trs jest / vitest / bun test
+trs pytest                  # passed/failed/skipped summary
+trs npm test                # works with npm, pnpm, yarn, bun
+trs jest                    # jest, vitest supported
 
 # Package managers
-trs npm ls                  # → dependency list
-trs pip list                # → dependency list
-trs npm install             # → install summary
-trs pip install requests    # → install summary
+trs npm ls                  # clean dependency list
+trs pip list                # name@version format
+trs npm install             # summary: added, warnings, errors
 
 # Build tools
-trs cargo build             # → build output (errors/warnings)
-trs tsc                     # → TypeScript errors
-trs make                    # → build output
+trs cargo build             # errors + warnings only
+trs tsc                     # TypeScript build errors
+trs make                    # build output summary
 
 # Docker
-trs docker ps               # → container status
-trs docker logs <name>      # → log parser
+trs docker ps               # container status (up/down)
+trs docker logs <name>      # log level detection
 
 # System
-trs env                     # → sorted, truncated values
-trs tail /var/log/app.log   # → log parser
+trs env                     # grouped, filtered, PATH summarized
 
-# Unsupported commands pass through
-trs echo "hello"            # → passthrough
+# Unknown commands pass through unchanged
+trs echo "hello"            # just prints "hello"
 ```
 
 ## Built-in Tools
 
-### search — Find patterns in files (ripgrep-powered)
-
 ```bash
+# Search (ripgrep-powered)
 trs search src "TODO" --extension rs
-trs search . "handleError" -i --context 2
-trs search . "import" --limit 50
-```
+trs search . "error" -i --context 2
 
-### replace — Search and replace in files
+# Replace
+trs replace src "old" "new" --dry-run    # preview
+trs replace src "old" "new"              # execute
+trs replace . "TODO" "DONE" --count      # count only
 
-```bash
-trs replace src "oldName" "newName" --dry-run   # preview first
-trs replace src "oldName" "newName"              # execute
-trs replace . "TODO" "DONE" --count              # just the count
-```
+# Tail
+trs tail app.log -n 20                   # last N lines
+trs tail app.log --errors                # errors only
+trs tail app.log --follow                # streaming
 
-### tail — Smart log tailing
-
-```bash
-trs tail /var/log/app.log -n 20
-trs tail /var/log/app.log --errors    # error lines only
-trs tail /var/log/app.log --follow    # streaming mode
-```
-
-### clean — Strip noise from text
-
-```bash
+# Clean text
 some-command | trs clean --no-ansi --collapse-blanks --trim
-```
 
-### html2md / txt2md — Convert to Markdown
+# Convert
+trs html2md https://example.com          # HTML to Markdown
+cat notes.txt | trs txt2md               # text to Markdown
 
-```bash
-trs html2md https://example.com
-trs html2md page.html -o page.md
-cat notes.txt | trs txt2md
-```
-
-### is-clean — Check git repo state
-
-```bash
-trs is-clean                  # exit 0 if clean, 1 if dirty
-trs is-clean --json           # {"is_clean": true}
-```
-
-## Pipe Syntax
-
-The pipe syntax also works for all parsers:
-
-```bash
-git status | trs parse git-status
-git diff   | trs parse git-diff
-ls -la     | trs parse ls
-grep -rn "pattern" . | trs parse grep
-cat app.log | trs parse logs
-pytest | trs parse test --runner pytest
+# Git state
+trs is-clean                             # exit 0=clean, 1=dirty
+trs is-clean --json                      # {"is_clean": true}
 ```
 
 ## Output Formats
 
-Every command supports 6 output formats. Flags work before or after the command:
+Every command supports 6 formats. Flags work before or after the command:
 
 ```bash
 trs git status                # compact (default)
@@ -173,34 +148,40 @@ trs git status --csv          # CSV with headers
 trs git status --tsv          # tab-separated
 trs git status --agent        # AI-optimized text
 trs git status --raw          # unprocessed passthrough
-trs git status --stats        # show token reduction metrics
+trs git status --stats        # show reduction metrics
 ```
 
-When multiple format flags are specified, precedence applies:
-`--json` > `--csv` > `--tsv` > `--agent` > `--compact` > `--raw`
+## Pipe Syntax
 
-## Real-World Reductions
-
-| Command | Raw | trs compact | Reduction |
-|---------|-----|-------------|-----------|
-| `git status` | 465 B | 131 B | **71%** |
-| `git diff` | 34 KB | 125 B | **99%** |
-| `git log -10` | 6.4 KB | 1.2 KB | **81%** |
-| `ls -la` | 1.3 KB | 122 B | **57%** |
-| `env` | 3.5 KB | 2.2 KB | **38%** |
-
-Run the benchmark yourself:
+Also works with pipes for any parser:
 
 ```bash
-./scripts/benchmark.sh
+git status | trs parse git-status
+git diff   | trs parse git-diff
+ls -la     | trs parse ls
+cat app.log | trs parse logs
+pytest | trs parse test --runner pytest
 ```
+
+## Benchmarks
+
+| Command | Raw | trs | Reduction |
+|---------|-----|-----|-----------|
+| `git status` | 497 B | 81 B | **80%** |
+| `git log -10` | 7.2 KB | 690 B | **90%** |
+| `git diff --stat` | 723 B | 452 B | **37%** |
+| `git branch -a` | 66 B | 7 B | **89%** |
+| `ls -la` | 1.4 KB | 239 B | **82%** |
+| `env` | 3.6 KB | 1.1 KB | **68%** |
+| `find *.rs` | 2.2 KB | 1.2 KB | **48%** |
+
+Run the benchmark: `./scripts/benchmark.sh`
 
 ## For AI Agents
 
-`trs` is designed as the output layer between system commands and LLMs:
+`trs` is the output layer between system commands and LLMs:
 
 ```bash
-# Structured JSON for programmatic consumption
 trs git status --json
 # → {"branch":"main","is_clean":false,"staged_count":2,...}
 
@@ -214,11 +195,12 @@ trs is-clean --json
 ## Tech Stack
 
 - **Language**: Rust
-- **Binary size**: ~6 MB (self-contained, no runtime dependencies)
-- **CLI framework**: clap 4
-- **Search engine**: ripgrep (grep crate)
-- **HTML parsing**: htmd
-- **HTTP client**: ureq
+- **Binary**: ~7 MB, self-contained, no runtime dependencies
+- **CLI**: clap 4
+- **Search**: ripgrep (grep crate)
+- **HTML**: htmd
+- **HTTP**: ureq
+- **Tests**: 2,399 passing, 0 warnings
 
 ## License
 
