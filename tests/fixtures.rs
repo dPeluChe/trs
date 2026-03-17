@@ -160,6 +160,7 @@ pub fn git_status_spanish_clean() -> String {
 }
 
 /// Returns git status in Spanish (with changes).
+#[allow(dead_code)]
 pub fn git_status_spanish_staged() -> String {
     load_fixture("git_status_spanish_staged.txt")
 }

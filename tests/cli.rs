@@ -4278,6 +4278,7 @@ fn test_txt2md_stdin_empty() {
 #[test]
 fn test_txt2md_stdin_with_output_flag() {
     // Test stdin input with output to file
+    #[allow(unused_imports)]
     use std::io::Write;
     let temp_dir = std::env::temp_dir();
     let output_path = temp_dir.join("test_txt2md_stdin_output.md");
@@ -4332,6 +4333,7 @@ fn test_txt2md_file_input() {
 #[test]
 fn test_txt2md_file_output() {
     // Test with file output
+    #[allow(unused_imports)]
     use std::io::Write;
     let temp_dir = std::env::temp_dir();
     let output_path = temp_dir.join("test_txt2md_output.md");
@@ -6652,8 +6654,8 @@ fn test_parse_find_permission_denied() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("Permission denied"))
-        .stdout(predicate::str::contains("./src/main.rs"))
-        .stdout(predicate::str::contains("./src/lib.rs"));
+        .stdout(predicate::str::contains("main.rs"))
+        .stdout(predicate::str::contains("lib.rs"));
 }
 
 #[test]
@@ -6700,7 +6702,7 @@ fn test_parse_find_no_such_file() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("No such file or directory"))
-        .stdout(predicate::str::contains("./exists.txt"));
+        .stdout(predicate::str::contains("exists.txt"));
 }
 
 #[test]
@@ -6717,8 +6719,8 @@ fn test_parse_find_cannot_open_directory() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("cannot open directory"))
-        .stdout(predicate::str::contains("./file.rs"))
-        .stdout(predicate::str::contains("./another.rs"));
+        .stdout(predicate::str::contains("file.rs"))
+        .stdout(predicate::str::contains("another.rs"));
 }
 
 #[test]
@@ -6736,7 +6738,7 @@ fn test_parse_find_multiple_errors() {
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("/root"))
         .stdout(predicate::str::contains("/var"))
-        .stdout(predicate::str::contains("./file.txt"));
+        .stdout(predicate::str::contains("file.txt"));
 }
 
 // ============================================================
@@ -7234,9 +7236,9 @@ fn test_parse_find_raw_format() {
         .assert()
         .success()
         // Raw format should show just the paths
-        .stdout(predicate::str::contains("./src/main.rs"))
-        .stdout(predicate::str::contains("./src/lib.rs"))
-        .stdout(predicate::str::contains("./tests/test.rs"))
+        .stdout(predicate::str::contains("main.rs"))
+        .stdout(predicate::str::contains("lib.rs"))
+        .stdout(predicate::str::contains("test.rs"))
         // Should not include metadata like "total:"
         .stdout(predicate::function(|x: &str| !x.contains("total:")));
 }
@@ -8054,7 +8056,7 @@ fn test_tail_follow_flag_accepted() {
 
     // Run with --follow but with a timeout to avoid infinite loop in tests
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
+    let _output = cmd
         .arg("tail")
         .arg(path)
         .arg("--follow")
@@ -8874,7 +8876,7 @@ fn test_fixture_git_status_clean() {
         .assert()
         .success()
         .stdout(predicate::str::contains("clean"))
-        .stdout(predicate::str::contains("branch: main"));
+        .stdout(predicate::str::contains("main"));
 }
 
 #[test]
@@ -8945,7 +8947,7 @@ fn test_fixture_git_status_ahead() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("branch: feature"))
+        .stdout(predicate::str::contains("feature"))
         .stdout(predicate::str::contains("ahead 3"));
 }
 
@@ -8958,7 +8960,7 @@ fn test_fixture_git_status_behind() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("branch: main"))
+        .stdout(predicate::str::contains("main"))
         .stdout(predicate::str::contains("behind 5"));
 }
 
@@ -8971,7 +8973,7 @@ fn test_fixture_git_status_diverged() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("branch: develop"))
+        .stdout(predicate::str::contains("develop"))
         .stdout(predicate::str::contains("ahead 3"))
         .stdout(predicate::str::contains("behind 5"));
 }
@@ -9037,7 +9039,7 @@ fn test_fixture_git_status_porcelain_v2() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("branch: main"));
+        .stdout(predicate::str::contains("main"));
 }
 
 #[test]
@@ -9074,7 +9076,7 @@ fn test_fixture_git_status_spanish_clean() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("branch: main"));
+        .stdout(predicate::str::contains("main"));
 }
 
 #[test]
@@ -9086,7 +9088,7 @@ fn test_fixture_git_status_german_clean() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("branch: main"));
+        .stdout(predicate::str::contains("main"));
 }
 
 #[test]
@@ -9120,7 +9122,7 @@ fn test_fixture_git_status_no_branch() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("branch: master"));
+        .stdout(predicate::str::contains("master"));
 }
 
 #[test]

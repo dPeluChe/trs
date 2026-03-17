@@ -135,7 +135,7 @@ impl ParseHandler {
 
         // Branch info with ahead/behind inline
         if !status.branch.is_empty() {
-            let mut branch_line = format!("branch: {}", status.branch);
+            let mut branch_line = status.branch.clone();
             let mut markers = Vec::new();
             if let Some(ahead) = status.ahead {
                 markers.push(format!("ahead {}", ahead));
