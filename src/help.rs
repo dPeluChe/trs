@@ -341,6 +341,35 @@ EXAMPLES:
     # Run npm test with structured output
     trs --json run npm test";
 
+/// Help text for the read command.
+#[allow(dead_code)]
+pub const READ_HELP: &str = "\
+Read a file with optional filtering to reduce token consumption.
+
+FILTER LEVELS:
+    none        Raw content (default)
+    minimal     Strip comments, normalize blank lines
+    aggressive  Signatures only — imports, function/class definitions
+
+Data files (JSON, YAML, TOML, XML) are always passed through unmodified.
+
+USAGE:
+    trs read <FILE> [OPTIONS]
+
+OPTIONS:
+    -l, --level <LEVEL>    Filter level: none, minimal, aggressive
+    -n, --lines <NUM>      Max lines from start
+    -t, --tail <NUM>       Last N lines from end
+    -N, --line-numbers     Show line numbers
+
+EXAMPLES:
+    trs read src/main.rs                      # Raw content
+    trs read src/main.rs -l minimal           # Strip comments
+    trs read src/main.rs -l aggressive        # Signatures only
+    trs read src/main.rs -l aggressive -N     # Signatures + line numbers
+    trs read src/main.rs --tail 50            # Last 50 lines
+    trs --json read src/main.rs -l aggressive # JSON output";
+
 /// Help text for the json command.
 #[allow(dead_code)]
 pub const JSON_HELP: &str = "\
@@ -426,6 +455,7 @@ pub fn get_command_help(command: &str) -> Option<&'static str> {
         "txt2md" => Some(TXT2MD_HELP),
         "trim" => Some(TRIM_HELP),
         "run" => Some(RUN_HELP),
+        "read" => Some(READ_HELP),
         "json" => Some(JSON_HELP),
         "err" => Some(ERR_HELP),
         "stats" => Some(STATS_HELP),

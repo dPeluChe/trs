@@ -57,11 +57,73 @@ pub(crate) fn is_after_tail_subcommand(args: &[String], pos: usize) -> bool {
     false
 }
 
+/// Strip git global options that appear before the subcommand.
+/// Returns the args with global options removed so the subcommand can be detected.
+/// Global options: -C <path>, -c <key=val>, --git-dir=<path>, --work-tree=<path>,
+/// --no-pager, --no-optional-locks, --bare, --literal-pathspecs
+fn strip_git_global_opts(args: &[String]) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut i = 0;
+    while i < args.len() {
+        let arg = args[i].as_str();
+        match arg {
+            // Options that consume the next argument
+            "-C" | "-c" | "--git-dir" | "--work-tree" => {
+                i += 2; // skip flag + value
+                continue;
+            }
+            // Options with = syntax
+            a if a.starts_with("--git-dir=") || a.starts_with("--work-tree=") || a.starts_with("-c=") => {
+                i += 1;
+                continue;
+            }
+            // Standalone flags
+            "--no-pager" | "--no-optional-locks" | "--bare" | "--literal-pathspecs"
+            | "--no-replace-objects" | "--no-lazy-fetch" => {
+                i += 1;
+                continue;
+            }
+            _ => {
+                result.push(args[i].clone());
+                i += 1;
+            }
+        }
+    }
+    result
+}
+
+/// Check if the command args contain flags that indicate structured output.
+/// When the user explicitly requests JSON/structured output, we should passthrough.
+fn has_structured_output_flag(args: &[String]) -> bool {
+    args.iter().any(|a| {
+        let s = a.as_str();
+        s == "--json" || s == "--porcelain" || s == "--format=json"
+            || s == "--output=json" || s == "-o=json"
+            || s == "--format" && args.iter().any(|b| b == "json")
+            || s.starts_with("--format=json")
+            || s.starts_with("--output=json")
+    })
+}
+
 /// Classify an external command and return the appropriate parser to pipe through.
 /// Returns (command, args, parser) where parser is the ParseCommands variant to use,
 /// or None if no parser matches (passthrough mode).
 pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseCommands> {
-    let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
+    // If user explicitly requests structured output, don't parse — passthrough
+    if has_structured_output_flag(args) {
+        return None;
+    }
+
+    // For git commands, strip global options before detecting subcommand
+    let effective_args;
+    let args_ref = if cmd == "git" {
+        effective_args = strip_git_global_opts(args);
+        &effective_args
+    } else {
+        args
+    };
+
+    let subcmd = args_ref.first().map(|s| s.as_str()).unwrap_or("");
 
     match cmd {
         // Git commands
@@ -237,7 +299,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         eprint!("{}", stderr);
     }
 
-    // Try to classify and parse the output
+    // Try to classify and parse the output (3-tier fallback)
     let mut out_bytes = in_bytes; // default: no reduction (passthrough)
     if let Some(parser) = classify_command(cmd, args) {
         // Estimate output size based on benchmarked reduction ratios per command
@@ -268,17 +330,44 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         };
         out_bytes = (in_bytes as f64 * keep_ratio).max(1.0) as usize;
 
+        // Tier 1: Try parser
         let router = Router::new();
         let tmpdir = std::env::temp_dir();
         let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
-        if std::fs::write(&tmpfile, stdout.as_bytes()).is_ok() {
+        let parse_ok = if std::fs::write(&tmpfile, stdout.as_bytes()).is_ok() {
             let parser_with_file = inject_file_path(parser, tmpfile.clone());
             let parse_cmd = Commands::Parse { parser: parser_with_file };
-            router.execute_and_print(&parse_cmd, ctx);
+
+            // Capture parser panics/errors — fallback to passthrough
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                router.route(&parse_cmd, ctx)
+            }));
+
             let _ = std::fs::remove_file(&tmpfile);
+
+            match result {
+                Ok(Ok(())) => true,   // Tier 1: Full — parser succeeded
+                Ok(Err(_)) => false,  // Tier 3: Parser returned error
+                Err(_) => false,      // Tier 3: Parser panicked
+            }
         } else {
-            print!("{}", stdout);
-            out_bytes = in_bytes; // passthrough, no reduction
+            false
+        };
+
+        // Tier 3: Passthrough with truncation (parser failed)
+        if !parse_ok {
+            let passthrough_max = crate::config::config().limits.passthrough_max_chars;
+            let truncated = if stdout.len() > passthrough_max {
+                let cut = &stdout[..passthrough_max];
+                format!(
+                    "{}\n[trs:passthrough — truncated at {} chars, full output: {} chars]",
+                    cut, passthrough_max, stdout.len()
+                )
+            } else {
+                stdout.to_string()
+            };
+            print!("{}", truncated);
+            out_bytes = truncated.len();
         }
     } else {
         // No parser matched — passthrough the output as-is
@@ -312,15 +401,16 @@ fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
     // Create tee directory if needed
     std::fs::create_dir_all(&tee_dir).ok()?;
 
-    // Clean old tee files (keep last 20)
+    // Clean old tee files (keep last N from config)
+    let max_files = crate::config::config().limits.tee_max_files;
     if let Ok(entries) = std::fs::read_dir(&tee_dir) {
         let mut files: Vec<std::path::PathBuf> = entries
             .filter_map(|e| e.ok().map(|e| e.path()))
             .filter(|p| p.extension().map_or(false, |e| e == "log"))
             .collect();
         files.sort();
-        if files.len() > 20 {
-            for old in &files[..files.len() - 20] {
+        if files.len() > max_files {
+            for old in &files[..files.len() - max_files] {
                 let _ = std::fs::remove_file(old);
             }
         }
@@ -349,6 +439,13 @@ fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
             content.push_str("\n--- stderr ---\n");
         }
         content.push_str(stderr);
+    }
+
+    // Truncate if exceeds max size
+    let max_bytes = crate::config::config().limits.tee_max_bytes;
+    if max_bytes > 0 && content.len() > max_bytes {
+        content.truncate(max_bytes);
+        content.push_str(&format!("\n--- truncated at {} bytes ---", max_bytes));
     }
 
     std::fs::write(&filepath, &content).ok()?;

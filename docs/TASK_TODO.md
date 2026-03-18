@@ -17,22 +17,22 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] Detect pipe context — skip rewriting find/fd when piped (breaks xargs/wc/sort)
 
 ### Safety & Robustness
-- [ ] Passthrough inteligente — si el comando ya tiene `--json`, `--porcelain`, `--format=json` no filtrar
-- [ ] Fallback seguro (3-tier): parser OK → degraded con warnings → truncated passthrough (2000 chars) con `[trs:passthrough]` marker
-- [ ] Git global options support (`-C <path>`, `--no-pager`, `--git-dir`) en classifier antes de detectar subcommand
-- [ ] Tee system: min size threshold (500B), max file size (1MB con truncation marker)
+- [x] Passthrough inteligente — detect `--json`, `--porcelain`, `--format=json` → skip parser
+- [x] Fallback seguro (3-tier): parser OK → degraded → truncated passthrough with `[trs:passthrough]` marker
+- [x] Git global options support (`-C`, `--no-pager`, `--git-dir`, etc.) stripped before classification
+- [x] Tee system: configurable max file size + max files via config.toml
 
 ---
 
 ## Phase 2 — Expand Parsers & Core Features
 
 ### `trs read <file>` — File reading with filter levels
-- [ ] Minimal filter: strip comments, normalize blank lines, keep docstrings
-- [ ] Aggressive filter: signatures-only (imports + function/class definitions, skip bodies)
-- [ ] Language detection por extension (Rust, Python, TypeScript, Go, Java, etc.)
-- [ ] Data file protection: JSON/YAML/TOML/XML nunca strip comments (son datos, no codigo)
-- [ ] Regex fallback path (como Neurosyntax de claw-compactor, sin dependencia de tree-sitter)
-- [ ] `--lines N` y `--tail N` para limitar output
+- [x] Minimal filter: strip comments, normalize blank lines, preserve TODOs/pragmas
+- [x] Aggressive filter: signatures-only (imports + fn/class/struct definitions, skip bodies)
+- [x] Language detection by extension (Rust, Python, JS/TS, Go, Java/C/C++, Ruby, Shell)
+- [x] Data file protection: JSON/YAML/TOML/XML always passthrough unmodified
+- [x] Regex-based filtering (no tree-sitter dependency)
+- [x] `--lines N` and `--tail N` for line range limits, `--line-numbers`
 
 ### New Parsers
 - [ ] kubectl output (pods, services, deployments, logs)
@@ -64,15 +64,9 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 ## Phase 3 — Analytics & Configuracion
 
 ### Configurable Limits (`~/.trs/config.toml`)
-- [ ] `[limits]` section con caps tunables:
-  - `grep_max_results = 200` (total matches)
-  - `grep_max_per_file = 25` (per-file)
-  - `status_max_files = 15` (git status staged/modified)
-  - `status_max_untracked = 10`
-  - `passthrough_max_chars = 2000` (fallback truncation)
-  - `json_max_depth = 10`
-  - `json_keys_per_object = 30`
-- [ ] Defaults sanos, override por proyecto (`.trs/config.toml` local)
+- [x] `[limits]` section: grep_max_results, grep_max_per_file, status_max_files, status_max_untracked, passthrough_max_chars, json_max_depth, json_keys_per_object, tee_max_bytes, tee_max_files
+- [x] Defaults sanos, project-local override via `.trs/config.toml`
+- [ ] Wire limits into existing parsers (grep, git status) — currently defined but not consumed by all handlers
 
 ### Analytics
 - [ ] `trs discover` — scan Claude Code history (`~/.claude/`) for missed savings opportunities

@@ -21,6 +21,7 @@ ignore = "0.4"
 regex = "1"
 htmd = "0.5"
 ureq = { version = "3", features = ["rustls-webpki-roots"] }
+toml = "0.8"
 
 [dev-dependencies]
 assert_cmd = "2"

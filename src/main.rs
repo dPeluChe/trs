@@ -3,6 +3,7 @@ use clap::Parser;
 mod classifier;
 mod cli;
 mod commands;
+pub(crate) mod config;
 mod formatter;
 mod help;
 #[allow(dead_code)]
@@ -55,6 +56,7 @@ fn main() {
             | Commands::Html2md { .. }
             | Commands::Txt2md { .. }
             | Commands::IsClean { .. }
+            | Commands::Read { .. }
             | Commands::Json { .. }
             | Commands::Err { .. }) => {
             router.execute_and_print(cli.command.as_ref().unwrap(), &ctx);

@@ -217,6 +217,29 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Read a file with optional filtering (strip comments, signatures-only)
+    #[command(long_about = help::READ_HELP)]
+    Read {
+        /// File to read
+        file: PathBuf,
+
+        /// Filter level: minimal (strip comments) or aggressive (signatures only)
+        #[arg(short = 'l', long, value_enum, default_value = "none")]
+        level: ReadLevel,
+
+        /// Maximum number of lines to show (from start)
+        #[arg(short = 'n', long)]
+        lines: Option<usize>,
+
+        /// Show last N lines (from end)
+        #[arg(short = 't', long)]
+        tail: Option<usize>,
+
+        /// Show line numbers
+        #[arg(short = 'N', long)]
+        line_numbers: bool,
+    },
+
     /// Show JSON structure without values (keys + types + array lengths)
     #[command(long_about = help::JSON_HELP)]
     Json {
@@ -467,6 +490,17 @@ pub enum ParseCommands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+}
+
+/// Filter level for `trs read`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ReadLevel {
+    /// No filtering — raw content
+    None,
+    /// Strip comments, normalize blank lines
+    Minimal,
+    /// Signatures only — imports + definitions
+    Aggressive,
 }
 
 /// Supported test runners

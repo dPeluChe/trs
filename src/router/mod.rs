@@ -22,6 +22,7 @@ use handlers::txt2md::*;
 use handlers::isclean::*;
 use handlers::parse::*;
 use handlers::json::*;
+use handlers::read::*;
 
 use crate::{Commands, OutputFormat};
 #[allow(unused_imports)]
@@ -39,6 +40,7 @@ pub struct Router {
     is_clean_handler: IsCleanHandler,
     parse_handler: ParseHandler,
     json_handler: JsonHandler,
+    read_handler: ReadHandler,
 }
 
 impl Router {
@@ -56,6 +58,7 @@ impl Router {
             is_clean_handler: IsCleanHandler,
             parse_handler: ParseHandler,
             json_handler: JsonHandler,
+            read_handler: ReadHandler,
         }
     }
 
@@ -185,6 +188,21 @@ impl Router {
                 self.is_clean_handler.execute(&input, ctx)
             }
             Commands::Parse { parser } => self.parse_handler.execute(parser, ctx),
+            Commands::Read { file, level, lines, tail, line_numbers } => {
+                let filter_level = match level {
+                    crate::commands::ReadLevel::None => FilterLevel::None,
+                    crate::commands::ReadLevel::Minimal => FilterLevel::Minimal,
+                    crate::commands::ReadLevel::Aggressive => FilterLevel::Aggressive,
+                };
+                let input = ReadInput {
+                    file: file.clone(),
+                    level: filter_level,
+                    max_lines: *lines,
+                    tail_lines: *tail,
+                    line_numbers: *line_numbers,
+                };
+                self.read_handler.execute(&input, ctx)
+            }
             Commands::Json { file, depth } => {
                 let input = JsonInput {
                     file: file.clone(),
