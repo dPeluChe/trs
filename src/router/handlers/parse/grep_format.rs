@@ -132,7 +132,7 @@ impl ParseHandler {
             .map(|f| f.matches.iter().filter(|m| !m.is_context).count())
             .sum();
 
-        // Show summary with truncation info if applicable
+        // Show summary header only for multi-file results or truncated output
         if grep_output.is_truncated {
             output.push_str(&format!(
                 "matches: {}/{} files, {}/{} results (truncated)\n",
@@ -141,7 +141,7 @@ impl ParseHandler {
                 grep_output.matches_shown,
                 grep_output.total_matches
             ));
-        } else {
+        } else if grep_output.file_count > 1 {
             output.push_str(&format!(
                 "matches: {} files, {} results\n",
                 grep_output.file_count, match_count
@@ -255,7 +255,7 @@ impl ParseHandler {
             }
         }
 
-        // Add total files and match count at the end
+        // Add total only for multi-file results or truncated output
         if grep_output.is_truncated {
             output.push_str(&format!(
                 "total: {}/{} files, {}/{} matches\n",
@@ -264,7 +264,7 @@ impl ParseHandler {
                 grep_output.matches_shown,
                 grep_output.total_matches
             ));
-        } else {
+        } else if grep_output.file_count > 1 {
             output.push_str(&format!(
                 "total: {} files, {} matches\n",
                 grep_output.file_count, match_count

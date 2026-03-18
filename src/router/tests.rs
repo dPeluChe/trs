@@ -2219,7 +2219,8 @@ Tests:       2 passed, 1 skipped, 3 total"#;
         let result = ParseHandler::parse_grep(input).unwrap();
         let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
 
-        assert!(output.contains("matches: 1 files, 2 results"));
+        // Single-file results omit header/footer for compactness
+        assert!(!output.contains("matches:"), "single-file should not have header");
         assert!(output.contains("src/main.rs (2):"));
         assert!(output.contains("42: fn main() {"));
         assert!(output.contains("45:     println!"));
@@ -2389,8 +2390,8 @@ Tests:       2 passed, 1 skipped, 3 total"#;
         let result = ParseHandler::parse_grep(input).unwrap();
         let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
 
-        // Should show 1 result (only the match), not 3
-        assert!(output.contains("matches: 1 files, 1 results"));
+        // Single-file: no header, but file line shows count (1) not (3)
+        assert!(output.contains("src/main.rs (1):"));
     }
 
     #[test]

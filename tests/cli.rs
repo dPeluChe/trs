@@ -2263,7 +2263,7 @@ fn test_parse_grep() {
         .write_stdin(grep_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("matches:"));
+        .stdout(predicate::str::contains("src/main.rs"));
 }
 
 #[test]
@@ -2303,7 +2303,6 @@ fn test_parse_grep_compact() {
         .write_stdin(grep_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("matches: 1 files, 2 results"))
         .stdout(predicate::str::contains("src/main.rs (2):"));
 }
 

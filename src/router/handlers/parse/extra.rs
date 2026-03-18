@@ -221,10 +221,11 @@ impl ParseHandler {
                 let mut out = String::new();
                 for (name, lines, words, bytes) in &entries {
                     if name.is_empty() {
-                        // Single file from stdin, no filename
-                        out.push_str(&format!("{} lines, {} words, {} bytes\n", lines, words, bytes));
+                        out.push_str(&format!("{}L {}W {}B\n", lines, words, bytes));
+                    } else if name == "total" {
+                        out.push_str(&format!("total: {}L {}W {}B\n", lines, words, bytes));
                     } else {
-                        out.push_str(&format!("{}: {} lines, {} words, {} bytes\n", name, lines, words, bytes));
+                        out.push_str(&format!("{} {}L {}W {}B\n", name, lines, words, bytes));
                     }
                 }
                 out
@@ -597,14 +598,15 @@ impl ParseHandler {
             if trimmed.contains('\t') {
                 // TSV format: number\ttitle\tauthor:branch\tstate\tdate
                 let fields: Vec<&str> = trimmed.split('\t').collect();
-                if fields.len() >= 3 {
+                if fields.len() >= 2 {
                     let number = fields[0].trim();
                     let title = fields[1].trim();
-                    let author = fields[2].split(':').next().unwrap_or("").trim();
-                    let state = fields.get(3).map(|s| s.trim()).unwrap_or("OPEN");
+                    // Extract just author name (strip branch ref like "user:branch-name")
+                    let author = fields.get(2)
+                        .map(|s| s.split(':').next().unwrap_or("").trim())
+                        .unwrap_or("");
                     prs.push(serde_json::json!({
-                        "number": number, "title": title,
-                        "author": author, "state": state
+                        "number": number, "title": title, "author": author
                     }));
                 }
             } else if trimmed.contains('#') {
@@ -726,19 +728,19 @@ impl ParseHandler {
 
             // Detect format: TSV (non-TTY) has tabs
             if trimmed.contains('\t') {
-                // TSV format: status\tconclusion\tname\tbranch\tevent\tid\telapsed\tdate
+                // TSV format: status\tconclusion\tname\tdisplay_title\tbranch\tevent\tid\telapsed\tdate
                 let fields: Vec<&str> = trimmed.split('\t').collect();
-                if fields.len() >= 4 {
+                if fields.len() >= 3 {
                     let status_text = fields[0].trim().to_lowercase();
                     let conclusion = fields[1].trim().to_lowercase();
                     let name = fields[2].trim();
-                    let id = fields.get(5).map(|s| s.trim()).unwrap_or("");
+                    let event = fields.get(5).map(|s| s.trim()).unwrap_or("");
                     let status = if conclusion == "success" { "success" }
                         else if conclusion == "failure" { "failure" }
                         else if status_text == "in_progress" { "in_progress" }
                         else if conclusion == "cancelled" { "cancelled" }
                         else { &status_text };
-                    runs.push(serde_json::json!({"name": name, "id": id, "status": status}));
+                    runs.push(serde_json::json!({"name": name, "event": event, "status": status}));
                 }
             } else {
                 // TTY format: skip headers
@@ -782,11 +784,19 @@ impl ParseHandler {
                             "in_progress" => "~",
                             _ => "?",
                         };
-                        out.push_str(&format!("  {} {} [{}]\n",
-                            marker,
-                            run["name"].as_str().unwrap_or(""),
-                            run["id"].as_str().unwrap_or("")
-                        ));
+                        let event = run["event"].as_str().unwrap_or("");
+                        if !event.is_empty() {
+                            out.push_str(&format!("  {} {} ({})\n",
+                                marker,
+                                run["name"].as_str().unwrap_or(""),
+                                event
+                            ));
+                        } else {
+                            out.push_str(&format!("  {} {}\n",
+                                marker,
+                                run["name"].as_str().unwrap_or("")
+                            ));
+                        }
                     }
                     out
                 }
