@@ -222,99 +222,179 @@ impl ParseHandler {
             output.push('\n');
         }
 
-        // Show entries with detected levels (collapse consecutive duplicates)
+        // Show entries with LogCrunch-style folding:
+        // - Fold runs of same-level INFO/DEBUG >= 3 into first + [...repeated N...] + last
+        // - Always show ERROR/WARN/FATAL lines
+        // - Detect stack traces as atomic blocks
         let has_levels = logs_output
             .entries
             .iter()
             .any(|e| e.level != LogLevel::Unknown);
+
         if has_levels {
             output.push_str("entries:\n");
-            // Collapse consecutive entries with same level and message
+            let entries = &logs_output.entries;
             let mut i = 0;
-            while i < logs_output.entries.len() {
-                let entry = &logs_output.entries[i];
-                let level_indicator = match entry.level {
-                    LogLevel::Debug => "[D]",
-                    LogLevel::Info => "[I]",
-                    LogLevel::Warning => "[W]",
-                    LogLevel::Error => "[E]",
-                    LogLevel::Fatal => "[F]",
-                    LogLevel::Unknown => "   ",
-                };
+            while i < entries.len() {
+                let entry = &entries[i];
+                let level_indicator = Self::level_indicator(entry.level);
 
-                // Count consecutive entries with same level and message
+                // ERROR/WARN/FATAL: always show + collect stack trace below
+                if matches!(entry.level, LogLevel::Error | LogLevel::Fatal | LogLevel::Warning) {
+                    output.push_str(&format!(
+                        "{} {} {}\n",
+                        level_indicator, entry.line_number, Self::preview_msg(&entry.message, 100)
+                    ));
+                    i += 1;
+
+                    // Collect stack trace lines (indented or "at "/"File "/"Caused by")
+                    while i < entries.len() && Self::is_stack_trace_line(&entries[i]) {
+                        output.push_str(&format!(
+                            "     {} {}\n",
+                            entries[i].line_number, Self::preview_msg(&entries[i].message, 100)
+                        ));
+                        i += 1;
+                    }
+                    continue;
+                }
+
+                // INFO/DEBUG/Unknown: fold consecutive runs >= 3
                 let mut count = 1;
-                let mut last_line = entry.line_number;
-                while i + count < logs_output.entries.len() {
-                    let next = &logs_output.entries[i + count];
+                while i + count < entries.len() {
+                    let next = &entries[i + count];
+                    // Same level and same message = consecutive duplicate
                     if next.level == entry.level && next.message == entry.message {
                         count += 1;
-                        last_line = next.line_number;
+                    } else if next.level == entry.level
+                        && matches!(entry.level, LogLevel::Info | LogLevel::Debug | LogLevel::Unknown)
+                    {
+                        // Same level but different message — still foldable for noise reduction
+                        count += 1;
                     } else {
                         break;
                     }
                 }
 
-                let preview = if entry.message.len() > 80 {
-                    format!("{}...", &entry.message[..77])
-                } else {
-                    entry.message.clone()
-                };
-
-                if count > 1 {
-                    output.push_str(&format!(
-                        "{} {}-{} {} [x{}]\n",
-                        level_indicator, entry.line_number, last_line, preview, count
-                    ));
-                } else {
+                if count >= 3 {
+                    // LogCrunch fold: show first + [...repeated...] + last
+                    let first = &entries[i];
+                    let last = &entries[i + count - 1];
                     output.push_str(&format!(
                         "{} {} {}\n",
-                        level_indicator, entry.line_number, preview
+                        level_indicator, first.line_number, Self::preview_msg(&first.message, 80)
                     ));
+                    output.push_str(&format!(
+                        "     [...{} similar {} lines...]\n",
+                        count - 2,
+                        Self::level_name(entry.level)
+                    ));
+                    if last.message != first.message {
+                        output.push_str(&format!(
+                            "{} {} {}\n",
+                            level_indicator, last.line_number, Self::preview_msg(&last.message, 80)
+                        ));
+                    }
+                } else {
+                    // Show individual lines (1-2 consecutive)
+                    for j in 0..count {
+                        let e = &entries[i + j];
+                        output.push_str(&format!(
+                            "{} {} {}\n",
+                            Self::level_indicator(e.level), e.line_number, Self::preview_msg(&e.message, 80)
+                        ));
+                    }
                 }
 
                 i += count;
             }
         } else {
-            // No levels detected, just show raw lines with line numbers (collapse consecutive duplicates)
+            // No levels detected — fold consecutive duplicate lines
             output.push_str("lines:\n");
+            let entries = &logs_output.entries;
             let mut i = 0;
-            while i < logs_output.entries.len() {
-                let entry = &logs_output.entries[i];
-
-                // Count consecutive entries with same line content
+            while i < entries.len() {
+                let entry = &entries[i];
                 let mut count = 1;
-                let mut last_line = entry.line_number;
-                while i + count < logs_output.entries.len() {
-                    let next = &logs_output.entries[i + count];
-                    if next.line == entry.line {
-                        count += 1;
-                        last_line = next.line_number;
-                    } else {
-                        break;
-                    }
+                while i + count < entries.len() && entries[i + count].line == entry.line {
+                    count += 1;
                 }
 
-                let preview = if entry.line.len() > 80 {
-                    format!("{}...", &entry.line[..77])
-                } else {
-                    entry.line.clone()
-                };
-
-                if count > 1 {
-                    output.push_str(&format!(
-                        "  {}-{} {} [x{}]\n",
-                        entry.line_number, last_line, preview, count
-                    ));
+                let preview = Self::preview_msg(&entry.line, 80);
+                if count >= 3 {
+                    output.push_str(&format!("  {} {}\n", entry.line_number, preview));
+                    output.push_str(&format!("     [...repeated {} times...]\n", count - 2));
+                    output.push_str(&format!("  {} {}\n", entries[i + count - 1].line_number, preview));
+                } else if count == 2 {
+                    output.push_str(&format!("  {} {}\n", entry.line_number, preview));
+                    output.push_str(&format!("  {} {}\n", entries[i + 1].line_number, preview));
                 } else {
                     output.push_str(&format!("  {} {}\n", entry.line_number, preview));
                 }
-
                 i += count;
             }
         }
 
         output
+    }
+
+    /// Level indicator string.
+    fn level_indicator(level: LogLevel) -> &'static str {
+        match level {
+            LogLevel::Debug => "[D]",
+            LogLevel::Info => "[I]",
+            LogLevel::Warning => "[W]",
+            LogLevel::Error => "[E]",
+            LogLevel::Fatal => "[F]",
+            LogLevel::Unknown => "   ",
+        }
+    }
+
+    /// Level name for fold messages.
+    fn level_name(level: LogLevel) -> &'static str {
+        match level {
+            LogLevel::Debug => "debug",
+            LogLevel::Info => "info",
+            LogLevel::Warning => "warn",
+            LogLevel::Error => "error",
+            LogLevel::Fatal => "fatal",
+            LogLevel::Unknown => "",
+        }
+    }
+
+    /// Preview a message, truncating if needed.
+    fn preview_msg(msg: &str, max: usize) -> String {
+        if msg.len() > max {
+            format!("{}...", &msg[..max - 3])
+        } else {
+            msg.to_string()
+        }
+    }
+
+    /// Check if a log entry looks like a stack trace continuation line.
+    fn is_stack_trace_line(entry: &LogEntry) -> bool {
+        let trimmed = entry.line.trim();
+        // Indented lines
+        if entry.line.starts_with("  ") || entry.line.starts_with('\t') {
+            return true;
+        }
+        // Common stack trace patterns
+        if trimmed.starts_with("at ")
+            || trimmed.starts_with("File \"")
+            || trimmed.starts_with("Caused by:")
+            || trimmed.starts_with("Traceback")
+            || trimmed.starts_with("goroutine ")
+            || trimmed.starts_with("... ")
+            || (trimmed.starts_with("in ") && trimmed.contains("line "))
+        {
+            return true;
+        }
+        // Rust backtrace: "  0: ..." or "  1: ..."
+        if trimmed.len() > 3 && trimmed.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+            if trimmed.chars().nth(1) == Some(':') || trimmed.chars().nth(2) == Some(':') {
+                return true;
+            }
+        }
+        false
     }
 
     /// Format logs output as raw (original format).

@@ -39,6 +39,7 @@ impl ParseHandler {
         let mut diff = GitDiff::default();
         let mut current_file: Option<GitDiffEntry> = None;
         let mut in_hunk = false;
+        let mut current_hunk: Option<GitDiffHunk> = None;
 
         // Detect --stat format: lines contain " | " with +/- counts
         let is_stat = input.lines().any(|l| l.contains(" | ") && (l.contains('+') || l.contains('-') || l.contains("Bin ")));
@@ -49,6 +50,10 @@ impl ParseHandler {
         for line in input.lines() {
             // Detect diff header for a new file
             if line.starts_with("diff --git ") {
+                // Flush current hunk into current file
+                if let (Some(ref mut file), Some(hunk)) = (&mut current_file, current_hunk.take()) {
+                    file.hunks.push(hunk);
+                }
                 // Save the previous file if any
                 if let Some(file) = current_file.take() {
                     diff.files.push(file);
@@ -84,6 +89,7 @@ impl ParseHandler {
                     additions: 0,
                     deletions: 0,
                     is_binary: false,
+                    hunks: Vec::new(),
                 });
                 in_hunk = false;
                 continue;
@@ -150,17 +156,31 @@ impl ParseHandler {
 
             // Detect hunk header "@@ -start,count +start,count @@"
             if line.starts_with("@@ ") {
+                // Flush previous hunk into current file
+                if let (Some(ref mut file), Some(hunk)) = (&mut current_file, current_hunk.take()) {
+                    file.hunks.push(hunk);
+                }
+                current_hunk = Some(GitDiffHunk {
+                    header: line.to_string(),
+                    lines: Vec::new(),
+                });
                 in_hunk = true;
                 continue;
             }
 
-            // Count additions and deletions in hunks
+            // Count additions and deletions in hunks, and collect hunk lines
             if in_hunk {
                 if let Some(ref mut file) = current_file {
                     if line.starts_with('+') && !line.starts_with("+++") {
                         file.additions += 1;
                     } else if line.starts_with('-') && !line.starts_with("---") {
                         file.deletions += 1;
+                    }
+                }
+                // Collect hunk lines (context, additions, deletions — skip --- and +++ headers)
+                if !line.starts_with("---") && !line.starts_with("+++") {
+                    if let Some(ref mut hunk) = current_hunk {
+                        hunk.lines.push(line.to_string());
                     }
                 }
             }
@@ -182,6 +202,11 @@ impl ParseHandler {
                     }
                 }
             }
+        }
+
+        // Flush the last hunk into the last file
+        if let (Some(ref mut file), Some(hunk)) = (&mut current_file, current_hunk.take()) {
+            file.hunks.push(hunk);
         }
 
         // Don't forget the last file
@@ -234,7 +259,7 @@ impl ParseHandler {
                 let change_type = if is_binary { "M" } else if deletions == 0 && additions > 0 { "A" } else if additions == 0 && deletions > 0 { "D" } else { "M" };
                 diff.files.push(GitDiffEntry {
                     path, new_path: None, change_type: change_type.to_string(),
-                    additions, deletions, is_binary,
+                    additions, deletions, is_binary, hunks: Vec::new(),
                 });
             }
         }
@@ -299,6 +324,85 @@ impl ParseHandler {
         .to_string()
     }
 
+    /// Maximum context lines before compression kicks in.
+    const CONTEXT_COMPRESS_THRESHOLD: usize = 4;
+    /// Maximum total output lines before large-diff summary mode activates.
+    const LARGE_DIFF_LINE_THRESHOLD: usize = 200;
+
+    /// Compress a context block: if more than CONTEXT_COMPRESS_THRESHOLD lines,
+    /// keep first 1 + "[...N unchanged lines...]" + last 1.
+    fn compress_context_block(block: &[String]) -> Vec<String> {
+        if block.len() <= Self::CONTEXT_COMPRESS_THRESHOLD {
+            return block.to_vec();
+        }
+        let hidden = block.len() - 2;
+        vec![
+            block[0].clone(),
+            format!("  [...{} unchanged lines...]", hidden),
+            block[block.len() - 1].clone(),
+        ]
+    }
+
+    /// Format hunk lines with context compression applied.
+    fn format_hunk_compressed(hunk: &GitDiffHunk) -> Vec<String> {
+        let mut result = Vec::new();
+        result.push(hunk.header.clone());
+
+        let mut context_block: Vec<String> = Vec::new();
+
+        for line in &hunk.lines {
+            let is_context = line.starts_with(' ') || (!line.starts_with('+') && !line.starts_with('-'));
+            if is_context {
+                context_block.push(line.clone());
+            } else {
+                // Flush context block with compression
+                if !context_block.is_empty() {
+                    result.extend(Self::compress_context_block(&context_block));
+                    context_block.clear();
+                }
+                result.push(line.clone());
+            }
+        }
+
+        // Flush trailing context block
+        if !context_block.is_empty() {
+            result.extend(Self::compress_context_block(&context_block));
+        }
+
+        result
+    }
+
+    /// Build the file summary header for large diffs.
+    fn build_file_summary(diff: &GitDiff) -> String {
+        let mut summary = String::from("--- file summary ---\n");
+        for file in &diff.files {
+            let indicator = match file.change_type.as_str() {
+                "A" => "+",
+                "D" => "-",
+                "R" => "R",
+                "C" => "C",
+                _ => "M",
+            };
+            if let Some(ref old_path) = file.new_path {
+                summary.push_str(&format!(
+                    "  {} {} -> {} (+{}/-{})\n",
+                    indicator, old_path, file.path, file.additions, file.deletions
+                ));
+            } else {
+                summary.push_str(&format!(
+                    "  {} {} (+{}/-{})\n",
+                    indicator, file.path, file.additions, file.deletions
+                ));
+            }
+        }
+        summary.push_str(&format!(
+            "total: +{} -{}\n",
+            diff.total_additions, diff.total_deletions
+        ));
+        summary.push_str("---\n");
+        summary
+    }
+
     /// Format git diff in compact format.
     pub(crate) fn format_git_diff_compact(diff: &GitDiff) -> String {
         let mut output = String::new();
@@ -338,6 +442,14 @@ impl ParseHandler {
                     change_indicator, file.path, file.additions, file.deletions
                 ));
             }
+
+            // Output compressed hunks for this file (only if hunks were collected)
+            for hunk in &file.hunks {
+                let compressed = Self::format_hunk_compressed(hunk);
+                for line in &compressed {
+                    output.push_str(&format!("    {}\n", line));
+                }
+            }
         }
 
         // Show truncation warning if applicable
@@ -350,6 +462,14 @@ impl ParseHandler {
             "summary: +{} -{}\n",
             diff.total_additions, diff.total_deletions
         ));
+
+        // Large diff summary: if total output exceeds threshold, prepend file summary and append hint
+        let line_count = output.lines().count();
+        if line_count > Self::LARGE_DIFF_LINE_THRESHOLD {
+            let summary = Self::build_file_summary(diff);
+            let hint = "[full diff: trs git diff --raw]\n";
+            return format!("{}{}{}", summary, output, hint);
+        }
 
         output
     }

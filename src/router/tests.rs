@@ -3788,27 +3788,34 @@ Ran 4 tests across 1 files. [0.66ms]"#;
 
     #[test]
     fn test_format_logs_compact_collapses_consecutive_entries_no_levels() {
-        // Test that consecutive identical lines (no log levels) are collapsed in output
+        // Test LogCrunch-style folding: first + [...repeated N...] + last
         let input = "Same line\nSame line\nSame line\nDifferent\nDifferent\nUnique";
         let result = ParseHandler::parse_logs(input);
         let output = ParseHandler::format_logs(&result, OutputFormat::Compact);
 
-        // Should show line ranges for collapsed entries
-        assert!(output.contains("1-3 Same line [x3]"));
-        assert!(output.contains("4-5 Different [x2]"));
+        // 3 identical → first + [...repeated 1 times...] + last
+        assert!(output.contains("1 Same line"));
+        assert!(output.contains("repeated"));
+        assert!(output.contains("3 Same line"));
+        // 2 identical → shown individually (below fold threshold)
+        assert!(output.contains("4 Different"));
+        assert!(output.contains("5 Different"));
         assert!(output.contains("6 Unique"));
     }
 
     #[test]
     fn test_format_logs_compact_collapses_consecutive_entries_with_levels() {
-        // Test that consecutive identical entries with log levels are collapsed
+        // Test LogCrunch-style folding with log levels
         let input = "[INFO] Starting\n[INFO] Starting\n[INFO] Starting\n[ERROR] Failed\n[ERROR] Failed\n[WARN] Warning";
         let result = ParseHandler::parse_logs(input);
         let output = ParseHandler::format_logs(&result, OutputFormat::Compact);
 
-        // Should show collapsed entries with line ranges
-        assert!(output.contains("[I] 1-3 Starting [x3]"));
-        assert!(output.contains("[E] 4-5 Failed [x2]"));
+        // 3 INFO → folded (first + fold marker + last not shown since same message)
+        assert!(output.contains("[I] 1 Starting"));
+        assert!(output.contains("similar info"));
+        // ERROR/WARN always shown individually
+        assert!(output.contains("[E] 4 Failed"));
+        assert!(output.contains("[E] 5 Failed"));
         assert!(output.contains("[W] 6 Warning"));
     }
 

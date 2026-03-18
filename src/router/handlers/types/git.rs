@@ -63,6 +63,15 @@ pub(crate) struct GitStatus {
 // Git Diff Data Structures
 // ============================================================
 
+/// A single hunk in a git diff file entry.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct GitDiffHunk {
+    /// The hunk header line (e.g., "@@ -10,6 +10,8 @@ fn main()").
+    pub(crate) header: String,
+    /// Lines within the hunk: context (starts with ' '), additions ('+'), deletions ('-').
+    pub(crate) lines: Vec<String>,
+}
+
 /// A single file entry in git diff output.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GitDiffEntry {
@@ -78,6 +87,8 @@ pub(crate) struct GitDiffEntry {
     pub(crate) deletions: usize,
     /// Binary file flag.
     pub(crate) is_binary: bool,
+    /// Parsed hunks with their lines (for compact output with context compression).
+    pub(crate) hunks: Vec<GitDiffHunk>,
 }
 
 /// Parsed git diff output.
