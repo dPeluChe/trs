@@ -490,6 +490,15 @@ pub enum ParseCommands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+
+    /// Parse cargo test output
+    ///
+    /// Example: cargo test 2>&1 | trs parse cargo-test
+    CargoTest {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
 }
 
 /// Filter level for `trs read`

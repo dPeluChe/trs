@@ -195,7 +195,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // Build tools
         "cargo" => match subcmd {
             "build" | "check" | "clippy" => Some(ParseCommands::Build { file: None }),
-            "test" => Some(ParseCommands::Test { runner: Some(TestRunner::Pytest), file: None }),
+            "test" => Some(ParseCommands::CargoTest { file: None }),
             "tree" => Some(ParseCommands::Deps { file: None }),
             "install" => Some(ParseCommands::Install { file: None }),
             _ => None,
@@ -263,6 +263,7 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::GhPr { .. } => ParseCommands::GhPr { file: Some(path) },
         ParseCommands::GhIssue { .. } => ParseCommands::GhIssue { file: Some(path) },
         ParseCommands::GhRun { .. } => ParseCommands::GhRun { file: Some(path) },
+        ParseCommands::CargoTest { .. } => ParseCommands::CargoTest { file: Some(path) },
     }
 }
 
@@ -319,6 +320,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             ("npm" | "pnpm" | "yarn" | "pip" | "pip3" | "cargo", "install" | "i") => 0.20,
             ("npm" | "pip" | "pip3" | "cargo", "ls" | "list" | "tree" | "freeze") => 0.40,
             ("cargo", "build" | "check" | "clippy") => 0.10,
+            ("cargo", "test") => 0.05,
             ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
             ("pytest" | "jest" | "vitest", _) => 0.10,
             ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,

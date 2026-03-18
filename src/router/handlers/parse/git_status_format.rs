@@ -131,6 +131,9 @@ impl ParseHandler {
 
     /// Format git status in compact format.
     pub(crate) fn format_git_status_compact(status: &GitStatus) -> String {
+        let limits = &crate::config::config().limits;
+        let max_files = limits.status_max_files;
+        let max_untracked = limits.status_max_untracked;
         let mut output = String::new();
 
         // Branch info with ahead/behind inline
@@ -156,45 +159,25 @@ impl ParseHandler {
             return output;
         }
 
-        // Staged changes
+        // Staged changes (capped by config)
         if !status.staged.is_empty() {
             output.push_str(&format!("staged ({}):\n", status.staged.len()));
-            for entry in &status.staged {
-                if let Some(ref new_path) = entry.new_path {
-                    output.push_str(&format!(
-                        "  {} {} -> {}\n",
-                        entry.status, new_path, entry.path
-                    ));
-                } else {
-                    output.push_str(&format!("  {} {}\n", entry.status, entry.path));
-                }
-            }
+            Self::format_entries_capped(&status.staged, max_files, &mut output);
         }
 
-        // Unstaged changes
+        // Unstaged changes (capped by config)
         if !status.unstaged.is_empty() {
             output.push_str(&format!("unstaged ({}):\n", status.unstaged.len()));
-            for entry in &status.unstaged {
-                if let Some(ref new_path) = entry.new_path {
-                    output.push_str(&format!(
-                        "  {} {} -> {}\n",
-                        entry.status, new_path, entry.path
-                    ));
-                } else {
-                    output.push_str(&format!("  {} {}\n", entry.status, entry.path));
-                }
-            }
+            Self::format_entries_capped(&status.unstaged, max_files, &mut output);
         }
 
-        // Untracked files
+        // Untracked files (capped by config — separate, usually more aggressive)
         if !status.untracked.is_empty() {
             output.push_str(&format!("untracked ({}):\n", status.untracked.len()));
-            for entry in &status.untracked {
-                output.push_str(&format!("  {} {}\n", entry.status, entry.path));
-            }
+            Self::format_entries_capped(&status.untracked, max_untracked, &mut output);
         }
 
-        // Unmerged files
+        // Unmerged files (always show all — critical info)
         if !status.unmerged.is_empty() {
             output.push_str(&format!("unmerged ({}):\n", status.unmerged.len()));
             for entry in &status.unmerged {
@@ -210,6 +193,24 @@ impl ParseHandler {
         }
 
         output
+    }
+
+    /// Format a list of entries with a cap, showing truncation hint.
+    fn format_entries_capped(entries: &[GitStatusEntry], max: usize, output: &mut String) {
+        let show = entries.len().min(max);
+        for entry in entries.iter().take(show) {
+            if let Some(ref new_path) = entry.new_path {
+                output.push_str(&format!(
+                    "  {} {} -> {}\n",
+                    entry.status, new_path, entry.path
+                ));
+            } else {
+                output.push_str(&format!("  {} {}\n", entry.status, entry.path));
+            }
+        }
+        if entries.len() > max {
+            output.push_str(&format!("  ...+{} more\n", entries.len() - max));
+        }
     }
 
     /// Format git status as raw output (just the files).

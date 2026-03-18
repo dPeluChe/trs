@@ -2480,9 +2480,9 @@ fn test_parse_grep_truncation_json_not_truncated() {
 
 #[test]
 fn test_parse_grep_truncation_json_many_files() {
-    // Create input with 60 files (exceeds DEFAULT_MAX_GREP_FILES = 50)
+    // Create input with 210 files (exceeds config grep_max_results = 200)
     let mut grep_input = String::new();
-    for i in 1..=60 {
+    for i in 1..=210 {
         grep_input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
     }
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -2496,9 +2496,8 @@ fn test_parse_grep_truncation_json_many_files() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(json["is_truncated"], true);
-    assert_eq!(json["counts"]["total_files"], 60);
-    assert_eq!(json["counts"]["files_shown"], 50);
-    // Verify truncation happened - files_shown should be less than total_files
+    assert_eq!(json["counts"]["total_files"], 210);
+    assert_eq!(json["counts"]["files_shown"], 200);
     assert!(
         json["counts"]["files_shown"].as_u64().unwrap()
             < json["counts"]["total_files"].as_u64().unwrap()
@@ -2507,9 +2506,9 @@ fn test_parse_grep_truncation_json_many_files() {
 
 #[test]
 fn test_parse_grep_truncation_json_many_matches_per_file() {
-    // Create input with 1 file but 25 matches (exceeds DEFAULT_MAX_GREP_MATCHES_PER_FILE = 20)
+    // Create input with 1 file but 30 matches (exceeds config grep_max_per_file = 25)
     let mut grep_input = String::new();
-    for i in 1..=25 {
+    for i in 1..=30 {
         grep_input.push_str(&format!("src/main.rs:{}:fn func{}() {{\n", i, i));
     }
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -2523,9 +2522,8 @@ fn test_parse_grep_truncation_json_many_matches_per_file() {
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(json["is_truncated"], true);
-    assert_eq!(json["counts"]["total_matches"], 25);
-    assert_eq!(json["counts"]["matches_shown"], 20);
-    // Verify truncation happened - matches_shown should be less than total_matches
+    assert_eq!(json["counts"]["total_matches"], 30);
+    assert_eq!(json["counts"]["matches_shown"], 25);
     assert!(
         json["counts"]["matches_shown"].as_u64().unwrap()
             < json["counts"]["total_matches"].as_u64().unwrap()
@@ -2534,9 +2532,9 @@ fn test_parse_grep_truncation_json_many_matches_per_file() {
 
 #[test]
 fn test_parse_grep_truncation_compact_format() {
-    // Create input with 60 files to trigger truncation
+    // Create input with 210 files to trigger truncation (config max = 200)
     let mut grep_input = String::new();
-    for i in 1..=60 {
+    for i in 1..=210 {
         grep_input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
     }
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -2547,15 +2545,15 @@ fn test_parse_grep_truncation_compact_format() {
         .assert()
         .success()
         .stdout(predicate::str::contains("truncated"))
-        .stdout(predicate::str::contains("50/60"))
+        .stdout(predicate::str::contains("200/210"))
         .stdout(predicate::str::contains("10 more file"));
 }
 
 #[test]
 fn test_parse_grep_truncation_raw_format() {
-    // Create input with 60 files to trigger truncation
+    // Create input with 210 files to trigger truncation (config max = 200)
     let mut grep_input = String::new();
-    for i in 1..=60 {
+    for i in 1..=210 {
         grep_input.push_str(&format!("src/file{}.rs:{}:fn func() {{\n", i, i));
     }
     let mut cmd = Command::cargo_bin("trs").unwrap();

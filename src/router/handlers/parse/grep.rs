@@ -11,11 +11,12 @@ impl ParseHandler {
         // Parse the grep output
         let mut grep_output = Self::parse_grep(&input)?;
 
-        // Apply truncation for large result sets
+        // Apply truncation for large result sets (limits from config)
+        let limits = &crate::config::config().limits;
         Self::truncate_grep(
             &mut grep_output,
-            Self::DEFAULT_MAX_GREP_FILES,
-            Self::DEFAULT_MAX_GREP_MATCHES_PER_FILE,
+            limits.grep_max_results,
+            limits.grep_max_per_file,
         );
 
         // Format output based on the requested format
@@ -110,12 +111,6 @@ impl ParseHandler {
 
         Ok(grep_output)
     }
-
-    /// Default maximum number of files to show in grep output before truncation.
-    pub(crate) const DEFAULT_MAX_GREP_FILES: usize = 50;
-
-    /// Default maximum number of matches per file to show before truncation.
-    pub(crate) const DEFAULT_MAX_GREP_MATCHES_PER_FILE: usize = 20;
 
     /// Truncate grep output if it exceeds the limits.
     ///
