@@ -217,6 +217,18 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Show JSON structure without values (keys + types + array lengths)
+    #[command(long_about = help::JSON_HELP)]
+    Json {
+        /// Input JSON file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+
+        /// Maximum depth to display
+        #[arg(short, long)]
+        depth: Option<usize>,
+    },
+
     /// Run a command and show only errors and warnings
     #[command(long_about = "Run any command and filter output to show only errors and warnings.\n\nExamples:\n  trs err cargo build\n  trs err npm test\n  trs err make all")]
     Err {
@@ -424,6 +436,33 @@ pub enum ParseCommands {
     ///
     /// Example: curl -v https://example.com 2>&1 | trs parse download
     Download {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse gh pr list output
+    ///
+    /// Example: gh pr list | trs parse gh-pr
+    GhPr {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse gh issue list output
+    ///
+    /// Example: gh issue list | trs parse gh-issue
+    GhIssue {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse gh run list output
+    ///
+    /// Example: gh run list | trs parse gh-run
+    GhRun {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
         file: Option<PathBuf>,

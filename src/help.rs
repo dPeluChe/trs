@@ -341,6 +341,38 @@ EXAMPLES:
     # Run npm test with structured output
     trs --json run npm test";
 
+/// Help text for the json command.
+#[allow(dead_code)]
+pub const JSON_HELP: &str = "\
+Show JSON structure without values.
+
+Reads JSON from a file or stdin and displays the structure: keys, types,
+and array lengths. Reduces large API responses to a compact schema overview.
+
+USAGE:
+    trs json [OPTIONS] [-f <FILE>]
+
+OPTIONS:
+    -f, --file <FILE>    Input JSON file (stdin if not specified)
+    -d, --depth <NUM>    Maximum depth to display
+
+OUTPUT:
+    Shows keys with their value types: String, Number, Bool, Null,
+    Array[N], Object{N keys}. Long strings show length: String[1024].
+
+EXAMPLES:
+    # Inspect a JSON API response
+    cat response.json | trs json
+
+    # Inspect with depth limit
+    trs json -f config.json --depth 2
+
+    # From curl output
+    curl -s https://api.github.com/users/octocat | trs json
+
+    # JSON schema output
+    cat data.json | trs --json json";
+
 /// Help text for the err command.
 #[allow(dead_code)]
 pub const ERR_HELP: &str = "\
@@ -394,6 +426,7 @@ pub fn get_command_help(command: &str) -> Option<&'static str> {
         "txt2md" => Some(TXT2MD_HELP),
         "trim" => Some(TRIM_HELP),
         "run" => Some(RUN_HELP),
+        "json" => Some(JSON_HELP),
         "err" => Some(ERR_HELP),
         "stats" => Some(STATS_HELP),
         _ => None,

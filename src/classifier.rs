@@ -144,6 +144,14 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         }
         "tsc" => Some(ParseCommands::Build { file: None }),
 
+        // GitHub CLI
+        "gh" => match subcmd {
+            "pr" if args.get(1).map(|s| s.as_str()) == Some("list") => Some(ParseCommands::GhPr { file: None }),
+            "issue" if args.get(1).map(|s| s.as_str()) == Some("list") => Some(ParseCommands::GhIssue { file: None }),
+            "run" if args.get(1).map(|s| s.as_str()) == Some("list") => Some(ParseCommands::GhRun { file: None }),
+            _ => None,
+        },
+
         // Environment
         "env" | "printenv" => Some(ParseCommands::Env { file: None }),
 
@@ -190,6 +198,9 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::Env { .. } => ParseCommands::Env { file: Some(path) },
         ParseCommands::Wc { .. } => ParseCommands::Wc { file: Some(path) },
         ParseCommands::Download { .. } => ParseCommands::Download { file: Some(path) },
+        ParseCommands::GhPr { .. } => ParseCommands::GhPr { file: Some(path) },
+        ParseCommands::GhIssue { .. } => ParseCommands::GhIssue { file: Some(path) },
+        ParseCommands::GhRun { .. } => ParseCommands::GhRun { file: Some(path) },
     }
 }
 
@@ -252,6 +263,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             ("wc", _) => 0.50,
             ("wget", _) => 0.15,
             ("curl", _) => 0.15,
+            ("gh", "pr" | "issue" | "run") => 0.30,
             _ => 0.50,
         };
         out_bytes = (in_bytes as f64 * keep_ratio).max(1.0) as usize;
@@ -282,8 +294,63 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     };
     crate::tracker::log_execution(&full_cmd, in_bytes, out_bytes, duration_ms);
 
-    // Propagate exit code
+    // Tee system: on failure, save full raw output for recovery
     if !output.status.success() {
+        if let Some(tee_path) = save_tee_output(&full_cmd, &stdout, &stderr) {
+            eprintln!("[full output: {}]", tee_path);
+        }
         std::process::exit(output.status.code().unwrap_or(1));
     }
+}
+
+/// Save full command output to ~/.trs/tee/ for failure recovery.
+/// Returns the path to the saved file, or None if saving failed.
+fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let tee_dir = std::path::Path::new(&home).join(".trs").join("tee");
+
+    // Create tee directory if needed
+    std::fs::create_dir_all(&tee_dir).ok()?;
+
+    // Clean old tee files (keep last 20)
+    if let Ok(entries) = std::fs::read_dir(&tee_dir) {
+        let mut files: Vec<std::path::PathBuf> = entries
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| p.extension().map_or(false, |e| e == "log"))
+            .collect();
+        files.sort();
+        if files.len() > 20 {
+            for old in &files[..files.len() - 20] {
+                let _ = std::fs::remove_file(old);
+            }
+        }
+    }
+
+    // Generate filename: timestamp_command.log
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let safe_cmd = cmd
+        .chars()
+        .take(40)
+        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .collect::<String>();
+    let filename = format!("{}_{}.log", timestamp, safe_cmd);
+    let filepath = tee_dir.join(&filename);
+
+    // Write stdout + stderr
+    let mut content = String::new();
+    if !stdout.is_empty() {
+        content.push_str(stdout);
+    }
+    if !stderr.is_empty() {
+        if !content.is_empty() {
+            content.push_str("\n--- stderr ---\n");
+        }
+        content.push_str(stderr);
+    }
+
+    std::fs::write(&filepath, &content).ok()?;
+    Some(filepath.to_string_lossy().to_string())
 }

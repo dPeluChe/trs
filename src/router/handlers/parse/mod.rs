@@ -31,6 +31,27 @@ impl ParseHandler {
     /// UTF-8 sequences with the Unicode replacement character.
     pub(crate) fn read_input(file: &Option<std::path::PathBuf>) -> CommandResult<String> {
         use std::io::{self, Read};
+        use super::common::strip_emojis;
+
+        let raw = if let Some(path) = file {
+            let bytes = std::fs::read(path).map_err(|e| CommandError::IoError(e.to_string()))?;
+            String::from_utf8_lossy(&bytes).into_owned()
+        } else {
+            let mut buffer = Vec::new();
+            io::stdin()
+                .read_to_end(&mut buffer)
+                .map_err(|e| CommandError::IoError(e.to_string()))?;
+            String::from_utf8_lossy(&buffer).into_owned()
+        };
+
+        // Strip emojis by default — they waste tokens and confuse non-Claude LLMs
+        Ok(strip_emojis(&raw))
+    }
+
+    /// Read input without emoji stripping (for parsers that need emoji context).
+    /// Use sparingly — only when emojis carry semantic meaning (e.g., status indicators).
+    pub(crate) fn read_input_raw(file: &Option<std::path::PathBuf>) -> CommandResult<String> {
+        use std::io::{self, Read};
 
         if let Some(path) = file {
             let bytes = std::fs::read(path).map_err(|e| CommandError::IoError(e.to_string()))?;
@@ -86,6 +107,9 @@ impl CommandHandler for ParseHandler {
             ParseCommands::Env { file } => Self::handle_env(file, ctx),
             ParseCommands::Wc { file } => Self::handle_wc(file, ctx),
             ParseCommands::Download { file } => Self::handle_download(file, ctx),
+            ParseCommands::GhPr { file } => Self::handle_gh_pr(file, ctx),
+            ParseCommands::GhIssue { file } => Self::handle_gh_issue(file, ctx),
+            ParseCommands::GhRun { file } => Self::handle_gh_run(file, ctx),
         }
     }
 }

@@ -21,6 +21,7 @@ use handlers::html2md::*;
 use handlers::txt2md::*;
 use handlers::isclean::*;
 use handlers::parse::*;
+use handlers::json::*;
 
 use crate::{Commands, OutputFormat};
 #[allow(unused_imports)]
@@ -37,6 +38,7 @@ pub struct Router {
     txt2md_handler: Txt2mdHandler,
     is_clean_handler: IsCleanHandler,
     parse_handler: ParseHandler,
+    json_handler: JsonHandler,
 }
 
 impl Router {
@@ -53,6 +55,7 @@ impl Router {
             txt2md_handler: Txt2mdHandler,
             is_clean_handler: IsCleanHandler,
             parse_handler: ParseHandler,
+            json_handler: JsonHandler,
         }
     }
 
@@ -182,6 +185,13 @@ impl Router {
                 self.is_clean_handler.execute(&input, ctx)
             }
             Commands::Parse { parser } => self.parse_handler.execute(parser, ctx),
+            Commands::Json { file, depth } => {
+                let input = JsonInput {
+                    file: file.clone(),
+                    depth: *depth,
+                };
+                self.json_handler.execute(&input, ctx)
+            }
             Commands::Err { command, args } => {
                 handlers::err::handle_err(command, args, ctx)
             }
@@ -234,6 +244,9 @@ impl Router {
         // Strip ANSI escape codes FIRST (before sanitizing control chars)
         // because ANSI codes start with \x1b which is a control character
         result = strip_ansi_codes(&result);
+
+        // Strip emojis — they waste tokens and confuse non-Claude LLMs
+        result = strip_emojis(&result);
 
         // Sanitize control characters (remove nulls, replace other control chars)
         result = sanitize_control_chars(&result);

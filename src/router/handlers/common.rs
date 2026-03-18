@@ -79,6 +79,96 @@ pub(crate) fn strip_ansi_codes(s: &str) -> String {
     result
 }
 
+/// Strip emoji characters from a string.
+///
+/// Removes decorative emoji that waste tokens and confuse non-Claude LLMs.
+/// Preserves all ASCII, standard Unicode text, and common symbols.
+/// Targets: emoticons, dingbats, symbols, pictographs, transport, flags, etc.
+pub(crate) fn strip_emojis(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if is_emoji(c) {
+            // Skip variation selectors and zero-width joiners after emoji
+            while let Some(&next) = chars.peek() {
+                if next == '\u{FE0F}' || next == '\u{FE0E}' || next == '\u{200D}' {
+                    chars.next();
+                } else if is_emoji(next) {
+                    // Skip combined emoji sequences (flags, skin tones, etc.)
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            // Don't leave double spaces where emoji was removed
+            if result.ends_with(' ') {
+                // skip, already have space
+            } else if let Some(&next) = chars.peek() {
+                if next == ' ' {
+                    // next char is space, skip adding one
+                } else {
+                    // don't add space for inline removal
+                }
+            }
+        } else if c == '\u{FE0F}' || c == '\u{FE0E}' {
+            // Skip stray variation selectors
+        } else {
+            result.push(c);
+        }
+    }
+
+    result
+}
+
+/// Check if a character is a decorative emoji that should be stripped.
+///
+/// Preserves functional symbols used by CLI tools:
+/// - Checkmarks: ✓ ✔ (U+2713, U+2714) — used by test runners
+/// - Crosses: ✗ ✕ ✘ (U+2717, U+2715, U+2718) — used by test runners
+/// - Bullets: ● ○ ◆ ◇ ▶ ▸ (U+25xx) — used by formatters
+/// - Warning: ⚠ (U+26A0) — used by build tools
+///
+/// Only strips clearly decorative emoji (U+1Fxxx ranges) and select
+/// Dingbat/Symbol characters that are purely decorative.
+fn is_emoji(c: char) -> bool {
+    let cp = c as u32;
+    matches!(cp,
+        // === High-plane emoji (always decorative) ===
+        // Emoticons (😀-🙏)
+        0x1F600..=0x1F64F |
+        // Miscellaneous Symbols and Pictographs (🌀-📟, includes skin tones)
+        0x1F300..=0x1F5FF |
+        // Transport and Map Symbols (🚀-🛿)
+        0x1F680..=0x1F6FF |
+        // Supplemental Symbols and Pictographs (🤀-🧿)
+        0x1F900..=0x1F9FF |
+        // Symbols and Pictographs Extended-A (🩀-🩯)
+        0x1FA00..=0x1FA6F |
+        // Symbols and Pictographs Extended-B (🩰-🫿)
+        0x1FA70..=0x1FAFF |
+        // Flags (🇦-🇿)
+        0x1F1E0..=0x1F1FF |
+        // CJK enclosed ideographic supplement
+        0x1F200..=0x1F2FF |
+        // Tag characters
+        0xE0001..=0xE007F |
+        // === Select decorative chars from lower ranges ===
+        // Specific decorative dingbats (skip ✓✔✕✗✘ which are functional)
+        0x2728 | // ✨ sparkles
+        0x274C | // ❌ cross mark
+        0x274E | // ❎ cross mark with box
+        0x2753 | // ❓ question mark
+        0x2754 | // ❔ white question mark
+        0x2755 | // ❕ white exclamation mark
+        0x2757 | // ❗ exclamation mark
+        0x2705 | // ✅ check mark button
+        0x2795 | // ➕ plus
+        0x2796 | // ➖ minus
+        0x2797   // ➗ division
+    )
+}
+
 /// Sanitize input string by handling control characters.
 ///
 /// This function:
