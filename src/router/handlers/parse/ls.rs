@@ -1,11 +1,14 @@
 use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::super::types::*;
-use crate::OutputFormat;
 use super::ParseHandler;
+use crate::OutputFormat;
 
 impl ParseHandler {
     /// Handle the ls subcommand.
-    pub(crate) fn handle_ls(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+    pub(crate) fn handle_ls(
+        file: &Option<std::path::PathBuf>,
+        ctx: &CommandContext,
+    ) -> CommandResult {
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -209,7 +212,9 @@ impl ParseHandler {
 
         // Find the name by scanning for the date/time pattern
         // Date is: Month Day Time/Year — we look for month names
-        let months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        let months = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ];
         let mut name_start_idx = 8; // default
         for i in 5..parts.len().saturating_sub(2) {
             if months.contains(&parts[i]) {
@@ -414,9 +419,13 @@ impl ParseHandler {
 
         // Directories first, with / suffix (skip . and .. and empty names)
         for entry in &ls_output.directories {
-            if entry.name == "." || entry.name == ".." || entry.name.is_empty() { continue; }
+            if entry.name == "." || entry.name == ".." || entry.name.is_empty() {
+                continue;
+            }
             // Skip entries that look like raw ls lines (contain permissions)
-            if entry.name.contains("drwx") || entry.name.contains("lrwx") { continue; }
+            if entry.name.contains("drwx") || entry.name.contains("lrwx") {
+                continue;
+            }
             let name = if entry.name.ends_with('/') {
                 entry.name.clone()
             } else {
@@ -442,7 +451,11 @@ impl ParseHandler {
         // Files with size
         for entry in &ls_output.files {
             if let Some(size) = entry.size {
-                output.push_str(&format!("{}  {}\n", entry.name, Self::format_human_size(size)));
+                output.push_str(&format!(
+                    "{}  {}\n",
+                    entry.name,
+                    Self::format_human_size(size)
+                ));
             } else {
                 output.push_str(&format!("{}\n", entry.name));
             }
@@ -453,10 +466,18 @@ impl ParseHandler {
         let file_count = ls_output.files.len();
         let sym_count = ls_output.symlinks.len();
         let mut summary_parts = Vec::new();
-        if file_count > 0 { summary_parts.push(format!("{} files", file_count)); }
-        if dir_count > 0 { summary_parts.push(format!("{} dirs", dir_count)); }
-        if sym_count > 0 { summary_parts.push(format!("{} symlinks", sym_count)); }
-        if !ls_output.generated.is_empty() { summary_parts.push(format!("{} generated", ls_output.generated.len())); }
+        if file_count > 0 {
+            summary_parts.push(format!("{} files", file_count));
+        }
+        if dir_count > 0 {
+            summary_parts.push(format!("{} dirs", dir_count));
+        }
+        if sym_count > 0 {
+            summary_parts.push(format!("{} symlinks", sym_count));
+        }
+        if !ls_output.generated.is_empty() {
+            summary_parts.push(format!("{} generated", ls_output.generated.len()));
+        }
         output.push_str(&format!("[{}]\n", summary_parts.join(", ")));
 
         output

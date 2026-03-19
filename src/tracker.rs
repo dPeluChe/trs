@@ -170,7 +170,11 @@ mod tests {
         // 0 input -> 0%
         let in_b = 0usize;
         let out_b = 0usize;
-        let pct = if in_b == 0 { 0u8 } else { (((in_b - out_b) as f64 / in_b as f64) * 100.0) as u8 };
+        let pct = if in_b == 0 {
+            0u8
+        } else {
+            (((in_b - out_b) as f64 / in_b as f64) * 100.0) as u8
+        };
         assert_eq!(pct, 0);
 
         // 100 input, 20 output -> 80%

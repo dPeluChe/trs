@@ -55,10 +55,17 @@ fn test_run_stats_raw_output_same_size() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // For raw output, input and output bytes should be equal
-    assert_eq!(input_bytes, output_bytes, "Raw output should have same input and output bytes");
+    assert_eq!(
+        input_bytes, output_bytes,
+        "Raw output should have same input and output bytes"
+    );
 
     // Also verify stdout length matches
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -84,10 +91,17 @@ fn test_run_stats_json_output_larger_than_raw() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // For JSON output, output should be larger than input (JSON adds metadata)
-    assert!(output_bytes > input_bytes, "JSON output should be larger than raw input");
+    assert!(
+        output_bytes > input_bytes,
+        "JSON output should be larger than raw input"
+    );
 
     // Verify stdout length matches output bytes
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -115,7 +129,11 @@ fn test_run_stats_compact_output_size() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -141,8 +159,15 @@ fn test_run_stats_git_status_comparison() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // For raw output, input and output bytes should be equal
-    assert_eq!(input_bytes, output_bytes, "Raw git status should have same input and output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        input_bytes, output_bytes,
+        "Raw git status should have same input and output bytes"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -168,8 +193,15 @@ fn test_run_stats_git_status_json_larger() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // JSON output should be larger than raw input
-    assert!(output_bytes > input_bytes, "JSON git status output should be larger than raw input");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert!(
+        output_bytes > input_bytes,
+        "JSON git status output should be larger than raw input"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 /// Helper function to extract byte count from stats output

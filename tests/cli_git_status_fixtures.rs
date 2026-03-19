@@ -8,8 +8,6 @@ use fixtures::*;
 // Git Status Fixture Tests
 // ============================================================
 
-
-
 #[test]
 fn test_fixture_git_status_clean() {
     let input = git_status_clean();

@@ -375,51 +375,37 @@ fn test_stats_flag_with_parse() {
 #[test]
 fn test_run_without_command_fails() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .assert()
-        .failure();
+    cmd.arg("run").assert().failure();
 }
 
 #[test]
 fn test_search_without_path_fails() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("pattern")
-        .assert()
-        .failure();
+    cmd.arg("search").arg("pattern").assert().failure();
 }
 
 #[test]
 fn test_replace_without_args_fails() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("replace")
-        .arg(".")
-        .assert()
-        .failure();
+    cmd.arg("replace").arg(".").assert().failure();
 }
 
 #[test]
 fn test_tail_without_file_fails() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("tail")
-        .assert()
-        .failure();
+    cmd.arg("tail").assert().failure();
 }
 
 #[test]
 fn test_html2md_without_input_fails() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("html2md")
-        .assert()
-        .failure();
+    cmd.arg("html2md").assert().failure();
 }
 
 #[test]
 fn test_parse_without_subcommand_fails() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .assert()
-        .failure();
+    cmd.arg("parse").assert().failure();
 }
 
 // ============================================================

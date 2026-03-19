@@ -57,7 +57,12 @@ pub struct ReducerStats {
 
 impl ReducerStats {
     /// Create new stats with automatic token estimation.
-    pub fn new(input_bytes: usize, output_bytes: usize, input_lines: usize, output_lines: usize) -> Self {
+    pub fn new(
+        input_bytes: usize,
+        output_bytes: usize,
+        input_lines: usize,
+        output_lines: usize,
+    ) -> Self {
         let input_tokens = estimate_tokens(input_bytes);
         let output_tokens = estimate_tokens(output_bytes);
         let reduction_ratio = if input_bytes > 0 {

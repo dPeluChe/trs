@@ -4,7 +4,10 @@ use super::ParseHandler;
 
 impl ParseHandler {
     /// Handle the logs subcommand.
-    pub(crate) fn handle_logs(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+    pub(crate) fn handle_logs(
+        file: &Option<std::path::PathBuf>,
+        ctx: &CommandContext,
+    ) -> CommandResult {
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -132,5 +135,4 @@ impl ParseHandler {
 
         entry
     }
-
 }

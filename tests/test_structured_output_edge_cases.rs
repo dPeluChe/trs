@@ -62,7 +62,10 @@ fn test_empty_input_csv_has_header() {
 
     let stdout = String::from_utf8_lossy(&output);
     // Should still have header even with empty input
-    assert!(!stdout.is_empty(), "CSV should have at least header for empty input");
+    assert!(
+        !stdout.is_empty(),
+        "CSV should have at least header for empty input"
+    );
 }
 
 #[test]
@@ -130,7 +133,11 @@ fn test_csv_handles_unicode() {
 
     let stdout = String::from_utf8_lossy(&output);
     // Should handle unicode without errors
-    assert!(stdout.contains("\u{6587}\u{4ef6}") || stdout.contains("\u{6d4b}\u{8bd5}") || stdout.contains("total:"));
+    assert!(
+        stdout.contains("\u{6587}\u{4ef6}")
+            || stdout.contains("\u{6d4b}\u{8bd5}")
+            || stdout.contains("total:")
+    );
 }
 
 #[test]
@@ -151,7 +158,11 @@ fn test_tsv_handles_unicode() {
 
     let stdout = String::from_utf8_lossy(&output);
     // Should handle unicode without errors
-    assert!(stdout.contains("\u{6587}\u{4ef6}") || stdout.contains("\u{6d4b}\u{8bd5}") || stdout.contains("total:"));
+    assert!(
+        stdout.contains("\u{6587}\u{4ef6}")
+            || stdout.contains("\u{6d4b}\u{8bd5}")
+            || stdout.contains("total:")
+    );
 }
 
 #[test]
@@ -350,10 +361,7 @@ fn test_all_schemas_have_consistent_version() {
     if versions.len() > 1 {
         let first = &versions[0];
         for v in &versions[1..] {
-            assert_eq!(
-                v, first,
-                "All schema versions should be consistent"
-            );
+            assert_eq!(v, first, "All schema versions should be consistent");
         }
     }
 }

@@ -35,11 +35,7 @@ fn test_replace_basic_pattern() {
 #[test]
 fn test_replace_with_dry_run_flag() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\nHello universe\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\nHello universe\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -55,11 +51,7 @@ fn test_replace_with_dry_run_flag() {
 #[test]
 fn test_replace_with_preview_alias() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\nHello universe\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\nHello universe\n");
 
     // --preview is an alias for --dry-run
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -76,11 +68,7 @@ fn test_replace_with_preview_alias() {
 #[test]
 fn test_replace_actually_modifies_file() {
     let temp_dir = TempDir::new().unwrap();
-    let file_path = create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    let file_path = create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     // Perform actual replace (no dry-run)
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -101,11 +89,7 @@ fn test_replace_actually_modifies_file() {
 #[test]
 fn test_replace_multiple_occurrences_in_file() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "foo bar foo\nfoo baz foo\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "foo bar foo\nfoo baz foo\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -121,11 +105,7 @@ fn test_replace_multiple_occurrences_in_file() {
 #[test]
 fn test_replace_shows_file_path() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -141,11 +121,7 @@ fn test_replace_shows_file_path() {
 #[test]
 fn test_replace_shows_line_number() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Line 1\nHello world\nLine 3\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Line 1\nHello world\nLine 3\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -165,16 +141,8 @@ fn test_replace_shows_line_number() {
 #[test]
 fn test_replace_with_extension_rs() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.rs",
-        "fn old_function() {}\n",
-    );
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "fn old_function() {}\n",
-    );
+    create_temp_file(&temp_dir, "test.rs", "fn old_function() {}\n");
+    create_temp_file(&temp_dir, "test.txt", "fn old_function() {}\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -193,16 +161,8 @@ fn test_replace_with_extension_rs() {
 #[test]
 fn test_replace_with_extension_short_flag() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.rs",
-        "fn old_function() {}\n",
-    );
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "fn old_function() {}\n",
-    );
+    create_temp_file(&temp_dir, "test.rs", "fn old_function() {}\n");
+    create_temp_file(&temp_dir, "test.txt", "fn old_function() {}\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -220,11 +180,7 @@ fn test_replace_with_extension_short_flag() {
 #[test]
 fn test_replace_with_extension_nonexistent() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -246,11 +202,7 @@ fn test_replace_with_extension_nonexistent() {
 #[test]
 fn test_replace_count_flag() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "foo bar foo\nfoo baz foo\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "foo bar foo\nfoo baz foo\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -266,11 +218,7 @@ fn test_replace_count_flag() {
 #[test]
 fn test_replace_count_no_matches() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -286,11 +234,7 @@ fn test_replace_count_no_matches() {
 #[test]
 fn test_replace_count_json_format() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "foo bar foo\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "foo bar foo\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd

@@ -1,8 +1,8 @@
 //! Raw formatter for minimal output.
 
-use crate::OutputFormat;
-use super::Formatter;
 use super::helpers::format_duration;
+use super::Formatter;
+use crate::OutputFormat;
 
 /// Formatter for raw, unprocessed output.
 ///

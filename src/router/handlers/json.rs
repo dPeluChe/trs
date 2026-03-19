@@ -55,9 +55,8 @@ impl JsonHandler {
         let raw = read_json_input(&input.file)?;
         let input_bytes = raw.len();
 
-        let parsed: serde_json::Value = serde_json::from_str(&raw).map_err(|e| {
-            non_json_hint(&input.file, &e)
-        })?;
+        let parsed: serde_json::Value =
+            serde_json::from_str(&raw).map_err(|e| non_json_hint(&input.file, &e))?;
 
         let max_depth = input.depth.unwrap_or(usize::MAX);
 
@@ -97,17 +96,9 @@ fn non_json_hint(file: &Option<PathBuf>, err: &serde_json::Error) -> CommandErro
     if let Some(path) = file {
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             let hint = match ext.to_lowercase().as_str() {
-                "toml" => Some(format!(
-                    "Not JSON. Try: trs read {}",
-                    path.display()
-                )),
-                "yaml" | "yml" => Some(format!(
-                    "Not JSON. Try: trs read {}",
-                    path.display()
-                )),
-                "csv" => Some(
-                    "Not JSON. Try: trs parse deps (for dependency lists)".to_string(),
-                ),
+                "toml" => Some(format!("Not JSON. Try: trs read {}", path.display())),
+                "yaml" | "yml" => Some(format!("Not JSON. Try: trs read {}", path.display())),
+                "csv" => Some("Not JSON. Try: trs parse deps (for dependency lists)".to_string()),
                 _ => None,
             };
             if let Some(msg) = hint {
@@ -265,7 +256,11 @@ fn format_structure(value: &serde_json::Value, buf: &mut String, depth: usize, m
                     buf.push('\n');
                 }
                 if total > show_count {
-                    buf.push_str(&format!("{}  ...+{} more keys\n", indent, total - show_count));
+                    buf.push_str(&format!(
+                        "{}  ...+{} more keys\n",
+                        indent,
+                        total - show_count
+                    ));
                 }
                 buf.push_str(&format!("{}}}", indent));
             }
@@ -299,11 +294,7 @@ fn value_type(value: &serde_json::Value) -> &'static str {
 // ============================================================
 
 /// Convert JSON value to a schema-like JSON representation.
-fn to_schema_json(
-    value: &serde_json::Value,
-    depth: usize,
-    max_depth: usize,
-) -> serde_json::Value {
+fn to_schema_json(value: &serde_json::Value, depth: usize, max_depth: usize) -> serde_json::Value {
     use serde_json::json;
 
     match value {
@@ -340,7 +331,10 @@ fn to_schema_json(
                 if was_sampled {
                     obj.insert(
                         "_sampled".to_string(),
-                        json!(format!("first {} + last {}", ARRAY_SAMPLE_HEAD, ARRAY_SAMPLE_TAIL)),
+                        json!(format!(
+                            "first {} + last {}",
+                            ARRAY_SAMPLE_HEAD, ARRAY_SAMPLE_TAIL
+                        )),
                     );
                 }
 

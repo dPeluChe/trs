@@ -214,7 +214,13 @@ fn test_tail_errors_short_flag() {
 
     let stdout = String::from_utf8_lossy(&output);
     // Should only contain error-related lines
-    assert!(stdout.contains("ERROR") || stdout.contains("Exception") || stdout.contains("FATAL") || stdout.contains("failed") || stdout.contains("ERR"));
+    assert!(
+        stdout.contains("ERROR")
+            || stdout.contains("Exception")
+            || stdout.contains("FATAL")
+            || stdout.contains("failed")
+            || stdout.contains("ERR")
+    );
 }
 
 #[test]
@@ -258,4 +264,3 @@ fn test_tail_errors_detects_various_error_patterns() {
         .count();
     assert!(error_count >= 3, "Should detect at least 3 error patterns");
 }
-

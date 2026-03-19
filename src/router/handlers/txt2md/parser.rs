@@ -160,5 +160,4 @@ impl Txt2mdHandler {
 
         result.join("\n")
     }
-
 }

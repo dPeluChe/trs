@@ -56,7 +56,10 @@ fn test_txt2md_json_includes_metadata() {
 
     // Metadata should include type and title
     assert_eq!(json["metadata"]["type"].as_str().unwrap(), "stdin");
-    assert!(json["metadata"]["title"].as_str().unwrap().contains("DOCUMENT TITLE"));
+    assert!(json["metadata"]["title"]
+        .as_str()
+        .unwrap()
+        .contains("DOCUMENT TITLE"));
 }
 
 // ============================================================
@@ -149,10 +152,7 @@ fn test_txt2md_raw_output() {
 #[test]
 fn test_txt2md_empty_stdin() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("txt2md")
-        .write_stdin("")
-        .assert()
-        .success();
+    cmd.arg("txt2md").write_stdin("").assert().success();
 }
 
 #[test]
@@ -214,7 +214,9 @@ fn test_txt2md_file_not_found() {
         .arg("/nonexistent/path/file.txt")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("File not found").or(predicate::str::contains("not found")));
+        .stderr(
+            predicate::str::contains("File not found").or(predicate::str::contains("not found")),
+        );
 }
 
 // ============================================================

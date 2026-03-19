@@ -4,7 +4,10 @@ use super::ParseHandler;
 
 impl ParseHandler {
     /// Handle the grep subcommand.
-    pub(crate) fn handle_grep(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+    pub(crate) fn handle_grep(
+        file: &Option<std::path::PathBuf>,
+        ctx: &CommandContext,
+    ) -> CommandResult {
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -116,7 +119,11 @@ impl ParseHandler {
     ///
     /// This truncates both the number of files and the number of matches per file
     /// to prevent overwhelming output for large result sets.
-    pub(crate) fn truncate_grep(grep_output: &mut GrepOutput, max_files: usize, max_matches_per_file: usize) {
+    pub(crate) fn truncate_grep(
+        grep_output: &mut GrepOutput,
+        max_files: usize,
+        max_matches_per_file: usize,
+    ) {
         // First, truncate matches per file
         for file in &mut grep_output.files {
             if file.matches.len() > max_matches_per_file {

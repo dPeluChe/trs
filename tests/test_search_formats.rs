@@ -300,11 +300,7 @@ fn test_search_no_matches_json_is_empty() {
 fn test_search_regex_pattern() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // Search for a regex pattern (digits)
-    cmd.arg("search")
-        .arg("src")
-        .arg(r"\d+")
-        .assert()
-        .success();
+    cmd.arg("search").arg("src").arg(r"\d+").assert().success();
 }
 
 #[test]
@@ -384,11 +380,7 @@ fn test_search_with_underscores() {
 fn test_search_with_dots() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // . in regex matches any character, so we need to escape it or search literally
-    cmd.arg("search")
-        .arg(".")
-        .arg(".rs")
-        .assert()
-        .success();
+    cmd.arg("search").arg(".").arg(".rs").assert().success();
 }
 
 // ============================================================
@@ -400,11 +392,7 @@ fn test_search_unicode_pattern() {
     // Create a test with unicode - search for comments with unicode chars
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // Most source code is ASCII, so let's search for something we know exists
-    cmd.arg("search")
-        .arg("src")
-        .arg("//")
-        .assert()
-        .success();
+    cmd.arg("search").arg("src").arg("//").assert().success();
 }
 
 // ============================================================

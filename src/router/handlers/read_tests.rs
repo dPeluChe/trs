@@ -4,10 +4,19 @@ use super::*;
 fn test_detect_language() {
     assert_eq!(detect_language(&PathBuf::from("main.rs")), Language::Rust);
     assert_eq!(detect_language(&PathBuf::from("app.py")), Language::Python);
-    assert_eq!(detect_language(&PathBuf::from("index.ts")), Language::JavaScript);
+    assert_eq!(
+        detect_language(&PathBuf::from("index.ts")),
+        Language::JavaScript
+    );
     assert_eq!(detect_language(&PathBuf::from("data.json")), Language::Data);
-    assert_eq!(detect_language(&PathBuf::from("config.yaml")), Language::Data);
-    assert_eq!(detect_language(&PathBuf::from("Cargo.toml")), Language::Data);
+    assert_eq!(
+        detect_language(&PathBuf::from("config.yaml")),
+        Language::Data
+    );
+    assert_eq!(
+        detect_language(&PathBuf::from("Cargo.toml")),
+        Language::Data
+    );
 }
 
 #[test]

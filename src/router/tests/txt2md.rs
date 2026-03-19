@@ -113,7 +113,8 @@ fn test_txt2md_normalize_spacing_preserves_internal_spacing() {
 fn test_txt2md_normalize_spacing_complex() {
     let handler = Txt2mdHandler;
     // Complex case with multiple issues
-    let input = "\n\n# Heading   \n\n\n\nParagraph text.   \n\n- List item 1   \n\n\n- List item 2\n\n\n";
+    let input =
+        "\n\n# Heading   \n\n\n\nParagraph text.   \n\n- List item 1   \n\n\n- List item 2\n\n\n";
     let result = handler.normalize_spacing(input);
     // Should normalize all spacing issues
     assert_eq!(

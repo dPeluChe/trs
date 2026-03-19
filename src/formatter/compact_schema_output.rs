@@ -1,7 +1,7 @@
 //! Non-git schema formatting methods for the Compact formatter.
 
+use super::helpers::{format_duration, truncate};
 use super::CompactFormatter;
-use super::helpers::{truncate, format_duration};
 
 #[allow(dead_code)]
 impl CompactFormatter {

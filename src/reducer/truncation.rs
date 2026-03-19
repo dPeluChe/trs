@@ -207,7 +207,10 @@ impl TruncationInfo {
         if let Some(ref warning) = self.warning {
             Some(warning.clone())
         } else if let (Some(shown), Some(hidden)) = (self.items_shown, self.items_hidden) {
-            Some(format!("Truncated: {} items shown, {} hidden", shown, hidden))
+            Some(format!(
+                "Truncated: {} items shown, {} hidden",
+                shown, hidden
+            ))
         } else {
             Some("Output was truncated".to_string())
         }
@@ -276,7 +279,10 @@ impl TruncationConfig {
         if let Some(limit) = self.max_bytes {
             if total_bytes > limit {
                 let truncated = output.chars().take(limit).collect();
-                return (truncated, TruncationInfo::size_threshold(total_bytes, limit, limit));
+                return (
+                    truncated,
+                    TruncationInfo::size_threshold(total_bytes, limit, limit),
+                );
             }
         }
 

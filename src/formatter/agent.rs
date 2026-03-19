@@ -1,8 +1,8 @@
 //! Agent formatter for AI-optimized output.
 
-use crate::OutputFormat;
-use super::Formatter;
 use super::helpers::format_duration;
+use super::Formatter;
+use crate::OutputFormat;
 
 /// Formatter for AI agent-optimized output.
 ///
@@ -362,5 +362,4 @@ impl AgentFormatter {
     pub fn start_document(title: &str) -> String {
         format!("# {}\n\n", title)
     }
-
 }

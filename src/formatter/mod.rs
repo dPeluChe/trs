@@ -26,31 +26,31 @@
 //! println!("{}", output);
 //! ```
 
+mod agent;
+mod agent_schema;
 mod compact;
 mod compact_schema_git;
 mod compact_schema_output;
-mod json;
-mod json_schema;
 mod csv;
 mod csv_schema;
+pub mod helpers;
+mod json;
+mod json_schema;
+mod raw;
 mod tsv;
 mod tsv_schema;
-mod agent;
-mod agent_schema;
-mod raw;
-pub mod helpers;
 
 #[cfg(test)]
 mod tests;
 
-pub use compact::CompactFormatter;
-pub use json::JsonFormatter;
-pub use csv::CsvFormatter;
-pub use tsv::TsvFormatter;
 pub use agent::AgentFormatter;
-pub use raw::RawFormatter;
+pub use compact::CompactFormatter;
+pub use csv::CsvFormatter;
 #[allow(unused_imports)]
 pub use helpers::*;
+pub use json::JsonFormatter;
+pub use raw::RawFormatter;
+pub use tsv::TsvFormatter;
 
 use crate::OutputFormat;
 

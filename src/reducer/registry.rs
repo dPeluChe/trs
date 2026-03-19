@@ -31,7 +31,10 @@ impl<T: Serialize + std::fmt::Debug> BaseReducer<T> {
     /// Format output as JSON.
     pub fn format_json(output: &T) -> String {
         serde_json::to_string_pretty(&output).unwrap_or_else(|e| {
-            format!("{{\"error\": true, \"message\": \"Failed to serialize: {}\"}}", e)
+            format!(
+                "{{\"error\": true, \"message\": \"Failed to serialize: {}\"}}",
+                e
+            )
         })
     }
 
@@ -50,7 +53,11 @@ impl<T: Serialize + serde::de::DeserializeOwned + std::fmt::Debug> Reducer for B
     type Input = String;
     type Output = T;
 
-    fn reduce(&self, input: &Self::Input, _context: &ReducerContext) -> ReducerResult<Self::Output> {
+    fn reduce(
+        &self,
+        input: &Self::Input,
+        _context: &ReducerContext,
+    ) -> ReducerResult<Self::Output> {
         // Default implementation - parse as JSON and deserialize
         match serde_json::from_str(input) {
             Ok(data) => Ok(data),

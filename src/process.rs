@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 #[path = "process_helpers.rs"]
 mod helpers;
-use helpers::{classify_spawn_error, capture_output, capture_partial_output, ChildExt};
+use helpers::{capture_output, capture_partial_output, classify_spawn_error, ChildExt};
 
 /// Result of a process execution.
 #[derive(Debug, Clone)]

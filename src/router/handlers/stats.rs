@@ -232,7 +232,10 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
         .collect();
     json["top_commands"] = serde_json::Value::Array(top);
 
-    println!("{}", serde_json::to_string_pretty(&json).unwrap_or_default());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&json).unwrap_or_default()
+    );
 }
 
 /// Truncate a command string to fit within a given width.

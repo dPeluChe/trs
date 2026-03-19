@@ -52,7 +52,7 @@ fn test_reducer_output_with_stats() {
     assert_eq!(s.input_bytes, 1000);
     assert_eq!(s.output_bytes, 500);
     assert_eq!(s.reduction_ratio, 0.5);
-    assert_eq!(s.input_tokens, 250);  // 1000 / 4
+    assert_eq!(s.input_tokens, 250); // 1000 / 4
     assert_eq!(s.output_tokens, 125); // 500 / 4
     assert_eq!(s.token_reduction_ratio, 0.5);
 }
@@ -80,8 +80,7 @@ fn test_reducer_output_with_items() {
 
 #[test]
 fn test_reducer_output_with_sections() {
-    let section1 = ReducerSection::new("Section 1")
-        .with_items(vec![ReducerItem::new("a", "1")]);
+    let section1 = ReducerSection::new("Section 1").with_items(vec![ReducerItem::new("a", "1")]);
 
     let section2 = ReducerSection::new("Section 2")
         .with_count(5)
@@ -113,14 +112,12 @@ fn test_reducer_output_format_json() {
 fn test_reducer_output_format_compact() {
     let output = ReducerOutput::new(Vec::<i32>::new())
         .with_summary("test summary")
-        .with_sections(vec![
-            ReducerSection::new("Files")
-                .with_count(3)
-                .with_items(vec![
-                    ReducerItem::new("file1.txt", "100"),
-                    ReducerItem::new("file2.txt", "200"),
-                ]),
-        ]);
+        .with_sections(vec![ReducerSection::new("Files").with_count(3).with_items(
+            vec![
+                ReducerItem::new("file1.txt", "100"),
+                ReducerItem::new("file2.txt", "200"),
+            ],
+        )]);
 
     let context = ReducerContext {
         format: OutputFormat::Compact,
@@ -136,11 +133,10 @@ fn test_reducer_output_format_compact() {
 
 #[test]
 fn test_reducer_output_format_raw() {
-    let output = ReducerOutput::new(Vec::<i32>::new())
-        .with_items(vec![
-            ReducerItem::new("item1", "value1"),
-            ReducerItem::new("item2", "value2"),
-        ]);
+    let output = ReducerOutput::new(Vec::<i32>::new()).with_items(vec![
+        ReducerItem::new("item1", "value1"),
+        ReducerItem::new("item2", "value2"),
+    ]);
 
     let context = ReducerContext {
         format: OutputFormat::Raw,
@@ -157,12 +153,9 @@ fn test_reducer_output_format_raw() {
 fn test_reducer_output_format_agent() {
     let output = ReducerOutput::new(Vec::<i32>::new())
         .with_summary("Agent summary")
-        .with_sections(vec![
-            ReducerSection::new("Results")
-                .with_items(vec![
-                    ReducerItem::new("result1", "value1").with_label("label1"),
-                ]),
-        ]);
+        .with_sections(vec![ReducerSection::new("Results").with_items(vec![
+            ReducerItem::new("result1", "value1").with_label("label1"),
+        ])]);
 
     let context = ReducerContext {
         format: OutputFormat::Agent,
@@ -178,11 +171,10 @@ fn test_reducer_output_format_agent() {
 
 #[test]
 fn test_reducer_output_format_csv() {
-    let output = ReducerOutput::new(Vec::<i32>::new())
-        .with_items(vec![
-            ReducerItem::new("key1", "value1").with_label("label1"),
-            ReducerItem::new("key2", "value2"),
-        ]);
+    let output = ReducerOutput::new(Vec::<i32>::new()).with_items(vec![
+        ReducerItem::new("key1", "value1").with_label("label1"),
+        ReducerItem::new("key2", "value2"),
+    ]);
 
     let context = ReducerContext {
         format: OutputFormat::Csv,
@@ -198,11 +190,10 @@ fn test_reducer_output_format_csv() {
 
 #[test]
 fn test_reducer_output_format_tsv() {
-    let output = ReducerOutput::new(Vec::<i32>::new())
-        .with_items(vec![
-            ReducerItem::new("key1", "value1"),
-            ReducerItem::new("key2", "value2"),
-        ]);
+    let output = ReducerOutput::new(Vec::<i32>::new()).with_items(vec![
+        ReducerItem::new("key1", "value1"),
+        ReducerItem::new("key2", "value2"),
+    ]);
 
     let context = ReducerContext {
         format: OutputFormat::Tsv,

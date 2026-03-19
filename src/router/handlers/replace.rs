@@ -86,7 +86,9 @@ impl ReplaceHandler {
             // Skip files inside ignored directories
             let should_skip = entry.path().components().any(|c| {
                 if let std::path::Component::Normal(name) = c {
-                    name.to_str().map(|s| ignore_dirs.contains(s)).unwrap_or(false)
+                    name.to_str()
+                        .map(|s| ignore_dirs.contains(s))
+                        .unwrap_or(false)
                 } else {
                     false
                 }
@@ -196,7 +198,10 @@ impl ReplaceHandler {
     }
 
     /// Format replace output as JSON using the schema.
-    pub(crate) fn format_json(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
+    pub(crate) fn format_json(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
         use crate::schema::{ReplaceCounts, ReplaceFile, ReplaceMatch, ReplaceOutputSchema};
 
         let files: Vec<ReplaceFile> = replacements
@@ -228,7 +233,10 @@ impl ReplaceHandler {
     }
 
     /// Format replace output as CSV.
-    pub(crate) fn format_csv(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
+    pub(crate) fn format_csv(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
         let mut result = String::new();
         result.push_str("file,line_number,original,replaced\n");
 
@@ -244,7 +252,10 @@ impl ReplaceHandler {
         }
 
         // Add summary at the end
-        let total_replacements: usize = replacements.iter().map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>()).sum();
+        let total_replacements: usize = replacements
+            .iter()
+            .map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>())
+            .sum();
         result.push_str(&format!(
             "\n# Summary: {} files, {} replacements (dry_run: {})\n",
             replacements.len(),
@@ -256,7 +267,10 @@ impl ReplaceHandler {
     }
 
     /// Format replace output as TSV.
-    pub(crate) fn format_tsv(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
+    pub(crate) fn format_tsv(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
         let mut result = String::new();
         result.push_str("file\tline_number\toriginal\treplaced\n");
 
@@ -271,7 +285,10 @@ impl ReplaceHandler {
             }
         }
 
-        let total_replacements: usize = replacements.iter().map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>()).sum();
+        let total_replacements: usize = replacements
+            .iter()
+            .map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>())
+            .sum();
         result.push_str(&format!(
             "\n# Summary: {} files, {} replacements (dry_run: {})\n",
             replacements.len(),
@@ -283,7 +300,10 @@ impl ReplaceHandler {
     }
 
     /// Format replace output in compact format.
-    pub(crate) fn format_compact(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
+    pub(crate) fn format_compact(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
         let mut result = String::new();
 
         if replacements.is_empty() {
@@ -295,7 +315,10 @@ impl ReplaceHandler {
             return result;
         }
 
-        let total_replacements: usize = replacements.iter().map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>()).sum();
+        let total_replacements: usize = replacements
+            .iter()
+            .map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>())
+            .sum();
 
         if input.dry_run {
             result.push_str(&format!(
@@ -327,7 +350,10 @@ impl ReplaceHandler {
     }
 
     /// Format replace output as raw.
-    pub(crate) fn format_raw(replacements: &[(String, Vec<Replacement>)], input: &ReplaceInput) -> String {
+    pub(crate) fn format_raw(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
         let mut result = String::new();
 
         for (path, reps) in replacements {
@@ -339,7 +365,10 @@ impl ReplaceHandler {
             }
         }
 
-        let total_replacements: usize = replacements.iter().map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>()).sum();
+        let total_replacements: usize = replacements
+            .iter()
+            .map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>())
+            .sum();
         result.push_str(&format!(
             "\nSummary: {} files, {} replacements (dry_run: {})\n",
             replacements.len(),
@@ -401,7 +430,10 @@ impl CommandHandler for ReplaceHandler {
         // Execute the replace
         let replacements = self.execute_replace(input)?;
 
-        let total_replacements: usize = replacements.iter().map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>()).sum();
+        let total_replacements: usize = replacements
+            .iter()
+            .map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>())
+            .sum();
         let files_count = replacements.len();
         // Calculate input_bytes (total bytes of all original lines)
         let input_bytes: usize = replacements

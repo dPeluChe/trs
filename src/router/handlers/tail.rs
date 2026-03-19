@@ -471,4 +471,3 @@ pub(crate) struct TailInput {
     pub errors: bool,
     pub follow: bool,
 }
-

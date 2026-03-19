@@ -1,7 +1,7 @@
 use super::super::common::{CommandContext, CommandError, CommandResult, CommandStats};
 use super::super::types::*;
-use crate::OutputFormat;
 use super::ParseHandler;
+use crate::OutputFormat;
 
 impl ParseHandler {
     /// Handle the git-status subcommand.
@@ -290,7 +290,10 @@ impl ParseHandler {
     }
 
     /// Parse a single file entry from git status.
-    pub(crate) fn parse_file_entry(line: &str, section: GitStatusSection) -> Option<GitStatusEntry> {
+    pub(crate) fn parse_file_entry(
+        line: &str,
+        section: GitStatusSection,
+    ) -> Option<GitStatusEntry> {
         if line.is_empty() {
             return None;
         }
@@ -417,5 +420,4 @@ impl ParseHandler {
 
         None
     }
-
 }

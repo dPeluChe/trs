@@ -169,7 +169,10 @@ fn test_clean_collapse_blanks_flag() {
             consecutive_blanks = 0;
         }
     }
-    assert!(max_consecutive_blanks <= 1, "Should not have consecutive blank lines");
+    assert!(
+        max_consecutive_blanks <= 1,
+        "Should not have consecutive blank lines"
+    );
 }
 
 #[test]
@@ -201,7 +204,7 @@ fn test_clean_collapse_blanks_preserves_content() {
 fn test_clean_collapse_repeats_flag() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
-        .arg("--raw")  // Use raw format to avoid reduction percentage in output
+        .arg("--raw") // Use raw format to avoid reduction percentage in output
         .arg("clean")
         .arg("--collapse-repeats")
         .arg("-f")
@@ -221,14 +224,17 @@ fn test_clean_collapse_repeats_flag() {
 
     // Original has 2 consecutive "[WARN] Cache miss" lines
     let warn_count = stdout.matches("[WARN] Cache miss").count();
-    assert_eq!(warn_count, 1, "Should collapse consecutive repeated warn lines");
+    assert_eq!(
+        warn_count, 1,
+        "Should collapse consecutive repeated warn lines"
+    );
 }
 
 #[test]
 fn test_clean_collapse_repeats_preserves_non_consecutive() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
-        .arg("--raw")  // Use raw format to avoid reduction percentage in output
+        .arg("--raw") // Use raw format to avoid reduction percentage in output
         .arg("clean")
         .arg("--collapse-repeats")
         .arg("-f")
@@ -245,7 +251,10 @@ fn test_clean_collapse_repeats_preserves_non_consecutive() {
     // The file has: [INFO] Application started, [INFO] Request completed, [INFO] Retrying...
     // All are non-consecutive, so all should remain
     let info_count = stdout.matches("[INFO]").count();
-    assert_eq!(info_count, 3, "Non-consecutive lines should not be collapsed");
+    assert_eq!(
+        info_count, 3,
+        "Non-consecutive lines should not be collapsed"
+    );
 }
 
 #[test]
@@ -292,10 +301,16 @@ fn test_clean_trim_flag() {
     for line in stdout.lines() {
         // The content should be trimmed
         if line.contains("Leading") {
-            assert!(!line.starts_with("   "), "Leading whitespace should be trimmed");
+            assert!(
+                !line.starts_with("   "),
+                "Leading whitespace should be trimmed"
+            );
         }
         if line.contains("Trailing") {
-            assert!(!line.ends_with("   "), "Trailing whitespace should be trimmed");
+            assert!(
+                !line.ends_with("   "),
+                "Trailing whitespace should be trimmed"
+            );
         }
     }
 }
@@ -337,7 +352,10 @@ fn test_clean_trim_removes_trailing_whitespace() {
     // Should not end with trailing spaces
     for line in stdout.lines() {
         if line.contains("Hello World") {
-            assert!(!line.ends_with("   "), "Trailing whitespace should be trimmed");
+            assert!(
+                !line.ends_with("   "),
+                "Trailing whitespace should be trimmed"
+            );
         }
     }
 }

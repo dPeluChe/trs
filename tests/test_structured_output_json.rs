@@ -58,7 +58,10 @@ fn test_json_git_status_has_valid_schema() {
     assert!(json["unmerged"].is_array(), "unmerged should be array");
 
     // Validate counts are numbers
-    assert!(json["staged_count"].is_number(), "staged_count should be number");
+    assert!(
+        json["staged_count"].is_number(),
+        "staged_count should be number"
+    );
     assert!(
         json["unstaged_count"].is_number(),
         "unstaged_count should be number"
@@ -177,7 +180,10 @@ fn test_json_find_has_valid_schema() {
     // Validate find parse output structure (no schema field)
     assert!(json["is_empty"].is_boolean(), "is_empty should be boolean");
     assert!(json["files"].is_array(), "files should be array");
-    assert!(json["directories"].is_array(), "directories should be array");
+    assert!(
+        json["directories"].is_array(),
+        "directories should be array"
+    );
 }
 
 #[test]
@@ -199,7 +205,10 @@ fn test_json_logs_has_valid_schema() {
     let json = parse_json_output(&output);
 
     // Validate logs parse output structure (no schema field)
-    assert!(json["entries"].is_array() || json["lines"].is_array(), "entries/lines should be array");
+    assert!(
+        json["entries"].is_array() || json["lines"].is_array(),
+        "entries/lines should be array"
+    );
     assert!(json["counts"].is_object(), "counts should be object");
 }
 

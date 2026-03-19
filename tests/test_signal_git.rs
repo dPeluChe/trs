@@ -41,7 +41,10 @@ fn test_git_status_preserves_branch_name() {
 
     let stdout = String::from_utf8_lossy(&output);
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
-    assert_eq!(json["branch"], "main", "Branch name must be preserved in JSON");
+    assert_eq!(
+        json["branch"], "main",
+        "Branch name must be preserved in JSON"
+    );
 
     // Agent format
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -183,10 +186,22 @@ fn test_git_status_preserves_counts() {
 
     // Verify count fields exist and have valid values
     // The schema uses staged_count, unstaged_count, untracked_count, unmerged_count
-    assert!(json["staged_count"].is_number(), "staged_count must be present");
-    assert!(json["unstaged_count"].is_number(), "unstaged_count must be present");
-    assert!(json["untracked_count"].is_number(), "untracked_count must be present");
-    assert!(json["unmerged_count"].is_number(), "unmerged_count must be present");
+    assert!(
+        json["staged_count"].is_number(),
+        "staged_count must be present"
+    );
+    assert!(
+        json["unstaged_count"].is_number(),
+        "unstaged_count must be present"
+    );
+    assert!(
+        json["untracked_count"].is_number(),
+        "untracked_count must be present"
+    );
+    assert!(
+        json["unmerged_count"].is_number(),
+        "unmerged_count must be present"
+    );
 
     let staged_count = json["staged_count"].as_u64().unwrap_or(0) as usize;
     let unstaged_count = json["unstaged_count"].as_u64().unwrap_or(0) as usize;
@@ -197,9 +212,18 @@ fn test_git_status_preserves_counts() {
     let actual_unstaged = json["unstaged"].as_array().map(|a| a.len()).unwrap_or(0);
     let actual_untracked = json["untracked"].as_array().map(|a| a.len()).unwrap_or(0);
 
-    assert_eq!(staged_count, actual_staged, "Staged count must match array length");
-    assert_eq!(unstaged_count, actual_unstaged, "Unstaged count must match array length");
-    assert_eq!(untracked_count, actual_untracked, "Untracked count must match array length");
+    assert_eq!(
+        staged_count, actual_staged,
+        "Staged count must match array length"
+    );
+    assert_eq!(
+        unstaged_count, actual_unstaged,
+        "Unstaged count must match array length"
+    );
+    assert_eq!(
+        untracked_count, actual_untracked,
+        "Untracked count must match array length"
+    );
 }
 
 #[test]
@@ -224,7 +248,10 @@ fn test_git_status_preserves_ahead_behind() {
 
     // Ahead count must be preserved
     assert!(json["ahead"].is_number(), "Ahead count must be preserved");
-    assert!(json["ahead"].as_u64().unwrap() > 0, "Ahead count should be positive");
+    assert!(
+        json["ahead"].as_u64().unwrap() > 0,
+        "Ahead count should be positive"
+    );
 }
 
 #[test]
@@ -248,7 +275,10 @@ fn test_git_status_preserves_behind() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     assert!(json["behind"].is_number(), "Behind count must be preserved");
-    assert!(json["behind"].as_u64().unwrap() > 0, "Behind count should be positive");
+    assert!(
+        json["behind"].as_u64().unwrap() > 0,
+        "Behind count should be positive"
+    );
 }
 
 #[test]
@@ -272,7 +302,10 @@ fn test_git_status_preserves_clean_status() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     assert!(json["is_clean"].is_boolean(), "is_clean must be a boolean");
-    assert!(json["is_clean"].as_bool().unwrap(), "Clean repo must have is_clean=true");
+    assert!(
+        json["is_clean"].as_bool().unwrap(),
+        "Clean repo must have is_clean=true"
+    );
 
     // Compact format should indicate clean
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -304,5 +337,8 @@ fn test_git_status_preserves_dirty_status() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     assert!(json["is_clean"].is_boolean(), "is_clean must be a boolean");
-    assert!(!json["is_clean"].as_bool().unwrap(), "Dirty repo must have is_clean=false");
+    assert!(
+        !json["is_clean"].as_bool().unwrap(),
+        "Dirty repo must have is_clean=false"
+    );
 }

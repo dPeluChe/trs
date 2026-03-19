@@ -97,8 +97,7 @@ Tests:       2 passed, 1 skipped, 3 total"#;
 
 #[test]
 fn test_parse_jest_test_line() {
-    let result =
-        ParseHandler::parse_jest_test_line("  ✓ should work correctly (5 ms)").unwrap();
+    let result = ParseHandler::parse_jest_test_line("  ✓ should work correctly (5 ms)").unwrap();
     assert_eq!(result.status, JestTestStatus::Passed);
     assert_eq!(result.test_name, "should work correctly");
     assert!(result.duration.is_some());
@@ -271,14 +270,12 @@ fn test_format_jest_agent() {
 #[test]
 fn test_parse_jest_with_ancestors() {
     // Test with regular > separator
-    let result =
-        ParseHandler::parse_jest_test_line("✓ describe block > test name (5 ms)").unwrap();
+    let result = ParseHandler::parse_jest_test_line("✓ describe block > test name (5 ms)").unwrap();
     assert_eq!(result.test_name, "test name");
     assert_eq!(result.ancestors, vec!["describe block"]);
 
     // Test with fancy › separator (Unicode)
-    let result =
-        ParseHandler::parse_jest_test_line("✓ describe block › test name (5 ms)").unwrap();
+    let result = ParseHandler::parse_jest_test_line("✓ describe block › test name (5 ms)").unwrap();
     assert_eq!(result.test_name, "test name");
     assert_eq!(result.ancestors, vec!["describe block"]);
 }

@@ -13,8 +13,7 @@ fn test_simple_object() {
 
 #[test]
 fn test_array_of_objects() {
-    let json: serde_json::Value =
-        serde_json::from_str(r#"[{"id":1},{"id":2},{"id":3}]"#).unwrap();
+    let json: serde_json::Value = serde_json::from_str(r#"[{"id":1},{"id":2},{"id":3}]"#).unwrap();
     let mut buf = String::new();
     format_structure(&json, &mut buf, 0, usize::MAX);
     assert!(buf.contains("Array[3]"));
@@ -22,8 +21,7 @@ fn test_array_of_objects() {
 
 #[test]
 fn test_empty_structures() {
-    let json: serde_json::Value =
-        serde_json::from_str(r#"{"items":[],"meta":{}}"#).unwrap();
+    let json: serde_json::Value = serde_json::from_str(r#"{"items":[],"meta":{}}"#).unwrap();
     let mut buf = String::new();
     format_structure(&json, &mut buf, 0, usize::MAX);
     assert!(buf.contains("Array[0]"));
@@ -51,8 +49,7 @@ fn test_long_string_shows_length() {
 
 #[test]
 fn test_null_value() {
-    let json: serde_json::Value =
-        serde_json::from_str(r#"{"value":null}"#).unwrap();
+    let json: serde_json::Value = serde_json::from_str(r#"{"value":null}"#).unwrap();
     let mut buf = String::new();
     format_structure(&json, &mut buf, 0, usize::MAX);
     assert!(buf.contains("Null"));
@@ -60,8 +57,7 @@ fn test_null_value() {
 
 #[test]
 fn test_schema_json_output() {
-    let json: serde_json::Value =
-        serde_json::from_str(r#"{"name":"test","count":5}"#).unwrap();
+    let json: serde_json::Value = serde_json::from_str(r#"{"name":"test","count":5}"#).unwrap();
     let schema = to_schema_json(&json, 0, usize::MAX);
     assert_eq!(schema["name"], "String");
     assert_eq!(schema["count"], "Number");
@@ -74,9 +70,8 @@ fn test_schema_json_output() {
 #[test]
 fn test_small_array_no_sampling() {
     // Arrays with <=5 items should NOT be sampled
-    let json: serde_json::Value = serde_json::from_str(
-        r#"[{"x":1},{"x":2},{"x":3},{"x":4},{"x":5}]"#
-    ).unwrap();
+    let json: serde_json::Value =
+        serde_json::from_str(r#"[{"x":1},{"x":2},{"x":3},{"x":4},{"x":5}]"#).unwrap();
     let mut buf = String::new();
     format_structure(&json, &mut buf, 0, usize::MAX);
     assert!(buf.contains("Array[5]"));
@@ -86,9 +81,7 @@ fn test_small_array_no_sampling() {
 #[test]
 fn test_large_array_sampling() {
     // Arrays with >5 items should show sampling annotation
-    let items: Vec<String> = (0..10)
-        .map(|i| format!(r#"{{"val":{}}}"#, i))
-        .collect();
+    let items: Vec<String> = (0..10).map(|i| format!(r#"{{"val":{}}}"#, i)).collect();
     let json_str = format!("[{}]", items.join(","));
     let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
     let mut buf = String::new();
@@ -100,8 +93,7 @@ fn test_large_array_sampling() {
 #[test]
 fn test_large_array_sampling_numbers() {
     // Homogeneous number array - still sampled
-    let json: serde_json::Value =
-        serde_json::from_str("[1,2,3,4,5,6,7,8,9,10]").unwrap();
+    let json: serde_json::Value = serde_json::from_str("[1,2,3,4,5,6,7,8,9,10]").unwrap();
     let mut buf = String::new();
     format_structure(&json, &mut buf, 0, usize::MAX);
     assert!(buf.contains("Array[10] of Number"));
@@ -130,7 +122,7 @@ fn test_sample_array_preserves_error_items() {
         // Should include first 3 + error item (index 4) + last 3
         // first 3: indices 0,1,2; last 3: indices 7,8,9; error: index 4
         assert!(sampled.len() >= 7); // 3 + 3 + 1 error
-        // Verify the error item is in the sample
+                                     // Verify the error item is in the sample
         let has_error = sampled.iter().any(|v| has_error_keys(v));
         assert!(has_error, "Error item should be preserved in sample");
     } else {
@@ -141,8 +133,7 @@ fn test_sample_array_preserves_error_items() {
 #[test]
 fn test_sample_array_exactly_at_threshold() {
     // Exactly 5 items: no sampling
-    let json: serde_json::Value =
-        serde_json::from_str("[1,2,3,4,5]").unwrap();
+    let json: serde_json::Value = serde_json::from_str("[1,2,3,4,5]").unwrap();
     if let serde_json::Value::Array(arr) = &json {
         let (_sampled, was_sampled) = sample_array(arr);
         assert!(!was_sampled);
@@ -152,8 +143,7 @@ fn test_sample_array_exactly_at_threshold() {
 #[test]
 fn test_sample_array_just_above_threshold() {
     // 6 items: sampling kicks in
-    let json: serde_json::Value =
-        serde_json::from_str("[1,2,3,4,5,6]").unwrap();
+    let json: serde_json::Value = serde_json::from_str("[1,2,3,4,5,6]").unwrap();
     if let serde_json::Value::Array(arr) = &json {
         let (sampled, was_sampled) = sample_array(arr);
         assert!(was_sampled);
@@ -164,15 +154,16 @@ fn test_sample_array_just_above_threshold() {
 
 #[test]
 fn test_large_array_json_schema_output() {
-    let items: Vec<String> = (0..10)
-        .map(|i| format!(r#"{{"val":{}}}"#, i))
-        .collect();
+    let items: Vec<String> = (0..10).map(|i| format!(r#"{{"val":{}}}"#, i)).collect();
     let json_str = format!("[{}]", items.join(","));
     let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
     let schema = to_schema_json(&json, 0, usize::MAX);
     assert_eq!(schema["_type"], "Array");
     assert_eq!(schema["_length"], 10);
-    assert!(schema["_sampled"].as_str().unwrap().contains("first 3 + last 3"));
+    assert!(schema["_sampled"]
+        .as_str()
+        .unwrap()
+        .contains("first 3 + last 3"));
 }
 
 // ============================================================
@@ -199,9 +190,8 @@ fn test_id_key_detection() {
 
 #[test]
 fn test_id_annotation_in_structure() {
-    let json: serde_json::Value = serde_json::from_str(
-        r#"{"user_id":123,"name":"Alice","uuid":"abc-def"}"#
-    ).unwrap();
+    let json: serde_json::Value =
+        serde_json::from_str(r#"{"user_id":123,"name":"Alice","uuid":"abc-def"}"#).unwrap();
     let mut buf = String::new();
     format_structure(&json, &mut buf, 0, usize::MAX);
     assert!(buf.contains("\"user_id\": Number (id)"));
@@ -213,9 +203,8 @@ fn test_id_annotation_in_structure() {
 
 #[test]
 fn test_id_annotation_nested_object() {
-    let json: serde_json::Value = serde_json::from_str(
-        r#"{"data":{"_id":"abc","title":"test"}}"#
-    ).unwrap();
+    let json: serde_json::Value =
+        serde_json::from_str(r#"{"data":{"_id":"abc","title":"test"}}"#).unwrap();
     let mut buf = String::new();
     format_structure(&json, &mut buf, 0, usize::MAX);
     assert!(buf.contains("\"_id\": String (id)"));
@@ -224,9 +213,8 @@ fn test_id_annotation_nested_object() {
 
 #[test]
 fn test_id_annotation_json_schema() {
-    let json: serde_json::Value = serde_json::from_str(
-        r#"{"id":1,"name":"test","account_id":42}"#
-    ).unwrap();
+    let json: serde_json::Value =
+        serde_json::from_str(r#"{"id":1,"name":"test","account_id":42}"#).unwrap();
     let schema = to_schema_json(&json, 0, usize::MAX);
     assert_eq!(schema["id"], "Number (id)");
     assert_eq!(schema["account_id"], "Number (id)");
@@ -239,8 +227,7 @@ fn test_id_annotation_json_schema() {
 
 #[test]
 fn test_non_json_hint_toml() {
-    let err = serde_json::from_str::<serde_json::Value>("[package]\nname = \"foo\"")
-        .unwrap_err();
+    let err = serde_json::from_str::<serde_json::Value>("[package]\nname = \"foo\"").unwrap_err();
     let path = Some(PathBuf::from("Cargo.toml"));
     let cmd_err = non_json_hint(&path, &err);
     match cmd_err {
@@ -255,8 +242,7 @@ fn test_non_json_hint_toml() {
 
 #[test]
 fn test_non_json_hint_yaml() {
-    let err = serde_json::from_str::<serde_json::Value>("key: value\n")
-        .unwrap_err();
+    let err = serde_json::from_str::<serde_json::Value>("key: value\n").unwrap_err();
     let path = Some(PathBuf::from("config.yaml"));
     let cmd_err = non_json_hint(&path, &err);
     match cmd_err {
@@ -271,8 +257,7 @@ fn test_non_json_hint_yaml() {
 
 #[test]
 fn test_non_json_hint_yml() {
-    let err = serde_json::from_str::<serde_json::Value>("key: value\n")
-        .unwrap_err();
+    let err = serde_json::from_str::<serde_json::Value>("key: value\n").unwrap_err();
     let path = Some(PathBuf::from("config.yml"));
     let cmd_err = non_json_hint(&path, &err);
     match cmd_err {
@@ -286,8 +271,7 @@ fn test_non_json_hint_yml() {
 
 #[test]
 fn test_non_json_hint_csv() {
-    let err = serde_json::from_str::<serde_json::Value>("a,b,c\n1,2,3\n")
-        .unwrap_err();
+    let err = serde_json::from_str::<serde_json::Value>("a,b,c\n1,2,3\n").unwrap_err();
     let path = Some(PathBuf::from("data.csv"));
     let cmd_err = non_json_hint(&path, &err);
     match cmd_err {
@@ -301,8 +285,7 @@ fn test_non_json_hint_csv() {
 
 #[test]
 fn test_non_json_hint_unknown_ext() {
-    let err = serde_json::from_str::<serde_json::Value>("not json at all")
-        .unwrap_err();
+    let err = serde_json::from_str::<serde_json::Value>("not json at all").unwrap_err();
     let path = Some(PathBuf::from("data.txt"));
     let cmd_err = non_json_hint(&path, &err);
     match cmd_err {
@@ -316,8 +299,7 @@ fn test_non_json_hint_unknown_ext() {
 
 #[test]
 fn test_non_json_hint_no_file() {
-    let err = serde_json::from_str::<serde_json::Value>("not json")
-        .unwrap_err();
+    let err = serde_json::from_str::<serde_json::Value>("not json").unwrap_err();
     let cmd_err = non_json_hint(&None, &err);
     match cmd_err {
         CommandError::InvalidArguments(msg) => {
@@ -333,24 +315,20 @@ fn test_non_json_hint_no_file() {
 
 #[test]
 fn test_has_error_keys() {
-    let obj: serde_json::Value =
-        serde_json::from_str(r#"{"error":"bad","code":500}"#).unwrap();
+    let obj: serde_json::Value = serde_json::from_str(r#"{"error":"bad","code":500}"#).unwrap();
     assert!(has_error_keys(&obj));
 
     let obj: serde_json::Value =
         serde_json::from_str(r#"{"exception":"NPE","trace":"..."}"#).unwrap();
     assert!(has_error_keys(&obj));
 
-    let obj: serde_json::Value =
-        serde_json::from_str(r#"{"failed":true}"#).unwrap();
+    let obj: serde_json::Value = serde_json::from_str(r#"{"failed":true}"#).unwrap();
     assert!(has_error_keys(&obj));
 
-    let obj: serde_json::Value =
-        serde_json::from_str(r#"{"failure_reason":"timeout"}"#).unwrap();
+    let obj: serde_json::Value = serde_json::from_str(r#"{"failure_reason":"timeout"}"#).unwrap();
     assert!(has_error_keys(&obj));
 
-    let obj: serde_json::Value =
-        serde_json::from_str(r#"{"name":"ok","status":"good"}"#).unwrap();
+    let obj: serde_json::Value = serde_json::from_str(r#"{"name":"ok","status":"good"}"#).unwrap();
     assert!(!has_error_keys(&obj));
 
     // Non-objects never match

@@ -44,7 +44,10 @@ fn test_clean_all_options() {
     for line in &lines {
         if line.trim().is_empty() {
             consecutive_blanks += 1;
-            assert!(consecutive_blanks <= 1, "Should not have consecutive blank lines");
+            assert!(
+                consecutive_blanks <= 1,
+                "Should not have consecutive blank lines"
+            );
         } else {
             consecutive_blanks = 0;
         }
@@ -138,7 +141,7 @@ fn test_clean_only_whitespace() {
     let input = "   \n   \n   \n";
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
-        .arg("--raw")  // Use raw format to get just the content without percentage
+        .arg("--raw") // Use raw format to get just the content without percentage
         .arg("clean")
         .write_stdin(input)
         .assert()
@@ -327,7 +330,7 @@ fn test_clean_logs_application() {
 fn test_clean_logs_repeated_lines() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
-        .arg("--raw")  // Use raw format to avoid reduction percentage in output
+        .arg("--raw") // Use raw format to avoid reduction percentage in output
         .arg("clean")
         .arg("--collapse-repeats")
         .arg("-f")

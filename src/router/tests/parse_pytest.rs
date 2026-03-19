@@ -14,7 +14,11 @@ fn test_parse_handler_git_status() {
     };
     // Use temp file instead of stdin to avoid blocking
     let tmp = std::env::temp_dir().join("trs_test_git_status.tmp");
-    std::fs::write(&tmp, "On branch main\nnothing to commit, working tree clean\n").unwrap();
+    std::fs::write(
+        &tmp,
+        "On branch main\nnothing to commit, working tree clean\n",
+    )
+    .unwrap();
     let input = ParseCommands::GitStatus {
         file: Some(tmp.clone()),
         count: None,

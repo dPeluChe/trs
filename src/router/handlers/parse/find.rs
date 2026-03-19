@@ -1,11 +1,14 @@
 use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::super::types::*;
-use crate::OutputFormat;
 use super::ParseHandler;
+use crate::OutputFormat;
 
 impl ParseHandler {
     /// Handle the find subcommand.
-    pub(crate) fn handle_find(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
+    pub(crate) fn handle_find(
+        file: &Option<std::path::PathBuf>,
+        ctx: &CommandContext,
+    ) -> CommandResult {
         // Read input from file or stdin
         let input = Self::read_input(file)?;
 
@@ -190,20 +193,31 @@ impl ParseHandler {
         }
 
         // Group by parent directory for tree-like output
-        let mut groups: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
+        let mut groups: std::collections::BTreeMap<String, Vec<String>> =
+            std::collections::BTreeMap::new();
         for entry in &find_output.entries {
             let path = std::path::Path::new(&entry.path);
-            let parent = path.parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
-            let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| entry.path.clone());
+            let parent = path
+                .parent()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| entry.path.clone());
             groups.entry(parent).or_default().push(name);
         }
 
         for (dir, files) in &groups {
             if dir.is_empty() {
-                for f in files { output.push_str(&format!("{}\n", f)); }
+                for f in files {
+                    output.push_str(&format!("{}\n", f));
+                }
             } else {
                 output.push_str(&format!("{}/\n", dir));
-                for f in files { output.push_str(&format!("  {}\n", f)); }
+                for f in files {
+                    output.push_str(&format!("  {}\n", f));
+                }
             }
         }
 
@@ -212,12 +226,20 @@ impl ParseHandler {
             let dir_count = find_output.directories.len();
             let file_count = find_output.files.len();
             let mut summary_parts = Vec::new();
-            if file_count > 0 { summary_parts.push(format!("{} files", file_count)); }
-            if dir_count > 0 { summary_parts.push(format!("{} dirs", dir_count)); }
+            if file_count > 0 {
+                summary_parts.push(format!("{} files", file_count));
+            }
+            if dir_count > 0 {
+                summary_parts.push(format!("{} dirs", dir_count));
+            }
             if !find_output.extensions.is_empty() {
                 let mut exts: Vec<_> = find_output.extensions.iter().collect();
                 exts.sort_by(|a, b| b.1.cmp(a.1));
-                let top: Vec<String> = exts.iter().take(5).map(|(e, c)| format!(".{}({})", e, c)).collect();
+                let top: Vec<String> = exts
+                    .iter()
+                    .take(5)
+                    .map(|(e, c)| format!(".{}({})", e, c))
+                    .collect();
                 summary_parts.push(top.join(" "));
             }
             output.push_str(&format!("[{}]\n", summary_parts.join(", ")));

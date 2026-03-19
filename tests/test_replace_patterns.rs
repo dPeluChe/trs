@@ -15,11 +15,7 @@ fn create_temp_file(dir: &TempDir, name: &str, content: &str) -> std::path::Path
 #[test]
 fn test_replace_stats_shows_reducer() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--stats")
@@ -36,11 +32,7 @@ fn test_replace_stats_shows_reducer() {
 #[test]
 fn test_replace_stats_shows_output_mode() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--stats")
@@ -57,11 +49,7 @@ fn test_replace_stats_shows_output_mode() {
 #[test]
 fn test_replace_stats_shows_files_affected() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--stats")
@@ -78,11 +66,7 @@ fn test_replace_stats_shows_files_affected() {
 #[test]
 fn test_replace_stats_shows_dry_run() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--stats")
@@ -99,11 +83,7 @@ fn test_replace_stats_shows_dry_run() {
 #[test]
 fn test_replace_stats_with_json_format() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--stats")
@@ -125,11 +105,7 @@ fn test_replace_stats_with_json_format() {
 #[test]
 fn test_replace_no_matches_returns_success() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -144,11 +120,7 @@ fn test_replace_no_matches_returns_success() {
 #[test]
 fn test_replace_no_matches_compact_message() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -164,11 +136,7 @@ fn test_replace_no_matches_compact_message() {
 #[test]
 fn test_replace_no_matches_not_dry_run_message() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -187,11 +155,7 @@ fn test_replace_no_matches_not_dry_run_message() {
 #[test]
 fn test_replace_regex_pattern() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "test123 test456\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "test123 test456\n");
 
     // Replace digits with X
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -208,11 +172,7 @@ fn test_replace_regex_pattern() {
 #[test]
 fn test_replace_regex_word_boundary() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "fn function fn_main\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "fn function fn_main\n");
 
     // Replace whole word "fn" only
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -229,11 +189,7 @@ fn test_replace_regex_word_boundary() {
 #[test]
 fn test_replace_regex_character_class() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "abc ABC\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "abc ABC\n");
 
     // Replace lowercase letters
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -250,11 +206,7 @@ fn test_replace_regex_character_class() {
 #[test]
 fn test_replace_regex_alternation() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "foo bar baz\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "foo bar baz\n");
 
     // Replace foo or bar with X
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -271,11 +223,7 @@ fn test_replace_regex_alternation() {
 #[test]
 fn test_replace_invalid_regex_returns_error() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     // Invalid regex should return an error
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -295,11 +243,7 @@ fn test_replace_invalid_regex_returns_error() {
 #[test]
 fn test_replace_with_dashes() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "some-function-name\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "some-function-name\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -315,11 +259,7 @@ fn test_replace_with_dashes() {
 #[test]
 fn test_replace_with_underscores() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "some_variable_name\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "some_variable_name\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -335,11 +275,7 @@ fn test_replace_with_underscores() {
 #[test]
 fn test_replace_with_dots() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "test.txt file.txt\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "test.txt file.txt\n");
 
     // . in regex matches any character, so we need to escape it
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -356,11 +292,7 @@ fn test_replace_with_dots() {
 #[test]
 fn test_replace_with_commas() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "a, b, c\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "a, b, c\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -380,16 +312,8 @@ fn test_replace_with_commas() {
 #[test]
 fn test_replace_multiple_files() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "file1.txt",
-        "Hello world\n",
-    );
-    create_temp_file(
-        &temp_dir,
-        "file2.txt",
-        "Hello universe\n",
-    );
+    create_temp_file(&temp_dir, "file1.txt", "Hello world\n");
+    create_temp_file(&temp_dir, "file2.txt", "Hello universe\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -407,16 +331,8 @@ fn test_replace_multiple_files() {
 #[test]
 fn test_replace_json_multiple_files() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "file1.txt",
-        "Hello world\n",
-    );
-    create_temp_file(
-        &temp_dir,
-        "file2.txt",
-        "Hello universe\n",
-    );
+    create_temp_file(&temp_dir, "file1.txt", "Hello world\n");
+    create_temp_file(&temp_dir, "file2.txt", "Hello universe\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd

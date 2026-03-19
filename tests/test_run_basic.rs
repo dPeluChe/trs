@@ -475,4 +475,3 @@ fn test_run_ansi_codes_json_output() {
     // The output should contain "green" (possibly with ANSI codes)
     assert!(json["stdout"].as_str().unwrap().contains("green"));
 }
-

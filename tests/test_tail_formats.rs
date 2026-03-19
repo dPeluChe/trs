@@ -211,7 +211,11 @@ fn test_tail_csv_with_errors() {
     // All data rows should have is_error = true
     for line in lines.iter().skip(1) {
         // The last field should be true (is_error column)
-        assert!(line.ends_with(",true"), "Line should end with ,true: {}", line);
+        assert!(
+            line.ends_with(",true"),
+            "Line should end with ,true: {}",
+            line
+        );
     }
 }
 

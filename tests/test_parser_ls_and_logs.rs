@@ -459,5 +459,7 @@ fn test_parse_logs_csv_format() {
         .write_stdin(input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("line_number,level,timestamp,message"));
+        .stdout(predicate::str::contains(
+            "line_number,level,timestamp,message",
+        ));
 }

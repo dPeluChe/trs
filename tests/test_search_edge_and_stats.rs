@@ -103,11 +103,7 @@ fn test_search_with_absolute_path() {
 fn test_search_empty_query() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // Empty query should match everything or error
-    let _ = cmd
-        .arg("search")
-        .arg("src")
-        .arg("")
-        .assert(); // Either success or failure is acceptable
+    let _ = cmd.arg("search").arg("src").arg("").assert(); // Either success or failure is acceptable
 }
 
 #[test]
@@ -237,7 +233,11 @@ fn test_search_stats_raw_vs_reduced() {
     assert!(output_bytes.is_some(), "Should have output bytes");
 
     // Output bytes should match stdout length
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -267,10 +267,17 @@ fn test_search_stats_json_larger() {
     assert!(output_bytes.is_some(), "Should have output bytes");
 
     // For JSON output, output should be larger than input (JSON adds metadata)
-    assert!(output_bytes > input_bytes, "JSON search output should be larger than raw input");
+    assert!(
+        output_bytes > input_bytes,
+        "JSON search output should be larger than raw input"
+    );
 
     // Verify stdout length matches output bytes
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -298,7 +305,11 @@ fn test_search_stats_compact_reduction() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 
     // Compact format typically shows reduction since it summarizes matches
     // (though this depends on the specific pattern and matches)
@@ -329,7 +340,11 @@ fn test_search_stats_agent_format() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -357,7 +372,11 @@ fn test_search_stats_csv_format() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -385,7 +404,11 @@ fn test_search_stats_tsv_format() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -414,8 +437,16 @@ fn test_search_stats_empty_results() {
     assert!(output_bytes.is_some(), "Should have output bytes");
 
     // For empty results, input_bytes should be 0
-    assert_eq!(input_bytes, Some(0), "Empty search should have 0 input bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        input_bytes,
+        Some(0),
+        "Empty search should have 0 input bytes"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 /// Helper function to extract byte count from stats output

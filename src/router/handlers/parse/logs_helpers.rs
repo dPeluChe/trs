@@ -333,7 +333,11 @@ impl ParseHandler {
     }
 
     /// Extract message by removing timestamp and level prefix.
-    pub(crate) fn extract_message(line: &str, timestamp: &Option<String>, level: &LogLevel) -> String {
+    pub(crate) fn extract_message(
+        line: &str,
+        timestamp: &Option<String>,
+        level: &LogLevel,
+    ) -> String {
         let mut message = line.to_string();
 
         // Remove timestamp prefix

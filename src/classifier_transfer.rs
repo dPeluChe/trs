@@ -8,7 +8,8 @@
 ///   "From https://github.com/user/repo.git\n * branch  main -> FETCH_HEAD\nAlready up to date."
 ///   → "pulled (up to date)"
 pub(crate) fn compact_git_transfer(combined: &str, subcmd: &str) -> String {
-    let lines: Vec<&str> = combined.lines()
+    let lines: Vec<&str> = combined
+        .lines()
         .map(|l| l.trim())
         .filter(|l| !l.is_empty())
         .collect();
@@ -18,7 +19,10 @@ pub(crate) fn compact_git_transfer(combined: &str, subcmd: &str) -> String {
     }
 
     // Check for errors
-    if let Some(err) = lines.iter().find(|l| l.starts_with("fatal:") || l.starts_with("error:")) {
+    if let Some(err) = lines
+        .iter()
+        .find(|l| l.starts_with("fatal:") || l.starts_with("error:"))
+    {
         return format!("{}\n", err);
     }
 

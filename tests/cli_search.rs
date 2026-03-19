@@ -353,4 +353,3 @@ fn test_search_total_no_matches() {
     // Should show no matches message but not total line
     assert!(output_str.contains("no matches"));
 }
-

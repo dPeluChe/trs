@@ -1,4 +1,7 @@
-use super::common::{CommandContext, CommandError, CommandResult, CommandStats, strip_ansi_codes, sanitize_control_chars};
+use super::common::{
+    sanitize_control_chars, strip_ansi_codes, CommandContext, CommandError, CommandResult,
+    CommandStats,
+};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -216,4 +219,3 @@ pub(crate) struct CleanInput {
     pub collapse_repeats: bool,
     pub trim: bool,
 }
-

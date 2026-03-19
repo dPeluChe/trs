@@ -22,9 +22,9 @@ fn test_line_numbers_compact_format() {
     // Should contain line numbers in format like "NNN:" and the search term
     assert!(output_str.contains("SearchHandler"));
     // Verify at least one line number pattern (digits followed by colon)
-    let has_line_number = output_str.lines().any(|line| {
-        line.chars().any(|c| c.is_ascii_digit()) && line.contains(':')
-    });
+    let has_line_number = output_str
+        .lines()
+        .any(|line| line.chars().any(|c| c.is_ascii_digit()) && line.contains(':'));
     assert!(has_line_number, "Output should contain line numbers");
 }
 
@@ -171,9 +171,9 @@ fn test_line_numbers_with_context() {
 
     // Should contain match line numbers and search term
     assert!(output_str.contains("SearchHandler"));
-    let has_line_number = output_str.lines().any(|line| {
-        line.chars().any(|c| c.is_ascii_digit()) && line.contains(':')
-    });
+    let has_line_number = output_str
+        .lines()
+        .any(|line| line.chars().any(|c| c.is_ascii_digit()) && line.contains(':'));
     assert!(has_line_number, "Output should contain line numbers");
 
     // Context lines should be indicated with ellipsis

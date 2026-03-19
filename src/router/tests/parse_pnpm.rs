@@ -149,13 +149,11 @@ fn test_parse_pnpm_duration() {
 
 #[test]
 fn test_split_pnpm_test_name_and_duration() {
-    let (name, duration) =
-        ParseHandler::split_pnpm_test_name_and_duration("test name (5.123ms)");
+    let (name, duration) = ParseHandler::split_pnpm_test_name_and_duration("test name (5.123ms)");
     assert_eq!(name, "test name");
     assert_eq!(duration, Some(0.005123));
 
-    let (name, duration) =
-        ParseHandler::split_pnpm_test_name_and_duration("test name (1.234s)");
+    let (name, duration) = ParseHandler::split_pnpm_test_name_and_duration("test name (1.234s)");
     assert_eq!(name, "test name");
     assert_eq!(duration, Some(1.234));
 

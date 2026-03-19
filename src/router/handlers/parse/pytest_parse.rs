@@ -1,4 +1,4 @@
-use super::super::common::{CommandResult};
+use super::super::common::CommandResult;
 use super::super::types::*;
 use super::ParseHandler;
 

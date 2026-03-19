@@ -15,11 +15,7 @@ fn create_temp_file(dir: &TempDir, name: &str, content: &str) -> std::path::Path
 #[test]
 fn test_replace_json_is_valid() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
@@ -42,11 +38,7 @@ fn test_replace_json_is_valid() {
 #[test]
 fn test_replace_json_has_files_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -63,11 +55,7 @@ fn test_replace_json_has_files_field() {
 #[test]
 fn test_replace_json_has_path_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -84,11 +72,7 @@ fn test_replace_json_has_path_field() {
 #[test]
 fn test_replace_json_has_matches_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -105,11 +89,7 @@ fn test_replace_json_has_matches_field() {
 #[test]
 fn test_replace_json_has_line_number_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -126,11 +106,7 @@ fn test_replace_json_has_line_number_field() {
 #[test]
 fn test_replace_json_has_original_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -147,11 +123,7 @@ fn test_replace_json_has_original_field() {
 #[test]
 fn test_replace_json_has_replaced_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -168,11 +140,7 @@ fn test_replace_json_has_replaced_field() {
 #[test]
 fn test_replace_json_has_counts_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -189,11 +157,7 @@ fn test_replace_json_has_counts_field() {
 #[test]
 fn test_replace_json_has_dry_run_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -210,11 +174,7 @@ fn test_replace_json_has_dry_run_field() {
 #[test]
 fn test_replace_json_has_search_pattern_field() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -231,11 +191,7 @@ fn test_replace_json_has_search_pattern_field() {
 #[test]
 fn test_replace_json_empty_result() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd

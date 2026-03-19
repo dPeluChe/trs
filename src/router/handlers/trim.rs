@@ -187,4 +187,3 @@ impl CommandHandler for TrimHandler {
         Ok(())
     }
 }
-

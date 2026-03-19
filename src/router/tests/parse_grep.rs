@@ -112,7 +112,10 @@ fn test_parse_grep_format_compact() {
     let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
 
     // Single-file results omit header/footer for compactness
-    assert!(!output.contains("matches:"), "single-file should not have header");
+    assert!(
+        !output.contains("matches:"),
+        "single-file should not have header"
+    );
     assert!(output.contains("src/main.rs (2):"));
     assert!(output.contains("42: fn main() {"));
     assert!(output.contains("45:     println!"));
@@ -214,7 +217,8 @@ fn test_parse_grep_context_line_with_column() {
 #[test]
 fn test_parse_grep_mixed_match_and_context() {
     // Mix of match and context lines
-    let input = "src/main.rs-41-context before\nsrc/main.rs:42:match line\nsrc/main.rs-43-context after";
+    let input =
+        "src/main.rs-41-context before\nsrc/main.rs:42:match line\nsrc/main.rs-43-context after";
     let result = ParseHandler::parse_grep(input).unwrap();
 
     assert_eq!(result.files[0].matches.len(), 3);

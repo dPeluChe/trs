@@ -1,8 +1,8 @@
 //! Compact formatter for human-readable output.
 
-use crate::OutputFormat;
-use super::Formatter;
 use super::helpers::format_duration;
+use super::Formatter;
+use crate::OutputFormat;
 
 /// Formatter for compact, human-readable output.
 ///
@@ -243,5 +243,4 @@ impl CompactFormatter {
     pub fn format_truncated(shown: usize, total: usize) -> String {
         format!("... showing {} of {} total\n", shown, total)
     }
-
 }

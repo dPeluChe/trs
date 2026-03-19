@@ -1,6 +1,7 @@
 use clap::Parser;
 
 mod classifier;
+mod classifier_exec;
 mod classifier_transfer;
 mod cli;
 mod commands;
@@ -16,12 +17,13 @@ mod router;
 mod schema;
 pub(crate) mod tracker;
 
-pub use cli::{Cli, OutputFormat};
 #[allow(unused_imports)]
 pub(crate) use cli::format_precedence;
+pub use cli::{Cli, OutputFormat};
 pub use commands::{Commands, ParseCommands, TestRunner};
 
-use classifier::{execute_and_parse, preprocess_tail_args};
+use classifier::preprocess_tail_args;
+use classifier_exec::execute_and_parse;
 use router::{CommandContext, Router};
 
 fn main() {
@@ -38,8 +40,12 @@ fn main() {
     let router = Router::new();
 
     match &cli.command {
-        Some(Commands::Stats { history, project, json }) => {
-            use router::handlers::stats::{StatsInput, handle_stats};
+        Some(Commands::Stats {
+            history,
+            project,
+            json,
+        }) => {
+            use router::handlers::stats::{handle_stats, StatsInput};
             let input = StatsInput {
                 history: *history,
                 project: *project,
@@ -47,7 +53,8 @@ fn main() {
             };
             handle_stats(&input);
         }
-        Some(Commands::Parse { .. }
+        Some(
+            Commands::Parse { .. }
             | Commands::Search { .. }
             | Commands::Replace { .. }
             | Commands::Run { .. }
@@ -59,14 +66,23 @@ fn main() {
             | Commands::IsClean { .. }
             | Commands::Read { .. }
             | Commands::Json { .. }
-            | Commands::Err { .. }) => {
+            | Commands::Err { .. },
+        ) => {
             router.execute_and_print(cli.command.as_ref().unwrap(), &ctx);
         }
         Some(Commands::External(ext_args)) => {
             // External command: classify, execute, and parse
             // Extract trs flags (--json, --csv, etc.) from the external args
             // so users can write: trs git status --json
-            let trs_flags = ["--json", "--csv", "--tsv", "--agent", "--compact", "--raw", "--stats"];
+            let trs_flags = [
+                "--json",
+                "--csv",
+                "--tsv",
+                "--agent",
+                "--compact",
+                "--raw",
+                "--stats",
+            ];
             let mut cmd_args: Vec<String> = Vec::new();
             let mut ctx = ctx;
             for arg in ext_args {

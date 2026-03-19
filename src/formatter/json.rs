@@ -1,7 +1,7 @@
 //! JSON formatter for structured output.
 
-use crate::OutputFormat;
 use super::Formatter;
+use crate::OutputFormat;
 
 /// Formatter for JSON output.
 ///
@@ -339,5 +339,4 @@ impl JsonFormatter {
     pub fn format_array<T: serde::Serialize>(items: &[T]) -> String {
         serde_json::to_string(items).unwrap_or_else(|_| "[]".to_string())
     }
-
 }

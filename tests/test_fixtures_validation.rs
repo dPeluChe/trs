@@ -391,4 +391,3 @@ fn test_load_ls_long_paths() {
     assert!(content.contains("another/long/path"));
     assert!(content.contains("project/submodule/src"));
 }
-

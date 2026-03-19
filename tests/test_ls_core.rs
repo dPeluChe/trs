@@ -208,10 +208,17 @@ fn test_ls_stats_raw_output_same_size() {
 
     // For raw output with simple input (just filenames), input and output bytes should be equal
     // because raw format just outputs the filenames again
-    assert_eq!(input_bytes, output_bytes, "Raw output should have same input and output bytes");
+    assert_eq!(
+        input_bytes, output_bytes,
+        "Raw output should have same input and output bytes"
+    );
 
     // Also verify stdout length matches
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -237,10 +244,17 @@ fn test_ls_stats_json_output_larger_than_raw() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // For JSON output, output should be larger than input (JSON adds metadata)
-    assert!(output_bytes > input_bytes, "JSON output should be larger than raw input");
+    assert!(
+        output_bytes > input_bytes,
+        "JSON output should be larger than raw input"
+    );
 
     // Verify stdout length matches output bytes
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -268,7 +282,11 @@ fn test_ls_stats_compact_output_size() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -297,14 +315,24 @@ fn test_ls_stats_long_format_comparison() {
 
     // For long format input, raw output is smaller (extracts just filenames)
     // This demonstrates the reduction - metadata is stripped
-    assert!(output_bytes < input_bytes, "Raw long format ls should have smaller output (just filenames)");
+    assert!(
+        output_bytes < input_bytes,
+        "Raw long format ls should have smaller output (just filenames)"
+    );
 
     // Verify stdout contains the filenames
     assert!(stdout.contains("src"), "Output should contain 'src'");
-    assert!(stdout.contains("Cargo.toml"), "Output should contain 'Cargo.toml'");
+    assert!(
+        stdout.contains("Cargo.toml"),
+        "Output should contain 'Cargo.toml'"
+    );
 
     // Output bytes should match stdout length
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -331,8 +359,15 @@ fn test_ls_stats_long_format_json_larger() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // JSON output should be larger than raw input
-    assert!(output_bytes > input_bytes, "JSON long format ls output should be larger than raw input");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert!(
+        output_bytes > input_bytes,
+        "JSON long format ls output should be larger than raw input"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 /// Helper function to extract byte count from stats output

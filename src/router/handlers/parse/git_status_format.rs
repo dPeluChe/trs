@@ -1,6 +1,6 @@
 use super::super::types::*;
-use crate::OutputFormat;
 use super::ParseHandler;
+use crate::OutputFormat;
 
 impl ParseHandler {
     /// Format git status for output.
@@ -238,9 +238,7 @@ impl ParseHandler {
                 Some(pos) => &entry.path[..=pos],
                 None => "./",
             };
-            dirs.entry(dir.to_string())
-                .or_default()
-                .push(&entry.status);
+            dirs.entry(dir.to_string()).or_default().push(&entry.status);
         }
 
         for (dir, statuses) in &dirs {
@@ -304,9 +302,7 @@ mod tests {
 
     #[test]
     fn test_small_list_shows_individual_files() {
-        let entries = make_entries("M", &[
-            "src/main.rs", "src/cli.rs", "src/config.rs",
-        ]);
+        let entries = make_entries("M", &["src/main.rs", "src/cli.rs", "src/config.rs"]);
         let mut output = String::new();
         ParseHandler::format_entries_capped(&entries, 15, &mut output);
         assert!(output.contains("M src/main.rs"));

@@ -41,7 +41,10 @@ fn test_git_diff_preserves_file_paths() {
     // Each file must have a path
     for file in files {
         assert!(file["path"].is_string(), "Each file must have a path");
-        assert!(!file["path"].as_str().unwrap().is_empty(), "Path must not be empty");
+        assert!(
+            !file["path"].as_str().unwrap().is_empty(),
+            "Path must not be empty"
+        );
     }
 }
 
@@ -101,14 +104,26 @@ fn test_git_diff_preserves_line_counts() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     // Total additions/deletions should be present
-    assert!(json["total_additions"].is_number(), "total_additions must be present");
-    assert!(json["total_deletions"].is_number(), "total_deletions must be present");
+    assert!(
+        json["total_additions"].is_number(),
+        "total_additions must be present"
+    );
+    assert!(
+        json["total_deletions"].is_number(),
+        "total_deletions must be present"
+    );
 
     // Each file should have additions/deletions
     if let Some(files) = json["files"].as_array() {
         for file in files {
-            assert!(file["additions"].is_number(), "Each file must have additions count");
-            assert!(file["deletions"].is_number(), "Each file must have deletions count");
+            assert!(
+                file["additions"].is_number(),
+                "Each file must have additions count"
+            );
+            assert!(
+                file["deletions"].is_number(),
+                "Each file must have deletions count"
+            );
         }
     }
 }
@@ -134,7 +149,10 @@ fn test_git_diff_preserves_empty_status() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     assert!(json["is_empty"].is_boolean(), "is_empty must be a boolean");
-    assert!(json["is_empty"].as_bool().unwrap(), "Empty diff must have is_empty=true");
+    assert!(
+        json["is_empty"].as_bool().unwrap(),
+        "Empty diff must have is_empty=true"
+    );
 }
 
 // ============================================================
@@ -162,13 +180,18 @@ fn test_ls_preserves_file_names() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     // Entries array should exist and have content
-    let entries = json["entries"].as_array().expect("Entries array must exist");
+    let entries = json["entries"]
+        .as_array()
+        .expect("Entries array must exist");
     assert!(!entries.is_empty(), "Entries should not be empty");
 
     // Each entry must have a name
     for entry in entries {
         assert!(entry["name"].is_string(), "Each entry must have a name");
-        assert!(!entry["name"].as_str().unwrap().is_empty(), "Name must not be empty");
+        assert!(
+            !entry["name"].as_str().unwrap().is_empty(),
+            "Name must not be empty"
+        );
     }
 }
 
@@ -240,7 +263,10 @@ fn test_ls_preserves_total_count() {
     let entries_count = json["entries"].as_array().map(|a| a.len()).unwrap_or(0);
     let total = json["counts"]["total"].as_u64().unwrap_or(0) as usize;
 
-    assert_eq!(total, entries_count, "Total count must match entries length");
+    assert_eq!(
+        total, entries_count,
+        "Total count must match entries length"
+    );
 }
 
 #[test]
@@ -266,17 +292,21 @@ fn test_ls_preserves_hidden_files_flag() {
     // Check that hidden files are properly identified
     if let Some(entries) = json["entries"].as_array() {
         let has_hidden = entries.iter().any(|e| {
-            e["name"].as_str()
+            e["name"]
+                .as_str()
                 .map(|n| n.starts_with('.'))
                 .unwrap_or(false)
         });
 
         if has_hidden {
             // If there are hidden files, at least some should be marked as hidden
-            let marked_hidden = entries.iter().any(|e| {
-                e["is_hidden"].as_bool().unwrap_or(false)
-            });
-            assert!(marked_hidden, "Hidden files should be marked with is_hidden=true");
+            let marked_hidden = entries
+                .iter()
+                .any(|e| e["is_hidden"].as_bool().unwrap_or(false));
+            assert!(
+                marked_hidden,
+                "Hidden files should be marked with is_hidden=true"
+            );
         }
     }
 }
@@ -340,7 +370,10 @@ fn test_grep_preserves_line_numbers() {
         for file in files {
             if let Some(matches) = file["matches"].as_array() {
                 for m in matches {
-                    assert!(m["line_number"].is_number(), "Each match must have a line_number");
+                    assert!(
+                        m["line_number"].is_number(),
+                        "Each match must have a line_number"
+                    );
                 }
             }
         }
@@ -373,7 +406,10 @@ fn test_grep_preserves_match_content() {
             if let Some(matches) = file["matches"].as_array() {
                 for m in matches {
                     assert!(m["line"].is_string(), "Each match must have line content");
-                    assert!(!m["line"].as_str().unwrap().is_empty(), "Line content must not be empty");
+                    assert!(
+                        !m["line"].as_str().unwrap().is_empty(),
+                        "Line content must not be empty"
+                    );
                 }
             }
         }
@@ -401,7 +437,10 @@ fn test_grep_preserves_match_counts() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     // Total matches count should be present (in counts.total_matches)
-    assert!(json["counts"]["total_matches"].is_number(), "counts.total_matches must be present");
+    assert!(
+        json["counts"]["total_matches"].is_number(),
+        "counts.total_matches must be present"
+    );
 
     // Verify count matches actual match count
     let mut actual_matches = 0;
@@ -414,5 +453,8 @@ fn test_grep_preserves_match_counts() {
     }
 
     let reported_total = json["counts"]["total_matches"].as_u64().unwrap_or(0) as usize;
-    assert_eq!(reported_total, actual_matches, "counts.total_matches must match actual match count");
+    assert_eq!(
+        reported_total, actual_matches,
+        "counts.total_matches must match actual match count"
+    );
 }

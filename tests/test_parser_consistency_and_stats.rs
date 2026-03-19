@@ -302,8 +302,15 @@ fn test_parser_stats_git_diff_raw_reduction() {
 
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert!(output_bytes < input_bytes, "Raw git-diff output should be smaller than input");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert!(
+        output_bytes < input_bytes,
+        "Raw git-diff output should be smaller than input"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -328,8 +335,15 @@ fn test_parser_stats_git_diff_json_larger() {
     let input_bytes = extract_bytes(&stderr, "Input bytes:");
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
-    assert!(output_bytes > input_bytes, "JSON git-diff output should be larger than raw input");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert!(
+        output_bytes > input_bytes,
+        "JSON git-diff output should be larger than raw input"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -356,8 +370,15 @@ fn test_parser_stats_git_diff_compact_reduction() {
 
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
-    assert!(output_bytes < input_bytes, "Compact git-diff output should be smaller than raw input");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
+    assert!(
+        output_bytes < input_bytes,
+        "Compact git-diff output should be smaller than raw input"
+    );
 }
 
 #[test]
@@ -384,7 +405,11 @@ fn test_parser_stats_git_diff_agent_reduction() {
 
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]

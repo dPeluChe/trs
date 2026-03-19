@@ -334,7 +334,9 @@ fn test_html2md_file_not_found() {
         .arg("/nonexistent/path/file.html")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("File not found").or(predicate::str::contains("not found")));
+        .stderr(
+            predicate::str::contains("File not found").or(predicate::str::contains("not found")),
+        );
 }
 
 // ============================================================

@@ -5,4 +5,5 @@ mod compact_schema;
 mod helpers;
 mod json_basic;
 mod json_schema;
+mod json_schema_commands;
 mod raw_and_selection;

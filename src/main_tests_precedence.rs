@@ -85,8 +85,8 @@ fn test_enabled_format_flags_single() {
 
 #[test]
 fn test_enabled_format_flags_multiple() {
-    let cli = Cli::try_parse_from(["trs", "--json", "--csv", "--raw", "search", ".", "test"])
-        .unwrap();
+    let cli =
+        Cli::try_parse_from(["trs", "--json", "--csv", "--raw", "search", ".", "test"]).unwrap();
     let enabled = cli.enabled_format_flags();
     assert_eq!(enabled.len(), 3);
     assert!(enabled.contains(&OutputFormat::Json));
@@ -196,8 +196,7 @@ fn test_precedence_agent_over_compact_raw() {
 #[test]
 fn test_precedence_compact_over_raw() {
     // Compact should win over Raw
-    let cli =
-        Cli::try_parse_from(["trs", "--compact", "--raw", "search", ".", "test"]).unwrap();
+    let cli = Cli::try_parse_from(["trs", "--compact", "--raw", "search", ".", "test"]).unwrap();
     assert_eq!(cli.output_format(), OutputFormat::Compact);
 }
 
@@ -221,8 +220,7 @@ fn test_precedence_json_over_agent() {
 
 #[test]
 fn test_precedence_json_over_compact() {
-    let cli =
-        Cli::try_parse_from(["trs", "--json", "--compact", "search", ".", "test"]).unwrap();
+    let cli = Cli::try_parse_from(["trs", "--json", "--compact", "search", ".", "test"]).unwrap();
     assert_eq!(cli.output_format(), OutputFormat::Json);
 }
 
@@ -246,8 +244,7 @@ fn test_precedence_csv_over_agent() {
 
 #[test]
 fn test_precedence_csv_over_compact() {
-    let cli =
-        Cli::try_parse_from(["trs", "--csv", "--compact", "search", ".", "test"]).unwrap();
+    let cli = Cli::try_parse_from(["trs", "--csv", "--compact", "search", ".", "test"]).unwrap();
     assert_eq!(cli.output_format(), OutputFormat::Csv);
 }
 
@@ -265,8 +262,7 @@ fn test_precedence_tsv_over_agent() {
 
 #[test]
 fn test_precedence_tsv_over_compact() {
-    let cli =
-        Cli::try_parse_from(["trs", "--tsv", "--compact", "search", ".", "test"]).unwrap();
+    let cli = Cli::try_parse_from(["trs", "--tsv", "--compact", "search", ".", "test"]).unwrap();
     assert_eq!(cli.output_format(), OutputFormat::Tsv);
 }
 
@@ -278,8 +274,7 @@ fn test_precedence_tsv_over_raw() {
 
 #[test]
 fn test_precedence_agent_over_compact() {
-    let cli =
-        Cli::try_parse_from(["trs", "--agent", "--compact", "search", ".", "test"]).unwrap();
+    let cli = Cli::try_parse_from(["trs", "--agent", "--compact", "search", ".", "test"]).unwrap();
     assert_eq!(cli.output_format(), OutputFormat::Agent);
 }
 
@@ -314,8 +309,8 @@ fn test_precedence_with_replace_command() {
 
 #[test]
 fn test_precedence_with_tail_command() {
-    let cli = Cli::try_parse_from(["trs", "--agent", "--compact", "tail", "/var/log/test.log"])
-        .unwrap();
+    let cli =
+        Cli::try_parse_from(["trs", "--agent", "--compact", "tail", "/var/log/test.log"]).unwrap();
     assert_eq!(cli.output_format(), OutputFormat::Agent);
 }
 

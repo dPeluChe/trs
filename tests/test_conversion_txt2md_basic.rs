@@ -292,7 +292,9 @@ fn test_txt2md_section_word_headings() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("txt2md")
-        .write_stdin("Document\n\nAbstract\n\nThis is the abstract.\n\nSummary\n\nThis is the summary.")
+        .write_stdin(
+            "Document\n\nAbstract\n\nThis is the abstract.\n\nSummary\n\nThis is the summary.",
+        )
         .assert()
         .success()
         .get_output()
@@ -389,7 +391,9 @@ fn test_txt2md_file_multiline() {
 
     let stdout = String::from_utf8_lossy(&output);
     // Check for chapter heading (all caps is converted to title case with #)
-    assert!(stdout.contains("CHAPTER 1: THE BEGINNING") || stdout.contains("Chapter 1: The Beginning"));
+    assert!(
+        stdout.contains("CHAPTER 1: THE BEGINNING") || stdout.contains("Chapter 1: The Beginning")
+    );
     assert!(stdout.contains("Section 1: Overview"));
     assert!(stdout.contains("# Important Notes") || stdout.contains("## Important Notes"));
 }

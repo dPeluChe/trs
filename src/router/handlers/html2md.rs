@@ -196,4 +196,3 @@ pub(crate) struct Html2mdInput {
     pub output: Option<std::path::PathBuf>,
     pub metadata: bool,
 }
-

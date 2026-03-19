@@ -9,24 +9,24 @@ pub(crate) mod handlers;
 pub use handlers::common::{CommandContext, CommandError, CommandResult};
 
 // Re-export all handler types for internal use and tests
+use handlers::clean::*;
 use handlers::common::*;
-use handlers::types::*;
+use handlers::html2md::*;
+use handlers::isclean::*;
+use handlers::json::*;
+use handlers::parse::*;
+use handlers::read::*;
+use handlers::replace::*;
 use handlers::run::*;
 use handlers::search::*;
-use handlers::replace::*;
 use handlers::tail::*;
-use handlers::clean::*;
 use handlers::trim::*;
-use handlers::html2md::*;
 use handlers::txt2md::*;
-use handlers::isclean::*;
-use handlers::parse::*;
-use handlers::json::*;
-use handlers::read::*;
+use handlers::types::*;
 
-use crate::{Commands, OutputFormat};
 #[allow(unused_imports)]
 use crate::ParseCommands;
+use crate::{Commands, OutputFormat};
 
 pub struct Router {
     run_handler: RunHandler,
@@ -188,7 +188,13 @@ impl Router {
                 self.is_clean_handler.execute(&input, ctx)
             }
             Commands::Parse { parser } => self.parse_handler.execute(parser, ctx),
-            Commands::Read { file, level, lines, tail, line_numbers } => {
+            Commands::Read {
+                file,
+                level,
+                lines,
+                tail,
+                line_numbers,
+            } => {
                 let filter_level = match level {
                     crate::commands::ReadLevel::None => FilterLevel::None,
                     crate::commands::ReadLevel::Minimal => FilterLevel::Minimal,
@@ -210,9 +216,7 @@ impl Router {
                 };
                 self.json_handler.execute(&input, ctx)
             }
-            Commands::Err { command, args } => {
-                handlers::err::handle_err(command, args, ctx)
-            }
+            Commands::Err { command, args } => handlers::err::handle_err(command, args, ctx),
             Commands::Stats { .. } => {
                 // Stats is handled directly in main.rs before reaching the router
                 Ok(())
@@ -366,7 +370,6 @@ impl Default for Router {
         Self::new()
     }
 }
-
 
 #[cfg(test)]
 mod tests;

@@ -1,6 +1,6 @@
 use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
-use super::types::*;
 use super::parse::ParseHandler;
+use super::types::*;
 use crate::OutputFormat;
 
 pub(crate) struct SearchHandler;

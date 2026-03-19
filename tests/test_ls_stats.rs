@@ -52,8 +52,15 @@ fn test_ls_stats_many_entries() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // For raw output, input and output bytes should be equal
-    assert_eq!(input_bytes, output_bytes, "Raw output with many entries should have same input and output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        input_bytes, output_bytes,
+        "Raw output with many entries should have same input and output bytes"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -84,8 +91,15 @@ fn test_ls_stats_json_many_entries_larger() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // JSON output should be larger than raw input
-    assert!(output_bytes > input_bytes, "JSON output with many entries should be larger than raw input");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert!(
+        output_bytes > input_bytes,
+        "JSON output with many entries should be larger than raw input"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -112,8 +126,15 @@ fn test_ls_stats_with_file_flag() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // For raw output, input and output bytes should be equal
-    assert_eq!(input_bytes, output_bytes, "Raw output from file should have same input and output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        input_bytes, output_bytes,
+        "Raw output from file should have same input and output bytes"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 // ============================================================
@@ -145,7 +166,11 @@ fn test_ls_stats_csv_format() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -173,7 +198,11 @@ fn test_ls_stats_tsv_format() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -201,7 +230,11 @@ fn test_ls_stats_agent_format() {
     // Both should be present and output bytes should match stdout length
     assert!(input_bytes.is_some(), "Should have input bytes");
     assert!(output_bytes.is_some(), "Should have output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 // ============================================================
@@ -232,8 +265,15 @@ fn test_ls_stats_unicode_content() {
     let output_bytes = extract_bytes(&stderr, "Output bytes:");
 
     // For raw output, input and output bytes should be equal
-    assert_eq!(input_bytes, output_bytes, "Raw output with Unicode should have same input and output bytes");
-    assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+    assert_eq!(
+        input_bytes, output_bytes,
+        "Raw output with Unicode should have same input and output bytes"
+    );
+    assert_eq!(
+        output_bytes,
+        Some(stdout.len()),
+        "Output bytes should match stdout length"
+    );
 }
 
 #[test]
@@ -261,8 +301,15 @@ fn test_ls_stats_empty_input() {
     // For empty input, both should be 0 (or stats may not show values if output is empty)
     // The important thing is that if stats are shown, they should be consistent
     if input_bytes.is_some() && output_bytes.is_some() {
-        assert_eq!(input_bytes, output_bytes, "Empty input should have equal input and output bytes");
-        assert_eq!(output_bytes, Some(stdout.len()), "Output bytes should match stdout length");
+        assert_eq!(
+            input_bytes, output_bytes,
+            "Empty input should have equal input and output bytes"
+        );
+        assert_eq!(
+            output_bytes,
+            Some(stdout.len()),
+            "Output bytes should match stdout length"
+        );
     }
     // If stats don't show byte values for empty output, that's also acceptable
 }

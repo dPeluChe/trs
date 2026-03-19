@@ -268,4 +268,3 @@ pub(crate) struct RepositoryState {
 pub(crate) struct IsCleanInput {
     pub check_untracked: Option<bool>,
 }
-

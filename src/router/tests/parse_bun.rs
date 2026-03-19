@@ -110,8 +110,7 @@ fn test_parse_bun_test_line() {
     assert_eq!(result.status, BunTestStatus::Failed);
 
     // Test non-TTY pass format
-    let result =
-        ParseHandler::parse_bun_test_line("(pass) should work [5.123ms]", &[]).unwrap();
+    let result = ParseHandler::parse_bun_test_line("(pass) should work [5.123ms]", &[]).unwrap();
     assert_eq!(result.status, BunTestStatus::Passed);
 
     // Test non-TTY fail format
@@ -129,8 +128,7 @@ fn test_parse_bun_test_line() {
 
 #[test]
 fn test_split_bun_test_name_and_duration() {
-    let (name, duration) =
-        ParseHandler::split_bun_test_name_and_duration("test name [5.123ms]");
+    let (name, duration) = ParseHandler::split_bun_test_name_and_duration("test name [5.123ms]");
     assert_eq!(name, "test name");
     assert_eq!(duration, Some(0.005123));
 

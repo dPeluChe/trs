@@ -27,8 +27,8 @@ fn test_reducer_stats_new() {
     assert_eq!(stats.reduction_ratio, 0.25);
     assert_eq!(stats.input_lines, 200);
     assert_eq!(stats.output_lines, 50);
-    assert_eq!(stats.input_tokens, 1000);  // 4000 / 4
-    assert_eq!(stats.output_tokens, 250);  // 1000 / 4
+    assert_eq!(stats.input_tokens, 1000); // 4000 / 4
+    assert_eq!(stats.output_tokens, 250); // 1000 / 4
     assert_eq!(stats.token_reduction_ratio, 0.25);
 }
 
@@ -125,7 +125,11 @@ fn test_reducer_registry_register() {
         type Input = String;
         type Output = ReducerOutput;
 
-        fn reduce(&self, input: &Self::Input, _context: &ReducerContext) -> ReducerResult<Self::Output> {
+        fn reduce(
+            &self,
+            input: &Self::Input,
+            _context: &ReducerContext,
+        ) -> ReducerResult<Self::Output> {
             Ok(ReducerOutput::new(input.clone()))
         }
 
@@ -149,9 +153,12 @@ fn test_reducer_registry_execute() {
         type Input = String;
         type Output = ReducerOutput;
 
-        fn reduce(&self, input: &Self::Input, _context: &ReducerContext) -> ReducerResult<Self::Output> {
-            Ok(ReducerOutput::new(input.clone())
-                .with_summary("Processed"))
+        fn reduce(
+            &self,
+            input: &Self::Input,
+            _context: &ReducerContext,
+        ) -> ReducerResult<Self::Output> {
+            Ok(ReducerOutput::new(input.clone()).with_summary("Processed"))
         }
 
         fn name(&self) -> &'static str {

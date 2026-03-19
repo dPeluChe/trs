@@ -170,13 +170,9 @@ fn test_run_raw_format_preserves_output() {
 fn test_run_permission_denied() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // /etc is a directory, trying to execute it should fail
-    cmd.arg("run")
-        .arg("/etc")
-        .assert()
-        .failure()
-        .stderr(
-            predicate::str::contains("Permission denied").or(predicate::str::contains("Error")),
-        );
+    cmd.arg("run").arg("/etc").assert().failure().stderr(
+        predicate::str::contains("Permission denied").or(predicate::str::contains("Error")),
+    );
 }
 
 #[test]
@@ -250,11 +246,7 @@ fn test_run_stdout_and_stderr() {
 #[test]
 fn test_run_empty_output() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("true")
-        .assert()
-        .success()
-        .code(0);
+    cmd.arg("run").arg("true").assert().success().code(0);
 }
 
 #[test]
@@ -322,9 +314,7 @@ fn test_run_uname_command() {
         .arg("uname")
         .assert()
         .success()
-        .stdout(
-            predicate::str::contains("Darwin").or(predicate::str::contains("Linux")),
-        );
+        .stdout(predicate::str::contains("Darwin").or(predicate::str::contains("Linux")));
 }
 
 #[test]

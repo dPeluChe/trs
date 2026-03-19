@@ -74,11 +74,7 @@ fn test_replace_with_current_directory() {
 #[test]
 fn test_replace_with_absolute_path() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -94,11 +90,7 @@ fn test_replace_with_absolute_path() {
 #[test]
 fn test_replace_file_as_path() {
     let temp_dir = TempDir::new().unwrap();
-    let file_path = create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    let file_path = create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -131,11 +123,7 @@ fn test_replace_nonexistent_directory() {
 #[test]
 fn test_replace_empty_search_pattern() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     // Empty search pattern matches at every position (regex behavior)
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -151,11 +139,7 @@ fn test_replace_empty_search_pattern() {
 #[test]
 fn test_replace_empty_replacement() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Hello world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
 
     // Empty replacement should delete the matched text
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -192,11 +176,7 @@ fn test_replace_multiline_file() {
 #[test]
 fn test_replace_preserves_file_structure() {
     let temp_dir = TempDir::new().unwrap();
-    let file_path = create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "Line 1\nLine 2\nLine 3\n",
-    );
+    let file_path = create_temp_file(&temp_dir, "test.txt", "Line 1\nLine 2\nLine 3\n");
 
     // Perform actual replace
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -221,16 +201,8 @@ fn test_replace_preserves_file_structure() {
 #[test]
 fn test_replace_combined_extension_and_dry_run() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.rs",
-        "old_function();\n",
-    );
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "old_function();\n",
-    );
+    create_temp_file(&temp_dir, "test.rs", "old_function();\n");
+    create_temp_file(&temp_dir, "test.txt", "old_function();\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -249,16 +221,8 @@ fn test_replace_combined_extension_and_dry_run() {
 #[test]
 fn test_replace_combined_count_and_extension() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.rs",
-        "foo foo foo\n",
-    );
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "foo foo foo foo\n",
-    );
+    create_temp_file(&temp_dir, "test.rs", "foo foo foo\n");
+    create_temp_file(&temp_dir, "test.txt", "foo foo foo foo\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -276,11 +240,7 @@ fn test_replace_combined_count_and_extension() {
 #[test]
 fn test_replace_json_with_all_options() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.rs",
-        "old_function();\n",
-    );
+    create_temp_file(&temp_dir, "test.rs", "old_function();\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
@@ -309,11 +269,7 @@ fn test_replace_json_with_all_options() {
 #[test]
 fn test_replace_csv_escapes_commas() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "hello, world\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "hello, world\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--csv")
@@ -330,11 +286,7 @@ fn test_replace_csv_escapes_commas() {
 #[test]
 fn test_replace_csv_escapes_quotes() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "say \"hello\"\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "say \"hello\"\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--csv")
@@ -352,11 +304,7 @@ fn test_replace_csv_escapes_quotes() {
 #[test]
 fn test_replace_tsv_escapes_tabs() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "hello\tworld\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "hello\tworld\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--tsv")
@@ -375,11 +323,7 @@ fn test_replace_tsv_escapes_tabs() {
 fn test_replace_tsv_escapes_newlines() {
     let temp_dir = TempDir::new().unwrap();
     // Note: we're searching for a literal \n in the file content
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "hello\\nworld\n",
-    );
+    create_temp_file(&temp_dir, "test.txt", "hello\\nworld\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--tsv")
@@ -399,19 +343,11 @@ fn test_replace_tsv_escapes_newlines() {
 #[test]
 fn test_replace_ignores_git_directory() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "test.txt",
-        "old_pattern\n",
-    );
-    
+    create_temp_file(&temp_dir, "test.txt", "old_pattern\n");
+
     // Create .git directory with a file
     fs::create_dir(temp_dir.path().join(".git")).unwrap();
-    create_temp_file(
-        &temp_dir,
-        ".git/config",
-        "old_pattern\n",
-    );
+    create_temp_file(&temp_dir, ".git/config", "old_pattern\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -428,19 +364,11 @@ fn test_replace_ignores_git_directory() {
 #[test]
 fn test_replace_ignores_target_directory() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "src.txt",
-        "old_pattern\n",
-    );
-    
+    create_temp_file(&temp_dir, "src.txt", "old_pattern\n");
+
     // Create target directory with a file
     fs::create_dir(temp_dir.path().join("target")).unwrap();
-    create_temp_file(
-        &temp_dir,
-        "target/output.txt",
-        "old_pattern\n",
-    );
+    create_temp_file(&temp_dir, "target/output.txt", "old_pattern\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -457,19 +385,11 @@ fn test_replace_ignores_target_directory() {
 #[test]
 fn test_replace_ignores_node_modules_directory() {
     let temp_dir = TempDir::new().unwrap();
-    create_temp_file(
-        &temp_dir,
-        "index.js",
-        "old_pattern\n",
-    );
-    
+    create_temp_file(&temp_dir, "index.js", "old_pattern\n");
+
     // Create node_modules directory with a file
     fs::create_dir_all(temp_dir.path().join("node_modules/package")).unwrap();
-    create_temp_file(
-        &temp_dir,
-        "node_modules/package/index.js",
-        "old_pattern\n",
-    );
+    create_temp_file(&temp_dir, "node_modules/package/index.js", "old_pattern\n");
 
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")

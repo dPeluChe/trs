@@ -1,7 +1,7 @@
 //! CSV formatter for comma-separated output.
 
-use crate::OutputFormat;
 use super::Formatter;
+use crate::OutputFormat;
 
 /// Formatter for CSV (Comma-Separated Values) output.
 ///
@@ -458,5 +458,4 @@ impl CsvFormatter {
         }
         output
     }
-
 }

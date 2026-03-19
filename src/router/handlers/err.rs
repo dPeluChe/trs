@@ -22,11 +22,8 @@ fn is_error_line(line: &str) -> bool {
 
     // Check for keyword patterns (case-sensitive variants)
     let keywords = [
-        "error", "Error", "ERROR",
-        "warn", "Warn", "WARNING", "WARN",
-        "failed", "FAILED",
-        "panic", "PANIC",
-        "fatal", "FATAL",
+        "error", "Error", "ERROR", "warn", "Warn", "WARNING", "WARN", "failed", "FAILED", "panic",
+        "PANIC", "fatal", "FATAL",
     ];
 
     for kw in &keywords {
@@ -43,21 +40,17 @@ fn is_error_not_warning(line: &str) -> bool {
     let trimmed = line.trim();
 
     // Prefix-based classification
-    if trimmed.starts_with("E ")
-        || trimmed.starts_with("[E]")
-        || trimmed.starts_with("[ERROR]")
-    {
+    if trimmed.starts_with("E ") || trimmed.starts_with("[E]") || trimmed.starts_with("[ERROR]") {
         return true;
     }
-    if trimmed.starts_with("W ")
-        || trimmed.starts_with("[W]")
-        || trimmed.starts_with("[WARN]")
-    {
+    if trimmed.starts_with("W ") || trimmed.starts_with("[W]") || trimmed.starts_with("[WARN]") {
         return false;
     }
 
     // Keyword-based classification
-    let error_keywords = ["error", "Error", "ERROR", "failed", "FAILED", "panic", "PANIC", "fatal", "FATAL"];
+    let error_keywords = [
+        "error", "Error", "ERROR", "failed", "FAILED", "panic", "PANIC", "fatal", "FATAL",
+    ];
     let warning_keywords = ["warn", "Warn", "WARNING", "WARN"];
 
     for kw in &error_keywords {
@@ -103,10 +96,7 @@ pub(crate) fn handle_err(command: &str, args: &[String], _ctx: &CommandContext) 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     // Combine stdout and stderr lines
-    let all_lines: Vec<&str> = stdout
-        .lines()
-        .chain(stderr.lines())
-        .collect();
+    let all_lines: Vec<&str> = stdout.lines().chain(stderr.lines()).collect();
 
     let total_lines = all_lines.len();
     let mut matched_lines: Vec<String> = Vec::new();

@@ -1,7 +1,7 @@
 //! TSV formatter for tab-separated output.
 
-use crate::OutputFormat;
 use super::Formatter;
+use crate::OutputFormat;
 
 /// Formatter for TSV (Tab-Separated Values) output.
 ///
@@ -328,5 +328,4 @@ impl TsvFormatter {
         }
         output
     }
-
 }

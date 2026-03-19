@@ -22,8 +22,7 @@ fn test_truncation_info_size_threshold_saturating_sub() {
 
 #[test]
 fn test_reducer_output_serialization() {
-    let output = ReducerOutput::new(vec![1, 2, 3])
-        .with_summary("Test summary");
+    let output = ReducerOutput::new(vec![1, 2, 3]).with_summary("Test summary");
 
     let json = serde_json::to_string(&output).unwrap();
     assert!(json.contains("\"data\""));
@@ -33,8 +32,7 @@ fn test_reducer_output_serialization() {
 
 #[test]
 fn test_reducer_item_serialization() {
-    let item = ReducerItem::new("key", "value")
-        .with_label("label");
+    let item = ReducerItem::new("key", "value").with_label("label");
 
     let json = serde_json::to_string(&item).unwrap();
     assert!(json.contains("\"key\""));
@@ -175,14 +173,12 @@ fn test_format_tsv_fallback_to_json() {
 
 #[test]
 fn test_format_raw_with_sections() {
-    let output = ReducerOutput::new(Vec::<i32>::new())
-        .with_sections(vec![
-            ReducerSection::new("Files")
-                .with_items(vec![
-                    ReducerItem::new("file1.txt", "100"),
-                    ReducerItem::new("file2.txt", "200"),
-                ]),
-        ]);
+    let output =
+        ReducerOutput::new(Vec::<i32>::new()).with_sections(vec![ReducerSection::new("Files")
+            .with_items(vec![
+                ReducerItem::new("file1.txt", "100"),
+                ReducerItem::new("file2.txt", "200"),
+            ])]);
 
     let raw = output.format_raw();
     assert!(raw.contains("file1.txt"));
@@ -191,14 +187,13 @@ fn test_format_raw_with_sections() {
 
 #[test]
 fn test_reducer_output_format_agent_with_metadata() {
-    let output = ReducerOutput::new(Vec::<i32>::new())
-        .with_metadata(ReducerMetadata {
-            reducer: "test".to_string(),
-            items_processed: 10,
-            items_filtered: 2,
-            duration_ms: 5,
-            custom: None,
-        });
+    let output = ReducerOutput::new(Vec::<i32>::new()).with_metadata(ReducerMetadata {
+        reducer: "test".to_string(),
+        items_processed: 10,
+        items_filtered: 2,
+        duration_ms: 5,
+        custom: None,
+    });
 
     let agent = output.format_agent();
     assert!(agent.contains("## Metadata"));
@@ -207,10 +202,8 @@ fn test_reducer_output_format_agent_with_metadata() {
 
 #[test]
 fn test_format_compact_items_without_label() {
-    let output = ReducerOutput::new(Vec::<i32>::new())
-        .with_items(vec![
-            ReducerItem::new("key1", "value1"),
-        ]);
+    let output =
+        ReducerOutput::new(Vec::<i32>::new()).with_items(vec![ReducerItem::new("key1", "value1")]);
 
     let compact = output.format_compact();
     assert!(compact.contains("key1: value1"));
@@ -220,8 +213,7 @@ fn test_format_compact_items_without_label() {
 fn test_format_compact_section_without_count() {
     let output = ReducerOutput::new(Vec::<i32>::new())
         .with_sections(vec![
-            ReducerSection::new("Files")
-                .with_items(vec![ReducerItem::new("file.txt", "100")]),
+            ReducerSection::new("Files").with_items(vec![ReducerItem::new("file.txt", "100")])
         ]);
 
     let compact = output.format_compact();
@@ -231,11 +223,10 @@ fn test_format_compact_section_without_count() {
 
 #[test]
 fn test_format_agent_items_without_sections() {
-    let output = ReducerOutput::new(Vec::<i32>::new())
-        .with_items(vec![
-            ReducerItem::new("key1", "value1").with_label("label1"),
-            ReducerItem::new("key2", "value2"),
-        ]);
+    let output = ReducerOutput::new(Vec::<i32>::new()).with_items(vec![
+        ReducerItem::new("key1", "value1").with_label("label1"),
+        ReducerItem::new("key2", "value2"),
+    ]);
 
     let agent = output.format_agent();
     assert!(agent.contains("## Items"));

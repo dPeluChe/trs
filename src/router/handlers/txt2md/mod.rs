@@ -2,10 +2,10 @@
 
 use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
-pub(crate) mod parser;
 pub(crate) mod detect_headings;
 pub(crate) mod detect_lists;
 pub(crate) mod format;
+pub(crate) mod parser;
 
 pub(crate) struct Txt2mdInput {
     pub input: Option<std::path::PathBuf>,

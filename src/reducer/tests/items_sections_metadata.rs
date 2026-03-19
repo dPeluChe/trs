@@ -51,10 +51,7 @@ fn test_reducer_section_with_count() {
 
 #[test]
 fn test_reducer_section_with_items() {
-    let items = vec![
-        ReducerItem::new("a", "1"),
-        ReducerItem::new("b", "2"),
-    ];
+    let items = vec![ReducerItem::new("a", "1"), ReducerItem::new("b", "2")];
 
     let section = ReducerSection::new("Test").with_items(items);
 

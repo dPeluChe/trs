@@ -2,33 +2,37 @@ use super::common::{CommandContext, CommandError, CommandResult};
 use super::types::*;
 use crate::ParseCommands;
 
+pub(crate) mod bun_format;
+pub(crate) mod bun_parse;
+pub(crate) mod extra_cargo_test;
+pub(crate) mod extra_download;
+pub(crate) mod extra_env;
+pub(crate) mod extra_services;
+pub(crate) mod extra_system;
+pub(crate) mod find;
+pub(crate) mod git_branch;
+pub(crate) mod git_diff;
+pub(crate) mod git_diff_format;
+pub(crate) mod git_log;
 pub(crate) mod git_status;
 pub(crate) mod git_status_format;
-pub(crate) mod git_diff;
-pub(crate) mod git_log;
-pub(crate) mod git_branch;
-pub(crate) mod ls;
 pub(crate) mod grep;
 pub(crate) mod grep_format;
-pub(crate) mod find;
-pub(crate) mod test;
-pub(crate) mod pytest_parse;
-pub(crate) mod pytest_format;
-pub(crate) mod jest_parse;
 pub(crate) mod jest_format;
-pub(crate) mod vitest_parse;
-pub(crate) mod vitest_format;
-pub(crate) mod npm_parse;
-pub(crate) mod npm_format;
-pub(crate) mod pnpm_parse;
-pub(crate) mod pnpm_format;
-pub(crate) mod bun_parse;
-pub(crate) mod bun_format;
+pub(crate) mod jest_parse;
 pub(crate) mod logs;
-pub(crate) mod logs_helpers;
 pub(crate) mod logs_format;
-pub(crate) mod extra_system;
-pub(crate) mod extra_services;
+pub(crate) mod logs_helpers;
+pub(crate) mod ls;
+pub(crate) mod npm_format;
+pub(crate) mod npm_parse;
+pub(crate) mod pnpm_format;
+pub(crate) mod pnpm_parse;
+pub(crate) mod pytest_format;
+pub(crate) mod pytest_parse;
+pub(crate) mod test;
+pub(crate) mod vitest_format;
+pub(crate) mod vitest_parse;
 
 pub(crate) struct ParseHandler;
 
@@ -37,8 +41,8 @@ impl ParseHandler {
     /// Handles both UTF-8 and binary input gracefully by replacing invalid
     /// UTF-8 sequences with the Unicode replacement character.
     pub(crate) fn read_input(file: &Option<std::path::PathBuf>) -> CommandResult<String> {
-        use std::io::{self, Read};
         use super::common::strip_emojis;
+        use std::io::{self, Read};
 
         let raw = if let Some(path) = file {
             let bytes = std::fs::read(path).map_err(|e| CommandError::IoError(e.to_string()))?;

@@ -3,19 +3,19 @@
 //! This module provides access to various git status, git diff, and ls output fixtures
 //! for testing the parsers.
 
-mod git_status;
 mod git_diff;
-mod ls;
+mod git_status;
 mod grep;
-mod test_runners;
 mod logs;
+mod ls;
+mod test_runners;
 
-pub use git_status::*;
 pub use git_diff::*;
-pub use ls::*;
+pub use git_status::*;
 pub use grep::*;
-pub use test_runners::*;
 pub use logs::*;
+pub use ls::*;
+pub use test_runners::*;
 
 use std::path::PathBuf;
 

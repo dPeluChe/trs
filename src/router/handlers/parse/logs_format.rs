@@ -4,8 +4,8 @@
 
 use super::super::run::RunHandler;
 use super::super::types::*;
-use crate::OutputFormat;
 use super::ParseHandler;
+use crate::OutputFormat;
 
 impl ParseHandler {
     /// Format logs output for display.
@@ -240,10 +240,15 @@ impl ParseHandler {
                 let level_indicator = Self::level_indicator(entry.level);
 
                 // ERROR/WARN/FATAL: always show + collect stack trace below
-                if matches!(entry.level, LogLevel::Error | LogLevel::Fatal | LogLevel::Warning) {
+                if matches!(
+                    entry.level,
+                    LogLevel::Error | LogLevel::Fatal | LogLevel::Warning
+                ) {
                     output.push_str(&format!(
                         "{} {} {}\n",
-                        level_indicator, entry.line_number, Self::preview_msg(&entry.message, 100)
+                        level_indicator,
+                        entry.line_number,
+                        Self::preview_msg(&entry.message, 100)
                     ));
                     i += 1;
 
@@ -251,7 +256,8 @@ impl ParseHandler {
                     while i < entries.len() && Self::is_stack_trace_line(&entries[i]) {
                         output.push_str(&format!(
                             "     {} {}\n",
-                            entries[i].line_number, Self::preview_msg(&entries[i].message, 100)
+                            entries[i].line_number,
+                            Self::preview_msg(&entries[i].message, 100)
                         ));
                         i += 1;
                     }
@@ -266,7 +272,10 @@ impl ParseHandler {
                     if next.level == entry.level && next.message == entry.message {
                         count += 1;
                     } else if next.level == entry.level
-                        && matches!(entry.level, LogLevel::Info | LogLevel::Debug | LogLevel::Unknown)
+                        && matches!(
+                            entry.level,
+                            LogLevel::Info | LogLevel::Debug | LogLevel::Unknown
+                        )
                     {
                         // Same level but different message — still foldable for noise reduction
                         count += 1;
@@ -281,7 +290,9 @@ impl ParseHandler {
                     let last = &entries[i + count - 1];
                     output.push_str(&format!(
                         "{} {} {}\n",
-                        level_indicator, first.line_number, Self::preview_msg(&first.message, 80)
+                        level_indicator,
+                        first.line_number,
+                        Self::preview_msg(&first.message, 80)
                     ));
                     output.push_str(&format!(
                         "     [...{} similar {} lines...]\n",
@@ -291,7 +302,9 @@ impl ParseHandler {
                     if last.message != first.message {
                         output.push_str(&format!(
                             "{} {} {}\n",
-                            level_indicator, last.line_number, Self::preview_msg(&last.message, 80)
+                            level_indicator,
+                            last.line_number,
+                            Self::preview_msg(&last.message, 80)
                         ));
                     }
                 } else {
@@ -300,7 +313,9 @@ impl ParseHandler {
                         let e = &entries[i + j];
                         output.push_str(&format!(
                             "{} {} {}\n",
-                            Self::level_indicator(e.level), e.line_number, Self::preview_msg(&e.message, 80)
+                            Self::level_indicator(e.level),
+                            e.line_number,
+                            Self::preview_msg(&e.message, 80)
                         ));
                     }
                 }
@@ -323,7 +338,11 @@ impl ParseHandler {
                 if count >= 3 {
                     output.push_str(&format!("  {} {}\n", entry.line_number, preview));
                     output.push_str(&format!("     [...repeated {} times...]\n", count - 2));
-                    output.push_str(&format!("  {} {}\n", entries[i + count - 1].line_number, preview));
+                    output.push_str(&format!(
+                        "  {} {}\n",
+                        entries[i + count - 1].line_number,
+                        preview
+                    ));
                 } else if count == 2 {
                     output.push_str(&format!("  {} {}\n", entry.line_number, preview));
                     output.push_str(&format!("  {} {}\n", entries[i + 1].line_number, preview));

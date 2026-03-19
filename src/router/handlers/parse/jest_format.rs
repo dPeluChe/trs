@@ -1,6 +1,6 @@
 use super::super::types::*;
-use crate::OutputFormat;
 use super::ParseHandler;
+use crate::OutputFormat;
 
 impl ParseHandler {
     /// Format Jest output based on the requested format.

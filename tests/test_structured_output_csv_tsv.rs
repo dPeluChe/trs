@@ -37,7 +37,10 @@ fn test_csv_git_status_has_header() {
         header.contains("status"),
         "Header should contain 'status' column"
     );
-    assert!(header.contains("path"), "Header should contain 'path' column");
+    assert!(
+        header.contains("path"),
+        "Header should contain 'path' column"
+    );
 }
 
 #[test]
@@ -65,10 +68,7 @@ fn test_csv_grep_has_header() {
         header.contains("file") || header.contains("path"),
         "Header should contain file/path column"
     );
-    assert!(
-        header.contains("line"),
-        "Header should contain line column"
-    );
+    assert!(header.contains("line"), "Header should contain line column");
 }
 
 #[test]
@@ -132,10 +132,7 @@ fn test_csv_tail_has_header() {
         header.contains("line_number"),
         "Header should contain line_number column"
     );
-    assert!(
-        header.contains("line"),
-        "Header should contain line column"
-    );
+    assert!(header.contains("line"), "Header should contain line column");
 }
 
 #[test]
@@ -232,15 +229,15 @@ fn test_tsv_git_status_has_header() {
 
     assert!(!lines.is_empty(), "TSV should have at least header");
     let header = lines[0];
-    assert!(
-        header.contains('\t'),
-        "TSV header should contain tabs"
-    );
+    assert!(header.contains('\t'), "TSV header should contain tabs");
     assert!(
         header.contains("status"),
         "Header should contain 'status' column"
     );
-    assert!(header.contains("path"), "Header should contain 'path' column");
+    assert!(
+        header.contains("path"),
+        "Header should contain 'path' column"
+    );
 }
 
 #[test]
@@ -290,10 +287,7 @@ fn test_tsv_search_has_header() {
 
     assert!(!lines.is_empty(), "TSV should have at least header");
     let header = lines[0];
-    assert!(
-        header.contains('\t'),
-        "TSV header should contain tabs"
-    );
+    assert!(header.contains('\t'), "TSV header should contain tabs");
     assert!(
         header.contains("path\t") || header.contains("file\t"),
         "Header should contain path/file column"

@@ -125,7 +125,9 @@ fn test_is_clean_help() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Check if git repository is in a clean state"));
+        .stdout(predicate::str::contains(
+            "Check if git repository is in a clean state",
+        ));
 }
 
 // ============================================================
@@ -431,9 +433,7 @@ fn test_agent_and_stats_together() {
 #[test]
 fn test_empty_stdin() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.write_stdin("")
-        .assert()
-        .success();
+    cmd.write_stdin("").assert().success();
 }
 
 #[test]

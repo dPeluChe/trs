@@ -149,8 +149,7 @@ fn test_parse_npm_duration() {
 
 #[test]
 fn test_split_npm_test_name_and_duration() {
-    let (name, duration) =
-        ParseHandler::split_npm_test_name_and_duration("test name (5.123ms)");
+    let (name, duration) = ParseHandler::split_npm_test_name_and_duration("test name (5.123ms)");
     assert_eq!(name, "test name");
     assert_eq!(duration, Some(0.005123));
 

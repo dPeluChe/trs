@@ -35,7 +35,9 @@ fn test_logs_preserves_entries() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     // Entries should exist
-    let entries = json["entries"].as_array().expect("Entries array must exist");
+    let entries = json["entries"]
+        .as_array()
+        .expect("Entries array must exist");
     assert!(!entries.is_empty(), "Entries should not be empty");
 }
 
@@ -62,7 +64,10 @@ fn test_logs_preserves_line_count() {
     let entries_count = json["entries"].as_array().map(|a| a.len()).unwrap_or(0);
     let total_lines = json["counts"]["total_lines"].as_u64().unwrap_or(0) as usize;
 
-    assert_eq!(total_lines, entries_count, "counts.total_lines must match entries count");
+    assert_eq!(
+        total_lines, entries_count,
+        "counts.total_lines must match entries count"
+    );
 }
 
 #[test]
@@ -94,7 +99,10 @@ fn test_logs_preserves_level_information() {
                 if let Some(level) = entry["level"].as_str() {
                     let level_upper = level.to_uppercase();
                     assert!(
-                        matches!(level_upper.as_str(), "DEBUG" | "INFO" | "WARN" | "WARNING" | "ERROR" | "FATAL" | "TRACE"),
+                        matches!(
+                            level_upper.as_str(),
+                            "DEBUG" | "INFO" | "WARN" | "WARNING" | "ERROR" | "FATAL" | "TRACE"
+                        ),
                         "Level '{}' should be a valid log level",
                         level
                     );
@@ -160,8 +168,14 @@ fn test_git_status_signal_consistent_across_formats() {
 
     // Branch name should appear in all formats
     let branch = json["branch"].as_str().expect("Branch must be in JSON");
-    assert!(compact_stdout.contains(branch), "Branch must be in compact output");
-    assert!(agent_stdout.contains(branch), "Branch must be in agent output");
+    assert!(
+        compact_stdout.contains(branch),
+        "Branch must be in compact output"
+    );
+    assert!(
+        agent_stdout.contains(branch),
+        "Branch must be in agent output"
+    );
 
     // File paths should appear in all formats (at least some)
     if let Some(staged) = json["staged"].as_array() {
@@ -345,10 +359,14 @@ fn test_empty_input_signal_preservation() {
 
     let stdout = String::from_utf8_lossy(&output);
     // Should produce valid JSON even for empty input
-    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Should produce valid JSON for empty input");
+    let json: serde_json::Value =
+        serde_json::from_str(&stdout).expect("Should produce valid JSON for empty input");
 
     // Should indicate empty/clean state
-    assert!(json["is_clean"].as_bool().unwrap_or(true), "Empty input should indicate clean state");
+    assert!(
+        json["is_clean"].as_bool().unwrap_or(true),
+        "Empty input should indicate clean state"
+    );
 }
 
 #[test]
@@ -371,8 +389,14 @@ fn test_unicode_signal_preservation() {
     let stdout = String::from_utf8_lossy(&output);
 
     // Unicode characters should be preserved
-    assert!(stdout.contains("文件"), "Unicode file name should be preserved");
-    assert!(stdout.contains("世界"), "Unicode content should be preserved");
+    assert!(
+        stdout.contains("文件"),
+        "Unicode file name should be preserved"
+    );
+    assert!(
+        stdout.contains("世界"),
+        "Unicode content should be preserved"
+    );
 }
 
 #[test]

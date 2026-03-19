@@ -66,9 +66,9 @@ use crate::OutputFormat;
 
 // Re-export all public types (used by tests and future consumers)
 #[allow(unused_imports)]
-pub use output::{ReducerItem, ReducerMetadata, ReducerOutput, ReducerSection, ReducerStats};
-#[allow(unused_imports)]
 pub(crate) use output::escape_csv;
+#[allow(unused_imports)]
+pub use output::{ReducerItem, ReducerMetadata, ReducerOutput, ReducerSection, ReducerStats};
 #[allow(unused_imports)]
 pub use registry::{BaseReducer, ReducerRegistry};
 #[allow(unused_imports)]
@@ -118,9 +118,7 @@ pub enum ReducerError {
     /// The reducer is not yet implemented.
     NotImplemented(String),
     /// An error occurred during processing.
-    ProcessingError {
-        message: String,
-    },
+    ProcessingError { message: String },
     /// Invalid input provided.
     InvalidInput(String),
     /// I/O error occurred.

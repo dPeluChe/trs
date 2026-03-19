@@ -257,7 +257,9 @@ pub enum Commands {
     },
 
     /// Run a command and show only errors and warnings
-    #[command(long_about = "Run any command and filter output to show only errors and warnings.\n\nExamples:\n  trs err cargo build\n  trs err npm test\n  trs err make all")]
+    #[command(
+        long_about = "Run any command and filter output to show only errors and warnings.\n\nExamples:\n  trs err cargo build\n  trs err npm test\n  trs err make all"
+    )]
     Err {
         /// Command to run
         #[arg(required = true)]

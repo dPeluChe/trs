@@ -152,7 +152,10 @@ fn test_parse_grep_binary_file() {
     // Should handle binary file indicator - either as has_binary or as a file entry
     let has_binary = json["has_binary"].as_bool().unwrap_or(false);
     let has_files = json["files"].as_array().map_or(false, |f| !f.is_empty());
-    assert!(has_binary || has_files, "Expected binary file indicator or files in output");
+    assert!(
+        has_binary || has_files,
+        "Expected binary file indicator or files in output"
+    );
 }
 
 #[test]

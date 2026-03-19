@@ -1,7 +1,7 @@
 //! Schema formatting methods for the Agent formatter.
 
+use super::helpers::{format_duration, truncate};
 use super::AgentFormatter;
-use super::helpers::{truncate, format_duration};
 
 #[allow(dead_code)]
 impl AgentFormatter {
