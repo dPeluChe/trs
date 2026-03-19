@@ -1,7 +1,0 @@
-[INFO] Message with "quotes"
-[DEBUG] Path: /var/log/app/test.log
-[ERROR] Error: <html>invalid</html>
-[INFO] Comma, separated, values
-[WARN] Tab	separated	values
-[INFO] Unicode: café, naïve, résumé
-[ERROR] JSON: {"error": "not found", "code": 404}

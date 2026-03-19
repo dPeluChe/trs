@@ -27,7 +27,8 @@
 //! ```
 
 mod compact;
-mod compact_schema;
+mod compact_schema_git;
+mod compact_schema_output;
 mod json;
 mod json_schema;
 mod csv;

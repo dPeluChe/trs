@@ -3,7 +3,8 @@
 use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
 pub(crate) mod parser;
-pub(crate) mod parser_detect;
+pub(crate) mod detect_headings;
+pub(crate) mod detect_lists;
 pub(crate) mod format;
 
 pub(crate) struct Txt2mdInput {

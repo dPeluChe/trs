@@ -217,7 +217,8 @@ trs is-clean --json
 - **Search**: ripgrep (grep crate)
 - **HTML**: htmd
 - **HTTP**: ureq
-- **Tests**: 2,399 passing, 0 warnings
+- **Tests**: 2,012 passing, 0 failures
+- **Architecture**: 202 files, all under 506 lines
 
 ## License
 
