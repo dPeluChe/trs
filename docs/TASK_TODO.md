@@ -35,10 +35,9 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ## Phase 3 — Analytics & Configuracion
 
-### Analytics
+### Analytics (trs stats ya existe con --history y --project)
 - [ ] `trs discover` — scan Claude Code history (`~/.claude/`) for missed savings opportunities
 - [ ] `trs stats --graph` — ASCII bar chart de savings ultimos 30 dias
-- [ ] `trs stats --daily` — breakdown dia por dia
 - [ ] Consider migrar tracker de JSONL a SQLite (WAL mode, project scope, 90-day retention)
 
 ### Diferenciacion

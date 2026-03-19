@@ -5,11 +5,8 @@ use super::ParseHandler;
 impl ParseHandler {
     /// Truncate a string to max_len chars, appending "..." if truncated.
     fn truncate_str(s: &str, max_len: usize) -> String {
-        if s.len() <= max_len {
-            s.to_string()
-        } else {
-            format!("{}...", &s[..max_len.saturating_sub(3)])
-        }
+        if s.len() <= max_len { s.to_string() }
+        else { format!("{}...", &s[..max_len.saturating_sub(3)]) }
     }
 
     /// Check if an env var key is internal noise that should be filtered.
@@ -148,11 +145,7 @@ impl ParseHandler {
         Ok(())
     }
 
-    /// Parse GitHub CLI `gh pr list` output.
-    ///
-    /// Supports two formats:
-    /// 1. TTY/pipe: `#123 fix: title (author)` (with emoji header)
-    /// 2. Non-TTY (subprocess): `123\ttitle\tauthor:branch\tOPEN\tdate` (TSV)
+    /// Parse `gh pr list` output (TTY emoji format or non-TTY TSV).
     pub(crate) fn handle_gh_pr(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
         let input = Self::read_input(file)?;
         let input_bytes = input.len();
@@ -222,9 +215,7 @@ impl ParseHandler {
         Ok(())
     }
 
-    /// Parse GitHub CLI `gh issue list` output.
-    ///
-    /// Supports TTY format (#123 title) and non-TTY TSV (123\ttitle\tlabels\tdate).
+    /// Parse `gh issue list` output (TTY or TSV).
     pub(crate) fn handle_gh_issue(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
         let input = Self::read_input(file)?;
         let input_bytes = input.len();
@@ -279,7 +270,7 @@ impl ParseHandler {
         Ok(())
     }
 
-    /// Parse GitHub CLI `gh run list` output.
+    /// Parse `gh run list` output.
     pub(crate) fn handle_gh_run(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
         // Read raw input to detect status emoji markers before stripping
         let raw_input = Self::read_input_raw(file)?;
@@ -375,16 +366,7 @@ impl ParseHandler {
         Ok(())
     }
 
-    /// Parse `cargo test` output.
-    ///
-    /// Format:
-    /// ```text
-    /// running N tests
-    /// test module::name ... ok
-    /// test module::name ... FAILED
-    /// test module::name ... ignored
-    /// test result: ok. X passed; Y failed; Z ignored; 0 measured; W filtered out; finished in Ns
-    /// ```
+    /// Parse `cargo test` output into pass/fail/ignore/suite summary.
     pub(crate) fn handle_cargo_test(file: &Option<std::path::PathBuf>, ctx: &CommandContext) -> CommandResult {
         let input = Self::read_input(file)?;
         let input_bytes = input.len();

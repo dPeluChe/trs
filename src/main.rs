@@ -1,6 +1,7 @@
 use clap::Parser;
 
 mod classifier;
+mod classifier_transfer;
 mod cli;
 mod commands;
 pub(crate) mod config;
