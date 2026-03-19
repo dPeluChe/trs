@@ -1,6 +1,5 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::io::Write;
 
 // Tail Compact Output Tests
 // ============================================================

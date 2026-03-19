@@ -1,5 +1,4 @@
 use assert_cmd::Command;
-use std::io::Write;
 
 // Test Runner Duration Extraction Tests
 // ============================================================

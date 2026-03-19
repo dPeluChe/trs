@@ -9,7 +9,6 @@
 //! - Run command format validation
 
 use assert_cmd::Command;
-use std::io::Write;
 
 /// Helper to parse and validate JSON output
 fn parse_json_output(output: &[u8]) -> serde_json::Value {

@@ -1,6 +1,5 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::io::Write;
 
 // Stats Output Tests for Command Execution
 // ============================================================
