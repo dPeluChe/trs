@@ -195,8 +195,21 @@ impl ParseHandler {
         output
     }
 
+    /// Threshold for switching to grouped-by-directory mode.
+    const DIR_GROUP_THRESHOLD: usize = 20;
+
     /// Format a list of entries with a cap, showing truncation hint.
+    /// When entries exceed DIR_GROUP_THRESHOLD, groups files by directory.
     fn format_entries_capped(entries: &[GitStatusEntry], max: usize, output: &mut String) {
+        if entries.len() > Self::DIR_GROUP_THRESHOLD {
+            Self::format_entries_grouped(entries, output);
+        } else {
+            Self::format_entries_listed(entries, max, output);
+        }
+    }
+
+    /// List entries individually with a cap.
+    fn format_entries_listed(entries: &[GitStatusEntry], max: usize, output: &mut String) {
         let show = entries.len().min(max);
         for entry in entries.iter().take(show) {
             if let Some(ref new_path) = entry.new_path {
@@ -210,6 +223,45 @@ impl ParseHandler {
         }
         if entries.len() > max {
             output.push_str(&format!("  ...+{} more\n", entries.len() - max));
+        }
+    }
+
+    /// Group entries by parent directory, showing status counts per dir.
+    /// Example: `src/router/handlers/ (M:5 A:2 D:1)`
+    fn format_entries_grouped(entries: &[GitStatusEntry], output: &mut String) {
+        use std::collections::BTreeMap;
+
+        // Group by parent directory
+        let mut dirs: BTreeMap<String, Vec<&str>> = BTreeMap::new();
+        for entry in entries {
+            let dir = match entry.path.rfind('/') {
+                Some(pos) => &entry.path[..=pos],
+                None => "./",
+            };
+            dirs.entry(dir.to_string())
+                .or_default()
+                .push(&entry.status);
+        }
+
+        for (dir, statuses) in &dirs {
+            // Count each status type
+            let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+            for s in statuses {
+                *counts.entry(s).or_insert(0) += 1;
+            }
+
+            let count_str: Vec<String> = counts
+                .iter()
+                .map(|(status, count)| {
+                    if *count == 1 {
+                        status.to_string()
+                    } else {
+                        format!("{}:{}", status, count)
+                    }
+                })
+                .collect();
+
+            output.push_str(&format!("  {} ({})\n", dir, count_str.join(" ")));
         }
     }
 
@@ -231,5 +283,112 @@ impl ParseHandler {
         }
 
         output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_entry(status: &str, path: &str) -> GitStatusEntry {
+        GitStatusEntry {
+            status: status.to_string(),
+            path: path.to_string(),
+            new_path: None,
+        }
+    }
+
+    fn make_entries(status: &str, paths: &[&str]) -> Vec<GitStatusEntry> {
+        paths.iter().map(|p| make_entry(status, p)).collect()
+    }
+
+    #[test]
+    fn test_small_list_shows_individual_files() {
+        let entries = make_entries("M", &[
+            "src/main.rs", "src/cli.rs", "src/config.rs",
+        ]);
+        let mut output = String::new();
+        ParseHandler::format_entries_capped(&entries, 15, &mut output);
+        assert!(output.contains("M src/main.rs"));
+        assert!(output.contains("M src/cli.rs"));
+        assert!(output.contains("M src/config.rs"));
+        assert!(!output.contains("(M:"));
+    }
+
+    #[test]
+    fn test_large_list_groups_by_directory() {
+        // 25 files across 3 directories
+        let mut entries = Vec::new();
+        for i in 0..10 {
+            entries.push(make_entry("M", &format!("src/router/file{}.rs", i)));
+        }
+        for i in 0..8 {
+            entries.push(make_entry("M", &format!("src/formatter/file{}.rs", i)));
+        }
+        for i in 0..4 {
+            entries.push(make_entry("A", &format!("tests/test{}.rs", i)));
+        }
+        for i in 0..3 {
+            entries.push(make_entry("D", &format!("src/router/old{}.rs", i)));
+        }
+
+        let mut output = String::new();
+        ParseHandler::format_entries_capped(&entries, 15, &mut output);
+
+        // Should group by directory
+        assert!(output.contains("src/formatter/"));
+        assert!(output.contains("src/router/"));
+        assert!(output.contains("tests/"));
+        // Should show counts
+        assert!(output.contains("M:"));
+        // Should NOT list individual files
+        assert!(!output.contains("file0.rs"));
+    }
+
+    #[test]
+    fn test_grouped_shows_status_counts() {
+        let mut entries = Vec::new();
+        for i in 0..15 {
+            entries.push(make_entry("M", &format!("src/handlers/h{}.rs", i)));
+        }
+        for i in 0..6 {
+            entries.push(make_entry("A", &format!("src/handlers/new{}.rs", i)));
+        }
+
+        let mut output = String::new();
+        ParseHandler::format_entries_capped(&entries, 15, &mut output);
+
+        // Should contain both status types with counts
+        assert!(output.contains("M:15"));
+        assert!(output.contains("A:6"));
+    }
+
+    #[test]
+    fn test_grouped_single_status_no_count() {
+        let mut entries = Vec::new();
+        for i in 0..21 {
+            entries.push(make_entry("M", &format!("src/dir{}/file.rs", i)));
+        }
+
+        let mut output = String::new();
+        ParseHandler::format_entries_capped(&entries, 15, &mut output);
+
+        // Single file per dir should show just "M" not "M:1"
+        assert!(output.contains("(M)"));
+    }
+
+    #[test]
+    fn test_root_files_grouped_as_dot() {
+        let mut entries = Vec::new();
+        for i in 0..21 {
+            entries.push(make_entry("M", &format!("file{}.txt", i)));
+        }
+
+        let mut output = String::new();
+        ParseHandler::format_entries_capped(&entries, 15, &mut output);
+
+        // Root files should show under "./"
+        assert!(output.contains("./"));
+        assert!(output.contains("M:21"));
     }
 }

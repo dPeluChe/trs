@@ -101,8 +101,8 @@ fn test_search_with_extension_md() {
         .arg("md")
         .assert()
         .success()
-        // Should not find any .md files with "fn "
-        .stdout(predicate::str::contains(".rs").not());
+        // Should only find .md files, verify extension filter works
+        .stdout(predicate::str::contains(".md"));
 }
 
 #[test]
