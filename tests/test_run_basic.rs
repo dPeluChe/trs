@@ -327,7 +327,8 @@ fn test_run_capture_duration_default() {
 
     let stdout = String::from_utf8_lossy(&output);
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert!(json["duration_ms"].as_u64().unwrap() > 0);
+    // On fast CI runners, echo can complete in <1ms
+    assert!(json["duration_ms"].is_u64());
 }
 
 #[test]
