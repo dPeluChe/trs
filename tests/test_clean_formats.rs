@@ -2,7 +2,6 @@
 //! (JSON, CSV, TSV, Agent, Raw, Compact) and stats output.
 
 use assert_cmd::Command;
-use predicates::prelude::*;
 
 // Helper to get fixture path
 fn fixture_path(name: &str) -> std::path::PathBuf {

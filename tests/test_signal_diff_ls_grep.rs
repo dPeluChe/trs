@@ -6,7 +6,6 @@
 //! - Grep: file paths, line numbers, match content, match counts
 
 use assert_cmd::Command;
-use predicates::prelude::*;
 
 mod fixtures;
 

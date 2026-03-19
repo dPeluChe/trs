@@ -1,5 +1,4 @@
 use assert_cmd::Command;
-use predicates::prelude::*;
 
 #[test]
 fn test_search_extension_filter_rs() {

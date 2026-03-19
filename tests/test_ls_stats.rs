@@ -2,7 +2,6 @@
 //! file flag, format-specific byte counting, unicode, and empty input.
 
 use assert_cmd::Command;
-use predicates::prelude::*;
 
 /// Helper function to extract byte count from stats output
 fn extract_bytes(stderr: &str, prefix: &str) -> Option<usize> {

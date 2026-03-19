@@ -464,7 +464,8 @@ fn test_run_command_no_capture_duration() {
 
 #[test]
 fn test_run_command_capture_duration_true() {
-    // When --capture-duration=true, duration_ms should be greater than 0
+    // When --capture-duration=true, duration_ms should be present and non-negative
+    // Note: on fast CI runners, echo can complete in <1ms so duration_ms may be 0
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
         .arg("--json")
@@ -475,10 +476,8 @@ fn test_run_command_capture_duration_true() {
         .assert()
         .success();
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
-    // Parse JSON and check duration_ms > 0
     let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    let duration_ms = json["duration_ms"].as_u64().unwrap();
-    assert!(duration_ms > 0);
+    assert!(json["duration_ms"].is_u64());
 }
 
 // ============================================================

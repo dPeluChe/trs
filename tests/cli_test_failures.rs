@@ -1,5 +1,4 @@
 use assert_cmd::Command;
-use predicates::prelude::*;
 use std::io::Write;
 
 // Failing Test Identifiers Extraction Tests

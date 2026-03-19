@@ -10,11 +10,17 @@ mod logs;
 mod ls;
 mod test_runners;
 
+#[allow(unused_imports)]
 pub use git_diff::*;
+#[allow(unused_imports)]
 pub use git_status::*;
+#[allow(unused_imports)]
 pub use grep::*;
+#[allow(unused_imports)]
 pub use logs::*;
+#[allow(unused_imports)]
 pub use ls::*;
+#[allow(unused_imports)]
 pub use test_runners::*;
 
 use std::path::PathBuf;

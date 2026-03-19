@@ -6,7 +6,6 @@
 //! - Edge cases (empty input, unicode, long paths) preserve signals correctly
 
 use assert_cmd::Command;
-use predicates::prelude::*;
 
 mod fixtures;
 
