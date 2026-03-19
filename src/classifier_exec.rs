@@ -133,8 +133,10 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             out_bytes = truncated.len();
         }
     } else {
-        // No parser matched — passthrough the output as-is
-        print!("{}", stdout);
+        // No parser matched — apply generic compression (collapse whitespace, strip ANSI)
+        let compressed = generic_compress(&stdout);
+        print!("{}", compressed);
+        out_bytes = compressed.len();
     }
 
     // Track execution (fire-and-forget)
@@ -219,4 +221,72 @@ fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
 
     std::fs::write(&filepath, &content).ok()?;
     Some(filepath.to_string_lossy().to_string())
+}
+
+/// Generic compression for commands without a dedicated parser.
+/// Collapses consecutive whitespace in tabular output, strips ANSI codes,
+/// removes carriage returns (progress bars), and collapses blank lines.
+fn generic_compress(input: &str) -> String {
+    use crate::router::handlers::common::strip_ansi_codes;
+
+    let cleaned = strip_ansi_codes(input);
+    let mut result = String::with_capacity(cleaned.len());
+    let mut prev_blank = false;
+
+    for line in cleaned.lines() {
+        // Skip carriage-return progress lines
+        if line.contains('\r') {
+            if let Some(last) = line.rsplit('\r').next() {
+                let trimmed = last.trim();
+                if !trimmed.is_empty() {
+                    result.push_str(trimmed);
+                    result.push('\n');
+                }
+            }
+            prev_blank = false;
+            continue;
+        }
+
+        let trimmed = line.trim_end();
+
+        // Collapse consecutive blank lines
+        if trimmed.is_empty() {
+            if !prev_blank {
+                result.push('\n');
+            }
+            prev_blank = true;
+            continue;
+        }
+        prev_blank = false;
+
+        // Collapse runs of 2+ spaces to single space (tabular padding)
+        let compressed = collapse_whitespace(trimmed);
+        result.push_str(&compressed);
+        result.push('\n');
+    }
+
+    // Trim trailing whitespace
+    while result.ends_with('\n') && result.len() > 1 && result[..result.len() - 1].ends_with('\n')
+    {
+        result.pop();
+    }
+    result
+}
+
+/// Collapse runs of 2+ whitespace chars to a single space.
+fn collapse_whitespace(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut in_spaces = false;
+    for ch in s.chars() {
+        if ch == ' ' || ch == '\t' {
+            if !in_spaces {
+                result.push(' ');
+                in_spaces = true;
+            }
+        } else {
+            result.push(ch);
+            in_spaces = false;
+        }
+    }
+    result
 }
