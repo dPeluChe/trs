@@ -31,7 +31,7 @@ function getPlatformKey() {
 
 function getDownloadUrl(binaryName) {
   // TODO: Update with actual GitHub repo URL
-  const repo = "dPeluChe/tars-cli";
+  const repo = "dPeluChe/trs";
   return `https://github.com/${repo}/releases/download/v${PACKAGE_VERSION}/${binaryName}`;
 }
 

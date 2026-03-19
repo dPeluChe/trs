@@ -96,7 +96,7 @@ fn test_search_with_extension_md() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
         .arg(".")
-        .arg("fn ")
+        .arg("MIT")
         .arg("-e")
         .arg("md")
         .assert()

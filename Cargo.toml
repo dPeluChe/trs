@@ -2,8 +2,12 @@
 name = "tars-cli"
 version = "0.1.0"
 edition = "2021"
-description = "TARS CLI tool"
+description = "Transform noisy terminal output into compact, structured signal for AI agents"
 license = "MIT"
+repository = "https://github.com/dPeluChe/trs"
+homepage = "https://github.com/dPeluChe/trs"
+keywords = ["cli", "terminal", "ai", "token-reduction", "parser"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "trs"

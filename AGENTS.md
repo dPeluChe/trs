@@ -103,14 +103,14 @@ tests/
 
 ```bash
 cargo build                    # Build
-cargo test                     # Run 2,017+ tests
+cargo test                     # Run 2,039+ tests
 cargo install --path .         # Install globally
 ./scripts/benchmark.sh         # Compare vs rtk (trs 13:4 rtk)
 ```
 
 ## Testing
 
-- 658 unit tests (src/) across 30+ test modules
+- 675 unit tests (src/) across 30+ test modules
 - 542 CLI integration tests (tests/cli_*.rs, 26 files)
-- 812 additional integration tests (70+ test files)
-- Total: 2,012 tests, 0 failures
+- 822 additional integration tests (70+ test files)
+- Total: 2,039 tests, 0 failures, 0 warnings

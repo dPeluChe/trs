@@ -1,309 +1,229 @@
-# trs - TARS CLI
+<p align="center">
+  <strong>trs</strong> — compact terminal output for humans and AI agents
+</p>
 
-Transform noisy terminal output into compact, structured signal.
+<p align="center">
+  <a href="https://github.com/dPeluChe/trs/actions"><img src="https://github.com/dPeluChe/trs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/dPeluChe/trs/releases"><img src="https://img.shields.io/github/v/release/dPeluChe/trs" alt="Release"></a>
+  <a href="https://www.npmjs.com/package/tars-cli"><img src="https://img.shields.io/npm/v/tars-cli" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+</p>
 
-A CLI toolkit that reduces token consumption by **68-90%** for developers, automation pipelines, and AI agents.
+<p align="center">
+  <a href="#install">Install</a> •
+  <a href="#what-it-does">What it does</a> •
+  <a href="#benchmarks">Benchmarks</a> •
+  <a href="CONTRIBUTING.md">Contributing</a> •
+  <a href="AGENTS.md">Architecture</a> •
+  <a href="docs/TASK_TODO.md">Roadmap</a> •
+  <a href="README.es.md">Español</a>
+</p>
 
-## The Problem
+---
 
-Every terminal command produces verbose output. When AI agents run `git status`, `ls -la`, or `grep`, they consume hundreds of unnecessary tokens parsing boilerplate text.
+## Origin Story
 
-## The Solution
+trs started as a learning project. While exploring how tools like [rtk](https://github.com/rtk-ai/rtk) compress terminal output for AI agents, I wanted to understand the problem deeply — not just use a solution, but build one from scratch in Rust.
 
-Just prefix your command with `trs`:
+What began as "let me see if I can replicate this" quickly became a daily driver. The process of building each parser taught me what actually matters for token reduction, and along the way trs grew its own features: a JSON query engine, a lint parser, 6 output formats, built-in search/replace, and a generic compression fallback that works on any command.
 
-```
+This is now the tool I use every day with Claude Code. I'm sharing it in case it's useful to others or as a reference for anyone who wants to learn how terminal output compression works.
+
+## What it does
+
+Prefix any command with `trs` to get compact output:
+
+```bash
 $ trs git status
 main [ahead 1]
 unstaged (3):
   M src/main.rs
   M src/lib.rs
   A src/new.rs
+# 497 bytes → 81 bytes
 
-# Raw: 497 bytes → trs: 81 bytes (80% reduction)
-```
-
-```
-$ trs git log -5
-<Antonio>
-  4ca8fe4 Optimize parsers (12 min ago)
-  b49dda3 Fix all tests (21 min ago)
-  581541e Fix 3 replace bugs (28 min ago)
-
-# Raw: 7.2 KB → trs: 690 bytes (90% reduction)
-```
-
-```
 $ trs cargo test
 cargo test: ok (2012 passed, 0 failed, 70 suites, 3.21s)
+# 55 KB → 58 bytes
 
-# Raw: 55 KB → trs: 58 bytes (99% reduction)
+$ trs cargo clippy
+lint: 102 (102 warnings) in 39 files
+src/main.rs (3):
+  W unused_import 8:23
+  W redundant_closure 44:30
+  ...
+# 55 KB → 5.5 KB
 ```
+
+Commands without a dedicated parser still get basic compression (whitespace collapse, ANSI stripping) — so `trs ollama list` or `trs kubectl get pods` gives you ~30-40% reduction for free.
 
 ## Install
 
 ```bash
-# npm (recommended)
+# npm (downloads precompiled binary)
 npm install -g tars-cli
 
 # Try without installing
 npx tars-cli git status
 
-# From source (requires Rust)
+# From source
 cargo install --path .
+
+# Pre-built binaries: https://github.com/dPeluChe/trs/releases
 ```
 
 ## Quick Start
 
 ```bash
-# Just prefix any command with trs
-trs git status
-trs git diff
-trs git log -10
-trs ls -la
-trs npm test
-trs cargo test
-trs env
-
-# Add --json for structured output (flags work anywhere)
-trs git status --json
-trs --json git status      # same thing
+trs git status                 # compact output
+trs git status --json          # structured JSON
+trs --json git status          # flags work anywhere
+git status | trs parse git-status  # pipe syntax too
 ```
 
-## Supported Commands
-
-`trs` auto-detects the command and applies the right parser:
+## Commands with dedicated parsers
 
 ```bash
 # Git
-trs git status              # branch, ahead/behind, file changes
-trs git diff                # files changed with +adds/-dels (DiffCrunch compression)
-trs git diff --stat         # stat format supported too
-trs git log -10             # grouped by author, relative time
-trs git branch -a           # current + local/remote
+trs git status / diff / log / branch / push / pull / fetch
 
-# Files
-trs ls -la                  # dirs first, files with sizes, no noise
-trs tree -L 2               # summary with dir/file counts
-trs find . -name "*.rs"     # grouped by directory
-
-# Search
-trs grep -rn "pattern" .    # grouped by file with line numbers
+# Linters (grouped by file + rule)
+trs cargo clippy / eslint / ruff / biome / golangci-lint
 
 # Test runners
-trs cargo test              # pass/fail/ignore/filter/suite counts
-trs pytest                  # passed/failed/skipped summary
-trs npm test                # works with npm, pnpm, yarn, bun
-trs jest                    # jest, vitest supported
+trs cargo test / pytest / jest / vitest / npm test / pnpm test / bun test
 
-# Package managers
-trs npm ls                  # clean dependency list
-trs pip list                # name@version format
-trs npm install             # summary: added, warnings, errors
+# Files & search
+trs ls -la / find / grep / tree
 
-# Linters (grouped by file + rule, 89% reduction)
-trs cargo clippy            # Rust clippy warnings/errors
-trs eslint src/             # ESLint issues grouped
-trs ruff check .            # Python ruff issues
-trs biome check src/        # Biome linting
-trs golangci-lint run       # Go linting
+# Build & packages
+trs cargo build / npm install / pip list
 
-# Build tools
-trs cargo build             # errors + warnings only
-trs tsc                     # TypeScript build errors
-trs make                    # build output summary
-
-# Docker
-trs docker ps               # container status (up/down)
-trs docker logs <name>      # log level detection (LogCrunch folding)
-
-# GitHub CLI
-trs gh pr list              # compact pull request list
-trs gh issue list           # compact issue list
-trs gh run list             # workflow runs with status
+# Docker & GitHub CLI
+trs docker ps / logs   |   trs gh pr/issue/run list
 
 # System
-trs env                     # grouped, filtered, PATH summarized
-trs wc src/*.rs             # compact: file, lines, words, bytes
-
-# HTTP
-trs curl -I https://api.com    # compact headers
-trs curl -v https://api.com    # verbose → compact
-trs wget https://file.com      # strip progress bars
-
-# Any command — generic compression (collapse whitespace, strip ANSI)
-trs ollama list               # 39% reduction from whitespace collapse
-trs kubectl get pods          # tabular output compacted automatically
-trs echo "hello"              # short output passes through unchanged
+trs env / wc / curl -I / wget
 ```
 
-## Built-in Tools
+## Built-in tools (not just wrappers)
+
+These are features trs has that go beyond output compression:
 
 ```bash
-# JSON structure (without values)
-echo '{"users":[...]}' | trs json         # shows keys + types + array lengths
-trs json --depth 2                        # limit depth
-cat data.json | trs json --json           # schema as JSON
+# JSON query (jq-lite, no dependency)
+curl -s api.com/users | trs json                    # show structure
+curl -s api.com/users | trs json -q '.users[].name' # extract values
+curl -s api.com/users | trs json -q '.meta.total'   # nested paths
 
-# JSON query (jq-lite, extract values by path)
-curl -s api.com/data | trs json -q .name           # extract single value
-curl -s api.com/data | trs json -q '.users[0]'     # array index
-curl -s api.com/data | trs json -q '.users[].name' # map: one value per line
-curl -s api.com/data | trs json -q .meta.total      # nested path
+# File reader with intelligence
+trs read src/main.rs -l aggressive    # signatures only (93% reduction)
+trs read src/main.rs -l minimal       # strip comments, keep code
 
-# File reader with filter levels
-trs read src/main.rs                      # raw with line numbers
-trs read src/main.rs -l minimal           # strip comments, normalize blanks
-trs read src/main.rs -l aggressive        # signatures-only (imports + fn defs)
-
-# Search (ripgrep-powered)
+# Search & replace (ripgrep powered)
 trs search src "TODO" --extension rs
-trs search . "error" -i --context 2
+trs replace src "old_fn" "new_fn" --dry-run
 
-# Replace
-trs replace src "old" "new" --dry-run     # preview
-trs replace src "old" "new"               # execute
-trs replace . "TODO" "DONE" --count       # count only
+# Error filter (works with any command)
+trs err cargo build                   # show only errors/warnings
 
-# Error filter (any command)
-trs err cargo build                       # only errors/warnings
-trs err npm install                       # only problems
+# Text processing
+trs tail app.log --errors             # only error lines
+trs clean --no-ansi --collapse-blanks # clean piped text
+trs html2md https://example.com       # HTML → Markdown
 
-# Tail
-trs tail app.log -n 20                    # last N lines
-trs tail app.log --errors                 # errors only
-trs tail app.log --follow                 # streaming
-
-# Clean text
-some-command | trs clean --no-ansi --collapse-blanks --trim
-
-# Convert
-trs html2md https://example.com           # HTML to Markdown
-cat notes.txt | trs txt2md                # text to Markdown
-
-# Git state
-trs is-clean                              # exit 0=clean, 1=dirty
-trs is-clean --json                       # {"is_clean": true}
-
-# Raw execution (no filtering, but tracked in stats)
-trs raw gh api /repos/user/repo           # full JSON output, tracked
-trs raw kubectl get pods -o json          # bypass compression
-
-# Token savings tracker
-trs stats                                 # cumulative savings
-trs stats --history                       # recent commands
-trs stats --project                       # current project only
+# Utilities
+trs is-clean                          # exit 0=clean, 1=dirty
+trs raw gh api /repos/user/repo       # no compression, tracked in stats
+trs stats --history                   # token savings dashboard
 ```
 
-## Output Formats
+## Output formats
 
-Every command supports 6 formats. Flags work before or after the command:
+Every command supports 6 output formats:
 
 ```bash
 trs git status                # compact (default)
 trs git status --json         # structured JSON
 trs git status --csv          # CSV with headers
 trs git status --tsv          # tab-separated
-trs git status --agent        # AI-optimized text
+trs git status --agent        # AI-optimized
 trs git status --raw          # unprocessed passthrough
-trs git status --stats        # show reduction metrics
-```
-
-## Pipe Syntax
-
-Also works with pipes for any parser:
-
-```bash
-git status | trs parse git-status
-git diff   | trs parse git-diff
-ls -la     | trs parse ls
-cat app.log | trs parse logs
-pytest | trs parse test --runner pytest
-cargo test 2>&1 | trs parse cargo-test
-cargo clippy 2>&1 | trs parse lint
 ```
 
 ## Benchmarks
 
-Across 18 tests vs [rtk](https://github.com/rtk-ai/rtk): **trs 13 wins, rtk 4 wins, 1 tie**.
+vs [rtk](https://github.com/rtk-ai/rtk) (the tool that inspired this project):
 
-| Command | Raw | trs | Reduction |
-|---------|-----|-----|-----------|
-| `cargo test` | 55 KB | 58 B | **99%** |
-| `trs read -l aggressive` | 4.7 KB | 295 B | **93%** |
-| `cargo clippy` | 55 KB | 5.5 KB | **89%** |
-| `git status` | 13.6 KB | 876 B | **93%** |
-| `git log -10` | 8.5 KB | 842 B | **90%** |
-| `git branch -a` | 65 B | 6 B | **90%** |
-| `ls -la` | 1.4 KB | 227 B | **83%** |
-| `env` | 3.0 KB | 807 B | **73%** |
-| `gh run list` | 618 B | 202 B | **67%** |
-| `cargo build` | 71 B | 32 B | **54%** |
-| `find *.rs` | 3.9 KB | 2.1 KB | **46%** |
-| `curl -I` | 201 B | 115 B | **42%** |
-| `ollama list` | 1.0 KB | 626 B | **39%** |
-| `trs json` | 308 B | 210 B | **31%** |
+| Command | Raw | trs | rtk | Winner |
+|---------|-----|-----|-----|--------|
+| `cargo test` | 55 KB | 58 B | 62 B | trs |
+| `cargo clippy` | 55 KB | 5.5 KB | — | trs |
+| `git status` | 13.6 KB | 876 B | 343 B | rtk |
+| `git log -10` | 8.5 KB | 842 B | 811 B | rtk |
+| `ls -la` | 1.4 KB | 227 B | 291 B | trs |
+| `env` | 3.0 KB | 807 B | 1.1 KB | trs |
+| `gh run list` | 618 B | 202 B | 240 B | trs |
+| `find *.rs` | 3.9 KB | 2.1 KB | 3.9 KB | trs |
+| `curl -I` | 201 B | 115 B | 192 B | trs |
 
-Commands without a dedicated parser still get **generic compression** (whitespace collapse, ANSI stripping) — typically 20-40% reduction on tabular output.
+**Score: trs 13 wins, rtk 4 wins, 1 tie** across 18 tests.
 
-Run the benchmark: `./scripts/benchmark.sh`
+**Speed**: trs adds ~3ms overhead, rtk ~7ms.
+
+Where rtk wins: git status/log with very aggressive truncation. Where trs wins: most other commands, plus features rtk doesn't have (json query, lint parser, 6 output formats, search/replace).
+
+Run it yourself: `./scripts/benchmark.sh`
 
 ## Configuration
 
-Optional config at `~/.trs/config.toml` (or `.trs/config.toml` per-project):
+Optional — trs works without config. For tuning:
 
 ```toml
+# ~/.trs/config.toml (or .trs/config.toml per-project)
 [limits]
 grep_max_results = 200
-grep_max_per_file = 25
 status_max_files = 15
 passthrough_max_chars = 2000
 json_max_depth = 10
 ```
 
-## Safety
+## How it stays safe
 
-- **Smart passthrough**: `--json`, `--porcelain`, `--format=json` flags skip parsing entirely
-- **3-tier fallback**: parser OK → degraded → truncated passthrough with `[trs:passthrough]`
-- **Generic fallback**: commands without a parser still get whitespace/ANSI compression
-- **Exit code propagation**: always preserves the wrapped command's exit code
-- **Tee system**: on failure, saves full output to `~/.trs/tee/` for recovery
-- **Data protection**: JSON/YAML/TOML/XML files never stripped in `trs read`
+- Commands with `--json` / `--porcelain` flags pass through untouched
+- If a parser fails, output falls back to truncated passthrough (never silent failure)
+- Exit codes always propagated from the wrapped command
+- On failure, full output saved to `~/.trs/tee/` for recovery
+- `trs read` never strips content from JSON/YAML/TOML/XML data files
 
-## For AI Agents
+## Tech stack
 
-`trs` is the output layer between system commands and LLMs:
+| | |
+|---|---|
+| Language | Rust |
+| Binary | ~7 MB, no runtime dependencies |
+| CLI | clap 4 |
+| Search | ripgrep (grep crate) |
+| Tests | 2,039 passing, 0 warnings |
+| Architecture | 210+ files, <500 lines each — [details](AGENTS.md) |
+
+## Contributing
 
 ```bash
-trs git status --json
-# → {"branch":"main","is_clean":false,"staged_count":2,...}
-
-trs search src "handleError" --extension ts --json
-# → {"files":[{"path":"src/handler.ts","matches":[...]}],...}
-
-trs is-clean --json
-# → {"is_clean":true}
-
-# Extract specific values from JSON APIs
-curl -s https://api.github.com/repos/user/repo | trs json -q .stargazers_count
-# → 1234
-
-curl -s https://api.github.com/repos/user/repo/contributors | trs json -q '.[].login'
-# → octocat
-# → hubot
-# → ...
+git clone https://github.com/dPeluChe/trs.git
+cd trs
+cargo test                     # 2,039 tests must pass
+cargo clippy -- -D warnings    # no warnings allowed
+cargo fmt -- --check           # formatting must match
 ```
 
-## Tech Stack
+See [CONTRIBUTING.md](CONTRIBUTING.md) for code guidelines, [AGENTS.md](AGENTS.md) for the architecture, and [docs/TASK_TODO.md](docs/TASK_TODO.md) for the roadmap.
 
-- **Language**: Rust
-- **Binary**: ~7 MB, self-contained, no runtime dependencies
-- **CLI**: clap 4
-- **Search**: ripgrep (grep crate)
-- **HTML**: htmd
-- **HTTP**: ureq
-- **Tests**: 2,012 passing, 0 failures
-- **Architecture**: 202 files, max 506 lines per file
+## Acknowledgments
+
+- [rtk](https://github.com/rtk-ai/rtk) — the project that sparked this one. Their approach to token reduction for AI agents showed me the problem was worth solving, and studying their codebase taught me a lot about CLI design in Rust.
+- [claw-compactor](https://github.com/open-compress/claw-compactor) — compression patterns (LogCrunch, DiffCrunch, Ionizer) that influenced our log/diff/json handlers.
+- [tokf](https://github.com/mpecan/tokf) — TOML filter pipeline concept.
 
 ## License
 
