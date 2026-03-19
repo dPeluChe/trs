@@ -30,6 +30,9 @@
 .claude/
 .cursor/
 .factory/
+.ralphy/
+openspec/
+ralphy-spec/
 
 # Temporary files
 *.tmp
