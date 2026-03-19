@@ -310,4 +310,3 @@ fn test_json_format_find_with_entries() {
     assert_eq!(json["counts"]["directories"], 1);
     assert_eq!(json["counts"]["files"], 1);
 }
-

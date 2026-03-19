@@ -319,4 +319,3 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::CargoTest { .. } => ParseCommands::CargoTest { file: Some(path) },
     }
 }
-

@@ -266,8 +266,7 @@ fn generic_compress(input: &str) -> String {
     }
 
     // Trim trailing whitespace
-    while result.ends_with('\n') && result.len() > 1 && result[..result.len() - 1].ends_with('\n')
-    {
+    while result.ends_with('\n') && result.len() > 1 && result[..result.len() - 1].ends_with('\n') {
         result.pop();
     }
     result
