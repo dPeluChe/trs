@@ -341,10 +341,29 @@ impl ParseHandler {
                 }
                 // wc from stdin (no filename): lines words bytes
                 3 => {
-                    let lines = parts[0].parse::<u64>().unwrap_or(0);
-                    let words = parts[1].parse::<u64>().unwrap_or(0);
-                    let bytes = parts[2].parse::<u64>().unwrap_or(0);
-                    entries.push((String::new(), lines, words, bytes));
+                    let first = parts[0].parse::<u64>().unwrap_or(0);
+                    let second = parts[1].parse::<u64>().unwrap_or(0);
+                    let third = parts[2].parse::<u64>().unwrap_or(0);
+                    // Could be "lines words bytes" (stdin) or "count count filename"
+                    if parts[2].parse::<u64>().is_ok() {
+                        entries.push((String::new(), first, second, third));
+                    } else {
+                        // "count filename" with extra column — treat as partial
+                        entries.push((parts[2].to_string(), first, second, 0));
+                    }
+                }
+                // wc -l/-w/-c: single count + filename (e.g. "22 file.ts")
+                2 => {
+                    let count = parts[0].parse::<u64>().unwrap_or(0);
+                    let name = parts[1].to_string();
+                    // We don't know which flag was used, show as lines
+                    entries.push((name, count, 0, 0));
+                }
+                // wc -l from stdin: just a number
+                1 => {
+                    if let Ok(count) = parts[0].parse::<u64>() {
+                        entries.push((String::new(), count, 0, 0));
+                    }
                 }
                 _ => continue,
             }
@@ -359,13 +378,19 @@ impl ParseHandler {
             }
             _ => {
                 let mut out = String::new();
+                let has_full_stats = entries.iter().any(|(_, _, w, b)| *w > 0 || *b > 0);
                 for (name, lines, words, bytes) in &entries {
-                    if name.is_empty() {
-                        out.push_str(&format!("{}L {}W {}B\n", lines, words, bytes));
-                    } else if name == "total" {
-                        out.push_str(&format!("total: {}L {}W {}B\n", lines, words, bytes));
+                    let stats = if has_full_stats {
+                        format!("{}L {}W {}B", lines, words, bytes)
                     } else {
-                        out.push_str(&format!("{} {}L {}W {}B\n", name, lines, words, bytes));
+                        format!("{}L", lines)
+                    };
+                    if name.is_empty() {
+                        out.push_str(&format!("{}\n", stats));
+                    } else if name == "total" {
+                        out.push_str(&format!("total: {}\n", stats));
+                    } else {
+                        out.push_str(&format!("{} {}\n", name, stats));
                     }
                 }
                 out

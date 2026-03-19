@@ -41,9 +41,24 @@ impl ParseHandler {
         let mut in_hunk = false;
         let mut current_hunk: Option<GitDiffHunk> = None;
 
-        // Detect --stat format: lines contain " | " with +/- counts
+        // Detect --stat format: lines like " path/file.rs | 10 +++---"
+        // Must NOT match diff content lines (which start with +/- and may contain " | ")
         let is_stat = input.lines().any(|l| {
-            l.contains(" | ") && (l.contains('+') || l.contains('-') || l.contains("Bin "))
+            let trimmed = l.trim();
+            // Stat lines: " file.rs | 10 +++---" or " file.rs | Bin 0 -> 123"
+            // They don't start with diff/---/+++/@@/+/- (diff content markers)
+            trimmed.contains(" | ")
+                && !trimmed.starts_with("diff ")
+                && !trimmed.starts_with("---")
+                && !trimmed.starts_with("+++")
+                && !trimmed.starts_with("@@")
+                && !trimmed.starts_with('+')
+                && !trimmed.starts_with('-')
+                && (trimmed.ends_with('+')
+                    || trimmed.ends_with('-')
+                    || trimmed.contains("Bin ")
+                    || trimmed.contains("insertions")
+                    || trimmed.contains("deletions"))
         });
         if is_stat {
             return Self::parse_git_diff_stat(input);
