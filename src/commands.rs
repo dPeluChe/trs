@@ -261,6 +261,10 @@ pub enum Commands {
         /// Maximum depth to display
         #[arg(short, long)]
         depth: Option<usize>,
+
+        /// Query path to extract (e.g. ".users[0].name", ".[].id")
+        #[arg(short, long)]
+        query: Option<String>,
     },
 
     /// Run a command and show only errors and warnings

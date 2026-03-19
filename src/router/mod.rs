@@ -209,10 +209,11 @@ impl Router {
                 };
                 self.read_handler.execute(&input, ctx)
             }
-            Commands::Json { file, depth } => {
+            Commands::Json { file, depth, query } => {
                 let input = JsonInput {
                     file: file.clone(),
                     depth: *depth,
+                    query: query.clone(),
                 };
                 self.json_handler.execute(&input, ctx)
             }

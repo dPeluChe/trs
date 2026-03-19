@@ -354,3 +354,80 @@ fn test_combined_large_array_with_id_fields() {
     assert!(buf.contains("sampled"), "should indicate sampling");
     assert!(buf.contains("(id)"), "should annotate id fields");
 }
+
+// ============================================================
+// JSON Query Tests
+// ============================================================
+
+#[test]
+fn test_query_key() {
+    let data: serde_json::Value = serde_json::from_str(r#"{"name":"Alice","age":30}"#).unwrap();
+    let result = json_query::resolve_query(&data, ".name").unwrap();
+    assert_eq!(result, serde_json::json!("Alice"));
+}
+
+#[test]
+fn test_query_nested() {
+    let data: serde_json::Value =
+        serde_json::from_str(r#"{"meta":{"total":100,"page":1}}"#).unwrap();
+    let result = json_query::resolve_query(&data, ".meta.total").unwrap();
+    assert_eq!(result, serde_json::json!(100));
+}
+
+#[test]
+fn test_query_array_index() {
+    let data: serde_json::Value =
+        serde_json::from_str(r#"{"users":[{"name":"Alice"},{"name":"Bob"}]}"#).unwrap();
+    let result = json_query::resolve_query(&data, ".users[0].name").unwrap();
+    assert_eq!(result, serde_json::json!("Alice"));
+    let result = json_query::resolve_query(&data, ".users[1].name").unwrap();
+    assert_eq!(result, serde_json::json!("Bob"));
+}
+
+#[test]
+fn test_query_iterate() {
+    let data: serde_json::Value =
+        serde_json::from_str(r#"{"items":[{"id":1},{"id":2},{"id":3}]}"#).unwrap();
+    let result = json_query::resolve_query(&data, ".items[].id").unwrap();
+    assert_eq!(result, serde_json::json!([1, 2, 3]));
+}
+
+#[test]
+fn test_query_root() {
+    let data: serde_json::Value = serde_json::from_str(r#"{"a":1}"#).unwrap();
+    let result = json_query::resolve_query(&data, ".").unwrap();
+    assert_eq!(result, serde_json::json!({"a": 1}));
+}
+
+#[test]
+fn test_query_missing_key() {
+    let data: serde_json::Value = serde_json::from_str(r#"{"a":1}"#).unwrap();
+    assert!(json_query::resolve_query(&data, ".b").is_err());
+}
+
+#[test]
+fn test_query_index_out_of_bounds() {
+    let data: serde_json::Value = serde_json::from_str(r#"[1,2,3]"#).unwrap();
+    assert!(json_query::resolve_query(&data, ".[99]").is_err());
+}
+
+#[test]
+fn test_query_format_string() {
+    let val = serde_json::json!("hello");
+    let out = json_query::format_query_result(&val);
+    assert_eq!(out, "hello\n");
+}
+
+#[test]
+fn test_query_format_array_primitives() {
+    let val = serde_json::json!(["a", "b", "c"]);
+    let out = json_query::format_query_result(&val);
+    assert_eq!(out, "a\nb\nc\n");
+}
+
+#[test]
+fn test_query_format_number() {
+    let val = serde_json::json!(42);
+    let out = json_query::format_query_result(&val);
+    assert_eq!(out, "42\n");
+}

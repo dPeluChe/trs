@@ -27,6 +27,9 @@
 
 use std::path::PathBuf;
 
+#[path = "json_query.rs"]
+mod json_query;
+
 use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
 use crate::OutputFormat;
 
@@ -46,6 +49,8 @@ pub(crate) struct JsonInput {
     pub file: Option<PathBuf>,
     /// Maximum depth to display (None = unlimited)
     pub depth: Option<usize>,
+    /// Query path to extract (e.g. ".users[0].name")
+    pub query: Option<String>,
 }
 
 pub(crate) struct JsonHandler;
@@ -58,16 +63,30 @@ impl JsonHandler {
         let parsed: serde_json::Value =
             serde_json::from_str(&raw).map_err(|e| non_json_hint(&input.file, &e))?;
 
+        // Query mode: extract value at path
+        if let Some(ref query) = input.query {
+            let result = json_query::resolve_query(&parsed, query)?;
+            let output = json_query::format_query_result(&result);
+            print!("{}", output);
+            if ctx.stats {
+                CommandStats::new()
+                    .with_reducer("json-query")
+                    .with_input_bytes(input_bytes)
+                    .with_output_bytes(output.len())
+                    .print();
+            }
+            return Ok(());
+        }
+
+        // Schema mode (default)
         let max_depth = input.depth.unwrap_or(usize::MAX);
 
         let output = match ctx.format {
             OutputFormat::Json => {
-                // JSON output: schema as JSON
                 let schema = to_schema_json(&parsed, 0, max_depth);
                 serde_json::to_string_pretty(&schema).unwrap_or_else(|_| schema.to_string())
             }
             _ => {
-                // Compact/Agent: human-readable structure
                 let mut buf = String::new();
                 format_structure(&parsed, &mut buf, 0, max_depth);
                 buf
@@ -376,6 +395,8 @@ fn to_schema_json(value: &serde_json::Value, depth: usize, max_depth: usize) -> 
         }
     }
 }
+
+// ============================================================
 
 #[cfg(test)]
 #[path = "json_tests.rs"]

@@ -145,6 +145,12 @@ echo '{"users":[...]}' | trs json         # shows keys + types + array lengths
 trs json --depth 2                        # limit depth
 cat data.json | trs json --json           # schema as JSON
 
+# JSON query (jq-lite, extract values by path)
+curl -s api.com/data | trs json -q .name           # extract single value
+curl -s api.com/data | trs json -q '.users[0]'     # array index
+curl -s api.com/data | trs json -q '.users[].name' # map: one value per line
+curl -s api.com/data | trs json -q .meta.total      # nested path
+
 # File reader with filter levels
 trs read src/main.rs                      # raw with line numbers
 trs read src/main.rs -l minimal           # strip comments, normalize blanks
@@ -277,6 +283,15 @@ trs search src "handleError" --extension ts --json
 
 trs is-clean --json
 # → {"is_clean":true}
+
+# Extract specific values from JSON APIs
+curl -s https://api.github.com/repos/user/repo | trs json -q .stargazers_count
+# → 1234
+
+curl -s https://api.github.com/repos/user/repo/contributors | trs json -q '.[].login'
+# → octocat
+# → hubot
+# → ...
 ```
 
 ## Tech Stack

@@ -49,7 +49,8 @@ src/
         ├── tail.rs            # trs tail
         ├── clean.rs           # trs clean
         ├── trim.rs            # trs trim
-        ├── json.rs            # trs json (structure without values)
+        ├── json.rs            # trs json (structure + query engine)
+        ├── json_query.rs      # JSON path query (.key, [0], [].field)
         ├── read.rs            # trs read (handler + filter levels)
         ├── read_filters.rs    # Language detection, minimal/aggressive filters
         ├── html2md.rs         # trs html2md
