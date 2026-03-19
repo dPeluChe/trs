@@ -38,6 +38,8 @@ ralphy-spec/
 *.tmp
 *.temp
 *.log
+# But keep test fixture .log files
+!tests/fixture_data/*.log
 
 # Test coverage
 *.profraw
