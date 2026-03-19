@@ -124,8 +124,10 @@ trs curl -I https://api.com    # compact headers
 trs curl -v https://api.com    # verbose → compact
 trs wget https://file.com      # strip progress bars
 
-# Unknown commands pass through unchanged
-trs echo "hello"               # just prints "hello"
+# Any command — generic compression (collapse whitespace, strip ANSI)
+trs ollama list               # 39% reduction from whitespace collapse
+trs kubectl get pods          # tabular output compacted automatically
+trs echo "hello"              # short output passes through unchanged
 ```
 
 ## Built-in Tools
@@ -205,12 +207,13 @@ cargo test 2>&1 | trs parse cargo-test
 
 ## Benchmarks
 
-Across 18 tests vs [rtk](https://github.com/rtk-ai/rtk): **trs 12 wins, rtk 5 wins, 1 tie**.
+Across 18 tests vs [rtk](https://github.com/rtk-ai/rtk): **trs 13 wins, rtk 4 wins, 1 tie**.
 
 | Command | Raw | trs | Reduction |
 |---------|-----|-----|-----------|
 | `cargo test` | 55 KB | 58 B | **99%** |
 | `trs read -l aggressive` | 4.7 KB | 295 B | **93%** |
+| `git status` | 13.6 KB | 876 B | **93%** |
 | `git log -10` | 8.5 KB | 842 B | **90%** |
 | `git branch -a` | 65 B | 6 B | **90%** |
 | `ls -la` | 1.4 KB | 227 B | **83%** |
@@ -219,7 +222,10 @@ Across 18 tests vs [rtk](https://github.com/rtk-ai/rtk): **trs 12 wins, rtk 5 wi
 | `cargo build` | 71 B | 32 B | **54%** |
 | `find *.rs` | 3.9 KB | 2.1 KB | **46%** |
 | `curl -I` | 201 B | 115 B | **42%** |
+| `ollama list` | 1.0 KB | 626 B | **39%** |
 | `trs json` | 308 B | 210 B | **31%** |
+
+Commands without a dedicated parser still get **generic compression** (whitespace collapse, ANSI stripping) — typically 20-40% reduction on tabular output.
 
 Run the benchmark: `./scripts/benchmark.sh`
 
@@ -240,6 +246,7 @@ json_max_depth = 10
 
 - **Smart passthrough**: `--json`, `--porcelain`, `--format=json` flags skip parsing entirely
 - **3-tier fallback**: parser OK → degraded → truncated passthrough with `[trs:passthrough]`
+- **Generic fallback**: commands without a parser still get whitespace/ANSI compression
 - **Exit code propagation**: always preserves the wrapped command's exit code
 - **Tee system**: on failure, saves full output to `~/.trs/tee/` for recovery
 - **Data protection**: JSON/YAML/TOML/XML files never stripped in `trs read`

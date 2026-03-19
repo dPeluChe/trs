@@ -14,6 +14,8 @@ src/
 ├── commands.rs                # Commands enum, TestRunner
 ├── commands_parse.rs          # ParseCommands enum
 ├── classifier.rs              # Auto-detect command → parser routing
+├── classifier_exec.rs         # Execute → parse → format pipeline
+├── classifier_transfer.rs     # Compact git push/pull/fetch output
 ├── config.rs                  # Config system (~/.trs/config.toml)
 ├── help.rs                    # Help text for all commands
 ├── process.rs                 # Process execution (spawn, capture, timeout)
@@ -48,7 +50,8 @@ src/
         ├── clean.rs           # trs clean
         ├── trim.rs            # trs trim
         ├── json.rs            # trs json (structure without values)
-        ├── read.rs            # trs read (file reader with filter levels)
+        ├── read.rs            # trs read (handler + filter levels)
+        ├── read_filters.rs    # Language detection, minimal/aggressive filters
         ├── html2md.rs         # trs html2md
         ├── txt2md/            # trs txt2md (detect_headings + detect_lists + format)
         ├── isclean.rs         # trs is-clean
@@ -61,8 +64,11 @@ src/
             ├── find.rs        # find parser
             ├── logs*.rs       # log parser + helpers + formatter
             ├── {pytest,jest,vitest,npm,pnpm,bun}_{parse,format}.rs
-            ├── extra_system.rs  # tree, docker, deps, install, build, wc, download
-            └── extra_services.rs # env, gh pr/issue/run, cargo test
+            ├── extra_system.rs    # tree, docker, deps, install, build, wc
+            ├── extra_download.rs  # curl/wget download handler
+            ├── extra_env.rs       # env handler (grouped, filtered)
+            ├── extra_services.rs  # gh pr/issue/run (truncated titles)
+            └── extra_cargo_test.rs # cargo test parser
 
 tests/
 ├── fixture_data/              # 160+ .txt/.html/.log fixture files
@@ -85,18 +91,19 @@ tests/
 - **Flags anywhere**: `trs git status --json` and `trs --json git status` both work
 - **Pipe support**: `git status | trs parse git-status` also works
 - **No runtime deps**: Single binary, ~7MB, works on macOS/Linux/Windows
-- **Max 500 LOC per file**: 202 .rs files, 199 under 500 lines (3 at 503-506)
+- **Max 500 LOC per file**: 210+ .rs files, all under 506 lines (2 at 503-506)
 - **Token tracking**: Every execution logged to ~/.trs/history.jsonl
 - **3-tier fallback**: parser OK → degraded → truncated passthrough with `[trs:passthrough]`
+- **Generic fallback**: commands without parser get whitespace/ANSI compression (20-40%)
 - **Config system**: `~/.trs/config.toml` for tunable limits
 
 ## Development
 
 ```bash
 cargo build                    # Build
-cargo test                     # Run 2,012 tests
+cargo test                     # Run 2,017+ tests
 cargo install --path .         # Install globally
-./scripts/benchmark.sh         # Compare vs rtk (trs 12:5 rtk)
+./scripts/benchmark.sh         # Compare vs rtk (trs 13:4 rtk)
 ```
 
 ## Testing
