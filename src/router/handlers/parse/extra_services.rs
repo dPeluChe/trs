@@ -3,6 +3,15 @@ use crate::OutputFormat;
 use super::ParseHandler;
 
 impl ParseHandler {
+    /// Truncate a string to max_len chars, appending "..." if truncated.
+    fn truncate_str(s: &str, max_len: usize) -> String {
+        if s.len() <= max_len {
+            s.to_string()
+        } else {
+            format!("{}...", &s[..max_len.saturating_sub(3)])
+        }
+    }
+
     /// Check if an env var key is internal noise that should be filtered.
     fn is_env_noise(key: &str) -> bool {
         // Internal shell/terminal noise prefixes
@@ -197,10 +206,11 @@ impl ParseHandler {
                 } else {
                     let mut out = format!("pull requests: {}\n", prs.len());
                     for pr in &prs {
+                        let title = Self::truncate_str(pr["title"].as_str().unwrap_or(""), 60);
+                        let author = Self::truncate_str(pr["author"].as_str().unwrap_or(""), 30);
                         out.push_str(&format!("  #{} {} ({})\n",
                             pr["number"].as_str().unwrap_or(""),
-                            pr["title"].as_str().unwrap_or(""),
-                            pr["author"].as_str().unwrap_or("")
+                            title, author
                         ));
                     }
                     out
@@ -254,9 +264,10 @@ impl ParseHandler {
                 } else {
                     let mut out = format!("issues: {}\n", issues.len());
                     for issue in &issues {
+                        let title = Self::truncate_str(issue["title"].as_str().unwrap_or(""), 60);
                         out.push_str(&format!("  #{} {}\n",
                             issue["number"].as_str().unwrap_or(""),
-                            issue["title"].as_str().unwrap_or("")
+                            title
                         ));
                     }
                     out
@@ -343,17 +354,15 @@ impl ParseHandler {
                             "in_progress" => "~",
                             _ => "?",
                         };
+                        let name = Self::truncate_str(run["name"].as_str().unwrap_or(""), 50);
                         let event = run["event"].as_str().unwrap_or("");
                         if !event.is_empty() {
                             out.push_str(&format!("  {} {} ({})\n",
-                                marker,
-                                run["name"].as_str().unwrap_or(""),
-                                event
+                                marker, name, event
                             ));
                         } else {
                             out.push_str(&format!("  {} {}\n",
-                                marker,
-                                run["name"].as_str().unwrap_or("")
+                                marker, name
                             ));
                         }
                     }
