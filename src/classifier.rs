@@ -225,7 +225,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
 
         // Build tools
         "cargo" => match subcmd {
-            "build" | "check" | "clippy" => Some(ParseCommands::Build { file: None }),
+            "clippy" => Some(ParseCommands::Lint { file: None }),
+            "build" | "check" => Some(ParseCommands::Build { file: None }),
             "test" => Some(ParseCommands::CargoTest { file: None }),
             "tree" => Some(ParseCommands::Deps { file: None }),
             "install" => Some(ParseCommands::Install { file: None }),
@@ -278,8 +279,14 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 file: None,
             }),
             "tsc" => Some(ParseCommands::Build { file: None }),
+            "eslint" | "biome" => Some(ParseCommands::Lint { file: None }),
             _ => None,
         },
+
+        // Linters
+        "eslint" | "biome" | "ruff" | "pylint" | "golangci-lint" => {
+            Some(ParseCommands::Lint { file: None })
+        }
 
         _ => None,
     }
@@ -317,5 +324,6 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::GhIssue { .. } => ParseCommands::GhIssue { file: Some(path) },
         ParseCommands::GhRun { .. } => ParseCommands::GhRun { file: Some(path) },
         ParseCommands::CargoTest { .. } => ParseCommands::CargoTest { file: Some(path) },
+        ParseCommands::Lint { .. } => ParseCommands::Lint { file: Some(path) },
     }
 }

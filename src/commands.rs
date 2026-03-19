@@ -38,6 +38,13 @@ pub enum Commands {
         capture_duration: Option<bool>,
     },
 
+    /// Execute command without filtering but track usage
+    Raw {
+        /// Command and arguments to execute
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
+        args: Vec<String>,
+    },
+
     /// Parse structured input from stdin or file
     #[command(long_about = help::PARSE_HELP)]
     Parse {

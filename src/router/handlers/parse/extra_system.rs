@@ -142,10 +142,7 @@ impl ParseHandler {
 
         for line in input.lines() {
             let clean = line
-                .replace('│', "")
-                .replace('├', "")
-                .replace('└', "")
-                .replace('─', "")
+                .replace(['│', '├', '└', '─'], "")
                 .replace("deduped", "")
                 .trim()
                 .to_string();

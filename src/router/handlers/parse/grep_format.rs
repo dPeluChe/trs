@@ -223,15 +223,13 @@ impl ParseHandler {
                     if let Some(ln) = context_start {
                         output.push_str(&format!("  {}: ...\n", ln));
                     }
-                } else {
-                    if let Some(start) = context_start {
-                        output.push_str(&format!(
-                            "  {}-{}: ... ({} context lines)\n",
-                            start,
-                            start + context_count - 1,
-                            context_count
-                        ));
-                    }
+                } else if let Some(start) = context_start {
+                    output.push_str(&format!(
+                        "  {}-{}: ... ({} context lines)\n",
+                        start,
+                        start + context_count - 1,
+                        context_count
+                    ));
                 }
             }
         }

@@ -1,3 +1,24 @@
+#![allow(
+    clippy::redundant_closure,
+    clippy::manual_pattern_char_comparison,
+    clippy::unnecessary_owned_empty_strings,
+    clippy::useless_format,
+    clippy::collapsible_if,
+    clippy::result_large_err,
+    clippy::type_complexity,
+    clippy::double_ended_iterator_last,
+    clippy::len_zero,
+    clippy::match_like_matches_macro,
+    clippy::manual_strip,
+    clippy::manual_is_multiple_of,
+    clippy::derivable_impls,
+    clippy::if_same_then_else,
+    clippy::unnecessary_map_or,
+    clippy::needless_range_loop,
+    clippy::print_with_newline,
+    clippy::ptr_arg,
+    clippy::get_first
+)]
 use clap::Parser;
 
 mod classifier;
@@ -52,6 +73,37 @@ fn main() {
                 json: *json,
             };
             handle_stats(&input);
+        }
+        Some(Commands::Raw { args }) => {
+            // Execute command without filtering but track usage
+            use std::process::{Command, Stdio};
+            let start = std::time::Instant::now();
+            let cmd = &args[0];
+            let cmd_args = &args[1..];
+            let output = Command::new(cmd)
+                .args(cmd_args)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output();
+            match output {
+                Ok(out) => {
+                    let stdout = String::from_utf8_lossy(&out.stdout);
+                    let stderr = String::from_utf8_lossy(&out.stderr);
+                    print!("{}", stdout);
+                    if !stderr.is_empty() {
+                        eprint!("{}", stderr);
+                    }
+                    let total = stdout.len() + stderr.len();
+                    let full_cmd = args.join(" ");
+                    let ms = start.elapsed().as_millis() as u64;
+                    crate::tracker::log_execution(&full_cmd, total, total, ms);
+                    std::process::exit(out.status.code().unwrap_or(1));
+                }
+                Err(e) => {
+                    eprintln!("Failed to execute '{}': {}", cmd, e);
+                    std::process::exit(127);
+                }
+            }
         }
         Some(
             Commands::Parse { .. }

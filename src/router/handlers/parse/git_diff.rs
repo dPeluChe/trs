@@ -1,7 +1,6 @@
 use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::super::types::*;
 use super::ParseHandler;
-use crate::OutputFormat;
 
 impl ParseHandler {
     pub(crate) fn handle_git_diff(

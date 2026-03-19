@@ -24,8 +24,9 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] kubectl output (pods, services, deployments, logs)
 - [ ] AWS CLI output (s3 ls, ec2 describe-instances, cloudwatch)
 - [ ] gh pr view / gh issue view (detail view, not just list)
-- [ ] go test / golangci-lint / ruff check
+- [ ] go test
 - [ ] next build / prisma generate
+- [ ] playwright test (E2E summaries)
 - [ ] Gradle / Maven build output (skip patterns de ccp: daemon startup, deprecation warnings)
 
 ### Log Parser — Remaining

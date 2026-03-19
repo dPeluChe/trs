@@ -68,7 +68,8 @@ src/
             ├── extra_download.rs  # curl/wget download handler
             ├── extra_env.rs       # env handler (grouped, filtered)
             ├── extra_services.rs  # gh pr/issue/run (truncated titles)
-            └── extra_cargo_test.rs # cargo test parser
+            ├── extra_cargo_test.rs # cargo test parser
+            └── lint.rs            # lint parser (clippy, eslint, ruff, biome, golangci-lint)
 
 tests/
 ├── fixture_data/              # 160+ .txt/.html/.log fixture files

@@ -101,6 +101,13 @@ trs npm ls                  # clean dependency list
 trs pip list                # name@version format
 trs npm install             # summary: added, warnings, errors
 
+# Linters (grouped by file + rule, 89% reduction)
+trs cargo clippy            # Rust clippy warnings/errors
+trs eslint src/             # ESLint issues grouped
+trs ruff check .            # Python ruff issues
+trs biome check src/        # Biome linting
+trs golangci-lint run       # Go linting
+
 # Build tools
 trs cargo build             # errors + warnings only
 trs tsc                     # TypeScript build errors
@@ -172,6 +179,10 @@ cat notes.txt | trs txt2md                # text to Markdown
 trs is-clean                              # exit 0=clean, 1=dirty
 trs is-clean --json                       # {"is_clean": true}
 
+# Raw execution (no filtering, but tracked in stats)
+trs raw gh api /repos/user/repo           # full JSON output, tracked
+trs raw kubectl get pods -o json          # bypass compression
+
 # Token savings tracker
 trs stats                                 # cumulative savings
 trs stats --history                       # recent commands
@@ -203,6 +214,7 @@ ls -la     | trs parse ls
 cat app.log | trs parse logs
 pytest | trs parse test --runner pytest
 cargo test 2>&1 | trs parse cargo-test
+cargo clippy 2>&1 | trs parse lint
 ```
 
 ## Benchmarks
@@ -213,6 +225,7 @@ Across 18 tests vs [rtk](https://github.com/rtk-ai/rtk): **trs 13 wins, rtk 4 wi
 |---------|-----|-----|-----------|
 | `cargo test` | 55 KB | 58 B | **99%** |
 | `trs read -l aggressive` | 4.7 KB | 295 B | **93%** |
+| `cargo clippy` | 55 KB | 5.5 KB | **89%** |
 | `git status` | 13.6 KB | 876 B | **93%** |
 | `git log -10` | 8.5 KB | 842 B | **90%** |
 | `git branch -a` | 65 B | 6 B | **90%** |

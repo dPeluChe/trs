@@ -5,7 +5,7 @@
 
 use crate::classifier::{classify_command, inject_file_path};
 use crate::router::{CommandContext, Router};
-use crate::{Commands, OutputFormat};
+use crate::Commands;
 
 /// Execute an external command, optionally pipe through a parser, and print output.
 pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext) {
@@ -52,12 +52,31 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         std::process::exit(output.status.code().unwrap_or(1));
     }
 
-    // Print stderr passthrough (warnings, progress, etc.)
-    if !stderr.is_empty() {
-        eprint!("{}", stderr);
-    }
+    // Lint commands: output goes to stderr (clippy, ruff, eslint, etc.)
+    // Combine stdout+stderr so the lint parser can process everything
+    let is_lint = matches!(
+        (cmd, subcmd),
+        ("cargo", "clippy")
+            | ("eslint", _)
+            | ("biome", _)
+            | ("ruff", _)
+            | ("pylint", _)
+            | ("golangci-lint", _)
+    );
+    let effective_stdout;
+    let stdout_ref = if is_lint && !stderr.is_empty() {
+        effective_stdout = format!("{}{}", stdout, stderr);
+        &effective_stdout
+    } else {
+        // Print stderr passthrough (warnings, progress, etc.)
+        if !stderr.is_empty() {
+            eprint!("{}", stderr);
+        }
+        &*stdout
+    };
 
     // Try to classify and parse the output (3-tier fallback)
+    #[allow(unused_assignments)]
     let mut out_bytes = in_bytes; // default: no reduction (passthrough)
     if let Some(parser) = classify_command(cmd, args) {
         // Estimate output size based on benchmarked reduction ratios per command
@@ -76,7 +95,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             ("docker", "logs") => 0.50,
             ("npm" | "pnpm" | "yarn" | "pip" | "pip3" | "cargo", "install" | "i") => 0.20,
             ("npm" | "pip" | "pip3" | "cargo", "ls" | "list" | "tree" | "freeze") => 0.40,
-            ("cargo", "build" | "check" | "clippy") => 0.10,
+            ("cargo", "clippy") => 0.15,
+            ("cargo", "build" | "check") => 0.10,
             ("cargo", "test") => 0.05,
             ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
             ("pytest" | "jest" | "vitest", _) => 0.10,
@@ -85,6 +105,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             ("wget", _) => 0.15,
             ("curl", _) => 0.15,
             ("gh", "pr" | "issue" | "run") => 0.30,
+            ("eslint" | "biome" | "ruff" | "pylint" | "golangci-lint", _) => 0.15,
             _ => 0.50,
         };
         out_bytes = (in_bytes as f64 * keep_ratio).max(1.0) as usize;
@@ -93,7 +114,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let router = Router::new();
         let tmpdir = std::env::temp_dir();
         let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
-        let parse_ok = if std::fs::write(&tmpfile, stdout.as_bytes()).is_ok() {
+        let parse_ok = if std::fs::write(&tmpfile, stdout_ref.as_bytes()).is_ok() {
             let parser_with_file = inject_file_path(parser, tmpfile.clone());
             let parse_cmd = Commands::Parse {
                 parser: parser_with_file,
@@ -118,23 +139,23 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         // Tier 3: Passthrough with truncation (parser failed)
         if !parse_ok {
             let passthrough_max = crate::config::config().limits.passthrough_max_chars;
-            let truncated = if stdout.len() > passthrough_max {
-                let cut = &stdout[..passthrough_max];
+            let truncated = if stdout_ref.len() > passthrough_max {
+                let cut = &stdout_ref[..passthrough_max];
                 format!(
                     "{}\n[trs:passthrough — truncated at {} chars, full output: {} chars]",
                     cut,
                     passthrough_max,
-                    stdout.len()
+                    stdout_ref.len()
                 )
             } else {
-                stdout.to_string()
+                stdout_ref.to_string()
             };
             print!("{}", truncated);
             out_bytes = truncated.len();
         }
     } else {
         // No parser matched — apply generic compression (collapse whitespace, strip ANSI)
-        let compressed = generic_compress(&stdout);
+        let compressed = generic_compress(stdout_ref);
         print!("{}", compressed);
         out_bytes = compressed.len();
     }

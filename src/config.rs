@@ -81,7 +81,7 @@ impl Config {
         }
 
         // Try user-global
-        if let Some(home) = std::env::var("HOME").ok() {
+        if let Ok(home) = std::env::var("HOME") {
             let global = PathBuf::from(home).join(".trs").join("config.toml");
             if let Some(cfg) = Self::try_load(&global) {
                 return cfg;

@@ -234,4 +234,14 @@ pub enum ParseCommands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+
+    /// Parse lint output (eslint, clippy, ruff, biome, golangci-lint, tsc)
+    ///
+    /// Groups issues by file and rule, shows error/warning counts.
+    /// Example: cargo clippy 2>&1 | trs parse lint
+    Lint {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
 }
