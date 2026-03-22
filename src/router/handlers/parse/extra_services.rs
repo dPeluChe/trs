@@ -34,10 +34,21 @@ impl ParseHandler {
                 if fields.len() >= 2 {
                     let number = fields[0].trim();
                     let title = fields[1].trim();
-                    // Extract just author name (strip branch ref like "user:branch-name")
+                    // Extract just author name from "user:branch" or "dependabot/..."
                     let author = fields
                         .get(2)
-                        .map(|s| s.split(':').next().unwrap_or("").trim())
+                        .map(|s| {
+                            let s = s.trim();
+                            // "user:branch" → "user"
+                            if let Some(pos) = s.find(':') {
+                                &s[..pos]
+                            } else if let Some(pos) = s.find('/') {
+                                // "dependabot/go_modules/..." → "dependabot"
+                                &s[..pos]
+                            } else {
+                                s
+                            }
+                        })
                         .unwrap_or("");
                     prs.push(serde_json::json!({
                         "number": number, "title": title, "author": author
