@@ -29,6 +29,7 @@ mod commands;
 pub(crate) mod config;
 mod formatter;
 mod help;
+mod init;
 #[allow(dead_code)]
 mod process;
 #[allow(dead_code)]
@@ -61,6 +62,24 @@ fn main() {
     let router = Router::new();
 
     match &cli.command {
+        Some(Commands::Init { tool, global, show }) => {
+            if *show {
+                init::show_status();
+            } else if let Some(tool_name) = tool {
+                match init::AiTool::from_str(tool_name) {
+                    Some(t) => init::install_hook(&t, *global),
+                    None => eprintln!(
+                        "Unknown tool: '{}'. Supported: {}",
+                        tool_name,
+                        init::AiTool::all_names()
+                    ),
+                }
+            } else {
+                println!("Usage: trs init <tool> [--global]");
+                println!("       trs init --show");
+                println!("\nSupported tools: {}", init::AiTool::all_names());
+            }
+        }
         Some(Commands::Stats {
             history,
             project,

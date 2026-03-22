@@ -132,6 +132,15 @@ trs html2md https://example.com       # HTML → Markdown
 trs is-clean                          # estado git: exit 0=limpio, 1=sucio
 trs raw gh api /repos/user/repo       # sin compresión, registrado en stats
 trs stats --history                   # dashboard de ahorro de tokens
+
+# Instalador de hooks para herramientas de IA
+trs init claude                       # hook para Claude Code
+trs init gemini --global              # hook global para Gemini CLI
+trs init cursor                       # hook para Cursor
+trs init codex                        # instrucciones en AGENTS.md
+trs init opencode                     # plugin para OpenCode
+trs init kilo                         # plugin para Kilo Code
+trs init --show                       # ver qué herramientas están configuradas
 ```
 
 ## Formatos de salida

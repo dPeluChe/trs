@@ -12,9 +12,9 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] Shell completions (bash, zsh, fish)
 
 ### AI Tool Integrations
-- [ ] Claude Code hook (`trs init --claude`)
-- [ ] Cursor hook (`trs init --cursor`)
-- [ ] Copilot hook (`trs init --copilot`)
+- [x] `trs init` — hook installer for Claude Code, Gemini, Cursor, Codex, OpenCode, Kilo
+- [ ] Implement `trs rewrite` command (the actual rewrite logic that hooks call)
+- [ ] Copilot hook (needs PreToolUse research)
 - [ ] Detect pipe context — skip rewriting find/fd when piped
 
 ---

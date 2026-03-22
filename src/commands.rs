@@ -38,6 +38,20 @@ pub enum Commands {
         capture_duration: Option<bool>,
     },
 
+    /// Install hooks for AI coding tools (claude, gemini, cursor, codex, opencode, kilo)
+    Init {
+        /// Tool to configure (claude, gemini, cursor, codex, opencode, kilo)
+        tool: Option<String>,
+
+        /// Install globally (user-level) instead of project-level
+        #[arg(short, long)]
+        global: bool,
+
+        /// Show current installation status
+        #[arg(long)]
+        show: bool,
+    },
+
     /// Execute command without filtering but track usage
     Raw {
         /// Command and arguments to execute

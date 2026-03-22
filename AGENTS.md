@@ -17,6 +17,7 @@ src/
 ├── classifier_exec.rs         # Execute → parse → format pipeline
 ├── classifier_transfer.rs     # Compact git push/pull/fetch output
 ├── config.rs                  # Config system (~/.trs/config.toml)
+├── init.rs                    # trs init — hook installer for 6 AI tools
 ├── help.rs                    # Help text for all commands
 ├── process.rs                 # Process execution (spawn, capture, timeout)
 ├── process_helpers.rs         # Spawn error classification, output capture
