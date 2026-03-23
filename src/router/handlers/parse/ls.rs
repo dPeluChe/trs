@@ -54,6 +54,28 @@ impl ParseHandler {
                 continue;
             }
 
+            // Handle ls -R directory headers: "path/to/dir:" → treat as directory entry
+            if line.ends_with(':') && !line.starts_with('-') && !line.starts_with('d') {
+                if let Some(entry) = current_entry.take() {
+                    ls_output.entries.push(entry);
+                }
+                let dir_name = format!("{}/", line.trim_end_matches(':'));
+                current_entry = Some(LsEntry {
+                    name: dir_name.clone(),
+                    entry_type: LsEntryType::Directory,
+                    is_hidden: dir_name.starts_with('.'),
+                    size: None,
+                    permissions: None,
+                    links: None,
+                    owner: None,
+                    group: None,
+                    modified: None,
+                    symlink_target: None,
+                    is_broken_symlink: false,
+                });
+                continue;
+            }
+
             // Check for permission denied or other error messages
             // Format: "ls: cannot open directory '/path': Permission denied"
             // or: "ls: cannot access 'file': No such file or directory"
