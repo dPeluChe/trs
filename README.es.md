@@ -141,6 +141,10 @@ trs init codex                        # instrucciones en AGENTS.md
 trs init opencode                     # plugin para OpenCode
 trs init kilo                         # plugin para Kilo Code
 trs init --show                       # ver qué herramientas están configuradas
+
+# Descubrir ahorros perdidos (escanea historial de Claude Code)
+trs discover                          # proyecto actual, últimos 7 días
+trs discover --all --since 30         # todos los proyectos, últimos 30 días
 ```
 
 ## Formatos de salida

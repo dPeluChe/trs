@@ -13,7 +13,10 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ### AI Tool Integrations
 - [x] `trs init` — hook installer for Claude Code, Gemini, Cursor, Codex, OpenCode, Kilo
-- [ ] Implement `trs rewrite` command (the actual rewrite logic that hooks call)
+- [x] `trs rewrite` — hook command rewriter (JSON + plain text protocol)
+- [x] `trs discover` — scan Claude Code history for missed savings
+- [x] `--no-verify` blocker — prevents agents from skipping pre-commit hooks
+- [x] PATH validation — warns if trs not in PATH after hook install
 - [ ] Copilot hook (needs PreToolUse research)
 - [ ] Detect pipe context — skip rewriting find/fd when piped
 
@@ -36,8 +39,8 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ## Phase 3 — Analytics & Configuration
 
-- [ ] `trs discover` — scan Claude Code history for missed savings opportunities
 - [ ] `trs stats --graph` — ASCII bar chart (30-day view)
+- [ ] Version check notification (no auto-update)
 - [ ] Consider migrating tracker from JSONL to SQLite (WAL mode, 90-day retention)
 - [ ] Command mutation (inject `--porcelain` for more parseable output)
 - [ ] Streaming mode for all parsers (not just tail)

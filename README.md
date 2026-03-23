@@ -145,6 +145,10 @@ trs init codex                        # append trs instructions to AGENTS.md
 trs init opencode                     # install OpenCode plugin
 trs init kilo                         # install Kilo Code plugin
 trs init --show                       # show which tools are configured
+
+# Discover missed savings (scan Claude Code history)
+trs discover                          # current project, last 7 days
+trs discover --all --since 30         # all projects, last 30 days
 ```
 
 ## Output formats
@@ -199,6 +203,7 @@ json_max_depth = 10
 
 ## How it stays safe
 
+- `--no-verify` blocked on git commit/push (protects pre-commit hooks from agents)
 - Commands with `--json` / `--porcelain` flags pass through untouched
 - If a parser fails, output falls back to truncated passthrough (never silent failure)
 - Exit codes always propagated from the wrapped command
@@ -213,7 +218,7 @@ json_max_depth = 10
 | Binary | ~7 MB, no runtime dependencies |
 | CLI | clap 4 |
 | Search | ripgrep (grep crate) |
-| Tests | 2,039 passing, 0 warnings |
+| Tests | 2,056 passing, 0 warnings |
 | Architecture | 210+ files, <500 lines each — [details](AGENTS.md) |
 
 ## Contributing

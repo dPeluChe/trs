@@ -100,9 +100,29 @@ pub(crate) fn install_hook(tool: &AiTool, global: bool) {
     };
 
     match result {
-        Ok(path) => println!("trs hook installed for {} at {}", tool.name(), path),
+        Ok(path) => {
+            println!("trs hook installed for {} at {}", tool.name(), path);
+            // Warn if trs is not in PATH
+            if !is_trs_in_path() {
+                eprintln!(
+                    "warning: 'trs' not found in PATH. The hook may fail silently.\n\
+                     Make sure trs is installed: cargo install --path . or npm install -g tars-cli"
+                );
+            }
+        }
         Err(e) => eprintln!("Failed to install hook for {}: {}", tool.name(), e),
     }
+}
+
+/// Check if trs binary is available in PATH.
+fn is_trs_in_path() -> bool {
+    std::process::Command::new("trs")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 /// Show current hook installation status.

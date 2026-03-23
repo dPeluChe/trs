@@ -17,7 +17,9 @@ src/
 ├── classifier_exec.rs         # Execute → parse → format pipeline
 ├── classifier_transfer.rs     # Compact git push/pull/fetch output
 ├── config.rs                  # Config system (~/.trs/config.toml)
+├── discover.rs                # trs discover — scan history for missed savings
 ├── init.rs                    # trs init — hook installer for 6 AI tools
+├── rewrite.rs                 # trs rewrite — hook command rewriter engine
 ├── help.rs                    # Help text for all commands
 ├── process.rs                 # Process execution (spawn, capture, timeout)
 ├── process_helpers.rs         # Spawn error classification, output capture
@@ -104,7 +106,7 @@ tests/
 
 ```bash
 cargo build                    # Build
-cargo test                     # Run 2,039+ tests
+cargo test                     # Run 2,056+ tests
 cargo install --path .         # Install globally
 ./scripts/benchmark.sh         # Compare vs rtk (trs 13:4 rtk)
 ```

@@ -38,6 +38,20 @@ pub enum Commands {
         capture_duration: Option<bool>,
     },
 
+    /// Rewrite a command for hook integration (called by AI tool hooks)
+    Rewrite,
+
+    /// Find missed token savings opportunities in Claude Code history
+    Discover {
+        /// Scan all projects (default: current project only)
+        #[arg(long)]
+        all: bool,
+
+        /// Number of days to look back (default: 7)
+        #[arg(long, default_value = "7")]
+        since: usize,
+    },
+
     /// Install hooks for AI coding tools (claude, gemini, cursor, codex, opencode, kilo)
     Init {
         /// Tool to configure (claude, gemini, cursor, codex, opencode, kilo)

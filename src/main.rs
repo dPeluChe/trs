@@ -27,6 +27,7 @@ mod classifier_transfer;
 mod cli;
 mod commands;
 pub(crate) mod config;
+mod discover;
 mod formatter;
 mod help;
 mod init;
@@ -34,6 +35,7 @@ mod init;
 mod process;
 #[allow(dead_code)]
 mod reducer;
+mod rewrite;
 mod router;
 #[allow(dead_code)]
 mod schema;
@@ -62,6 +64,12 @@ fn main() {
     let router = Router::new();
 
     match &cli.command {
+        Some(Commands::Rewrite) => {
+            rewrite::run_rewrite();
+        }
+        Some(Commands::Discover { all, since }) => {
+            discover::run_discover(*all, *since);
+        }
         Some(Commands::Init { tool, global, show }) => {
             if *show {
                 init::show_status();

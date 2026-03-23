@@ -222,7 +222,11 @@ impl Router {
                 // Stats is handled directly in main.rs before reaching the router
                 Ok(())
             }
-            Commands::External(_) | Commands::Raw { .. } | Commands::Init { .. } => {
+            Commands::External(_)
+            | Commands::Raw { .. }
+            | Commands::Init { .. }
+            | Commands::Rewrite
+            | Commands::Discover { .. } => {
                 // These are handled in main.rs before reaching the router
                 Ok(())
             }
