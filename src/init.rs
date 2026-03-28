@@ -52,6 +52,17 @@ impl AiTool {
         "claude, gemini, cursor, codex, opencode, kilo"
     }
 
+    pub(crate) fn all_tools() -> [Self; 6] {
+        [
+            Self::Claude,
+            Self::Gemini,
+            Self::Cursor,
+            Self::Codex,
+            Self::OpenCode,
+            Self::Kilo,
+        ]
+    }
+
     fn spec(&self) -> Option<HookSpec> {
         match self {
             Self::Claude => Some(HookSpec {
@@ -129,15 +140,7 @@ fn is_trs_in_path() -> bool {
 pub(crate) fn show_status() {
     println!("trs init — hook status\n");
 
-    let tools = [
-        AiTool::Claude,
-        AiTool::Gemini,
-        AiTool::Cursor,
-        AiTool::Codex,
-        AiTool::OpenCode,
-        AiTool::Kilo,
-    ];
-
+    let tools = AiTool::all_tools();
     let mut count = 0;
     for tool in &tools {
         let installed = check_tool(tool);
@@ -151,7 +154,7 @@ pub(crate) fn show_status() {
 }
 
 /// Check if a tool has trs hooks installed (local or global).
-fn check_tool(tool: &AiTool) -> bool {
+pub(crate) fn check_tool(tool: &AiTool) -> bool {
     if let AiTool::Codex = tool {
         return check_file_contains("AGENTS.md", "trs");
     }

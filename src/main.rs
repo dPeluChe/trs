@@ -28,6 +28,7 @@ mod cli;
 mod commands;
 pub(crate) mod config;
 mod discover;
+mod doctor;
 mod formatter;
 mod help;
 mod init;
@@ -86,6 +87,18 @@ fn main() {
                 println!("Usage: trs init <tool> [--global]");
                 println!("       trs init --show");
                 println!("\nSupported tools: {}", init::AiTool::all_names());
+            }
+        }
+        Some(Commands::Doctor { json }) => {
+            let checks = doctor::run_checks();
+            if *json {
+                doctor::print_report_json(&checks);
+            } else {
+                doctor::print_report(&checks);
+            }
+            let has_fail = checks.iter().any(|c| c.status == doctor::CheckStatus::Fail);
+            if has_fail {
+                std::process::exit(1);
             }
         }
         Some(Commands::Stats {
@@ -185,8 +198,15 @@ fn main() {
             }
         }
         None => {
-            // Read from stdin when no command is provided
-            use std::io::{self, Read};
+            use std::io::{self, IsTerminal, Read};
+
+            // If stdin is a terminal (no pipe), show help instead of blocking
+            if io::stdin().is_terminal() {
+                Cli::parse_from(["trs", "--help"]);
+                return;
+            }
+
+            // Read from stdin when piped
             let mut buffer = Vec::new();
             if let Err(e) = io::stdin().read_to_end(&mut buffer) {
                 eprintln!("Error reading from stdin: {}", e);

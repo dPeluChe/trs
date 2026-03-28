@@ -66,6 +66,13 @@ pub enum Commands {
         show: bool,
     },
 
+    /// Validate trs installation health (binary, PATH, deps, config)
+    Doctor {
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
+    },
+
     /// Execute command without filtering but track usage
     Raw {
         /// Command and arguments to execute

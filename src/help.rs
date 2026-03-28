@@ -442,6 +442,38 @@ EXAMPLES:
     trs stats --project          # Savings for current project only
     trs stats --json             # JSON output for dashboards";
 
+/// Help text for the doctor command.
+#[allow(dead_code)]
+pub const DOCTOR_HELP: &str = "\
+Validate trs installation health.
+
+Runs a series of checks to verify that trs is correctly installed,
+runtime dependencies are available, and configuration is functional.
+
+CHECKS:
+    version      Binary version is readable
+    binary       Binary path on disk
+    PATH         trs is findable in PATH
+    dep:git      git is available
+    dep:rg       ripgrep (rg) is available
+    config dir   ~/.trs/ exists and is writable
+    history      history.jsonl is writable
+    stdin pipe   stdin pipeline works (trs clean)
+    hooks        AI tool hooks installed
+
+STATUS MARKERS:
+    +  PASS — check passed
+    ~  WARN — non-critical issue
+    !  FAIL — needs attention
+
+EXIT CODES:
+    0  All checks passed (or only warnings)
+    1  One or more checks failed
+
+EXAMPLES:
+    trs doctor                   # Run all checks
+    trs doctor --json            # JSON output for CI pipelines";
+
 /// Returns the help text for a specific command.
 #[allow(dead_code)]
 pub fn get_command_help(command: &str) -> Option<&'static str> {
@@ -459,6 +491,7 @@ pub fn get_command_help(command: &str) -> Option<&'static str> {
         "json" => Some(JSON_HELP),
         "err" => Some(ERR_HELP),
         "stats" => Some(STATS_HELP),
+        "doctor" => Some(DOCTOR_HELP),
         _ => None,
     }
 }
