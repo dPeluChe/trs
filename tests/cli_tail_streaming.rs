@@ -172,7 +172,7 @@ fn test_tail_follow_compact_output() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // Should show compact format header
-    assert!(stdout.contains("Last") || stdout.contains("lines from"));
+    assert!(stdout.contains("lines"));
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn test_tail_follow_agent_output() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // Should show agent format
-    assert!(stdout.contains("File:") || stdout.contains("❌") || stdout.contains("ERROR"));
+    assert!(stdout.contains("File:") || stdout.contains("ERR") || stdout.contains("ERROR"));
 }
 
 // ============================================================

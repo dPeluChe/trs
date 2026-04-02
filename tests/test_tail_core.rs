@@ -20,7 +20,7 @@ fn test_tail_basic() {
         .arg(fixture_path("tail_app.log"))
         .assert()
         .success()
-        .stdout(predicate::str::contains("tail_app.log"));
+        .stdout(predicate::str::contains("lines"));
 }
 
 #[test]

@@ -92,30 +92,19 @@ impl ParseHandler {
                     }
                 }
 
-                // If single author, show header once then just commits
+                // Single author: flat list (no header)
+                // Multiple authors: grouped with author label
                 if groups.len() == 1 {
-                    let (author, items) = &groups[0];
-                    if !author.is_empty() {
-                        out.push_str(&format!("<{}>\n", author));
-                    }
-                    for (h, time, m) in items {
-                        if time.is_empty() {
-                            out.push_str(&format!("  {} {}\n", h, m));
-                        } else {
-                            out.push_str(&format!("  {} {} ({})\n", h, m, time));
-                        }
+                    let (_author, items) = &groups[0];
+                    for (h, _time, m) in items {
+                        out.push_str(&format!("{} {}\n", h, m));
                     }
                 } else {
-                    // Multiple authors: group with headers
                     for (author, items) in &groups {
-                        let label = if author.is_empty() { "unknown" } else { author };
-                        out.push_str(&format!("<{}> ({} commits)\n", label, items.len()));
-                        for (h, time, m) in items {
-                            if time.is_empty() {
-                                out.push_str(&format!("  {} {}\n", h, m));
-                            } else {
-                                out.push_str(&format!("  {} {} ({})\n", h, m, time));
-                            }
+                        let label = if author.is_empty() { "?" } else { author };
+                        out.push_str(&format!("[{}]\n", label));
+                        for (h, _time, m) in items {
+                            out.push_str(&format!("{} {}\n", h, m));
                         }
                     }
                 }

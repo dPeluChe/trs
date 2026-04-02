@@ -227,7 +227,8 @@ impl Router {
             | Commands::Init { .. }
             | Commands::Rewrite
             | Commands::Discover { .. }
-            | Commands::Doctor { .. } => {
+            | Commands::Doctor { .. }
+            | Commands::Benchmark { .. } => {
                 // These are handled in main.rs before reaching the router
                 Ok(())
             }

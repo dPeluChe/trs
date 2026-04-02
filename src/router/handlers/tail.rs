@@ -230,18 +230,11 @@ impl TailHandler {
                     line.line_number, line_escaped, line.is_error
                 )
             }
-            OutputFormat::Agent => {
+            OutputFormat::Agent | OutputFormat::Compact => {
                 if line.is_error {
-                    format!("❌ {}:{}\n", line.line_number, line.line)
+                    format!("ERR {}\n", line.line)
                 } else {
-                    format!("   {}:{}\n", line.line_number, line.line)
-                }
-            }
-            OutputFormat::Compact => {
-                if line.is_error {
-                    format!("  ❌ {}:{}\n", line.line_number, line.line)
-                } else {
-                    format!("  {}:{}\n", line.line_number, line.line)
+                    format!("{}\n", line.line)
                 }
             }
             OutputFormat::Raw => {
@@ -318,6 +311,20 @@ impl TailHandler {
         result
     }
 
+    /// Build raw body lines (shared by agent and compact formatters).
+    fn format_body_lines(output: &TailOutput) -> String {
+        let mut body = String::new();
+        for l in &output.lines {
+            if l.is_error {
+                body.push_str(&format!("ERR {}\n", l.line));
+            } else {
+                body.push_str(&l.line);
+                body.push('\n');
+            }
+        }
+        crate::classifier_exec::collapse_repeated_lines(&body)
+    }
+
     /// Format tail output as agent-optimized format.
     pub(crate) fn format_agent(output: &TailOutput) -> String {
         let mut result = String::new();
@@ -336,14 +343,7 @@ impl TailHandler {
             ));
         }
 
-        for l in &output.lines {
-            if l.is_error {
-                result.push_str(&format!("❌ {}:{}\n", l.line_number, l.line));
-            } else {
-                result.push_str(&format!("   {}:{}\n", l.line_number, l.line));
-            }
-        }
-
+        result.push_str(&Self::format_body_lines(output));
         result
     }
 
@@ -360,31 +360,19 @@ impl TailHandler {
             return result;
         }
 
-        // Show header
         if output.filtering_errors {
             result.push_str(&format!(
-                "Error lines from {} ({} of {} total):\n\n",
-                output.file.display(),
-                output.lines_shown,
-                output.total_lines
+                "Errors ({}/{}):\n\n",
+                output.lines_shown, output.total_lines
             ));
         } else {
             result.push_str(&format!(
-                "Last {} lines from {} (total: {}):\n\n",
-                output.lines_shown,
-                output.file.display(),
-                output.total_lines
+                "{} lines (of {}):\n\n",
+                output.lines_shown, output.total_lines
             ));
         }
 
-        for l in &output.lines {
-            if l.is_error {
-                result.push_str(&format!("  ❌ {}:{}\n", l.line_number, l.line));
-            } else {
-                result.push_str(&format!("  {}:{}\n", l.line_number, l.line));
-            }
-        }
-
+        result.push_str(&Self::format_body_lines(output));
         result
     }
 

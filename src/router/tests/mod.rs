@@ -23,6 +23,7 @@ mod html2md_advanced;
 mod html2md_basic;
 mod malformed_input;
 mod parse_bun;
+mod parse_db;
 mod parse_grep;
 mod parse_jest;
 mod parse_logs;

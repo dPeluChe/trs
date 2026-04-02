@@ -220,6 +220,15 @@ pub struct CommandContext {
 }
 
 impl CommandContext {
+    /// Create a default context with Compact format (for fast-path bypass).
+    pub fn default_compact() -> Self {
+        Self {
+            format: OutputFormat::Compact,
+            stats: false,
+            enabled_formats: vec![],
+        }
+    }
+
     /// Create a new command context from CLI options.
     pub fn from_cli(cli: &Cli) -> Self {
         Self {

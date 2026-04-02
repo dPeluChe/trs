@@ -219,9 +219,9 @@ fn test_tail_agent_error_indicators() {
         .clone();
 
     let stdout = String::from_utf8_lossy(&output);
-    // Agent format uses error indicator for error lines
+    // Agent format uses ERR marker for error lines
     // The file contains ERROR and FATAL lines
-    assert!(stdout.contains('\u{274C}'));
+    assert!(stdout.contains("ERR"));
 }
 
 // ============================================================
@@ -309,6 +309,6 @@ fn test_tail_compact_error_indicators() {
         .clone();
 
     let stdout = String::from_utf8_lossy(&output);
-    // Compact format uses error indicator for error lines
-    assert!(stdout.contains('\u{274C}'));
+    // Compact format uses ERR marker for error lines
+    assert!(stdout.contains("ERR"));
 }

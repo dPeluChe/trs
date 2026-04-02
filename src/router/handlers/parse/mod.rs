@@ -5,6 +5,7 @@ use crate::ParseCommands;
 pub(crate) mod bun_format;
 pub(crate) mod bun_parse;
 pub(crate) mod extra_cargo_test;
+pub(crate) mod extra_db;
 pub(crate) mod extra_download;
 pub(crate) mod extra_env;
 pub(crate) mod extra_services;
@@ -124,6 +125,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::GhRun { file } => Self::handle_gh_run(file, ctx),
             ParseCommands::CargoTest { file } => Self::handle_cargo_test(file, ctx),
             ParseCommands::Lint { file } => Self::handle_lint(file, ctx),
+            ParseCommands::Db { file } => Self::handle_db(file, ctx),
         }
     }
 }

@@ -474,6 +474,34 @@ EXAMPLES:
     trs doctor                   # Run all checks
     trs doctor --json            # JSON output for CI pipelines";
 
+/// Help text for the benchmark command.
+#[allow(dead_code)]
+pub const BENCHMARK_HELP: &str = "\
+Benchmark a command showing compression metrics.
+
+Runs a command both raw and through the trs pipeline, then reports
+byte reduction, estimated token savings, and execution time.
+
+USAGE:
+    trs benchmark <COMMAND> [ARGS]...
+
+OPTIONS:
+    --repeat <N>    Number of iterations to average over (default: 1)
+    --json          Output metrics in JSON format
+
+OUTPUT:
+    Raw output      Original byte count from the command
+    Compressed      Byte count after trs processing
+    Reduction       Percentage of bytes saved
+    Est. tokens     Estimated token count (raw vs compressed)
+    Time            Average execution time in milliseconds
+
+EXAMPLES:
+    trs benchmark git status
+    trs benchmark git log -10 --json
+    trs benchmark ls -la --repeat 5
+    trs benchmark cargo test --repeat 3 --json";
+
 /// Returns the help text for a specific command.
 #[allow(dead_code)]
 pub fn get_command_help(command: &str) -> Option<&'static str> {
@@ -492,6 +520,7 @@ pub fn get_command_help(command: &str) -> Option<&'static str> {
         "err" => Some(ERR_HELP),
         "stats" => Some(STATS_HELP),
         "doctor" => Some(DOCTOR_HELP),
+        "benchmark" => Some(BENCHMARK_HELP),
         _ => None,
     }
 }

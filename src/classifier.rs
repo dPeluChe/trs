@@ -6,6 +6,47 @@
 use crate::{ParseCommands, TestRunner};
 use std::path::PathBuf;
 
+/// Benchmarked keep-ratio for estimating compressed output size per command.
+/// Returns the fraction of input that typically remains after trs compression.
+pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
+    match (cmd, subcmd) {
+        ("git", "status") => 0.20,
+        ("git", "diff") => 0.10,
+        ("git", "log") => 0.10,
+        ("git", "branch") => 0.11,
+        ("ls" | "lsd" | "exa" | "eza", _) => 0.18,
+        ("tree", _) => 0.30,
+        ("find" | "fd", _) => 0.52,
+        ("grep" | "rg" | "ag", _) => 0.40,
+        ("env" | "printenv", _) => 0.32,
+        ("docker", "ps") => 0.30,
+        ("docker", "logs") => 0.50,
+        ("npm" | "pnpm" | "yarn" | "pip" | "pip3" | "cargo", "install" | "i") => 0.20,
+        ("npm" | "pip" | "pip3" | "cargo", "ls" | "list" | "tree" | "freeze") => 0.40,
+        ("cargo", "clippy") => 0.15,
+        ("cargo", "build" | "check") => 0.10,
+        ("cargo", "test") => 0.05,
+        ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
+        ("pytest" | "jest" | "vitest", _) => 0.10,
+        ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
+        ("wc", _) => 0.50,
+        ("wget", _) => 0.15,
+        ("curl", _) => 0.15,
+        ("gh", "pr" | "issue" | "run") => 0.30,
+        ("eslint" | "biome" | "ruff" | "pylint" | "golangci-lint", _) => 0.15,
+        _ => 0.50,
+    }
+}
+
+/// Build a full command string from command name and arguments.
+pub(crate) fn full_cmd(cmd: &str, args: &[String]) -> String {
+    if args.is_empty() {
+        cmd.to_string()
+    } else {
+        format!("{} {}", cmd, args.join(" "))
+    }
+}
+
 /// Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines).
 ///
 /// This function transforms arguments like:
@@ -252,6 +293,9 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             _ => None,
         },
 
+        // Database clients
+        "psql" | "mysql" | "sqlite3" | "mariadb" => Some(ParseCommands::Db { file: None }),
+
         // Environment
         "env" | "printenv" => Some(ParseCommands::Env { file: None }),
 
@@ -325,5 +369,6 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::GhRun { .. } => ParseCommands::GhRun { file: Some(path) },
         ParseCommands::CargoTest { .. } => ParseCommands::CargoTest { file: Some(path) },
         ParseCommands::Lint { .. } => ParseCommands::Lint { file: Some(path) },
+        ParseCommands::Db { .. } => ParseCommands::Db { file: Some(path) },
     }
 }

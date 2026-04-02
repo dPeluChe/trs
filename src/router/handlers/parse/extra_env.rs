@@ -62,6 +62,44 @@ impl ParseHandler {
         false
     }
 
+    /// Detect env var keys that typically hold secrets.
+    fn is_secret_key(key: &str) -> bool {
+        let upper = key.to_uppercase();
+
+        // Contains patterns
+        let contains_patterns = [
+            "SECRET",
+            "TOKEN",
+            "PASSWORD",
+            "PASSWD",
+            "API_KEY",
+            "APIKEY",
+            "ACCESS_KEY",
+            "PRIVATE_KEY",
+            "CREDENTIAL",
+        ];
+        for pat in &contains_patterns {
+            if upper.contains(pat) {
+                return true;
+            }
+        }
+
+        // Ends with _AUTH or _KEY (but not PATH-like keys)
+        if (upper.ends_with("_AUTH") || upper.ends_with("_KEY")) && !upper.contains("PATH") {
+            return true;
+        }
+
+        // Starts with known secret prefixes
+        let starts_patterns = ["AWS_SECRET", "OPENAI_API", "ANTHROPIC_API", "STRIPE_"];
+        for pat in &starts_patterns {
+            if upper.starts_with(pat) {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Categorize an env var for grouping.
     fn env_category(key: &str) -> &'static str {
         if key == "PATH"
@@ -156,7 +194,9 @@ impl ParseHandler {
                 let jv: serde_json::Map<String, serde_json::Value> = sorted
                     .iter()
                     .map(|(k, v)| {
-                        let display = if v.len() > 80 {
+                        let display = if Self::is_secret_key(k) {
+                            "[REDACTED]".to_string()
+                        } else if v.len() > 80 {
                             format!("{}...", &v[..77])
                         } else {
                             v.clone()
@@ -187,7 +227,9 @@ impl ParseHandler {
                     }
 
                     let category = Self::env_category(key);
-                    let display_val = if key == "PATH" || key.ends_with("PATH") || key == "FPATH" {
+                    let display_val = if Self::is_secret_key(key) {
+                        "[REDACTED]".to_string()
+                    } else if key == "PATH" || key.ends_with("PATH") || key == "FPATH" {
                         // For PATH-like vars, show entry count
                         let entries: Vec<&str> = val.split(':').filter(|s| !s.is_empty()).collect();
                         format!("({} entries)", entries.len())

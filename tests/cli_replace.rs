@@ -256,7 +256,7 @@ fn test_tail_agent_output() {
         .assert()
         .success()
         .stdout(predicate::str::contains("File:"))
-        .stdout(predicate::str::contains("❌"))
+        .stdout(predicate::str::contains("ERR"))
         .stdout(predicate::str::contains("ERROR"));
 }
 

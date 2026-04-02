@@ -73,6 +73,26 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Benchmark a command showing compression metrics
+    #[command(long_about = help::BENCHMARK_HELP)]
+    Benchmark {
+        /// Command to benchmark
+        #[arg(required = true)]
+        command: String,
+
+        /// Arguments for the command
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+
+        /// Number of iterations
+        #[arg(long, default_value = "1")]
+        repeat: usize,
+
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
+    },
+
     /// Execute command without filtering but track usage
     Raw {
         /// Command and arguments to execute

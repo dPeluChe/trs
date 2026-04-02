@@ -4,7 +4,33 @@
 
 use std::collections::HashMap;
 
+use time::OffsetDateTime;
+
 use crate::tracker::{self, format_bytes_human, HistoryEntry};
+
+/// Month abbreviations for timestamp formatting.
+const MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/// Resolve the local timezone offset (cached for the process lifetime).
+fn local_offset() -> time::UtcOffset {
+    time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC)
+}
+
+/// Format a Unix timestamp (seconds) into "Mar 27 14:32" local-time string.
+fn format_timestamp(ts: u64, offset: time::UtcOffset) -> String {
+    let dt = OffsetDateTime::from_unix_timestamp(ts as i64).unwrap_or(OffsetDateTime::UNIX_EPOCH);
+    let local = dt.to_offset(offset);
+    let month = MONTHS[local.month() as usize - 1];
+    format!(
+        "{} {:>2} {:02}:{:02}",
+        month,
+        local.day(),
+        local.hour(),
+        local.minute(),
+    )
+}
 
 /// Input for the stats command.
 #[derive(Debug, Clone)]
@@ -141,8 +167,9 @@ fn print_history(entries: &[HistoryEntry]) {
     };
     let recent = &entries[start..];
 
+    let offset = local_offset();
     println!("Recent Commands");
-    println!("{}", "\u{2500}".repeat(50));
+    println!("{}", "\u{2500}".repeat(64));
     for entry in recent {
         let saved = entry.in_bytes.saturating_sub(entry.out_bytes);
         let pct = if entry.in_bytes == 0 {
@@ -151,7 +178,8 @@ fn print_history(entries: &[HistoryEntry]) {
             ((saved as f64 / entry.in_bytes as f64) * 100.0) as u8
         };
         println!(
-            "  {:<25} {:>5} -> {:>5}  -{:>2}%  {}ms",
+            "  {}  {:<25} {:>5} -> {:>5}  -{:>2}%  {}ms",
+            format_timestamp(entry.ts, offset),
             truncate_cmd(&entry.cmd, 25),
             format_bytes_human(entry.in_bytes),
             format_bytes_human(entry.out_bytes),
@@ -184,6 +212,7 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
     });
 
     if include_history {
+        let offset = local_offset();
         let start = if entries.len() > 20 {
             entries.len() - 20
         } else {
@@ -194,6 +223,7 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
             .map(|e| {
                 serde_json::json!({
                     "ts": e.ts,
+                    "time": format_timestamp(e.ts, offset),
                     "cmd": e.cmd,
                     "in_bytes": e.in_bytes,
                     "out_bytes": e.out_bytes,

@@ -46,6 +46,10 @@ pub struct Limits {
     pub tee_max_bytes: usize,
     /// Max tee files to keep.
     pub tee_max_files: usize,
+    /// Min output chars to bother parsing (below this, print raw).
+    pub min_input_chars: usize,
+    /// Min compression percentage required; below this, return original.
+    pub min_compression_pct: usize,
 }
 
 impl Default for Config {
@@ -68,6 +72,8 @@ impl Default for Limits {
             json_keys_per_object: 30,
             tee_max_bytes: 1_048_576, // 1 MB
             tee_max_files: 20,
+            min_input_chars: 0,
+            min_compression_pct: 10,
         }
     }
 }
@@ -75,24 +81,19 @@ impl Default for Limits {
 impl Config {
     /// Load config from project-local or user-global TOML, falling back to defaults.
     fn load() -> Self {
-        // Try project-local first
         if let Some(cfg) = Self::try_load(&PathBuf::from(".trs/config.toml")) {
             return cfg;
         }
-
-        // Try user-global
         if let Ok(home) = std::env::var("HOME") {
             let global = PathBuf::from(home).join(".trs").join("config.toml");
             if let Some(cfg) = Self::try_load(&global) {
                 return cfg;
             }
         }
-
-        // Built-in defaults
         Self::default()
     }
 
-    /// Try to load a config file. Returns None on any error (silent fallback).
+    /// Try to load and parse a config file. Returns None on any error.
     fn try_load(path: &PathBuf) -> Option<Self> {
         let content = std::fs::read_to_string(path).ok()?;
         match toml::from_str::<Config>(&content) {
@@ -151,10 +152,14 @@ json_max_depth = 5
 json_keys_per_object = 15
 tee_max_bytes = 524288
 tee_max_files = 10
+min_input_chars = 100
+min_compression_pct = 15
 "#;
         let cfg: Config = toml::from_str(toml_str).unwrap();
         assert_eq!(cfg.limits.grep_max_results, 100);
         assert_eq!(cfg.limits.json_max_depth, 5);
         assert_eq!(cfg.limits.tee_max_files, 10);
+        assert_eq!(cfg.limits.min_input_chars, 100);
+        assert_eq!(cfg.limits.min_compression_pct, 15);
     }
 }

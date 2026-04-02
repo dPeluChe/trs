@@ -125,6 +125,20 @@ impl ParseHandler {
             return output;
         }
 
+        // Estimate total hunk lines to decide if we should show hunks or just summary
+        let total_hunk_lines: usize = diff
+            .files
+            .iter()
+            .flat_map(|f| &f.hunks)
+            .map(|h| h.lines.len())
+            .sum();
+        let show_hunks = total_hunk_lines <= Self::LARGE_DIFF_LINE_THRESHOLD;
+
+        // For large diffs, show only the file summary (stat-style)
+        if !show_hunks {
+            return Self::build_file_summary(diff);
+        }
+
         // Show file count with truncation info if applicable
         if diff.is_truncated {
             output.push_str(&format!(
@@ -156,7 +170,7 @@ impl ParseHandler {
                 ));
             }
 
-            // Output compressed hunks for this file (only if hunks were collected)
+            // Output compressed hunks (only for small diffs)
             for hunk in &file.hunks {
                 let compressed = Self::format_hunk_compressed(hunk);
                 for line in &compressed {
@@ -165,7 +179,6 @@ impl ParseHandler {
             }
         }
 
-        // Show truncation warning if applicable
         if diff.is_truncated {
             let hidden = diff.total_files.saturating_sub(diff.files_shown);
             output.push_str(&format!("  ... {} more file(s) not shown\n", hidden));
@@ -175,14 +188,6 @@ impl ParseHandler {
             "summary: +{} -{}\n",
             diff.total_additions, diff.total_deletions
         ));
-
-        // Large diff summary: if total output exceeds threshold, prepend file summary and append hint
-        let line_count = output.lines().count();
-        if line_count > Self::LARGE_DIFF_LINE_THRESHOLD {
-            let summary = Self::build_file_summary(diff);
-            let hint = "[full diff: trs git diff --raw]\n";
-            return format!("{}{}{}", summary, output, hint);
-        }
 
         output
     }

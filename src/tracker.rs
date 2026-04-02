@@ -48,36 +48,28 @@ pub(crate) fn home_dir() -> Option<PathBuf> {
 
 /// Log a command execution to the history file.
 ///
-/// This function is fire-and-forget: if anything fails (directory creation,
-/// file open, serialization, write), it silently returns without affecting
-/// the main command flow.
+/// Inline fire-and-forget: a single small append is faster than thread spawn overhead.
+/// If anything fails, silently returns without affecting the main command flow.
 pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: u64) {
-    // Silently bail if we can't determine paths
     let Some(dir) = dirs_path() else { return };
-    let Some(path) = history_path() else { return };
+    let path = dir.join("history.jsonl");
 
-    // Create directory if needed
     if !dir.exists() {
         if fs::create_dir_all(&dir).is_err() {
             return;
         }
     }
 
-    // Calculate saved percentage
-    let saved_pct = if in_bytes == 0 {
-        0u8
-    } else if out_bytes >= in_bytes {
+    let saved_pct = if in_bytes == 0 || out_bytes >= in_bytes {
         0u8
     } else {
         (((in_bytes - out_bytes) as f64 / in_bytes as f64) * 100.0) as u8
     };
 
-    // Get current working directory
     let cwd = std::env::current_dir()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
 
-    // Get current timestamp
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -93,7 +85,6 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
         cwd,
     };
 
-    // Serialize and append
     let Ok(mut line) = serde_json::to_string(&entry) else {
         return;
     };

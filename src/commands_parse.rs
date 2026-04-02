@@ -244,4 +244,16 @@ pub enum ParseCommands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+
+    /// Parse database query output (psql, mysql, sqlite3)
+    ///
+    /// Auto-detects tabular format and extracts columns, rows, and metadata.
+    /// Large results are truncated with head/tail sampling.
+    ///
+    /// Example: psql -c "SELECT * FROM users" | trs parse db
+    Db {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
 }

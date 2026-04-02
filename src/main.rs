@@ -21,6 +21,7 @@
 )]
 use clap::Parser;
 
+mod benchmark;
 mod classifier;
 mod classifier_exec;
 mod classifier_transfer;
@@ -49,11 +50,45 @@ pub use commands::{Commands, ParseCommands, TestRunner};
 
 use classifier::preprocess_tail_args;
 use classifier_exec::execute_and_parse;
+mod fast_find;
 use router::{CommandContext, Router};
 
 fn main() {
-    // Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines)
     let args: Vec<String> = std::env::args().collect();
+
+    // Fast path: bypass clap for external commands (saves ~2-4ms)
+    if args.len() >= 2 && is_external_fast_path(&args) {
+        let mut ctx = CommandContext::default_compact();
+        let mut cmd_args: Vec<String> = Vec::new();
+        for arg in &args[1..] {
+            match arg.as_str() {
+                "--json" => ctx.format = OutputFormat::Json,
+                "--csv" => ctx.format = OutputFormat::Csv,
+                "--tsv" => ctx.format = OutputFormat::Tsv,
+                "--agent" => ctx.format = OutputFormat::Agent,
+                "--compact" => ctx.format = OutputFormat::Compact,
+                "--raw" => ctx.format = OutputFormat::Raw,
+                "--stats" => ctx.stats = true,
+                _ => cmd_args.push(arg.clone()),
+            }
+        }
+        if let Some((cmd, rest)) = cmd_args.split_first() {
+            // Fast find: trs find --gitignore . -name "*.rs"
+            // Uses internal walker (respects .gitignore) instead of spawning find
+            if (cmd == "find" || cmd == "fd") && rest.iter().any(|a| a == "--gitignore") {
+                let find_args: Vec<&str> = rest.iter()
+                    .filter(|a| a.as_str() != "--gitignore")
+                    .map(|a| a.as_str())
+                    .collect();
+                fast_find::run(&find_args, &ctx);
+                return;
+            }
+            execute_and_parse(cmd, rest, &ctx);
+        }
+        return;
+    }
+
+    // Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines)
     let processed_args = preprocess_tail_args(&args);
 
     let cli = Cli::parse_from(&processed_args);
@@ -100,6 +135,14 @@ fn main() {
             if has_fail {
                 std::process::exit(1);
             }
+        }
+        Some(Commands::Benchmark {
+            command,
+            args,
+            repeat,
+            json,
+        }) => {
+            benchmark::run_benchmark(command, args, *repeat, *json);
         }
         Some(Commands::Stats {
             history,
@@ -224,6 +267,28 @@ fn main() {
             }
         }
     }
+}
+
+/// Check if args[1] is an external command (not a trs subcommand or flag).
+/// This allows bypassing the full clap parser for the hot path.
+fn is_external_fast_path(args: &[String]) -> bool {
+    if args.len() < 2 {
+        return false;
+    }
+    let first = args[1].as_str();
+    // Skip if it's a flag
+    if first.starts_with('-') {
+        return false;
+    }
+    // Known trs subcommands (and aliases) that must go through clap
+    !matches!(
+        first,
+        "parse" | "search" | "replace" | "run" | "tail" | "clean" | "trim"
+            | "html2md" | "txt2md" | "is-clean" | "clean?" | "repo-clean"
+            | "read" | "json" | "err"
+            | "rewrite" | "discover" | "init" | "doctor" | "benchmark"
+            | "stats" | "raw" | "help" | "--help" | "-h" | "--version" | "-V"
+    )
 }
 
 #[cfg(test)]

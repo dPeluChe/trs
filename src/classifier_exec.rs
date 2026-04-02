@@ -3,7 +3,7 @@
 //! Handles the execute -> parse -> format pipeline for external commands
 //! and saves full output on failure for recovery.
 
-use crate::classifier::{classify_command, inject_file_path};
+use crate::classifier::{classify_command, full_cmd, inject_file_path, keep_ratio};
 use crate::router::{CommandContext, Router};
 use crate::Commands;
 
@@ -78,37 +78,29 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     // Try to classify and parse the output (3-tier fallback)
     #[allow(unused_assignments)]
     let mut out_bytes = in_bytes; // default: no reduction (passthrough)
+
+    // Min input guard: skip parsing entirely for tiny outputs
+    let min_input = crate::config::config().limits.min_input_chars;
+    if stdout_ref.len() < min_input {
+        print!("{}", stdout_ref);
+        out_bytes = stdout_ref.len();
+        let duration_ms = start.elapsed().as_millis() as u64;
+        let fcmd = full_cmd(cmd, args);
+        crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
+        if !output.status.success() {
+            if let Some(tee_path) = save_tee_output(&fcmd, &stdout, &stderr) {
+                eprintln!("[full output: {}]", tee_path);
+            }
+            std::process::exit(output.status.code().unwrap_or(1));
+        }
+        return;
+    }
+
     if let Some(parser) = classify_command(cmd, args) {
         // Estimate output size based on benchmarked reduction ratios per command
         let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
-        let keep_ratio = match (cmd, subcmd) {
-            ("git", "status") => 0.20,                 // 80% reduction
-            ("git", "diff") => 0.10,                   // 90% reduction
-            ("git", "log") => 0.10,                    // 90% reduction
-            ("git", "branch") => 0.11,                 // 89% reduction
-            ("ls" | "lsd" | "exa" | "eza", _) => 0.18, // 82% reduction
-            ("tree", _) => 0.30,
-            ("find" | "fd", _) => 0.52, // 48% reduction
-            ("grep" | "rg" | "ag", _) => 0.40,
-            ("env" | "printenv", _) => 0.32, // 68% reduction
-            ("docker", "ps") => 0.30,
-            ("docker", "logs") => 0.50,
-            ("npm" | "pnpm" | "yarn" | "pip" | "pip3" | "cargo", "install" | "i") => 0.20,
-            ("npm" | "pip" | "pip3" | "cargo", "ls" | "list" | "tree" | "freeze") => 0.40,
-            ("cargo", "clippy") => 0.15,
-            ("cargo", "build" | "check") => 0.10,
-            ("cargo", "test") => 0.05,
-            ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
-            ("pytest" | "jest" | "vitest", _) => 0.10,
-            ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
-            ("wc", _) => 0.50,
-            ("wget", _) => 0.15,
-            ("curl", _) => 0.15,
-            ("gh", "pr" | "issue" | "run") => 0.30,
-            ("eslint" | "biome" | "ruff" | "pylint" | "golangci-lint", _) => 0.15,
-            _ => 0.50,
-        };
-        out_bytes = (in_bytes as f64 * keep_ratio).max(1.0) as usize;
+        let ratio = keep_ratio(cmd, subcmd);
+        out_bytes = (in_bytes as f64 * ratio).max(1.0) as usize;
 
         // Tier 1: Try parser
         let router = Router::new();
@@ -162,16 +154,12 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     // Track execution (fire-and-forget)
     let duration_ms = start.elapsed().as_millis() as u64;
-    let full_cmd = if args.is_empty() {
-        cmd.to_string()
-    } else {
-        format!("{} {}", cmd, args.join(" "))
-    };
-    crate::tracker::log_execution(&full_cmd, in_bytes, out_bytes, duration_ms);
+    let fcmd = full_cmd(cmd, args);
+    crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
 
     // Tee system: on failure, save full raw output for recovery
     if !output.status.success() {
-        if let Some(tee_path) = save_tee_output(&full_cmd, &stdout, &stderr) {
+        if let Some(tee_path) = save_tee_output(&fcmd, &stdout, &stderr) {
             eprintln!("[full output: {}]", tee_path);
         }
         std::process::exit(output.status.code().unwrap_or(1));
@@ -290,6 +278,59 @@ fn generic_compress(input: &str) -> String {
     while result.ends_with('\n') && result.len() > 1 && result[..result.len() - 1].ends_with('\n') {
         result.pop();
     }
+
+    // Collapse consecutive identical lines (e.g., repeated log entries)
+    let result = collapse_repeated_lines(&result);
+
+    // Ratio threshold: if compression savings are below the configured minimum,
+    // return the original input instead (compression not worth the fidelity loss).
+    let min_pct = crate::config::config().limits.min_compression_pct;
+    let threshold = input.len() * (100 - min_pct) / 100;
+    if result.len() > threshold {
+        return input.to_string();
+    }
+
+    result
+}
+
+/// Collapse consecutive identical lines into `line\n  ...(N more identical lines)`.
+/// Minimum 3 consecutive identical lines to trigger collapse.
+pub(crate) fn collapse_repeated_lines(input: &str) -> String {
+    let lines: Vec<&str> = input.lines().collect();
+    if lines.len() < 3 {
+        return input.to_string();
+    }
+
+    let mut result = String::with_capacity(input.len());
+    let mut i = 0;
+
+    while i < lines.len() {
+        let line = lines[i];
+        let mut count = 1;
+
+        // Count consecutive identical lines
+        while i + count < lines.len() && lines[i + count] == line {
+            count += 1;
+        }
+
+        if count >= 3 {
+            // Show the line once, then a collapsed marker
+            result.push_str(line);
+            result.push('\n');
+            result.push_str(&format!("  ...({} more identical lines)\n", count - 1));
+            i += count;
+        } else {
+            result.push_str(line);
+            result.push('\n');
+            i += 1;
+        }
+    }
+
+    // Remove trailing newline if input didn't end with one
+    if !input.ends_with('\n') && result.ends_with('\n') {
+        result.pop();
+    }
+
     result
 }
 

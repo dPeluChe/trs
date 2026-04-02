@@ -68,7 +68,12 @@ fn test_tail_empty_file() {
 
     let stdout = String::from_utf8_lossy(&output);
     // Should indicate file is empty
-    assert!(stdout.contains("empty") || stdout.contains("Empty") || stdout.lines().count() <= 2);
+    assert!(
+        stdout.contains("empty")
+            || stdout.contains("Empty")
+            || stdout.contains("0 lines")
+            || stdout.lines().count() <= 3
+    );
 }
 
 #[test]
@@ -252,7 +257,7 @@ fn test_tail_logs_application() {
         .arg(fixture_path("logs_application.txt"))
         .assert()
         .success()
-        .stdout(predicate::str::contains("logs_application"));
+        .stdout(predicate::str::contains("lines"));
 }
 
 #[test]
