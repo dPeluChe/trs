@@ -132,6 +132,15 @@ trs tail app.log --errors             # only error lines
 trs clean --no-ansi --collapse-blanks # clean piped text
 trs html2md https://example.com       # HTML → Markdown
 
+# Fast find (explicit gitignore-aware walker)
+trs find --gitignore . -name "*.rs"   # 5ms vs 280ms raw find
+trs find . -name "*.rs"               # executes real find (always honest)
+
+# Benchmark
+trs benchmark git status              # compression metrics per command
+trs benchmark cargo test --repeat 5   # averaged over N runs
+trs benchmark ls -la --json           # machine-readable output
+
 # Utilities
 trs is-clean                          # exit 0=clean, 1=dirty
 trs raw gh api /repos/user/repo       # no compression, tracked in stats
@@ -166,27 +175,45 @@ trs git status --raw          # unprocessed passthrough
 
 ## Benchmarks
 
-vs [rtk](https://github.com/rtk-ai/rtk) (the tool that inspired this project):
+### Compression (18 synthetic tests)
+
+vs [rtk](https://github.com/rtk-ai/rtk) 0.34.3 and [token-saver](https://github.com/nicobailey/token-saver) 2.2.1:
 
 | Command | Raw | trs | rtk | Winner |
 |---------|-----|-----|-----|--------|
-| `cargo test` | 55 KB | 58 B | 62 B | trs |
-| `cargo clippy` | 55 KB | 5.5 KB | — | trs |
-| `git status` | 13.6 KB | 876 B | 343 B | rtk |
-| `git log -10` | 8.5 KB | 842 B | 811 B | rtk |
-| `ls -la` | 1.4 KB | 227 B | 291 B | trs |
-| `env` | 3.0 KB | 807 B | 1.1 KB | trs |
-| `gh run list` | 618 B | 202 B | 240 B | trs |
-| `find *.rs` | 3.9 KB | 2.1 KB | 3.9 KB | trs |
+| `cargo test` | 8.1 KB | 58 B | 58 B | tie |
+| `git status` | 1.4 KB | 336 B | 599 B | trs |
+| `git log -10` | 7.6 KB | 689 B | 2.8 KB | trs |
+| `git diff --stat` | 1.8 KB | 1.1 KB | — | trs |
+| `ls -la` | 1.4 KB | 270 B | 257 B | rtk |
+| `env` | 2.9 KB | 728 B | 1.1 KB | trs |
+| `find *.rs` | 4.4 KB | 2.4 KB | 760 B | rtk |
 | `curl -I` | 201 B | 115 B | 192 B | trs |
+| `gh pr list` | 560 B | 348 B | 384 B | trs |
 
-**Score: trs 13 wins, rtk 4 wins, 1 tie** across 18 tests.
+**Score: trs 13 / rtk 5 / token-saver 0** across 18 tests.
 
-**Speed**: trs adds ~3ms overhead, rtk ~7ms.
+### Speed (local commands, deterministic)
 
-Where rtk wins: git status/log with very aggressive truncation. Where trs wins: most other commands, plus features rtk doesn't have (json query, lint parser, 6 output formats, search/replace).
+| | trs | rtk | token-saver |
+|---|---|---|---|
+| Overhead vs raw | **34%** | 50% | 306% |
+| Speed wins | **11** | 3 | 0 |
+| Startup (`--version`) | **3.2ms** | 4.5ms | ~55ms |
 
-Run it yourself: `./scripts/benchmark.sh`
+### Real-world project (labs-cameraman, 28 modified files, 111 commits)
+
+| | trs | rtk |
+|---|---|---|
+| Speed wins | **13/15** | 2/15 |
+| Compression wins | **13/15** | 2/15 |
+| Total reduction | **74%** | -123% (inflates) |
+| Total time | **649ms** | 1,108ms |
+| Tokens saved | **~127K** | — |
+
+Note: rtk silently replaces `find` with an internal walker (undocumented), which makes it appear faster on file searches. trs always executes the real command. Use `trs find --gitignore` for an explicit fast walker that respects `.gitignore`.
+
+Run it yourself: `./scripts/benchmark.sh` or `./scripts/benchmark-real.sh [project-path]`
 
 ## Configuration
 
@@ -215,10 +242,10 @@ json_max_depth = 10
 | | |
 |---|---|
 | Language | Rust |
-| Binary | ~7 MB, no runtime dependencies |
-| CLI | clap 4 |
+| Binary | ~5.9 MB (LTO + strip), no runtime dependencies |
+| CLI | clap 4 (bypassed on hot path for ~3ms overhead) |
 | Search | ripgrep (grep crate) |
-| Tests | 2,056 passing, 0 warnings |
+| Tests | 2,098 passing, 0 warnings |
 | Architecture | 210+ files, <500 lines each — [details](AGENTS.md) |
 
 ## Contributing
@@ -226,7 +253,7 @@ json_max_depth = 10
 ```bash
 git clone https://github.com/dPeluChe/trs.git
 cd trs
-cargo test                     # 2,039 tests must pass
+cargo test                     # 2,098 tests must pass
 cargo clippy -- -D warnings    # no warnings allowed
 cargo fmt -- --check           # formatting must match
 ```
@@ -235,7 +262,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for code guidelines, [AGENTS.md](AGENTS.m
 
 ## Acknowledgments
 
-- [rtk](https://github.com/rtk-ai/rtk) — the project that sparked this one. Their approach to token reduction for AI agents showed me the problem was worth solving, and studying their codebase taught me a lot about CLI design in Rust.
+This project wouldn't exist without the work of others in the token-reduction space. These are all interesting projects worth exploring:
+
+- [rtk](https://github.com/rtk-ai/rtk) — the project that sparked this one. Their approach to token reduction for AI agents showed me the problem was worth solving, and studying their Rust CLI architecture taught me a lot. We benchmark against rtk regularly to keep both projects honest and push each other forward.
+- [token-saver](https://github.com/nicobailey/token-saver) — a Python-based alternative with a different design philosophy (wrap.py pipeline). Comparing against it helped us understand the tradeoffs between native binaries and scripted approaches, especially around startup time.
 - [claw-compactor](https://github.com/open-compress/claw-compactor) — compression patterns (LogCrunch, DiffCrunch, Ionizer) that influenced our log/diff/json handlers.
 - [tokf](https://github.com/mpecan/tokf) — TOML filter pipeline concept.
 
