@@ -65,7 +65,7 @@ fn test_parser_all_formats_git_diff() {
         .write_stdin(fixtures::git_diff_modified())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files"));
+        .stdout(predicate::str::contains("file summary"));
 
     // Test JSON format
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -85,7 +85,7 @@ fn test_parser_all_formats_git_diff() {
         .write_stdin(fixtures::git_diff_modified())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files"));
+        .stdout(predicate::str::contains("file summary"));
 }
 
 #[test]

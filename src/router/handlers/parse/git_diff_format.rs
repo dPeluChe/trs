@@ -43,7 +43,6 @@ impl ParseHandler {
     }
 
     const CONTEXT_COMPRESS_THRESHOLD: usize = 4;
-    const LARGE_DIFF_LINE_THRESHOLD: usize = 200;
 
     /// Compress context block: first 1 + "[...N unchanged...]" + last 1.
     fn compress_context_block(block: &[String]) -> Vec<String> {
@@ -125,56 +124,33 @@ impl ParseHandler {
             return output;
         }
 
-        // Estimate total hunk lines to decide if we should show hunks or just summary
-        let total_hunk_lines: usize = diff
+        // Always show file summary header first
+        output.push_str(&Self::build_file_summary(diff));
+
+        // Estimate total change lines (only +/- lines, not context)
+        let total_change_lines: usize = diff
             .files
             .iter()
-            .flat_map(|f| &f.hunks)
-            .map(|h| h.lines.len())
+            .map(|f| f.additions + f.deletions)
             .sum();
-        let show_hunks = total_hunk_lines <= Self::LARGE_DIFF_LINE_THRESHOLD;
 
-        // For large diffs, show only the file summary (stat-style)
-        if !show_hunks {
-            return Self::build_file_summary(diff);
+        // For very large diffs (>500 change lines), summary is enough
+        if total_change_lines > 500 {
+            return output;
         }
 
-        // Show file count with truncation info if applicable
-        if diff.is_truncated {
-            output.push_str(&format!(
-                "files ({}/{} shown):\n",
-                diff.files_shown, diff.total_files
-            ));
-        } else {
-            output.push_str(&format!("files ({}):\n", diff.files.len()));
-        }
-
+        // Show compressed hunks: keep +/- lines, compress context
+        output.push('\n');
         for file in &diff.files {
-            let change_indicator = match file.change_type.as_str() {
-                "A" => "+",
-                "D" => "-",
-                "R" => "R",
-                "C" => "C",
-                _ => "M",
-            };
-
-            if let Some(ref new_path) = file.new_path {
-                output.push_str(&format!(
-                    "  {} {} -> {} (+{}/-{})\n",
-                    change_indicator, new_path, file.path, file.additions, file.deletions
-                ));
-            } else {
-                output.push_str(&format!(
-                    "  {} {} (+{}/-{})\n",
-                    change_indicator, file.path, file.additions, file.deletions
-                ));
+            if file.hunks.is_empty() {
+                continue;
             }
+            output.push_str(&format!("--- {}\n", file.path));
 
-            // Output compressed hunks (only for small diffs)
             for hunk in &file.hunks {
                 let compressed = Self::format_hunk_compressed(hunk);
                 for line in &compressed {
-                    output.push_str(&format!("    {}\n", line));
+                    output.push_str(&format!("  {}\n", line));
                 }
             }
         }
@@ -183,11 +159,6 @@ impl ParseHandler {
             let hidden = diff.total_files.saturating_sub(diff.files_shown);
             output.push_str(&format!("  ... {} more file(s) not shown\n", hidden));
         }
-
-        output.push_str(&format!(
-            "summary: +{} -{}\n",
-            diff.total_additions, diff.total_deletions
-        ));
 
         output
     }

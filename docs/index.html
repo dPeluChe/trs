@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TarsCLI — Terminal compression for AI agents</title>
+  <meta name="description" content="Compact terminal output for humans and AI agents. Rust. 2,098 tests. 74% reduction on real projects.">
+  <style>
+    :root {
+      --bg: #06080f;
+      --bg-card: #0d1117;
+      --bg-code: #161b22;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #f0a030;
+      --accent-dim: #c08020;
+      --green: #3fb950;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --border: #21262d;
+      --radius: 8px;
+    }
+    .light {
+      --bg: #ffffff;
+      --bg-card: #f6f8fa;
+      --bg-code: #f0f2f5;
+      --text: #1f2328;
+      --text-muted: #656d76;
+      --accent: #d08a18;
+      --accent-dim: #b07010;
+      --green: #1a7f37;
+      --red: #cf222e;
+      --blue: #0969da;
+      --border: #d0d7de;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* Theme toggle */
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      transition: border-color 0.2s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 0 48px;
+    }
+    .hero-name {
+      font-size: 64px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      color: var(--text);
+    }
+    .hero-name span { color: var(--accent); }
+    .hero-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-top: 4px;
+    }
+    .hero-tagline {
+      font-size: 20px;
+      color: var(--text-muted);
+      margin-top: 16px;
+      font-weight: 400;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .hero-stat {
+      font-size: 13px;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+    .hero-stat strong { color: var(--text); }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .badges img { height: 20px; }
+
+    .install-box {
+      margin-top: 32px;
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      gap: 12px;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 15px;
+    }
+    .install-box code { color: var(--text); }
+    .install-box .prompt { color: var(--text-muted); user-select: none; }
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+    /* Sections */
+    section { padding: 48px 0; }
+    section + section { border-top: 1px solid var(--border); }
+
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      letter-spacing: -0.5px;
+    }
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Before/After examples */
+    .examples { display: flex; flex-direction: column; gap: 20px; }
+    .example {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .example-pane {
+      background: var(--bg-code);
+      padding: 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .example-pane.before { border-right: 2px solid var(--border); }
+    .example-label {
+      font-family: -apple-system, sans-serif;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+    .example-label .cmd { color: var(--accent); font-size: 12px; text-transform: none; letter-spacing: 0; }
+    .example-savings {
+      margin-top: 8px;
+      color: var(--green);
+      font-family: -apple-system, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* Benchmark */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 2px solid var(--border);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    td.winner { color: var(--green); font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+
+    .bench-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .bench-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+    .bench-card .num {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -1px;
+    }
+    .bench-card .label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Features */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .feature {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .feature-title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+    .feature-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .feature code {
+      background: var(--bg-code);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Install section */
+    .install-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .install-option {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .install-option .method {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .install-option code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      color: var(--text);
+      display: block;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero-name { font-size: 44px; }
+      .hero { padding: 48px 0 32px; }
+      .example { grid-template-columns: 1fr; }
+      .example-pane.before { border-right: none; border-bottom: 2px solid var(--border); }
+      .hero-stats { gap: 12px; }
+      .install-box { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">
+  <span id="theme-icon">&#9789;</span>
+</button>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="container">
+    <div class="hero-name"><span>trs</span></div>
+    <div class="hero-sub">TarsCLI</div>
+    <div class="hero-tagline">Terminal compression for AI agents</div>
+
+    <div class="hero-stats">
+      <span class="hero-stat"><strong>Rust</strong></span>
+      <span class="hero-stat"><strong>5.9 MB</strong> binary</span>
+      <span class="hero-stat"><strong>2,098</strong> tests</span>
+      <span class="hero-stat"><strong>74%</strong> reduction</span>
+      <span class="hero-stat"><strong>~3ms</strong> overhead</span>
+    </div>
+
+    <div class="badges">
+      <a href="https://github.com/dPeluChe/trs/actions"><img src="https://github.com/dPeluChe/trs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+      <a href="https://github.com/dPeluChe/trs/releases"><img src="https://img.shields.io/github/v/release/dPeluChe/trs" alt="Release"></a>
+      <a href="https://www.npmjs.com/package/tars-cli"><img src="https://img.shields.io/npm/v/tars-cli" alt="npm"></a>
+      <a href="https://github.com/dPeluChe/trs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+    </div>
+
+    <div class="install-box">
+      <span class="prompt">$</span>
+      <code id="install-cmd">npm install -g tars-cli</code>
+      <button class="copy-btn" onclick="copyInstall(this)">Copy</button>
+    </div>
+  </div>
+</div>
+
+<!-- What it does -->
+<section>
+  <div class="container">
+    <h2>What it does</h2>
+    <p style="color: var(--text-muted); margin-bottom: 24px;">Prefix any command with <code style="background: var(--bg-code); padding: 2px 6px; border-radius: 4px;">trs</code> to get compact output. No configuration needed.</p>
+
+    <div class="examples">
+      <div class="example">
+        <div class="example-pane before">
+          <span class="example-label"><span class="cmd">git status</span> &mdash; raw</span>
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+
+Changes not staged for commit:
+  (use "git add &lt;file&gt;..." to update)
+  (use "git restore &lt;file&gt;..." to discard)
+        modified:   src/main.rs
+        modified:   src/lib.rs
+        new file:   src/new.rs
+
+no changes added to commit</div>
+        <div class="example-pane">
+          <span class="example-label"><span class="cmd">trs git status</span> &mdash; compressed</span>
+main [ahead 1]
+unstaged (3):
+  M src/main.rs
+  M src/lib.rs
+  A src/new.rs
+          <span class="example-savings">497 bytes &rarr; 81 bytes (84% reduction)</span></div>
+      </div>
+
+      <div class="example">
+        <div class="example-pane before">
+          <span class="example-label"><span class="cmd">cargo test</span> &mdash; raw (55 KB)</span>
+   Compiling tars-cli v0.1.0
+    Finished test profile in 4.21s
+     Running unittests src/main.rs
+running 739 tests
+test config::tests::test_defaults ... ok
+test config::tests::test_parse ... ok
+... (2,012 more lines) ...
+test result: ok. 2012 passed; 0 failed
+     Running tests/cli_flags.rs
+... (68 more suites) ...</div>
+        <div class="example-pane">
+          <span class="example-label"><span class="cmd">trs cargo test</span> &mdash; compressed</span>
+cargo test: ok (2012 passed, 0 failed, 70 suites, 3.21s)
+
+
+          <span class="example-savings">55 KB &rarr; 58 bytes (99.9% reduction)</span></div>
+      </div>
+
+      <div class="example">
+        <div class="example-pane before">
+          <span class="example-label"><span class="cmd">cargo clippy</span> &mdash; raw (55 KB)</span>
+warning: unused import: `std::io::Read`
+ --&gt; src/main.rs:8:23
+  |
+8 |     use std::io::Read;
+  |                  ^^^^
+  = note: `#[warn(unused_imports)]`
+... (hundreds more lines) ...</div>
+        <div class="example-pane">
+          <span class="example-label"><span class="cmd">trs cargo clippy</span> &mdash; compressed</span>
+lint: 102 (102 warnings) in 39 files
+src/main.rs (3):
+  W unused_import 8:23
+  W redundant_closure 44:30
+  W dead_code 112:8
+          <span class="example-savings">55 KB &rarr; 5.5 KB (90% reduction)</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Benchmarks -->
+<section>
+  <div class="container">
+    <h2>Benchmarks</h2>
+    <p style="color: var(--text-muted); margin-bottom: 24px;">vs <a href="https://github.com/rtk-ai/rtk" style="color: var(--blue);">rtk</a> 0.34.3 and <a href="https://github.com/nicobailey/token-saver" style="color: var(--blue);">token-saver</a> 2.2.1 across 18 tests.</p>
+
+    <h3>Compression</h3>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Raw</th><th>trs</th><th>rtk</th><th>Winner</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>cargo test</code></td><td>8.1 KB</td><td>58 B</td><td>58 B</td><td>tie</td></tr>
+          <tr><td><code>git status</code></td><td>1.4 KB</td><td class="winner">336 B</td><td>599 B</td><td class="winner">trs</td></tr>
+          <tr><td><code>git log -10</code></td><td>7.6 KB</td><td class="winner">689 B</td><td>2.8 KB</td><td class="winner">trs</td></tr>
+          <tr><td><code>git diff --stat</code></td><td>1.8 KB</td><td class="winner">1.1 KB</td><td>&mdash;</td><td class="winner">trs</td></tr>
+          <tr><td><code>ls -la</code></td><td>1.4 KB</td><td>270 B</td><td>257 B</td><td>rtk</td></tr>
+          <tr><td><code>env</code></td><td>2.9 KB</td><td class="winner">728 B</td><td>1.1 KB</td><td class="winner">trs</td></tr>
+          <tr><td><code>find *.rs</code></td><td>4.4 KB</td><td>2.4 KB</td><td>760 B</td><td>rtk</td></tr>
+          <tr><td><code>curl -I</code></td><td>201 B</td><td class="winner">115 B</td><td>192 B</td><td class="winner">trs</td></tr>
+          <tr><td><code>gh pr list</code></td><td>560 B</td><td class="winner">348 B</td><td>384 B</td><td class="winner">trs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Speed (local commands)</h3>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr><th></th><th>trs</th><th>rtk</th><th>token-saver</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Overhead vs raw</td><td class="winner">34%</td><td>50%</td><td>306%</td></tr>
+          <tr><td>Speed wins</td><td class="winner">11</td><td>3</td><td>0</td></tr>
+          <tr><td>Startup</td><td class="winner">3.2ms</td><td>4.5ms</td><td>~55ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bench-summary">
+      <div class="bench-card">
+        <div class="num">13/18</div>
+        <div class="label">compression wins vs rtk</div>
+      </div>
+      <div class="bench-card">
+        <div class="num">74%</div>
+        <div class="label">reduction on real project</div>
+      </div>
+      <div class="bench-card">
+        <div class="num">~3ms</div>
+        <div class="label">overhead per command</div>
+      </div>
+      <div class="bench-card">
+        <div class="num">~127K</div>
+        <div class="label">tokens saved (real project)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section>
+  <div class="container">
+    <h2>Features</h2>
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-title">30+ dedicated parsers</div>
+        <div class="feature-desc">git, cargo, npm, docker, gh, pytest, jest, eslint, ruff, biome, and more. Each parser understands the command's output format.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">6 output formats</div>
+        <div class="feature-desc">Compact, JSON, CSV, TSV, Agent, Raw. Every command supports all formats via <code>--json</code>, <code>--csv</code>, etc.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">JSON query engine</div>
+        <div class="feature-desc">Built-in jq-lite with <code>trs json -q '.users[].name'</code>. No dependency on jq.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Intelligent file reader</div>
+        <div class="feature-desc"><code>trs read -l aggressive</code> extracts only function signatures (93% reduction). Minimal mode strips comments.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Search &amp; replace</div>
+        <div class="feature-desc">Ripgrep-powered <code>trs search</code> and <code>trs replace --dry-run</code>. Compact output grouped by file.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">AI tool hooks</div>
+        <div class="feature-desc"><code>trs init claude</code> installs hooks for Claude Code, Gemini, Cursor, Codex, OpenCode, and Kilo Code.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Fast find</div>
+        <div class="feature-desc"><code>trs find --gitignore</code> uses a built-in walker respecting .gitignore. 5ms vs 280ms on large repos.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Generic compression</div>
+        <div class="feature-desc">Commands without a parser still get ANSI stripping, whitespace collapse, and repeated-line dedup. ~30-40% free.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Built-in benchmark</div>
+        <div class="feature-desc"><code>trs benchmark git status</code> measures compression ratio, token savings, and execution time per command.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section>
+  <div class="container">
+    <h2>Install</h2>
+    <div class="install-grid">
+      <div class="install-option">
+        <div class="method">npm (precompiled)</div>
+        <code>npm install -g tars-cli</code>
+      </div>
+      <div class="install-option">
+        <div class="method">try without installing</div>
+        <code>npx tars-cli git status</code>
+      </div>
+      <div class="install-option">
+        <div class="method">from source</div>
+        <code>cargo install --path .</code>
+      </div>
+      <div class="install-option">
+        <div class="method">pre-built binaries</div>
+        <code><a href="https://github.com/dPeluChe/trs/releases" style="color: var(--blue); text-decoration: none;">github.com/dPeluChe/trs/releases</a></code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <p>Built with Rust &amp; caffeine by <a href="https://iteris.tech">Iteris</a> &middot; <a href="https://github.com/dPeluChe/trs">GitHub</a> &middot; MIT License</p>
+  </div>
+</footer>
+
+<script>
+function toggleTheme() {
+  document.documentElement.classList.toggle('light');
+  const icon = document.getElementById('theme-icon');
+  icon.textContent = document.documentElement.classList.contains('light') ? '\u2600' : '\u263D';
+  localStorage.setItem('theme', document.documentElement.classList.contains('light') ? 'light' : 'dark');
+}
+
+function copyInstall(btn) {
+  const text = document.getElementById('install-cmd').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// Restore theme preference
+if (localStorage.getItem('theme') === 'light') {
+  document.documentElement.classList.add('light');
+  document.getElementById('theme-icon').textContent = '\u2600';
+}
+</script>
+
+</body>
+</html>
