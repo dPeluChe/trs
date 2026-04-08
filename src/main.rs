@@ -148,6 +148,7 @@ fn main() {
         Some(Commands::Ingest {
             path,
             list,
+            read,
             level,
             budget,
             changed,
@@ -158,6 +159,9 @@ fn main() {
         }) => {
             if *list {
                 ingest::list_ingests();
+            } else if let Some(read_name) = read {
+                let project_path = std::path::Path::new(path);
+                ingest::read_digest(read_name.as_deref(), project_path);
             } else {
                 let root = match ingest::resolve_project_root(std::path::Path::new(path)) {
                     Ok(r) => r,

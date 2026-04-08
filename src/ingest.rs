@@ -269,6 +269,64 @@ pub fn run_ingest(config: &IngestConfig) {
     }
 }
 
+/// Read a saved digest by project name (fuzzy match).
+/// If no name given, uses the current repo name.
+pub fn read_digest(name: Option<&str>, project_path: &Path) {
+    let Some(base) = ingest_store_dir() else {
+        eprintln!("No ingests found. Run: trs ingest [path]");
+        return;
+    };
+
+    let search = match name {
+        Some(n) => n.to_string(),
+        None => get_repo_name(project_path),
+    };
+
+    // Try exact match first
+    let exact = base.join(format!("{}.md", search));
+    if exact.exists() {
+        match std::fs::read_to_string(&exact) {
+            Ok(content) => print!("{}", content),
+            Err(e) => eprintln!("trs ingest: error reading {}: {}", exact.display(), e),
+        }
+        return;
+    }
+
+    // Fuzzy match: find digests containing the search term
+    let mut matches: Vec<String> = Vec::new();
+    if let Ok(files) = std::fs::read_dir(&base) {
+        for file in files.flatten() {
+            let name = file.file_name().to_string_lossy().to_string();
+            if name.ends_with(".md") {
+                let stem = name.strip_suffix(".md").unwrap_or(&name);
+                if stem.contains(&search) || search.contains(stem) {
+                    matches.push(name);
+                }
+            }
+        }
+    }
+
+    match matches.len() {
+        0 => {
+            eprintln!("No digest found for '{}'. Available:", search);
+            list_ingests();
+        }
+        1 => {
+            let path = base.join(&matches[0]);
+            match std::fs::read_to_string(&path) {
+                Ok(content) => print!("{}", content),
+                Err(e) => eprintln!("trs ingest: error reading {}: {}", path.display(), e),
+            }
+        }
+        _ => {
+            eprintln!("Multiple matches for '{}'. Be more specific:", search);
+            for m in &matches {
+                eprintln!("  trs ingest --read {}", m.strip_suffix(".md").unwrap_or(m));
+            }
+        }
+    }
+}
+
 /// List saved ingest digests.
 pub fn list_ingests() {
     let Some(base) = ingest_store_dir() else {
