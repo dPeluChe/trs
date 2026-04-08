@@ -93,6 +93,42 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Generate an LLM-ready digest of a project
+    #[command(long_about = help::INGEST_HELP)]
+    Ingest {
+        /// Project path (default: current directory)
+        #[arg(default_value = ".")]
+        path: String,
+
+        /// Compression level: full, minimal, aggressive
+        #[arg(short, long, default_value = "full")]
+        level: String,
+
+        /// Token budget (e.g. 128k, 64000)
+        #[arg(short, long)]
+        budget: Option<String>,
+
+        /// Only include files with uncommitted changes
+        #[arg(long)]
+        changed: bool,
+
+        /// Only include files changed since a git ref (e.g. HEAD~5, main)
+        #[arg(long)]
+        since: Option<String>,
+
+        /// Exclude paths containing this pattern (repeatable)
+        #[arg(short, long)]
+        exclude: Vec<String>,
+
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<String>,
+
+        /// Format digest with local Ollama model (e.g. llama3, mistral)
+        #[arg(long)]
+        ollama: Option<String>,
+    },
+
     /// Execute command without filtering but track usage
     Raw {
         /// Command and arguments to execute

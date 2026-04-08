@@ -228,7 +228,8 @@ impl Router {
             | Commands::Rewrite
             | Commands::Discover { .. }
             | Commands::Doctor { .. }
-            | Commands::Benchmark { .. } => {
+            | Commands::Benchmark { .. }
+            | Commands::Ingest { .. } => {
                 // These are handled in main.rs before reaching the router
                 Ok(())
             }
