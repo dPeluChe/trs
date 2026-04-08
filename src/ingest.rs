@@ -187,6 +187,11 @@ fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
             }
         }
 
+        // Skip .git directory contents
+        if path.components().any(|c| c.as_os_str() == ".git") {
+            continue;
+        }
+
         // Skip too large
         if let Ok(meta) = std::fs::metadata(path) {
             if meta.len() > MAX_FILE_SIZE {
