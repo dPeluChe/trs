@@ -601,61 +601,190 @@ fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
             .then(b.is_changed.cmp(&a.is_changed))
             .then(a.rel_path.cmp(&b.rel_path))
     });
+
+    // Deduplicate: if two files have identical content, keep first and note the duplicate
+    let mut seen: std::collections::HashMap<u64, String> = std::collections::HashMap::new();
+    for file in &mut files {
+        if file.content.is_empty() || file.rel_path.is_empty() {
+            continue;
+        }
+        // Simple hash: sum of bytes
+        let hash = file.content.bytes().fold(0u64, |acc, b| acc.wrapping_add(b as u64).wrapping_mul(31));
+        if let Some(original) = seen.get(&hash) {
+            file.content = format!("(same as {})", original);
+            file.tokens = 5;
+        } else {
+            seen.insert(hash, file.rel_path.clone());
+        }
+    }
+
     files
 }
 
-/// Read a file and apply compression level.
+/// Intelligently extract what matters from a file for LLM consumption.
 fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
     let content = std::fs::read_to_string(path).ok()?;
 
-    // Skip binary-looking files
     if content.chars().take(512).any(|c| c == '\0') {
         return None;
     }
 
-    // Never compress key documentation files — LLMs need these in full
-    // But strip HTML tags (badges, images, formatting) — pure token waste
-    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-        let lower = name.to_lowercase();
-        if lower == "readme.md"
-            || lower == "claude.md"
-            || lower == "agents.md"
-            || lower == "contributing.md"
-            || lower == "changelog.md"
-        {
-            return Some(strip_html_from_markdown(&content));
-        }
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let lower_name = name.to_lowercase();
+
+    // Skip: CSS, HTML, SVG, lock files, minified, type declarations
+    if matches!(ext.as_str(), "css" | "scss" | "less" | "svg") {
+        return None;
+    }
+    if matches!(ext.as_str(), "html" | "htm") && content.len() > 500 {
+        return None;
+    }
+    if lower_name.ends_with(".lock") || lower_name.ends_with(".min.js")
+        || lower_name.ends_with(".min.css") || lower_name.ends_with(".d.ts") {
+        return None;
     }
 
+    // Key docs: full content, strip HTML noise
+    if matches!(lower_name.as_str(),
+        "readme.md" | "claude.md" | "agents.md" | "contributing.md" | "changelog.md"
+    ) {
+        return Some(strip_html_from_markdown(&content));
+    }
+
+    // package.json: compress to name + deps names only
+    if lower_name == "package.json" {
+        return Some(compress_package_json(&content));
+    }
+
+    // JSON/YAML: extract schema (keys + 1 sample), not all data
     let lang = detect_language(&path.to_path_buf());
-
-    // Data files: truncate if large (JSON fixtures, match data, etc.)
     if lang == Language::Data {
-        if content.len() > MAX_DATA_FILE_SIZE {
-            // Find a safe char boundary for truncation
-            let mut cut_at = MAX_DATA_FILE_SIZE.min(content.len());
-            while cut_at > 0 && !content.is_char_boundary(cut_at) {
-                cut_at -= 1;
-            }
-            // Cut at last newline to avoid broken lines
-            if let Some(nl) = content[..cut_at].rfind('\n') {
-                cut_at = nl;
-            }
-            return Some(format!(
-                "{}\n... [truncated: {} total, showing first {}]",
-                &content[..cut_at],
-                format_bytes_static(content.len()),
-                format_bytes_static(cut_at)
-            ));
-        }
-        return Some(content);
+        return Some(extract_data_schema(&content, &ext));
     }
 
+    // Source code
     match level {
         IngestLevel::Full => Some(content),
         IngestLevel::Minimal => Some(filter_minimal(&content, lang)),
-        IngestLevel::Aggressive => Some(filter_aggressive(&content, lang)),
+        IngestLevel::Aggressive => Some(extract_signatures(&content, &ext)),
     }
+}
+
+/// Extract JSON schema: show structure with 1 sample, count arrays.
+fn extract_data_schema(content: &str, ext: &str) -> String {
+    if ext == "json" || ext == "jsonl" {
+        if let Ok(val) = serde_json::from_str::<serde_json::Value>(content) {
+            return summarize_json_value(&val, 0);
+        }
+    }
+    let lines: Vec<&str> = content.lines().collect();
+    if lines.len() <= 20 {
+        return content.to_string();
+    }
+    format!("{}\n... ({} lines)", lines[..20].join("\n"), lines.len())
+}
+
+fn summarize_json_value(val: &serde_json::Value, depth: usize) -> String {
+    let indent = "  ".repeat(depth);
+    match val {
+        serde_json::Value::Array(arr) if arr.is_empty() => "[]".into(),
+        serde_json::Value::Array(arr) => {
+            let first = summarize_json_value(&arr[0], depth + 1);
+            format!("[{}, ...] ({} items)", first, arr.len())
+        }
+        serde_json::Value::Object(map) if map.is_empty() => "{}".into(),
+        serde_json::Value::Object(map) => {
+            let mut out = String::from("{\n");
+            for (key, val) in map.iter() {
+                let v = match val {
+                    serde_json::Value::String(s) if s.len() > 40 => format!("\"{}...\"", &s[..37]),
+                    serde_json::Value::String(s) => format!("\"{}\"", s),
+                    serde_json::Value::Number(n) => n.to_string(),
+                    serde_json::Value::Bool(b) => b.to_string(),
+                    serde_json::Value::Null => "null".into(),
+                    serde_json::Value::Array(a) if a.is_empty() => "[]".into(),
+                    serde_json::Value::Array(a) => {
+                        let inner = summarize_json_value(&a[0], depth + 2);
+                        format!("[{}, ...] ({} items)", inner, a.len())
+                    }
+                    serde_json::Value::Object(_) => summarize_json_value(val, depth + 1),
+                };
+                out.push_str(&format!("{}  \"{}\": {},\n", indent, key, v));
+            }
+            out.push_str(&format!("{}}}", indent));
+            out
+        }
+        serde_json::Value::String(s) if s.len() > 40 => format!("\"{}...\"", &s[..37]),
+        other => other.to_string(),
+    }
+}
+
+/// Extract function/class signatures from source code — names without bodies.
+fn extract_signatures(content: &str, ext: &str) -> String {
+    let mut result = String::new();
+
+    for line in content.lines() {
+        let t = line.trim();
+        // Keep imports
+        if t.starts_with("import ") || t.starts_with("use ") || t.starts_with("from ") {
+            result.push_str(t);
+            result.push('\n');
+            continue;
+        }
+        // Keep signatures by language
+        let keep = match ext {
+            "ts" | "tsx" | "js" | "jsx" | "mjs" | "mts" | "vue" | "svelte" =>
+                t.starts_with("export ") || t.starts_with("function ") ||
+                t.starts_with("class ") || t.starts_with("interface ") ||
+                t.starts_with("type ") || t.starts_with("enum ") ||
+                t.starts_with("const ") && (t.contains("= mutation(") || t.contains("= query(") ||
+                    t.contains("= action(") || t.contains("= internalMutation(") ||
+                    t.contains("=> {") || t.contains("= defineTable(")),
+            "rs" =>
+                t.starts_with("pub ") || t.starts_with("fn ") || t.starts_with("struct ") ||
+                t.starts_with("enum ") || t.starts_with("trait ") || t.starts_with("impl ") ||
+                t.starts_with("mod ") || t.starts_with("type "),
+            "py" | "pyi" =>
+                t.starts_with("def ") || t.starts_with("class ") || t.starts_with("async def "),
+            "go" =>
+                t.starts_with("func ") || t.starts_with("type ") || t.starts_with("var ") || t.starts_with("const "),
+            _ =>
+                t.starts_with("export ") || t.starts_with("pub ") || t.starts_with("fn ") ||
+                t.starts_with("def ") || t.starts_with("class ") || t.starts_with("function "),
+        };
+        if keep {
+            if t.len() > 120 { result.push_str(&t[..117]); result.push_str("...\n"); }
+            else { result.push_str(t); result.push('\n'); }
+        }
+    }
+
+    if result.is_empty() {
+        let lines: Vec<&str> = content.lines().collect();
+        lines.iter().take(10).for_each(|l| { result.push_str(l); result.push('\n'); });
+        if lines.len() > 10 { result.push_str(&format!("... ({} lines)\n", lines.len())); }
+    }
+    result
+}
+
+/// Compress package.json: name, version, scripts names, dep names.
+fn compress_package_json(content: &str) -> String {
+    if let Ok(val) = serde_json::from_str::<serde_json::Value>(content) {
+        let mut out = String::new();
+        if let Some(n) = val.get("name").and_then(|v| v.as_str()) { out.push_str(&format!("name: {}\n", n)); }
+        if let Some(v) = val.get("version").and_then(|v| v.as_str()) { out.push_str(&format!("version: {}\n", v)); }
+        if let Some(s) = val.get("scripts").and_then(|v| v.as_object()) {
+            out.push_str(&format!("scripts: {}\n", s.keys().cloned().collect::<Vec<_>>().join(", ")));
+        }
+        for key in &["dependencies", "devDependencies"] {
+            if let Some(deps) = val.get(*key).and_then(|v| v.as_object()) {
+                let names: Vec<&str> = deps.keys().map(|k| k.as_str()).collect();
+                out.push_str(&format!("{}: {}\n", key, names.join(", ")));
+            }
+        }
+        return out;
+    }
+    content.to_string()
 }
 
 /// Get list of changed files from git.
@@ -1160,10 +1289,6 @@ fn format_modified(entry: &std::fs::DirEntry) -> String {
         let (y, mo, day) = days_to_date(modified / 86400);
         format!("{:04}-{:02}-{:02}", y, mo, day)
     }
-}
-
-fn format_bytes_static(n: usize) -> String {
-    format_bytes(n)
 }
 
 fn format_tokens(n: usize) -> String {
