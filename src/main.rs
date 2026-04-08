@@ -159,9 +159,16 @@ fn main() {
             if *list {
                 ingest::list_ingests();
             } else {
+                let root = match ingest::resolve_project_root(std::path::Path::new(path)) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!("trs ingest: {}", e);
+                        std::process::exit(1);
+                    }
+                };
                 let budget_tokens = budget.as_ref().map(|b| parse_token_budget(b));
                 let config = ingest::IngestConfig {
-                    root: std::path::PathBuf::from(path),
+                    root,
                     level: ingest::IngestLevel::from_str(level),
                     budget_tokens,
                     changed_only: *changed,

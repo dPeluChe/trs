@@ -96,6 +96,102 @@ struct DigestFile {
     is_changed: bool,
 }
 
+/// Resolve the project root: find git root or use the given path.
+pub fn resolve_project_root(path: &Path) -> Result<PathBuf, String> {
+    let abs_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map_err(|e| format!("cannot get current dir: {}", e))?
+            .join(path)
+    };
+
+    // If path is "." or doesn't exist as-is, try to find git root
+    let check_path = if abs_path.to_str() == Some(".") || path.to_str() == Some(".") {
+        std::env::current_dir().unwrap_or(abs_path.clone())
+    } else {
+        abs_path.clone()
+    };
+
+    // Try to find git root from the given path
+    let git_root = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(&check_path)
+        .output()
+        .ok()
+        .and_then(|o| {
+            if o.status.success() {
+                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+            } else {
+                None
+            }
+        });
+
+    if let Some(root) = git_root {
+        let root_path = PathBuf::from(&root);
+
+        // Even if this is a git repo, check if it contains many sub-repos
+        // (common pattern: workspace directory with .git tracking many projects)
+        let sub_repos: Vec<String> = std::fs::read_dir(&root_path)
+            .ok()
+            .map(|entries| {
+                entries
+                    .flatten()
+                    .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+                    .filter(|e| e.path().join(".git").exists())
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        if sub_repos.len() > 5 {
+            let mut msg = format!(
+                "{} contains {} sub-repositories. Specify one:\n",
+                root_path.display(),
+                sub_repos.len()
+            );
+            for repo in sub_repos.iter().take(10) {
+                msg.push_str(&format!("  trs ingest {}/{}\n", root_path.display(), repo));
+            }
+            if sub_repos.len() > 10 {
+                msg.push_str(&format!("  ... and {} more\n", sub_repos.len() - 10));
+            }
+            return Err(msg);
+        }
+
+        Ok(root_path)
+    } else if abs_path.is_dir() {
+        // Check if this is a folder containing multiple repos
+        let sub_repos: Vec<String> = std::fs::read_dir(&abs_path)
+            .ok()
+            .map(|entries| {
+                entries
+                    .flatten()
+                    .filter(|e| e.path().join(".git").exists())
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        if sub_repos.len() > 1 {
+            let mut msg = format!(
+                "{} contains {} repositories. Specify one:\n",
+                abs_path.display(),
+                sub_repos.len()
+            );
+            for repo in &sub_repos {
+                msg.push_str(&format!("  trs ingest {}/{}\n", path.display(), repo));
+            }
+            return Err(msg);
+        }
+
+        eprintln!("trs ingest: warning: {} is not a git repository", abs_path.display());
+        Ok(abs_path)
+    } else {
+        Err(format!("{} is not a directory or git repository", path.display()))
+    }
+}
+
 /// Run the ingest command.
 pub fn run_ingest(config: &IngestConfig) {
     let start = std::time::Instant::now();
@@ -176,12 +272,15 @@ pub fn run_ingest(config: &IngestConfig) {
 /// List saved ingest digests.
 pub fn list_ingests() {
     let Some(base) = ingest_store_dir() else {
-        println!("No ingests found ({})", "~/.trs/ingest/");
+        println!("No ingests found");
+        println!("  storage: ~/.trs/ingest/");
         return;
     };
 
     if !base.exists() {
         println!("No ingests found");
+        println!("  storage: ~/.trs/ingest/");
+        println!("  run: trs ingest [path]");
         return;
     }
 
@@ -221,6 +320,8 @@ pub fn list_ingests() {
         let tokens = (*size as f64 / BYTES_PER_TOKEN) as usize;
         println!("  {} ({}, {} tokens)", file, format_bytes(*size as usize), format_tokens(tokens));
     }
+    println!();
+    println!("storage: {}", base.display());
 }
 
 /// Get the base ingest storage directory: ~/.trs/ingest/
@@ -389,9 +490,15 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
     // Data files: truncate if large (JSON fixtures, match data, etc.)
     if lang == Language::Data {
         if content.len() > MAX_DATA_FILE_SIZE {
-            let truncated = &content[..MAX_DATA_FILE_SIZE.min(content.len())];
-            // Cut at last newline to avoid broken JSON
-            let cut_at = truncated.rfind('\n').unwrap_or(MAX_DATA_FILE_SIZE);
+            // Find a safe char boundary for truncation
+            let mut cut_at = MAX_DATA_FILE_SIZE.min(content.len());
+            while cut_at > 0 && !content.is_char_boundary(cut_at) {
+                cut_at -= 1;
+            }
+            // Cut at last newline to avoid broken lines
+            if let Some(nl) = content[..cut_at].rfind('\n') {
+                cut_at = nl;
+            }
             return Some(format!(
                 "{}\n... [truncated: {} total, showing first {}]",
                 &content[..cut_at],
@@ -630,41 +737,134 @@ fn build_tree(files: &[DigestFile]) -> String {
     tree
 }
 
-/// Send digest to Ollama for LLM-formatted summary.
-fn ollama_format(digest: &str, model: &str) -> Option<String> {
-    // Check if Ollama is running
-    let check = Command::new("curl")
-        .args(["-s", "-o", "/dev/null", "-w", "%{http_code}", "http://localhost:11434/api/tags"])
+/// List available Ollama models.
+pub fn list_ollama_models() {
+    match get_ollama_models() {
+        Some(models) if !models.is_empty() => {
+            eprintln!("Ollama models available:");
+            for (name, size, family) in &models {
+                eprintln!("  {} ({}, {})", name, size, family);
+            }
+        }
+        _ => {
+            eprintln!("Ollama not running at localhost:11434");
+            eprintln!("Start with: ollama serve");
+        }
+    }
+}
+
+/// Get list of Ollama models: (name, size_display, family).
+fn get_ollama_models() -> Option<Vec<(String, String, String)>> {
+    let output = Command::new("curl")
+        .args(["-s", "http://localhost:11434/api/tags"])
         .output()
         .ok()?;
 
-    let status = String::from_utf8_lossy(&check.stdout);
-    if status.trim() != "200" {
-        eprintln!("trs ingest: Ollama not running at localhost:11434 (skipping --ollama)");
+    let response: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
+    let models = response.get("models")?.as_array()?;
+
+    let mut result: Vec<(String, String, String)> = Vec::new();
+    for model in models {
+        let name = model.get("name")?.as_str()?.to_string();
+        let size = model.get("details")
+            .and_then(|d| d.get("parameter_size"))
+            .and_then(|s| s.as_str())
+            .unwrap_or("?")
+            .to_string();
+        let family = model.get("details")
+            .and_then(|d| d.get("family"))
+            .and_then(|s| s.as_str())
+            .unwrap_or("?")
+            .to_string();
+        // Skip embedding models
+        if name.contains("embed") || name.contains("nomic") {
+            continue;
+        }
+        result.push((name, size, family));
+    }
+
+    Some(result)
+}
+
+/// Pick the best available local model (prefer larger, local over cloud).
+fn pick_default_model() -> Option<String> {
+    let models = get_ollama_models()?;
+    // Prefer local models (no :cloud suffix) with largest param count
+    let local: Vec<&(String, String, String)> = models
+        .iter()
+        .filter(|(name, _, _)| !name.contains(":cloud"))
+        .collect();
+
+    if let Some(best) = local.first() {
+        return Some(best.0.clone());
+    }
+    // Fallback to any model
+    models.first().map(|(name, _, _)| name.clone())
+}
+
+/// Send digest to Ollama for LLM-formatted summary.
+fn ollama_format(digest: &str, model: &str) -> Option<String> {
+    // Resolve model: "auto" picks the best available
+    let model = if model == "auto" {
+        match pick_default_model() {
+            Some(m) => {
+                eprintln!("trs ingest: using Ollama model: {}", m);
+                m
+            }
+            None => {
+                eprintln!("trs ingest: no Ollama models found. Install one with: ollama pull llama3.1");
+                return None;
+            }
+        }
+    } else {
+        model.to_string()
+    };
+
+    // Verify Ollama is running and model exists
+    let models = get_ollama_models();
+    if models.is_none() {
+        eprintln!("trs ingest: Ollama not running at localhost:11434");
+        eprintln!("  Start with: ollama serve");
         return None;
     }
 
-    eprintln!("trs ingest: sending to Ollama ({})...", model);
+    let model_exists = models
+        .as_ref()
+        .map(|m| m.iter().any(|(n, _, _)| n == &model || n.starts_with(&format!("{}:", model))))
+        .unwrap_or(false);
 
-    // Truncate digest if too large for Ollama context
-    let max_chars = 32_000; // conservative for most models
+    if !model_exists {
+        eprintln!("trs ingest: model '{}' not found in Ollama", model);
+        list_ollama_models();
+        return None;
+    }
+
+    // Truncate digest to fit model context (conservative 24k chars)
+    let max_chars = 24_000;
     let input = if digest.len() > max_chars {
+        eprintln!("trs ingest: digest too large for Ollama, truncating to {}...", format_bytes(max_chars));
         &digest[..max_chars]
     } else {
         digest
     };
 
+    eprintln!("trs ingest: generating summary with {} ({})...", model, format_bytes(input.len()));
+
     let prompt = format!(
-        "You are a technical documentation assistant. Given this codebase digest, produce a clean, \
-         structured markdown summary that helps a developer or AI agent understand the project quickly.\n\n\
-         Include:\n\
-         1. Project overview (1-2 sentences)\n\
-         2. Architecture (key modules and their responsibilities)\n\
-         3. Key files and what they do\n\
-         4. Dependencies and tech stack\n\
-         5. Entry points\n\n\
-         Keep it concise and factual. No fluff.\n\n\
-         ---\n\n{}",
+        "Analyze this codebase digest and produce a structured markdown summary.\n\n\
+         Output EXACTLY this format:\n\n\
+         ## Overview\n\
+         [1-2 sentences: what this project does]\n\n\
+         ## Tech Stack\n\
+         [bullet list: language, framework, database, key dependencies]\n\n\
+         ## Architecture\n\
+         [bullet list: key directories/modules and their responsibility]\n\n\
+         ## Key Files\n\
+         [bullet list: 5-10 most important files and what they do]\n\n\
+         ## Entry Points\n\
+         [bullet list: main entry files, API routes, CLI commands]\n\n\
+         Be concise and factual. No explanations of what markdown is. \
+         No filler. Just the structured summary.\n\n---\n\n{}",
         input
     );
 
@@ -672,6 +872,10 @@ fn ollama_format(digest: &str, model: &str) -> Option<String> {
         "model": model,
         "prompt": prompt,
         "stream": false,
+        "options": {
+            "temperature": 0.3,
+            "num_predict": 2048,
+        }
     });
 
     let output = Command::new("curl")
@@ -685,16 +889,21 @@ fn ollama_format(digest: &str, model: &str) -> Option<String> {
         .output()
         .ok()?;
 
-    let response: serde_json::Value =
-        serde_json::from_slice(&output.stdout).ok()?;
-
+    let response: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
     let formatted = response.get("response")?.as_str()?;
 
-    // Combine: LLM summary at top, then the raw digest below
+    let duration = response.get("total_duration")
+        .and_then(|d| d.as_u64())
+        .map(|ns| ns / 1_000_000_000)
+        .unwrap_or(0);
+
+    eprintln!("trs ingest: Ollama completed in {}s", duration);
+
+    // Combine: LLM summary at top, then raw digest
     let mut result = String::new();
-    result.push_str("# Project Summary (LLM-generated)\n\n");
+    result.push_str(&format!("# Project Summary\n\n> Generated by {} via Ollama\n\n", model));
     result.push_str(formatted);
-    result.push_str("\n\n---\n\n# Raw Digest\n\n");
+    result.push_str("\n\n---\n\n# Full Digest\n\n");
     result.push_str(digest);
 
     Some(result)
