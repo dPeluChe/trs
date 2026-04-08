@@ -663,11 +663,11 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
         return Some(extract_data_schema(&content, &ext));
     }
 
-    // Source code
+    // Source code: always extract signatures in minimal/aggressive mode
+    // An agent needs to know WHAT exists, not HOW it's implemented
     match level {
         IngestLevel::Full => Some(content),
-        IngestLevel::Minimal => Some(filter_minimal(&content, lang)),
-        IngestLevel::Aggressive => Some(extract_signatures(&content, &ext)),
+        _ => Some(extract_signatures(&content, &ext)),
     }
 }
 
@@ -888,121 +888,171 @@ fn build_digest(
     let total_tokens: usize = files.iter().map(|f| f.tokens).sum();
     let total_files = files.iter().filter(|f| !f.rel_path.is_empty()).count();
 
-    // Header
     let project_name = config
         .root
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("project");
 
-    out.push_str(&format!("# {}\n\n", project_name));
+    // Header: one compact line
+    out.push_str(&format!("# {} ({} files, {} tokens)\n\n", project_name, total_files, format_tokens(total_tokens)));
 
-    // Metadata
-    out.push_str(&format!(
-        "> {} files | {} tokens | {} | {}\n",
-        total_files,
-        format_tokens(total_tokens),
-        match config.level {
-            IngestLevel::Full => "full content",
-            IngestLevel::Minimal => "comments stripped",
-            IngestLevel::Aggressive => "signatures only",
-        },
-        if config.changed_only || config.since.is_some() {
-            format!(
-                "changed files only{}",
-                config
-                    .since
-                    .as_ref()
-                    .map(|s| format!(" (since {})", s))
-                    .unwrap_or_default()
-            )
-        } else {
-            "full project".to_string()
-        }
-    ));
+    // Structure: inline tree grouped by directory
+    out.push_str("## Structure\n\n");
+    out.push_str(&build_tree(files));
+    out.push('\n');
 
-    if let Some(budget) = config.budget_tokens {
-        out.push_str(&format!(
-            "> budget: {}/{} tokens ({}% used)\n",
-            format_tokens(total_tokens),
-            format_tokens(budget),
-            total_tokens * 100 / budget.max(1)
-        ));
-    }
-
-    out.push_str("\n");
-
-    // Directory tree
-    out.push_str("## File tree\n\n```\n");
-    let tree = build_tree(files);
-    out.push_str(&tree);
-    out.push_str("```\n\n");
-
-    // File contents
-    out.push_str("## Files\n\n");
+    // Group files by role for the content section
+    let mut docs: Vec<&DigestFile> = Vec::new();
+    let mut api: Vec<&DigestFile> = Vec::new();
+    let mut pages: Vec<&DigestFile> = Vec::new();
+    let mut data: Vec<&DigestFile> = Vec::new();
+    let mut config_files: Vec<&DigestFile> = Vec::new();
+    let mut other: Vec<&DigestFile> = Vec::new();
 
     for file in files {
         if file.rel_path.is_empty() {
-            out.push_str(&file.content);
-            out.push('\n');
             continue;
         }
-
+        let lower = file.rel_path.to_lowercase();
         let ext = Path::new(&file.rel_path)
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
 
-        let changed_marker = if file.is_changed { " (changed)" } else { "" };
+        if lower.ends_with("readme.md") || lower.ends_with("claude.md")
+            || lower.ends_with("agents.md") || lower.contains("todo")
+            || lower.ends_with("contributing.md") || lower.ends_with("changelog.md") {
+            docs.push(file);
+        } else if lower.contains("convex/") || lower.contains("api/")
+            || lower.contains("server/") || lower.contains("backend/")
+            || lower.contains("routes/") {
+            api.push(file);
+        } else if lower.contains("pages/") || lower.contains("views/")
+            || lower.contains("screens/") || lower.contains("components/") {
+            pages.push(file);
+        } else if ext == "json" || ext == "yaml" || ext == "yml" || ext == "csv"
+            || lower.contains("data/") || lower.contains("fixtures/") {
+            data.push(file);
+        } else if lower.contains("config") || lower.ends_with(".toml")
+            || lower.ends_with(".env") || lower.ends_with(".env.example")
+            || lower.ends_with(".env.local.example") || lower == ".gitignore"
+            || lower == "tsconfig.json" || lower == "tsconfig.app.json"
+            || lower == "tsconfig.node.json" || lower.ends_with("vite.config.ts") {
+            config_files.push(file);
+        } else {
+            other.push(file);
+        }
+    }
 
-        // Use <!-- file: path --> comment to avoid header conflicts with file content
-        out.push_str(&format!(
-            "<!-- file: {} -->\n### `{}`{}\n\n```{}\n{}\n```\n\n",
-            file.rel_path, file.rel_path, changed_marker, ext, file.content.trim_end()
-        ));
+    // Docs section — full content (already HTML-stripped)
+    if !docs.is_empty() {
+        for file in &docs {
+            out.push_str(&format!("## {}\n\n{}\n\n", file.rel_path, file.content.trim()));
+        }
+    }
+
+    // API section — signatures only, compact
+    if !api.is_empty() {
+        out.push_str("## API\n\n");
+        for file in &api {
+            let content = file.content.trim();
+            if content == "(same as AGENTS.md)" || content == "(same as README.md)" || content.is_empty() {
+                continue;
+            }
+            out.push_str(&format!("**{}**\n{}\n\n", file.rel_path, content));
+        }
+    }
+
+    // Pages/Components — just names and key info
+    if !pages.is_empty() {
+        out.push_str("## Pages & Components\n\n");
+        for file in &pages {
+            let content = file.content.trim();
+            if content.is_empty() {
+                out.push_str(&format!("**{}**\n\n", file.rel_path));
+            } else {
+                out.push_str(&format!("**{}**\n{}\n\n", file.rel_path, content));
+            }
+        }
+    }
+
+    // Data — schema summaries
+    if !data.is_empty() {
+        out.push_str("## Data\n\n");
+        for file in &data {
+            out.push_str(&format!("**{}**\n{}\n\n", file.rel_path, file.content.trim()));
+        }
+    }
+
+    // Config — compact, only if meaningful
+    if !config_files.is_empty() {
+        out.push_str("## Config\n\n");
+        for file in &config_files {
+            let content = file.content.trim();
+            // Skip very small or empty configs
+            if content.len() < 10 {
+                continue;
+            }
+            out.push_str(&format!("**{}**: {}\n", file.rel_path, summarize_config(content)));
+        }
+        out.push('\n');
+    }
+
+    // Other files
+    if !other.is_empty() {
+        out.push_str("## Other\n\n");
+        for file in &other {
+            let content = file.content.trim();
+            if content.is_empty() || content.len() < 10 {
+                continue;
+            }
+            if content.starts_with("(same as") {
+                out.push_str(&format!("**{}**: {}\n", file.rel_path, content));
+            } else {
+                out.push_str(&format!("**{}**\n{}\n\n", file.rel_path, content));
+            }
+        }
     }
 
     // Footer
     out.push_str(&format!(
-        "---\n*Generated by trs ingest v{} in {}ms*\n",
+        "---\n*trs ingest v{} | {}ms | {}*\n",
         env!("CARGO_PKG_VERSION"),
-        elapsed_ms
+        elapsed_ms,
+        format_bytes(out.len())
     ));
 
     out
 }
 
-/// Build a compact directory tree from file paths.
+/// Summarize a config file to one line.
+fn summarize_config(content: &str) -> String {
+    let lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
+    if lines.len() <= 3 {
+        return lines.join(" | ");
+    }
+    format!("{} lines", lines.len())
+}
+
+/// Build compact inline tree: dir/ file1 file2 file3
 fn build_tree(files: &[DigestFile]) -> String {
     let mut dirs: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
     for file in files {
-        if file.rel_path.is_empty() {
-            continue;
-        }
+        if file.rel_path.is_empty() { continue; }
         let path = Path::new(&file.rel_path);
-        let parent = path
-            .parent()
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let name = path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
+        let parent = path.parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         dirs.entry(parent).or_default().push(name);
     }
 
     let mut tree = String::new();
     for (dir, filenames) in &dirs {
         if dir.is_empty() {
-            for f in filenames {
-                tree.push_str(&format!("{}\n", f));
-            }
+            tree.push_str(&format!("{}\n", filenames.join(" | ")));
         } else {
-            tree.push_str(&format!("{}/\n", dir));
-            for f in filenames {
-                tree.push_str(&format!("  {}\n", f));
-            }
+            tree.push_str(&format!("{}/  {}\n", dir, filenames.join(" ")));
         }
     }
     tree
