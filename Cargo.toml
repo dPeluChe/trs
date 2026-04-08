@@ -1,6 +1,6 @@
 [package]
 name = "tars-cli"
-version = "0.1.0"
+version = "0.5.0"
 edition = "2021"
 description = "Transform noisy terminal output into compact, structured signal for AI agents"
 license = "MIT"
