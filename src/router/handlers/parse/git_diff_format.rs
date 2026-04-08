@@ -42,45 +42,15 @@ impl ParseHandler {
         .to_string()
     }
 
-    const CONTEXT_COMPRESS_THRESHOLD: usize = 4;
-
-    /// Compress context block: first 1 + "[...N unchanged...]" + last 1.
-    fn compress_context_block(block: &[String]) -> Vec<String> {
-        if block.len() <= Self::CONTEXT_COMPRESS_THRESHOLD {
-            return block.to_vec();
-        }
-        let hidden = block.len() - 2;
-        vec![
-            block[0].clone(),
-            format!("  [...{} unchanged lines...]", hidden),
-            block[block.len() - 1].clone(),
-        ]
-    }
-
     fn format_hunk_compressed(hunk: &GitDiffHunk) -> Vec<String> {
         let mut result = Vec::new();
         result.push(hunk.header.clone());
 
-        let mut context_block: Vec<String> = Vec::new();
-
+        // Only keep change lines (+/-), drop context lines entirely
         for line in &hunk.lines {
-            let is_context =
-                line.starts_with(' ') || (!line.starts_with('+') && !line.starts_with('-'));
-            if is_context {
-                context_block.push(line.clone());
-            } else {
-                // Flush context block with compression
-                if !context_block.is_empty() {
-                    result.extend(Self::compress_context_block(&context_block));
-                    context_block.clear();
-                }
+            if line.starts_with('+') || line.starts_with('-') {
                 result.push(line.clone());
             }
-        }
-
-        // Flush trailing context block
-        if !context_block.is_empty() {
-            result.extend(Self::compress_context_block(&context_block));
         }
 
         result
