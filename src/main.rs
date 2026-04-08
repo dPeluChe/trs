@@ -29,6 +29,7 @@ mod cli;
 mod commands;
 pub(crate) mod config;
 mod discover;
+mod ingest;
 mod doctor;
 mod formatter;
 mod help;
@@ -143,6 +144,29 @@ fn main() {
             json,
         }) => {
             benchmark::run_benchmark(command, args, *repeat, *json);
+        }
+        Some(Commands::Ingest {
+            path,
+            level,
+            budget,
+            changed,
+            since,
+            exclude,
+            output,
+            ollama,
+        }) => {
+            let budget_tokens = budget.as_ref().map(|b| parse_token_budget(b));
+            let config = ingest::IngestConfig {
+                root: std::path::PathBuf::from(path),
+                level: ingest::IngestLevel::from_str(level),
+                budget_tokens,
+                changed_only: *changed,
+                since: since.clone(),
+                exclude: exclude.clone(),
+                output_file: output.as_ref().map(std::path::PathBuf::from),
+                ollama_model: ollama.clone(),
+            };
+            ingest::run_ingest(&config);
         }
         Some(Commands::Stats {
             history,
@@ -287,8 +311,21 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "html2md" | "txt2md" | "is-clean" | "clean?" | "repo-clean"
             | "read" | "json" | "err"
             | "rewrite" | "discover" | "init" | "doctor" | "benchmark"
-            | "stats" | "raw" | "help" | "--help" | "-h" | "--version" | "-V"
+            | "ingest" | "stats" | "raw"
+            | "help" | "--help" | "-h" | "--version" | "-V"
     )
+}
+
+/// Parse token budget string: "128k" -> 128000, "64000" -> 64000
+fn parse_token_budget(s: &str) -> usize {
+    let s = s.trim().to_lowercase();
+    if let Some(num) = s.strip_suffix('k') {
+        num.parse::<f64>().unwrap_or(0.0) as usize * 1000
+    } else if let Some(num) = s.strip_suffix('m') {
+        num.parse::<f64>().unwrap_or(0.0) as usize * 1_000_000
+    } else {
+        s.parse::<usize>().unwrap_or(128_000)
+    }
 }
 
 #[cfg(test)]

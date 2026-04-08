@@ -502,6 +502,51 @@ EXAMPLES:
     trs benchmark ls -la --repeat 5
     trs benchmark cargo test --repeat 3 --json";
 
+/// Help text for the ingest command.
+#[allow(dead_code)]
+pub const INGEST_HELP: &str = "\
+Generate an LLM-ready digest of a project.
+
+Walks the project directory, reads files with optional compression,
+and produces a structured markdown digest optimized for AI context windows.
+
+USAGE:
+    trs ingest [PATH] [OPTIONS]
+
+OPTIONS:
+    -l, --level <LEVEL>    Compression: full, minimal, aggressive (default: full)
+    -b, --budget <TOKENS>  Token budget (e.g. 128k, 64000). Auto-truncates to fit.
+    --changed              Only include files with uncommitted changes
+    --since <REF>          Only include files changed since git ref (e.g. HEAD~5)
+    -e, --exclude <PAT>    Exclude paths matching pattern (repeatable)
+    -o, --output <FILE>    Write to file instead of stdout
+    --ollama <MODEL>       Format digest with local Ollama model (e.g. llama3)
+
+EXAMPLES:
+    trs ingest                              # full project digest
+    trs ingest --budget 128k               # fit to 128k token context
+    trs ingest --changed                    # only uncommitted changes
+    trs ingest --changed -l aggressive      # signatures of changed files
+    trs ingest --since HEAD~5               # last 5 commits
+    trs ingest src/ -e tests -e fixtures    # src/ only, exclude tests
+    trs ingest -o digest.md                 # write to file
+    trs ingest --ollama llama3              # LLM-formatted summary
+    trs ingest --budget 64k -l minimal      # compressed, budget-fitted
+
+OUTPUT:
+    Structured markdown with:
+    - Project metadata (files, tokens, compression level)
+    - Budget usage (if --budget specified)
+    - File tree
+    - File contents (with code fences and language tags)
+    - Changed file markers (if --changed/--since)
+
+NOTES:
+    - Respects .gitignore automatically
+    - Skips binary files, lock files, and files >256KB
+    - With --ollama: sends digest to local Ollama for a structured summary
+      (requires Ollama running at localhost:11434)";
+
 /// Returns the help text for a specific command.
 #[allow(dead_code)]
 pub fn get_command_help(command: &str) -> Option<&'static str> {
@@ -521,6 +566,7 @@ pub fn get_command_help(command: &str) -> Option<&'static str> {
         "stats" => Some(STATS_HELP),
         "doctor" => Some(DOCTOR_HELP),
         "benchmark" => Some(BENCHMARK_HELP),
+        "ingest" => Some(INGEST_HELP),
         _ => None,
     }
 }
