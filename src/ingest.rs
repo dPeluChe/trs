@@ -602,20 +602,27 @@ fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
             .then(a.rel_path.cmp(&b.rel_path))
     });
 
-    // Deduplicate: if two files have identical content, keep first and note the duplicate
-    let mut seen: std::collections::HashMap<u64, String> = std::collections::HashMap::new();
-    for file in &mut files {
-        if file.content.is_empty() || file.rel_path.is_empty() {
+    // Deduplicate: merge identical files into one entry with combined name
+    // e.g. AGENTS.md + CLAUDE.md (same content) -> "AGENTS.md & CLAUDE.md"
+    let mut seen: std::collections::HashMap<u64, usize> = std::collections::HashMap::new();
+    let mut to_remove: Vec<usize> = Vec::new();
+    for i in 0..files.len() {
+        if files[i].content.is_empty() || files[i].rel_path.is_empty() {
             continue;
         }
-        // Simple hash: sum of bytes
-        let hash = file.content.bytes().fold(0u64, |acc, b| acc.wrapping_add(b as u64).wrapping_mul(31));
-        if let Some(original) = seen.get(&hash) {
-            file.content = format!("(same as {})", original);
-            file.tokens = 5;
+        let hash = files[i].content.bytes().fold(0u64, |acc, b| acc.wrapping_add(b as u64).wrapping_mul(31));
+        if let Some(&original_idx) = seen.get(&hash) {
+            // Merge name into original
+            let dup_name = files[i].rel_path.clone();
+            files[original_idx].rel_path = format!("{} & {}", files[original_idx].rel_path, dup_name);
+            to_remove.push(i);
         } else {
-            seen.insert(hash, file.rel_path.clone());
+            seen.insert(hash, i);
         }
+    }
+    // Remove duplicates in reverse order to preserve indices
+    for &i in to_remove.iter().rev() {
+        files.remove(i);
     }
 
     files
@@ -634,10 +641,7 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
     let lower_name = name.to_lowercase();
 
     // Skip: CSS, HTML, SVG, lock files, minified, type declarations
-    if matches!(ext.as_str(), "css" | "scss" | "less" | "svg") {
-        return None;
-    }
-    if matches!(ext.as_str(), "html" | "htm") && content.len() > 500 {
+    if matches!(ext.as_str(), "css" | "scss" | "less" | "svg" | "html" | "htm") {
         return None;
     }
     if lower_name.ends_with(".lock") || lower_name.ends_with(".min.js")
