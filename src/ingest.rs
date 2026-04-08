@@ -454,6 +454,7 @@ fn get_repo_name(root: &Path) -> String {
 }
 
 /// Save digest to ~/.trs/ingest/<owner>/<repo>.md (single file, overwrites)
+/// Also cleans up old digest if repo moved to a different owner (e.g. added remote).
 fn save_to_store(content: &str, config: &IngestConfig) -> Option<String> {
     let base = ingest_store_dir()?;
     let (owner, repo) = get_repo_identity(&config.root);
@@ -463,6 +464,34 @@ fn save_to_store(content: &str, config: &IngestConfig) -> Option<String> {
 
     let filename = format!("{}.md", repo);
     let filepath = owner_dir.join(&filename);
+
+    // Clean up old digest under a different owner (e.g. repo got a remote)
+    if let Ok(owners) = std::fs::read_dir(&base) {
+        for old_owner in owners.flatten() {
+            if !old_owner.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                continue;
+            }
+            let old_owner_name = old_owner.file_name().to_string_lossy().to_string();
+            if old_owner_name == owner {
+                continue; // same owner, skip
+            }
+            let old_path = old_owner.path().join(&filename);
+            if old_path.exists() {
+                eprintln!(
+                    "trs ingest: migrating {}/{} -> {}/{}",
+                    old_owner_name, repo, owner, repo
+                );
+                let _ = std::fs::remove_file(&old_path);
+                // Remove empty owner dir
+                if std::fs::read_dir(old_owner.path())
+                    .map(|mut d| d.next().is_none())
+                    .unwrap_or(false)
+                {
+                    let _ = std::fs::remove_dir(old_owner.path());
+                }
+            }
+        }
+    }
 
     std::fs::write(&filepath, content).ok()?;
     Some(filepath.to_string_lossy().to_string())
@@ -1062,17 +1091,31 @@ fn extract_section(digest: &str, filename: &str) -> Option<String> {
 }
 
 fn format_modified(entry: &std::fs::DirEntry) -> String {
-    entry.metadata().ok()
+    let modified = entry.metadata().ok()
         .and_then(|m| m.modified().ok())
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| {
-            let secs = d.as_secs();
-            let (y, mo, day) = days_to_date(secs / 86400);
-            let h = (secs % 86400) / 3600;
-            let min = (secs % 3600) / 60;
-            format!("{:04}-{:02}-{:02} {:02}:{:02}", y, mo, day, h, min)
-        })
-        .unwrap_or_default()
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let diff = now.saturating_sub(modified);
+
+    if diff < 60 {
+        "just now".to_string()
+    } else if diff < 3600 {
+        format!("{}m ago", diff / 60)
+    } else if diff < 86400 {
+        format!("{}h ago", diff / 3600)
+    } else if diff < 604800 {
+        format!("{}d ago", diff / 86400)
+    } else {
+        let (y, mo, day) = days_to_date(modified / 86400);
+        format!("{:04}-{:02}-{:02}", y, mo, day)
+    }
 }
 
 fn format_bytes_static(n: usize) -> String {
