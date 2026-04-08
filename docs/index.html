@@ -445,7 +445,7 @@ src/main.rs (3):
 <section>
   <div class="container">
     <h2>Benchmarks</h2>
-    <p style="color: var(--text-muted); margin-bottom: 24px;">vs <a href="https://github.com/rtk-ai/rtk" style="color: var(--blue);">rtk</a> 0.34.3 and <a href="https://github.com/nicobailey/token-saver" style="color: var(--blue);">token-saver</a> 2.2.1 across 18 tests.</p>
+    <p style="color: var(--text-muted); margin-bottom: 24px;">vs <a href="https://github.com/rtk-ai/rtk" style="color: var(--blue);">rtk</a> 0.35.0 and <a href="https://github.com/nicobailey/token-saver" style="color: var(--blue);">token-saver</a> 2.2.1 across 18 tests.</p>
 
     <h3>Compression</h3>
     <div style="overflow-x: auto;">
@@ -457,7 +457,7 @@ src/main.rs (3):
           <tr><td><code>cargo test</code></td><td>8.1 KB</td><td>58 B</td><td>58 B</td><td>tie</td></tr>
           <tr><td><code>git status</code></td><td>1.4 KB</td><td class="winner">336 B</td><td>599 B</td><td class="winner">trs</td></tr>
           <tr><td><code>git log -10</code></td><td>7.6 KB</td><td class="winner">689 B</td><td>2.8 KB</td><td class="winner">trs</td></tr>
-          <tr><td><code>git diff --stat</code></td><td>1.8 KB</td><td class="winner">1.1 KB</td><td>&mdash;</td><td class="winner">trs</td></tr>
+          <tr><td><code>git diff</code></td><td>14.6 KB</td><td class="winner">8.0 KB</td><td>12.1 KB</td><td class="winner">trs</td></tr>
           <tr><td><code>ls -la</code></td><td>1.4 KB</td><td>270 B</td><td>257 B</td><td>rtk</td></tr>
           <tr><td><code>env</code></td><td>2.9 KB</td><td class="winner">728 B</td><td>1.1 KB</td><td class="winner">trs</td></tr>
           <tr><td><code>find *.rs</code></td><td>4.4 KB</td><td>2.4 KB</td><td>760 B</td><td>rtk</td></tr>
@@ -474,8 +474,8 @@ src/main.rs (3):
           <tr><th></th><th>trs</th><th>rtk</th><th>token-saver</th></tr>
         </thead>
         <tbody>
-          <tr><td>Overhead vs raw</td><td class="winner">34%</td><td>50%</td><td>306%</td></tr>
-          <tr><td>Speed wins</td><td class="winner">11</td><td>3</td><td>0</td></tr>
+          <tr><td>Overhead vs raw</td><td class="winner">27%</td><td>45%</td><td>274%</td></tr>
+          <tr><td>Speed wins</td><td class="winner">12</td><td>2</td><td>0</td></tr>
           <tr><td>Startup</td><td class="winner">3.2ms</td><td>4.5ms</td><td>~55ms</td></tr>
         </tbody>
       </table>
@@ -487,16 +487,16 @@ src/main.rs (3):
         <div class="label">compression wins vs rtk</div>
       </div>
       <div class="bench-card">
-        <div class="num">74%</div>
-        <div class="label">reduction on real project</div>
+        <div class="num">45%</div>
+        <div class="label">diff compression (vs 17% rtk)</div>
       </div>
       <div class="bench-card">
         <div class="num">~3ms</div>
         <div class="label">overhead per command</div>
       </div>
       <div class="bench-card">
-        <div class="num">~127K</div>
-        <div class="label">tokens saved (real project)</div>
+        <div class="num">27%</div>
+        <div class="label">overhead vs raw (rtk 45%)</div>
       </div>
     </div>
   </div>

@@ -177,14 +177,14 @@ trs git status --raw          # unprocessed passthrough
 
 ### Compression (18 synthetic tests)
 
-vs [rtk](https://github.com/rtk-ai/rtk) 0.34.3 and [token-saver](https://github.com/nicobailey/token-saver) 2.2.1:
+vs [rtk](https://github.com/rtk-ai/rtk) 0.35.0 and [token-saver](https://github.com/nicobailey/token-saver) 2.2.1:
 
 | Command | Raw | trs | rtk | Winner |
 |---------|-----|-----|-----|--------|
 | `cargo test` | 8.1 KB | 58 B | 58 B | tie |
 | `git status` | 1.4 KB | 336 B | 599 B | trs |
 | `git log -10` | 7.6 KB | 689 B | 2.8 KB | trs |
-| `git diff --stat` | 1.8 KB | 1.1 KB | — | trs |
+| `git diff` | 14.6 KB | 8.0 KB | 12.1 KB | trs |
 | `ls -la` | 1.4 KB | 270 B | 257 B | rtk |
 | `env` | 2.9 KB | 728 B | 1.1 KB | trs |
 | `find *.rs` | 4.4 KB | 2.4 KB | 760 B | rtk |
@@ -197,19 +197,18 @@ vs [rtk](https://github.com/rtk-ai/rtk) 0.34.3 and [token-saver](https://github.
 
 | | trs | rtk | token-saver |
 |---|---|---|---|
-| Overhead vs raw | **34%** | 50% | 306% |
-| Speed wins | **11** | 3 | 0 |
+| Overhead vs raw | **27%** | 45% | 274% |
+| Speed wins | **12** | 2 | 0 |
 | Startup (`--version`) | **3.2ms** | 4.5ms | ~55ms |
 
-### Real-world project (labs-cameraman, 28 modified files, 111 commits)
+### Real-world project (labs-mundialito, 11 modified files, TypeScript + Convex)
 
 | | trs | rtk |
 |---|---|---|
 | Speed wins | **13/15** | 2/15 |
-| Compression wins | **13/15** | 2/15 |
-| Total reduction | **74%** | -123% (inflates) |
-| Total time | **649ms** | 1,108ms |
-| Tokens saved | **~127K** | — |
+| Compression wins | **11/15** | 4/15 |
+| Total time | **302ms** | 460ms |
+| Total bytes | **303 KB** | 387 KB |
 
 Note: rtk silently replaces `find` with an internal walker (undocumented), which makes it appear faster on file searches. trs always executes the real command. Use `trs find --gitignore` for an explicit fast walker that respects `.gitignore`.
 
@@ -266,6 +265,7 @@ This project wouldn't exist without the work of others in the token-reduction sp
 
 - [rtk](https://github.com/rtk-ai/rtk) — the project that sparked this one. Their approach to token reduction for AI agents showed me the problem was worth solving, and studying their Rust CLI architecture taught me a lot. We benchmark against rtk regularly to keep both projects honest and push each other forward.
 - [token-saver](https://github.com/nicobailey/token-saver) — a Python-based alternative with a different design philosophy (wrap.py pipeline). Comparing against it helped us understand the tradeoffs between native binaries and scripted approaches, especially around startup time.
+- [caveman](https://github.com/JuliusBrussee/caveman) — a complementary approach: instead of compressing terminal output, caveman reduces AI *response* tokens by making Claude speak concisely. Different layer, same goal (token efficiency). Their benchmark methodology and validation pipeline are well worth studying.
 - [claw-compactor](https://github.com/open-compress/claw-compactor) — compression patterns (LogCrunch, DiffCrunch, Ionizer) that influenced our log/diff/json handlers.
 - [tokf](https://github.com/mpecan/tokf) — TOML filter pipeline concept.
 
