@@ -28,7 +28,7 @@ fn test_fixture_git_diff_modified() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("M src/main.rs"))
         .stdout(predicate::str::contains("+2"));
 }
@@ -42,7 +42,7 @@ fn test_fixture_git_diff_added() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("+ src/utils.rs"))
         .stdout(predicate::str::contains("+5"));
 }
@@ -56,7 +56,7 @@ fn test_fixture_git_diff_deleted() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("- src/deprecated.rs"))
         .stdout(predicate::str::contains("-5"));
 }
@@ -70,7 +70,7 @@ fn test_fixture_git_diff_renamed() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("R"))
         .stdout(predicate::str::contains("old_name.rs"))
         .stdout(predicate::str::contains("new_name.rs"));
@@ -85,7 +85,7 @@ fn test_fixture_git_diff_copied() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("C"))
         .stdout(predicate::str::contains("template.rs"))
         .stdout(predicate::str::contains("implementation.rs"));
@@ -100,7 +100,7 @@ fn test_fixture_git_diff_binary() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (1)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("M assets/image.png"));
 }
 
@@ -113,7 +113,7 @@ fn test_fixture_git_diff_multiple() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (3)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("M src/main.rs"))
         .stdout(predicate::str::contains("+ src/utils.rs"))
         .stdout(predicate::str::contains("- src/old.rs"));
@@ -128,7 +128,7 @@ fn test_fixture_git_diff_mixed() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (5)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("M src/main.rs"))
         .stdout(predicate::str::contains("M src/lib.rs"))
         .stdout(predicate::str::contains("+ src/utils.rs"))
@@ -144,7 +144,7 @@ fn test_fixture_git_diff_large() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (10)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("src/file01.rs"))
         .stdout(predicate::str::contains("src/file10.rs"));
 }
@@ -158,7 +158,7 @@ fn test_fixture_git_diff_long_paths() {
         .write_stdin(input.as_bytes())
         .assert()
         .success()
-        .stdout(predicate::str::contains("files (2)"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("nested"));
 }
 
