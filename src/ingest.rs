@@ -754,8 +754,14 @@ fn extract_signatures(content: &str, ext: &str) -> String {
                 t.starts_with("def ") || t.starts_with("class ") || t.starts_with("function "),
         };
         if keep {
-            if t.len() > 120 { result.push_str(&t[..117]); result.push_str("...\n"); }
-            else { result.push_str(t); result.push('\n'); }
+            let cleaned = clean_signature(t);
+            if cleaned.len() > 120 {
+                result.push_str(&cleaned[..117]);
+                result.push_str("...\n");
+            } else {
+                result.push_str(&cleaned);
+                result.push('\n');
+            }
         }
     }
 
@@ -765,6 +771,49 @@ fn extract_signatures(content: &str, ext: &str) -> String {
         if lines.len() > 10 { result.push_str(&format!("... ({} lines)\n", lines.len())); }
     }
     result
+}
+
+/// Strip trailing noise from a signature line.
+/// `export function foo(): string {` -> `export function foo(): string`
+/// `export const POINTS = {` -> `export const POINTS`
+/// `const handleAnswer = useCallback((index: number) => {` -> `const handleAnswer = useCallback((index: number))`
+/// `def merge_blocks(prefix, count, output_file):` -> `def merge_blocks(prefix, count, output_file)`
+fn clean_signature(line: &str) -> String {
+    let mut s = line.to_string();
+
+    // Strip trailing { and whitespace
+    s = s.trim_end().to_string();
+    while s.ends_with('{') || s.ends_with("=> {") {
+        if s.ends_with("=> {") {
+            s = s[..s.len() - 4].trim_end().to_string();
+            // Close the paren if we stripped => {
+            if !s.ends_with(')') { s.push(')'); }
+        } else {
+            s = s[..s.len() - 1].trim_end().to_string();
+        }
+    }
+
+    // Strip trailing = [ or = {
+    if s.ends_with("= [") || s.ends_with("= {") {
+        s = s[..s.len() - 3].trim_end().to_string();
+    }
+
+    // Strip trailing = for const assignments
+    if s.ends_with('=') {
+        s = s[..s.len() - 1].trim_end().to_string();
+    }
+
+    // Strip trailing : (Python)
+    if s.ends_with(':') {
+        s = s[..s.len() - 1].trim_end().to_string();
+    }
+
+    // Strip trailing ;
+    if s.ends_with(';') {
+        s = s[..s.len() - 1].trim_end().to_string();
+    }
+
+    s
 }
 
 /// Compress package.json: name, version, scripts names, dep names.
@@ -1028,7 +1077,10 @@ fn build_digest(
 
 /// Summarize a config file to one line.
 fn summarize_config(content: &str) -> String {
-    let lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
+    let lines: Vec<&str> = content.lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty() && *l != "{" && *l != "}" && *l != "[" && *l != "]")
+        .collect();
     if lines.len() <= 3 {
         return lines.join(" | ");
     }
@@ -1283,6 +1335,11 @@ fn strip_html_from_markdown(content: &str) -> String {
 
     for line in content.lines() {
         let trimmed = line.trim();
+
+        // Strip code fence markers (```bash, ```json, etc.) — just noise in a digest
+        if trimmed.starts_with("```") {
+            continue;
+        }
 
         // Skip lines that are pure HTML (start with < and end with > or are self-closing)
         if trimmed.starts_with('<') && (trimmed.ends_with('>') || trimmed.ends_with("/>")) {
