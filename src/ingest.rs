@@ -269,7 +269,7 @@ pub fn run_ingest(config: &IngestConfig) {
     }
 }
 
-/// Read a saved digest by project name (fuzzy match).
+/// Read a saved digest by project name (fuzzy match across all owners).
 /// If no name given, uses the current repo name.
 pub fn read_digest(name: Option<&str>, project_path: &Path) {
     let Some(base) = ingest_store_dir() else {
@@ -282,25 +282,31 @@ pub fn read_digest(name: Option<&str>, project_path: &Path) {
         None => get_repo_name(project_path),
     };
 
-    // Try exact match first
-    let exact = base.join(format!("{}.md", search));
-    if exact.exists() {
-        match std::fs::read_to_string(&exact) {
-            Ok(content) => print!("{}", content),
-            Err(e) => eprintln!("trs ingest: error reading {}: {}", exact.display(), e),
-        }
-        return;
-    }
+    // Search across all owner dirs: owner/repo.md
+    let mut matches: Vec<PathBuf> = Vec::new();
 
-    // Fuzzy match: find digests containing the search term
-    let mut matches: Vec<String> = Vec::new();
-    if let Ok(files) = std::fs::read_dir(&base) {
-        for file in files.flatten() {
-            let name = file.file_name().to_string_lossy().to_string();
-            if name.ends_with(".md") {
-                let stem = name.strip_suffix(".md").unwrap_or(&name);
-                if stem.contains(&search) || search.contains(stem) {
-                    matches.push(name);
+    if let Ok(owners) = std::fs::read_dir(&base) {
+        for owner in owners.flatten() {
+            if owner.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                if let Ok(files) = std::fs::read_dir(owner.path()) {
+                    for file in files.flatten() {
+                        let name = file.file_name().to_string_lossy().to_string();
+                        if name.ends_with(".md") {
+                            let stem = name.strip_suffix(".md").unwrap_or(&name);
+                            if stem == search || stem.contains(&search) || search.contains(stem) {
+                                matches.push(file.path());
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Legacy flat files
+                let name = owner.file_name().to_string_lossy().to_string();
+                if name.ends_with(".md") {
+                    let stem = name.strip_suffix(".md").unwrap_or(&name);
+                    if stem == search || stem.contains(&search) || search.contains(stem) {
+                        matches.push(owner.path());
+                    }
                 }
             }
         }
@@ -312,16 +318,16 @@ pub fn read_digest(name: Option<&str>, project_path: &Path) {
             list_ingests();
         }
         1 => {
-            let path = base.join(&matches[0]);
-            match std::fs::read_to_string(&path) {
+            match std::fs::read_to_string(&matches[0]) {
                 Ok(content) => print!("{}", content),
-                Err(e) => eprintln!("trs ingest: error reading {}: {}", path.display(), e),
+                Err(e) => eprintln!("trs ingest: error reading {}: {}", matches[0].display(), e),
             }
         }
         _ => {
             eprintln!("Multiple matches for '{}'. Be more specific:", search);
             for m in &matches {
-                eprintln!("  trs ingest --read {}", m.strip_suffix(".md").unwrap_or(m));
+                let display = m.strip_prefix(&base).unwrap_or(m);
+                eprintln!("  trs ingest --read {}", display.to_string_lossy().trim_end_matches(".md"));
             }
         }
     }
@@ -342,25 +348,33 @@ pub fn list_ingests() {
         return;
     }
 
-    let mut entries: Vec<(String, u64, String)> = Vec::new(); // (name, size, modified)
+    // (owner, repo, size, modified)
+    let mut entries: Vec<(String, String, u64, String)> = Vec::new();
 
-    if let Ok(files) = std::fs::read_dir(&base) {
-        for file in files.flatten() {
-            let name = file.file_name().to_string_lossy().to_string();
-            if name.ends_with(".md") {
-                let size = file.metadata().map(|m| m.len()).unwrap_or(0);
-                let modified = file.metadata().ok()
-                    .and_then(|m| m.modified().ok())
-                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                    .map(|d| {
-                        let secs = d.as_secs();
-                        let (y, m, day) = days_to_date(secs / 86400);
-                        let h = (secs % 86400) / 3600;
-                        let min = (secs % 3600) / 60;
-                        format!("{:04}-{:02}-{:02} {:02}:{:02}", y, m, day, h, min)
-                    })
-                    .unwrap_or_default();
-                entries.push((name, size, modified));
+    if let Ok(owners) = std::fs::read_dir(&base) {
+        for owner_entry in owners.flatten() {
+            if !owner_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                // Legacy flat files — treat as "local" owner
+                let name = owner_entry.file_name().to_string_lossy().to_string();
+                if name.ends_with(".md") {
+                    let size = owner_entry.metadata().map(|m| m.len()).unwrap_or(0);
+                    let modified = format_modified(&owner_entry);
+                    let repo = name.strip_suffix(".md").unwrap_or(&name).to_string();
+                    entries.push(("local".to_string(), repo, size, modified));
+                }
+                continue;
+            }
+            let owner_name = owner_entry.file_name().to_string_lossy().to_string();
+            if let Ok(files) = std::fs::read_dir(owner_entry.path()) {
+                for file in files.flatten() {
+                    let name = file.file_name().to_string_lossy().to_string();
+                    if name.ends_with(".md") {
+                        let size = file.metadata().map(|m| m.len()).unwrap_or(0);
+                        let modified = format_modified(&file);
+                        let repo = name.strip_suffix(".md").unwrap_or(&name).to_string();
+                        entries.push((owner_name.clone(), repo, size, modified));
+                    }
+                }
             }
         }
     }
@@ -371,14 +385,17 @@ pub fn list_ingests() {
         return;
     }
 
-    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    entries.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
 
-    println!("Saved digests ({}):", base.display());
-    println!();
-    for (name, size, modified) in &entries {
+    println!("Saved digests ({}):\n", base.display());
+    let mut current_owner = String::new();
+    for (owner, repo, size, modified) in &entries {
+        if *owner != current_owner {
+            println!("{}:", owner);
+            current_owner = owner.clone();
+        }
         let tokens = (*size as f64 / BYTES_PER_TOKEN) as usize;
-        let display_name = name.strip_suffix(".md").unwrap_or(name);
-        println!("  {}  ({}, {} tokens, {})", display_name, format_bytes(*size as usize), format_tokens(tokens), modified);
+        println!("  {}  ({}, {} tokens, {})", repo, format_bytes(*size as usize), format_tokens(tokens), modified);
     }
 }
 
@@ -388,11 +405,11 @@ fn ingest_store_dir() -> Option<PathBuf> {
     Some(PathBuf::from(home).join(".trs").join("ingest"))
 }
 
-/// Get the repo name from git remote origin URL, or fallback to folder name.
-/// Examples: "git@github.com:user/my-repo.git" -> "my-repo"
-///           "https://github.com/user/my-repo.git" -> "my-repo"
-fn get_repo_name(root: &Path) -> String {
-    // Try git remote
+/// Get owner/repo from git remote origin URL.
+/// "git@github.com:dPeluChe/trs.git" -> ("dPeluChe", "trs")
+/// "https://github.com/user/my-repo.git" -> ("user", "my-repo")
+/// Fallback: parent folder name + folder name
+fn get_repo_identity(root: &Path) -> (String, String) {
     let remote = Command::new("git")
         .args(["remote", "get-url", "origin"])
         .current_dir(root)
@@ -402,34 +419,50 @@ fn get_repo_name(root: &Path) -> String {
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
 
     if let Some(url) = remote {
-        // Parse: "git@github.com:user/repo.git" or "https://github.com/.../repo.git"
-        let name = url
-            .rsplit('/')
-            .next()
-            .or_else(|| url.rsplit(':').next())
-            .unwrap_or(&url)
-            .trim_end_matches(".git")
-            .to_string();
-        if !name.is_empty() {
-            return name;
+        // Parse SSH: "git@github.com:owner/repo.git"
+        if let Some(path) = url.split(':').last() {
+            let clean = path.trim_end_matches(".git");
+            let parts: Vec<&str> = clean.split('/').collect();
+            if parts.len() >= 2 {
+                let owner = parts[parts.len() - 2].to_string();
+                let repo = parts[parts.len() - 1].to_string();
+                if !owner.is_empty() && !repo.is_empty() {
+                    return (owner, repo);
+                }
+            }
         }
     }
 
-    // Fallback to folder name
-    root.canonicalize()
-        .ok()
-        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
-        .unwrap_or_else(|| "project".to_string())
+    // Fallback: parent_dir/folder_name
+    let canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let repo = canonical
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "project".to_string());
+    let owner = canonical
+        .parent()
+        .and_then(|p| p.file_name())
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "local".to_string());
+    (owner, repo)
 }
 
-/// Save digest to ~/.trs/ingest/<repo-name>.md (single file, overwrites)
+/// Get just the repo name (for backward compat with read_digest).
+fn get_repo_name(root: &Path) -> String {
+    let (_, repo) = get_repo_identity(root);
+    repo
+}
+
+/// Save digest to ~/.trs/ingest/<owner>/<repo>.md (single file, overwrites)
 fn save_to_store(content: &str, config: &IngestConfig) -> Option<String> {
     let base = ingest_store_dir()?;
-    std::fs::create_dir_all(&base).ok()?;
+    let (owner, repo) = get_repo_identity(&config.root);
 
-    let repo_name = get_repo_name(&config.root);
-    let filename = format!("{}.md", repo_name);
-    let filepath = base.join(&filename);
+    let owner_dir = base.join(&owner);
+    std::fs::create_dir_all(&owner_dir).ok()?;
+
+    let filename = format!("{}.md", repo);
+    let filepath = owner_dir.join(&filename);
 
     std::fs::write(&filepath, content).ok()?;
     Some(filepath.to_string_lossy().to_string())
@@ -1026,6 +1059,20 @@ fn extract_section(digest: &str, filename: &str) -> Option<String> {
     let code_content_start = after_marker[code_start..].find('\n')? + code_start + 1;
     let code_end = after_marker[code_content_start..].find("```")? + code_content_start;
     Some(after_marker[code_content_start..code_end].to_string())
+}
+
+fn format_modified(entry: &std::fs::DirEntry) -> String {
+    entry.metadata().ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| {
+            let secs = d.as_secs();
+            let (y, mo, day) = days_to_date(secs / 86400);
+            let h = (secs % 86400) / 3600;
+            let min = (secs % 3600) / 60;
+            format!("{:04}-{:02}-{:02} {:02}:{:02}", y, mo, day, h, min)
+        })
+        .unwrap_or_default()
 }
 
 fn format_bytes_static(n: usize) -> String {
