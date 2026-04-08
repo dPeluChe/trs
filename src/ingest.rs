@@ -40,8 +40,20 @@ const SKIP_FILES: &[&str] = &[
     ".DS_Store", "Thumbs.db",
 ];
 
-/// Max file size to include (256 KB).
-const MAX_FILE_SIZE: u64 = 256 * 1024;
+/// Directories to always skip (generated/vendor content).
+const SKIP_DIRS: &[&str] = &[
+    ".git", "node_modules", ".next", "__pycache__", ".pytest_cache",
+    "dist", "build", "target", ".build", "DerivedData",
+    "_generated", ".ruff_cache", ".mypy_cache", "coverage",
+    ".turbo", ".nuxt", ".output", ".svelte-kit",
+    "vendor", "venv", ".venv", "env",
+];
+
+/// Max file size to include (64 KB — large files are usually data, not code).
+const MAX_FILE_SIZE: u64 = 64 * 1024;
+
+/// Max size for data files like JSON (truncate with note).
+const MAX_DATA_FILE_SIZE: usize = 2048;
 
 /// Compression level for file content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -135,23 +147,150 @@ pub fn run_ingest(config: &IngestConfig) {
         output
     };
 
-    // Write to file or stdout
+    // Always save to ~/.trs/ingest/<project>/<timestamp>.md
+    let saved_path = save_to_store(&final_output, config);
+
+    // Also write to explicit output file if requested
     if let Some(ref out_path) = config.output_file {
-        match std::fs::write(out_path, &final_output) {
-            Ok(_) => {
-                let tokens = (final_output.len() as f64 / BYTES_PER_TOKEN) as usize;
-                eprintln!(
-                    "trs ingest: wrote {} ({} tokens) to {}",
-                    format_bytes(final_output.len()),
-                    format_tokens(tokens),
-                    out_path.display()
-                );
-            }
-            Err(e) => eprintln!("trs ingest: failed to write {}: {}", out_path.display(), e),
+        if std::fs::write(out_path, &final_output).is_ok() {
+            eprintln!("trs ingest: also wrote to {}", out_path.display());
         }
-    } else {
+    }
+
+    let tokens = (final_output.len() as f64 / BYTES_PER_TOKEN) as usize;
+    if let Some(ref path) = saved_path {
+        eprintln!(
+            "trs ingest: {} ({} tokens) -> {}",
+            format_bytes(final_output.len()),
+            format_tokens(tokens),
+            path
+        );
+    }
+
+    // Print to stdout unless -o was specified
+    if config.output_file.is_none() {
         print!("{}", final_output);
     }
+}
+
+/// List saved ingest digests.
+pub fn list_ingests() {
+    let Some(base) = ingest_store_dir() else {
+        println!("No ingests found ({})", "~/.trs/ingest/");
+        return;
+    };
+
+    if !base.exists() {
+        println!("No ingests found");
+        return;
+    }
+
+    let mut entries: Vec<(String, String, u64)> = Vec::new(); // (project, file, size)
+
+    if let Ok(projects) = std::fs::read_dir(&base) {
+        for project in projects.flatten() {
+            if !project.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                continue;
+            }
+            let project_name = project.file_name().to_string_lossy().to_string();
+            if let Ok(files) = std::fs::read_dir(project.path()) {
+                for file in files.flatten() {
+                    let name = file.file_name().to_string_lossy().to_string();
+                    if name.ends_with(".md") {
+                        let size = file.metadata().map(|m| m.len()).unwrap_or(0);
+                        entries.push((project_name.clone(), name, size));
+                    }
+                }
+            }
+        }
+    }
+
+    if entries.is_empty() {
+        println!("No ingests found");
+        return;
+    }
+
+    entries.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1))); // project asc, file desc (newest first)
+
+    let mut current_project = String::new();
+    for (project, file, size) in &entries {
+        if *project != current_project {
+            println!("{}:", project);
+            current_project = project.clone();
+        }
+        let tokens = (*size as f64 / BYTES_PER_TOKEN) as usize;
+        println!("  {} ({}, {} tokens)", file, format_bytes(*size as usize), format_tokens(tokens));
+    }
+}
+
+/// Get the base ingest storage directory: ~/.trs/ingest/
+fn ingest_store_dir() -> Option<PathBuf> {
+    let home = std::env::var("HOME").ok()?;
+    Some(PathBuf::from(home).join(".trs").join("ingest"))
+}
+
+/// Save digest to ~/.trs/ingest/<project>/<timestamp>.md
+fn save_to_store(content: &str, config: &IngestConfig) -> Option<String> {
+    let base = ingest_store_dir()?;
+    let project_name = config
+        .root
+        .canonicalize()
+        .ok()?
+        .file_name()?
+        .to_string_lossy()
+        .to_string();
+
+    let project_dir = base.join(&project_name);
+    std::fs::create_dir_all(&project_dir).ok()?;
+
+    // Filename: YYYYMMDD-HHMMSS[-changed][-aggressive].md
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_secs();
+
+    // Format timestamp as YYYYMMDD-HHMMSS using basic math (no chrono dependency)
+    let secs_per_day = 86400u64;
+    let days_since_epoch = ts / secs_per_day;
+    let time_of_day = ts % secs_per_day;
+    let hours = time_of_day / 3600;
+    let minutes = (time_of_day % 3600) / 60;
+    let seconds = time_of_day % 60;
+
+    // Simple date from days (good enough for filenames)
+    let (year, month, day) = days_to_date(days_since_epoch);
+
+    let mut filename = format!("{:04}{:02}{:02}-{:02}{:02}{:02}", year, month, day, hours, minutes, seconds);
+    if config.changed_only {
+        filename.push_str("-changed");
+    }
+    if config.level == IngestLevel::Aggressive {
+        filename.push_str("-signatures");
+    } else if config.level == IngestLevel::Minimal {
+        filename.push_str("-minimal");
+    }
+    filename.push_str(".md");
+
+    let filepath = project_dir.join(&filename);
+    std::fs::write(&filepath, content).ok()?;
+
+    Some(filepath.to_string_lossy().to_string())
+}
+
+/// Convert days since Unix epoch to (year, month, day).
+fn days_to_date(days: u64) -> (u64, u64, u64) {
+    // Algorithm from https://howardhinnant.github.io/date_algorithms.html
+    let z = days + 719468;
+    let era = z / 146097;
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    (y, m, d)
 }
 
 /// Collect all eligible files from the project.
@@ -187,8 +326,12 @@ fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
             }
         }
 
-        // Skip .git directory contents
-        if path.components().any(|c| c.as_os_str() == ".git") {
+        // Skip known generated/vendor directories
+        if path.components().any(|c| {
+            SKIP_DIRS
+                .iter()
+                .any(|d| c.as_os_str().to_str().map_or(false, |s| s == *d))
+        }) {
             continue;
         }
 
@@ -243,8 +386,19 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
 
     let lang = detect_language(&path.to_path_buf());
 
-    // Data files: never compress
+    // Data files: truncate if large (JSON fixtures, match data, etc.)
     if lang == Language::Data {
+        if content.len() > MAX_DATA_FILE_SIZE {
+            let truncated = &content[..MAX_DATA_FILE_SIZE.min(content.len())];
+            // Cut at last newline to avoid broken JSON
+            let cut_at = truncated.rfind('\n').unwrap_or(MAX_DATA_FILE_SIZE);
+            return Some(format!(
+                "{}\n... [truncated: {} total, showing first {}]",
+                &content[..cut_at],
+                format_bytes_static(content.len()),
+                format_bytes_static(cut_at)
+            ));
+        }
         return Some(content);
     }
 
@@ -423,9 +577,10 @@ fn build_digest(
 
         let changed_marker = if file.is_changed { " (changed)" } else { "" };
 
+        // Use <!-- file: path --> comment to avoid header conflicts with file content
         out.push_str(&format!(
-            "### {}{}\n\n```{}\n{}\n```\n\n",
-            file.rel_path, changed_marker, ext, file.content
+            "<!-- file: {} -->\n### `{}`{}\n\n```{}\n{}\n```\n\n",
+            file.rel_path, file.rel_path, changed_marker, ext, file.content.trim_end()
         ));
     }
 
@@ -553,6 +708,10 @@ fn format_bytes(n: usize) -> String {
     } else {
         format!("{:.1}MB", n as f64 / (1024.0 * 1024.0))
     }
+}
+
+fn format_bytes_static(n: usize) -> String {
+    format_bytes(n)
 }
 
 fn format_tokens(n: usize) -> String {

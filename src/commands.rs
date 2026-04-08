@@ -100,6 +100,10 @@ pub enum Commands {
         #[arg(default_value = ".")]
         path: String,
 
+        /// List saved digests instead of generating
+        #[arg(long)]
+        list: bool,
+
         /// Compression level: full, minimal, aggressive
         #[arg(short, long, default_value = "full")]
         level: String,

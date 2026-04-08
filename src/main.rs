@@ -147,6 +147,7 @@ fn main() {
         }
         Some(Commands::Ingest {
             path,
+            list,
             level,
             budget,
             changed,
@@ -155,18 +156,22 @@ fn main() {
             output,
             ollama,
         }) => {
-            let budget_tokens = budget.as_ref().map(|b| parse_token_budget(b));
-            let config = ingest::IngestConfig {
-                root: std::path::PathBuf::from(path),
-                level: ingest::IngestLevel::from_str(level),
-                budget_tokens,
-                changed_only: *changed,
-                since: since.clone(),
-                exclude: exclude.clone(),
-                output_file: output.as_ref().map(std::path::PathBuf::from),
-                ollama_model: ollama.clone(),
-            };
-            ingest::run_ingest(&config);
+            if *list {
+                ingest::list_ingests();
+            } else {
+                let budget_tokens = budget.as_ref().map(|b| parse_token_budget(b));
+                let config = ingest::IngestConfig {
+                    root: std::path::PathBuf::from(path),
+                    level: ingest::IngestLevel::from_str(level),
+                    budget_tokens,
+                    changed_only: *changed,
+                    since: since.clone(),
+                    exclude: exclude.clone(),
+                    output_file: output.as_ref().map(std::path::PathBuf::from),
+                    ollama_model: ollama.clone(),
+                };
+                ingest::run_ingest(&config);
+            }
         }
         Some(Commands::Stats {
             history,
