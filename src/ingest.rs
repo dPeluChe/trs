@@ -227,7 +227,7 @@ pub fn run_ingest(config: &IngestConfig) {
 
     // Apply budget if specified
     if let Some(budget) = config.budget_tokens {
-        apply_budget(&mut files, budget, config.level);
+        apply_budget(&mut files, budget, config.level, &config.root);
     }
 
     // Build output
@@ -614,6 +614,7 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
     }
 
     // Never compress key documentation files — LLMs need these in full
+    // But strip HTML tags (badges, images, formatting) — pure token waste
     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
         let lower = name.to_lowercase();
         if lower == "readme.md"
@@ -622,7 +623,7 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
             || lower == "contributing.md"
             || lower == "changelog.md"
         {
-            return Some(content);
+            return Some(strip_html_from_markdown(&content));
         }
     }
 
@@ -700,7 +701,7 @@ fn get_changed_files(root: &Path, since: Option<&str>) -> Option<Vec<String>> {
 }
 
 /// Apply token budget: prioritize changed files, truncate or drop large files.
-fn apply_budget(files: &mut Vec<DigestFile>, budget: usize, level: IngestLevel) {
+fn apply_budget(files: &mut Vec<DigestFile>, budget: usize, level: IngestLevel, root: &Path) {
     let total_tokens: usize = files.iter().map(|f| f.tokens).sum();
 
     if total_tokens <= budget {
@@ -711,8 +712,8 @@ fn apply_budget(files: &mut Vec<DigestFile>, budget: usize, level: IngestLevel) 
     if level != IngestLevel::Aggressive {
         for file in files.iter_mut() {
             if file.tokens > 500 && !file.is_changed {
-                // Re-read with aggressive compression
-                let path = PathBuf::from(&file.rel_path);
+                // Re-read with ABSOLUTE path from project root
+                let path = root.join(&file.rel_path);
                 if let Some(compressed) = read_and_compress(&path, IngestLevel::Aggressive) {
                     file.content = compressed;
                     file.tokens = (file.content.len() as f64 / BYTES_PER_TOKEN) as usize;
@@ -1076,6 +1077,49 @@ fn format_bytes(n: usize) -> String {
     } else {
         format!("{:.1}MB", n as f64 / (1024.0 * 1024.0))
     }
+}
+
+/// Strip HTML tags from markdown content (badges, images, formatting).
+/// Preserves markdown content, removes <p>, <a>, <img>, etc.
+fn strip_html_from_markdown(content: &str) -> String {
+    let mut result = String::with_capacity(content.len());
+    let mut prev_blank = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Skip lines that are pure HTML (start with < and end with > or are self-closing)
+        if trimmed.starts_with('<') && (trimmed.ends_with('>') || trimmed.ends_with("/>")) {
+            // Keep HTML comments (<!-- -->)
+            if trimmed.starts_with("<!--") {
+                result.push_str(line);
+                result.push('\n');
+                prev_blank = false;
+            }
+            // Skip everything else (badges, images, alignment tags)
+            continue;
+        }
+
+        // Skip img tags inline
+        if trimmed.contains("<img ") && trimmed.contains("src=") {
+            continue;
+        }
+
+        // Collapse consecutive blank lines
+        if trimmed.is_empty() {
+            if !prev_blank {
+                result.push('\n');
+            }
+            prev_blank = true;
+            continue;
+        }
+
+        prev_blank = false;
+        result.push_str(line);
+        result.push('\n');
+    }
+
+    result
 }
 
 /// Extract a file's content from the digest by filename.
