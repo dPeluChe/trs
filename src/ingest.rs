@@ -1035,7 +1035,7 @@ fn summarize_config(content: &str) -> String {
     format!("{} lines", lines.len())
 }
 
-/// Build compact inline tree: dir/ file1 file2 file3
+/// Build readable tree: directories separated, files wrapped at ~70 chars.
 fn build_tree(files: &[DigestFile]) -> String {
     let mut dirs: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
@@ -1049,11 +1049,28 @@ fn build_tree(files: &[DigestFile]) -> String {
 
     let mut tree = String::new();
     for (dir, filenames) in &dirs {
+        // Directory header
         if dir.is_empty() {
-            tree.push_str(&format!("{}\n", filenames.join(" | ")));
+            tree.push_str("/\n");
         } else {
-            tree.push_str(&format!("{}/  {}\n", dir, filenames.join(" ")));
+            tree.push_str(&format!("{}/\n", dir));
         }
+        // Wrap filenames at ~70 chars with indent
+        let mut line = String::from("  ");
+        for name in filenames {
+            if line.len() + name.len() + 2 > 72 && line.len() > 2 {
+                tree.push_str(&line);
+                tree.push('\n');
+                line = String::from("  ");
+            }
+            line.push_str(name);
+            line.push_str("  ");
+        }
+        if line.len() > 2 {
+            tree.push_str(line.trim_end());
+            tree.push('\n');
+        }
+        tree.push('\n');
     }
     tree
 }
