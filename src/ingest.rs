@@ -243,7 +243,7 @@ pub fn run_ingest(config: &IngestConfig) {
         output
     };
 
-    // Always save to ~/.trs/ingest/<project>/<timestamp>.md
+    // Save to ~/.trs/ingest/<repo-name>.md (single file per project, overwrites)
     let saved_path = save_to_store(&final_output, config);
 
     // Also write to explicit output file if requested
@@ -284,44 +284,44 @@ pub fn list_ingests() {
         return;
     }
 
-    let mut entries: Vec<(String, String, u64)> = Vec::new(); // (project, file, size)
+    let mut entries: Vec<(String, u64, String)> = Vec::new(); // (name, size, modified)
 
-    if let Ok(projects) = std::fs::read_dir(&base) {
-        for project in projects.flatten() {
-            if !project.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                continue;
-            }
-            let project_name = project.file_name().to_string_lossy().to_string();
-            if let Ok(files) = std::fs::read_dir(project.path()) {
-                for file in files.flatten() {
-                    let name = file.file_name().to_string_lossy().to_string();
-                    if name.ends_with(".md") {
-                        let size = file.metadata().map(|m| m.len()).unwrap_or(0);
-                        entries.push((project_name.clone(), name, size));
-                    }
-                }
+    if let Ok(files) = std::fs::read_dir(&base) {
+        for file in files.flatten() {
+            let name = file.file_name().to_string_lossy().to_string();
+            if name.ends_with(".md") {
+                let size = file.metadata().map(|m| m.len()).unwrap_or(0);
+                let modified = file.metadata().ok()
+                    .and_then(|m| m.modified().ok())
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|d| {
+                        let secs = d.as_secs();
+                        let (y, m, day) = days_to_date(secs / 86400);
+                        let h = (secs % 86400) / 3600;
+                        let min = (secs % 3600) / 60;
+                        format!("{:04}-{:02}-{:02} {:02}:{:02}", y, m, day, h, min)
+                    })
+                    .unwrap_or_default();
+                entries.push((name, size, modified));
             }
         }
     }
 
     if entries.is_empty() {
         println!("No ingests found");
+        println!("  run: trs ingest [path]");
         return;
     }
 
-    entries.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1))); // project asc, file desc (newest first)
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
 
-    let mut current_project = String::new();
-    for (project, file, size) in &entries {
-        if *project != current_project {
-            println!("{}:", project);
-            current_project = project.clone();
-        }
-        let tokens = (*size as f64 / BYTES_PER_TOKEN) as usize;
-        println!("  {} ({}, {} tokens)", file, format_bytes(*size as usize), format_tokens(tokens));
-    }
+    println!("Saved digests ({}):", base.display());
     println!();
-    println!("storage: {}", base.display());
+    for (name, size, modified) in &entries {
+        let tokens = (*size as f64 / BYTES_PER_TOKEN) as usize;
+        let display_name = name.strip_suffix(".md").unwrap_or(name);
+        println!("  {}  ({}, {} tokens, {})", display_name, format_bytes(*size as usize), format_tokens(tokens), modified);
+    }
 }
 
 /// Get the base ingest storage directory: ~/.trs/ingest/
@@ -330,51 +330,50 @@ fn ingest_store_dir() -> Option<PathBuf> {
     Some(PathBuf::from(home).join(".trs").join("ingest"))
 }
 
-/// Save digest to ~/.trs/ingest/<project>/<timestamp>.md
+/// Get the repo name from git remote origin URL, or fallback to folder name.
+/// Examples: "git@github.com:user/my-repo.git" -> "my-repo"
+///           "https://github.com/user/my-repo.git" -> "my-repo"
+fn get_repo_name(root: &Path) -> String {
+    // Try git remote
+    let remote = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(root)
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+
+    if let Some(url) = remote {
+        // Parse: "git@github.com:user/repo.git" or "https://github.com/.../repo.git"
+        let name = url
+            .rsplit('/')
+            .next()
+            .or_else(|| url.rsplit(':').next())
+            .unwrap_or(&url)
+            .trim_end_matches(".git")
+            .to_string();
+        if !name.is_empty() {
+            return name;
+        }
+    }
+
+    // Fallback to folder name
+    root.canonicalize()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+        .unwrap_or_else(|| "project".to_string())
+}
+
+/// Save digest to ~/.trs/ingest/<repo-name>.md (single file, overwrites)
 fn save_to_store(content: &str, config: &IngestConfig) -> Option<String> {
     let base = ingest_store_dir()?;
-    let project_name = config
-        .root
-        .canonicalize()
-        .ok()?
-        .file_name()?
-        .to_string_lossy()
-        .to_string();
+    std::fs::create_dir_all(&base).ok()?;
 
-    let project_dir = base.join(&project_name);
-    std::fs::create_dir_all(&project_dir).ok()?;
+    let repo_name = get_repo_name(&config.root);
+    let filename = format!("{}.md", repo_name);
+    let filepath = base.join(&filename);
 
-    // Filename: YYYYMMDD-HHMMSS[-changed][-aggressive].md
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()?
-        .as_secs();
-
-    // Format timestamp as YYYYMMDD-HHMMSS using basic math (no chrono dependency)
-    let secs_per_day = 86400u64;
-    let days_since_epoch = ts / secs_per_day;
-    let time_of_day = ts % secs_per_day;
-    let hours = time_of_day / 3600;
-    let minutes = (time_of_day % 3600) / 60;
-    let seconds = time_of_day % 60;
-
-    // Simple date from days (good enough for filenames)
-    let (year, month, day) = days_to_date(days_since_epoch);
-
-    let mut filename = format!("{:04}{:02}{:02}-{:02}{:02}{:02}", year, month, day, hours, minutes, seconds);
-    if config.changed_only {
-        filename.push_str("-changed");
-    }
-    if config.level == IngestLevel::Aggressive {
-        filename.push_str("-signatures");
-    } else if config.level == IngestLevel::Minimal {
-        filename.push_str("-minimal");
-    }
-    filename.push_str(".md");
-
-    let filepath = project_dir.join(&filename);
     std::fs::write(&filepath, content).ok()?;
-
     Some(filepath.to_string_lossy().to_string())
 }
 
@@ -471,8 +470,17 @@ fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
         });
     }
 
-    // Sort: changed files first, then by path
-    files.sort_by(|a, b| b.is_changed.cmp(&a.is_changed).then(a.rel_path.cmp(&b.rel_path)));
+    // Sort: README first, then changed files, then by path
+    let is_readme = |p: &str| {
+        let lower = p.to_lowercase();
+        lower == "readme.md" || lower == "readme" || lower == "readme.txt"
+    };
+    files.sort_by(|a, b| {
+        is_readme(&b.rel_path)
+            .cmp(&is_readme(&a.rel_path))
+            .then(b.is_changed.cmp(&a.is_changed))
+            .then(a.rel_path.cmp(&b.rel_path))
+    });
     files
 }
 
@@ -483,6 +491,19 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
     // Skip binary-looking files
     if content.chars().take(512).any(|c| c == '\0') {
         return None;
+    }
+
+    // Never compress key documentation files — LLMs need these in full
+    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+        let lower = name.to_lowercase();
+        if lower == "readme.md"
+            || lower == "claude.md"
+            || lower == "agents.md"
+            || lower == "contributing.md"
+            || lower == "changelog.md"
+        {
+            return Some(content);
+        }
     }
 
     let lang = detect_language(&path.to_path_buf());
@@ -839,14 +860,32 @@ fn ollama_format(digest: &str, model: &str) -> Option<String> {
         return None;
     }
 
+    // Extract README from digest if present (for better Ollama context)
+    let readme_content = extract_section(digest, "README.md")
+        .or_else(|| extract_section(digest, "readme.md"))
+        .unwrap_or_default();
+
     // Truncate digest to fit model context (conservative 24k chars)
     let max_chars = 24_000;
     let input = if digest.len() > max_chars {
-        eprintln!("trs ingest: digest too large for Ollama, truncating to {}...", format_bytes(max_chars));
-        &digest[..max_chars]
+        eprintln!("trs ingest: digest truncated to {} for Ollama context", format_bytes(max_chars));
+        // Put README first, then as much of the rest as fits
+        let readme_section = if !readme_content.is_empty() {
+            format!("## README.md\n\n{}\n\n---\n\n", readme_content)
+        } else {
+            String::new()
+        };
+        let remaining = max_chars.saturating_sub(readme_section.len());
+        let mut combined = readme_section;
+        // Find safe char boundary
+        let mut cut = remaining.min(digest.len());
+        while cut > 0 && !digest.is_char_boundary(cut) { cut -= 1; }
+        combined.push_str(&digest[..cut]);
+        combined
     } else {
-        digest
+        digest.to_string()
     };
+    let input = &input;
 
     eprintln!("trs ingest: generating summary with {} ({})...", model, format_bytes(input.len()));
 
@@ -917,6 +956,18 @@ fn format_bytes(n: usize) -> String {
     } else {
         format!("{:.1}MB", n as f64 / (1024.0 * 1024.0))
     }
+}
+
+/// Extract a file's content from the digest by filename.
+fn extract_section(digest: &str, filename: &str) -> Option<String> {
+    let marker = format!("<!-- file: {} -->", filename);
+    let start = digest.find(&marker)?;
+    // Find the code block after the marker
+    let after_marker = &digest[start..];
+    let code_start = after_marker.find("```")? + 3;
+    let code_content_start = after_marker[code_start..].find('\n')? + code_start + 1;
+    let code_end = after_marker[code_content_start..].find("```")? + code_content_start;
+    Some(after_marker[code_content_start..code_end].to_string())
 }
 
 fn format_bytes_static(n: usize) -> String {
