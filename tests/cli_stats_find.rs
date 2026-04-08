@@ -243,8 +243,8 @@ fn test_parse_find_permission_denied() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("Permission denied"))
-        .stdout(predicate::str::contains("main.rs"))
-        .stdout(predicate::str::contains("lib.rs"));
+        .stdout(predicate::str::contains("main"))
+        .stdout(predicate::str::contains("lib"));
 }
 
 #[test]
@@ -291,7 +291,7 @@ fn test_parse_find_no_such_file() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("No such file or directory"))
-        .stdout(predicate::str::contains("exists.txt"));
+        .stdout(predicate::str::contains("exists"));
 }
 
 #[test]
@@ -308,8 +308,8 @@ fn test_parse_find_cannot_open_directory() {
         .success()
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("cannot open directory"))
-        .stdout(predicate::str::contains("file.rs"))
-        .stdout(predicate::str::contains("another.rs"));
+        .stdout(predicate::str::contains("file"))
+        .stdout(predicate::str::contains("another"));
 }
 
 #[test]
@@ -327,7 +327,7 @@ fn test_parse_find_multiple_errors() {
         .stdout(predicate::str::contains("error:"))
         .stdout(predicate::str::contains("/root"))
         .stdout(predicate::str::contains("/var"))
-        .stdout(predicate::str::contains("file.txt"));
+        .stdout(predicate::str::contains("file"));
 }
 
 // ============================================================

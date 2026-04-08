@@ -192,7 +192,7 @@ impl ParseHandler {
             return output;
         }
 
-        // Group by parent directory for tree-like output
+        // Group by parent directory
         let mut groups: std::collections::BTreeMap<String, Vec<String>> =
             std::collections::BTreeMap::new();
         for entry in &find_output.entries {
@@ -208,16 +208,44 @@ impl ParseHandler {
             groups.entry(parent).or_default().push(name);
         }
 
+        // Find common prefix to strip (e.g. "src/" when all paths start with "src/")
+        let prefix = if groups.len() > 1 {
+            let dirs: Vec<&str> = groups.keys().map(|s| s.as_str()).collect();
+            common_path_prefix(&dirs)
+        } else {
+            String::new()
+        };
+
+        // Detect single extension (e.g. all .rs) to strip from filenames
+        let single_ext = if find_output.extensions.len() == 1 {
+            find_output.extensions.keys().next().cloned()
+        } else {
+            None
+        };
+
+        // Inline format: dir/ file1 file2 file3 ...
         for (dir, files) in &groups {
-            if dir.is_empty() {
-                for f in files {
-                    output.push_str(&format!("{}\n", f));
-                }
+            let display_dir = if prefix.is_empty() {
+                dir.clone()
             } else {
-                output.push_str(&format!("{}/\n", dir));
-                for f in files {
-                    output.push_str(&format!("  {}\n", f));
-                }
+                dir.strip_prefix(&prefix).unwrap_or(dir).to_string()
+            };
+
+            // Strip common extension if all files share it
+            let display_files: Vec<String> = if let Some(ref ext) = single_ext {
+                let suffix = format!(".{}", ext);
+                files
+                    .iter()
+                    .map(|f| f.strip_suffix(&suffix).unwrap_or(f).to_string())
+                    .collect()
+            } else {
+                files.clone()
+            };
+
+            if display_dir.is_empty() {
+                output.push_str(&format!("./ {}\n", display_files.join(" ")));
+            } else {
+                output.push_str(&format!("{}/ {}\n", display_dir, display_files.join(" ")));
             }
         }
 
@@ -258,4 +286,38 @@ impl ParseHandler {
 
         output
     }
+}
+
+/// Find the common directory prefix among a list of paths.
+/// Handles cases like ["src", "src/formatter", "src/router"] -> "src/"
+fn common_path_prefix(paths: &[&str]) -> String {
+    if paths.is_empty() {
+        return String::new();
+    }
+    // Normalize: ensure all paths end with / for comparison
+    let normalized: Vec<String> = paths
+        .iter()
+        .map(|p| {
+            if p.contains('/') {
+                p.to_string()
+            } else {
+                format!("{}/", p)
+            }
+        })
+        .collect();
+    let refs: Vec<&str> = normalized.iter().map(|s| s.as_str()).collect();
+
+    let first = &refs[0];
+    let mut prefix_end = 0;
+    for (i, ch) in first.char_indices() {
+        if ch == '/' {
+            let candidate = &first[..=i];
+            if refs.iter().all(|p| p.starts_with(candidate)) {
+                prefix_end = i + 1;
+            } else {
+                break;
+            }
+        }
+    }
+    first[..prefix_end].to_string()
 }
