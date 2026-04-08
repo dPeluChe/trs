@@ -364,7 +364,7 @@ index 1234567..abcdefg 100644
         .write_stdin(diff_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("file summary"))
+        .stdout(predicate::str::contains("files ("))
         .stdout(predicate::str::contains("main.rs"))
         .stdout(predicate::str::contains("+2"));
 }

@@ -124,9 +124,6 @@ impl ParseHandler {
             return output;
         }
 
-        // Always show file summary header first
-        output.push_str(&Self::build_file_summary(diff));
-
         // Estimate total change lines (only +/- lines, not context)
         let total_change_lines: usize = diff
             .files
@@ -134,19 +131,42 @@ impl ParseHandler {
             .map(|f| f.additions + f.deletions)
             .sum();
 
-        // For very large diffs (>500 change lines), summary is enough
+        // For very large diffs (>500 change lines), show summary only
         if total_change_lines > 500 {
-            return output;
+            return Self::build_file_summary(diff);
         }
 
-        // Show compressed hunks: keep +/- lines, compress context
-        output.push('\n');
-        for file in &diff.files {
-            if file.hunks.is_empty() {
-                continue;
-            }
-            output.push_str(&format!("--- {}\n", file.path));
+        // Show each file with inline stats + compressed hunks
+        output.push_str(&format!(
+            "{} files (+{} -{})\n",
+            diff.files.len(),
+            diff.total_additions,
+            diff.total_deletions
+        ));
 
+        for file in &diff.files {
+            let indicator = match file.change_type.as_str() {
+                "A" => "+",
+                "D" => "-",
+                "R" => "R",
+                "C" => "C",
+                _ => "M",
+            };
+
+            // File header with inline stats
+            if let Some(ref new_path) = file.new_path {
+                output.push_str(&format!(
+                    "\n{} {} -> {} (+{}/-{})\n",
+                    indicator, new_path, file.path, file.additions, file.deletions
+                ));
+            } else {
+                output.push_str(&format!(
+                    "\n{} {} (+{}/-{})\n",
+                    indicator, file.path, file.additions, file.deletions
+                ));
+            }
+
+            // Compressed hunks right after the file header
             for hunk in &file.hunks {
                 let compressed = Self::format_hunk_compressed(hunk);
                 for line in &compressed {
@@ -157,7 +177,7 @@ impl ParseHandler {
 
         if diff.is_truncated {
             let hidden = diff.total_files.saturating_sub(diff.files_shown);
-            output.push_str(&format!("  ... {} more file(s) not shown\n", hidden));
+            output.push_str(&format!("\n... {} more file(s) not shown\n", hidden));
         }
 
         output
