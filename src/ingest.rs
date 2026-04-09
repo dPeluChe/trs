@@ -930,7 +930,7 @@ fn apply_budget(files: &mut Vec<DigestFile>, budget: usize, level: IngestLevel, 
     }
 }
 
-/// Build the final markdown digest.
+/// Build the final markdown digest — directory-driven, no hardcoded categories.
 fn build_digest(
     files: &[DigestFile],
     config: &IngestConfig,
@@ -947,128 +947,80 @@ fn build_digest(
         .and_then(|n| n.to_str())
         .unwrap_or("project");
 
-    // Header: one compact line
     out.push_str(&format!("# {} ({} files, {} tokens)\n\n", project_name, total_files, format_tokens(total_tokens)));
 
-    // Structure: inline tree grouped by directory
+    // Structure
     out.push_str("## Structure\n\n");
     out.push_str(&build_tree(files));
     out.push('\n');
 
-    // Group files by role for the content section
-    let mut docs: Vec<&DigestFile> = Vec::new();
-    let mut api: Vec<&DigestFile> = Vec::new();
-    let mut pages: Vec<&DigestFile> = Vec::new();
-    let mut data: Vec<&DigestFile> = Vec::new();
-    let mut config_files: Vec<&DigestFile> = Vec::new();
-    let mut other: Vec<&DigestFile> = Vec::new();
-
+    // Group files by parent directory
+    let mut groups: BTreeMap<String, Vec<&DigestFile>> = BTreeMap::new();
     for file in files {
-        if file.rel_path.is_empty() {
-            continue;
-        }
-        let lower = file.rel_path.to_lowercase();
-        let ext = Path::new(&file.rel_path)
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
-
-        if lower.ends_with("readme.md") || lower.ends_with("claude.md")
-            || lower.ends_with("agents.md") || lower.contains("todo")
-            || lower.ends_with("contributing.md") || lower.ends_with("changelog.md") {
-            docs.push(file);
-        } else if lower.contains("convex/") || lower.contains("api/")
-            || lower.contains("server/") || lower.contains("backend/")
-            || lower.contains("routes/") {
-            api.push(file);
-        } else if lower.contains("pages/") || lower.contains("views/")
-            || lower.contains("screens/") || lower.contains("components/") {
-            pages.push(file);
-        } else if ext == "json" || ext == "yaml" || ext == "yml" || ext == "csv"
-            || lower.contains("data/") || lower.contains("fixtures/") {
-            data.push(file);
-        } else if lower.contains("config") || lower.ends_with(".toml")
-            || lower.ends_with(".env") || lower.ends_with(".env.example")
-            || lower.ends_with(".env.local.example") || lower == ".gitignore"
-            || lower == "tsconfig.json" || lower == "tsconfig.app.json"
-            || lower == "tsconfig.node.json" || lower.ends_with("vite.config.ts") {
-            config_files.push(file);
-        } else {
-            other.push(file);
-        }
+        if file.rel_path.is_empty() { continue; }
+        let dir = Path::new(&file.rel_path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        groups.entry(dir).or_default().push(file);
     }
 
-    // Docs section — full content (already HTML-stripped)
-    if !docs.is_empty() {
-        for file in &docs {
-            out.push_str(&format!("## {}\n\n{}\n\n", file.rel_path, file.content.trim()));
-        }
-    }
-
-    // API section — signatures only, compact
-    if !api.is_empty() {
-        out.push_str("## API\n\n");
-        for file in &api {
+    // Root docs first (README, CLAUDE, AGENTS etc.) — full content
+    if let Some(root_files) = groups.remove("") {
+        for file in &root_files {
+            let ext = Path::new(&file.rel_path).extension()
+                .and_then(|e| e.to_str()).unwrap_or("");
             let content = file.content.trim();
-            if content == "(same as AGENTS.md)" || content == "(same as README.md)" || content.is_empty() {
-                continue;
-            }
-            out.push_str(&format!("**{}**\n{}\n\n", file.rel_path, content));
-        }
-    }
+            if content.is_empty() { continue; }
 
-    // Pages/Components — just names and key info
-    if !pages.is_empty() {
-        out.push_str("## Pages & Components\n\n");
-        for file in &pages {
-            let content = file.content.trim();
-            if content.is_empty() {
-                out.push_str(&format!("**{}**\n\n", file.rel_path));
+            if ext == "md" {
+                // Docs: full content with header, truncate if huge
+                out.push_str(&format!("## {}\n\n", file.rel_path));
+                if content.lines().count() > 80 {
+                    let preview: String = content.lines().take(60).collect::<Vec<_>>().join("\n");
+                    out.push_str(&preview);
+                    out.push_str(&format!("\n... ({} lines total)\n\n", content.lines().count()));
+                } else {
+                    out.push_str(content);
+                    out.push_str("\n\n");
+                }
             } else {
-                out.push_str(&format!("**{}**\n{}\n\n", file.rel_path, content));
+                // Config/other root files: compact
+                format_file_entry(&mut out, &file.rel_path, content);
             }
         }
     }
 
-    // Data — schema summaries
-    if !data.is_empty() {
-        out.push_str("## Data\n\n");
-        for file in &data {
-            out.push_str(&format!("**{}**\n{}\n\n", file.rel_path, file.content.trim()));
-        }
-    }
+    // Each directory as its own section
+    for (dir, dir_files) in &groups {
+        let dir_display = if dir.is_empty() { "/" } else { dir.as_str() };
+        out.push_str(&format!("## {}/\n\n", dir_display));
 
-    // Config — compact, only if meaningful
-    if !config_files.is_empty() {
-        out.push_str("## Config\n\n");
-        for file in &config_files {
+        for file in dir_files {
             let content = file.content.trim();
-            // Skip very small or empty configs
-            if content.len() < 10 {
-                continue;
-            }
-            out.push_str(&format!("**{}**: {}\n", file.rel_path, summarize_config(content)));
-        }
-        out.push('\n');
-    }
+            if content.is_empty() { continue; }
 
-    // Other files
-    if !other.is_empty() {
-        out.push_str("## Other\n\n");
-        for file in &other {
-            let content = file.content.trim();
-            if content.is_empty() || content.len() < 10 {
-                continue;
-            }
-            if content.starts_with("(same as") {
-                out.push_str(&format!("**{}**: {}\n", file.rel_path, content));
+            let ext = Path::new(&file.rel_path).extension()
+                .and_then(|e| e.to_str()).unwrap_or("");
+            let name = Path::new(&file.rel_path).file_name()
+                .and_then(|n| n.to_str()).unwrap_or(&file.rel_path);
+
+            if ext == "md" {
+                // Docs in subdirs: truncate long ones
+                let line_count = content.lines().count();
+                if line_count > 30 {
+                    let preview: String = content.lines().take(20).collect::<Vec<_>>().join("\n");
+                    out.push_str(&format!("**{}**\n{}\n... ({} lines)\n\n", name, preview, line_count));
+                } else {
+                    out.push_str(&format!("**{}**\n{}\n\n", name, content));
+                }
             } else {
-                out.push_str(&format!("**{}**\n{}\n\n", file.rel_path, content));
+                // Code/data/config: inline summary
+                format_file_entry(&mut out, name, content);
             }
         }
     }
 
-    // Footer
     out.push_str(&format!(
         "---\n*trs ingest v{} | {}ms | {}*\n",
         env!("CARGO_PKG_VERSION"),
@@ -1079,16 +1031,49 @@ fn build_digest(
     out
 }
 
-/// Summarize a config file to one line.
-fn summarize_config(content: &str) -> String {
-    let lines: Vec<&str> = content.lines()
-        .map(|l| l.trim())
-        .filter(|l| !l.is_empty() && *l != "{" && *l != "}" && *l != "[" && *l != "]")
-        .collect();
-    if lines.len() <= 3 {
-        return lines.join(" | ");
+/// Format a single file entry — code as signatures, data as schema, config as summary.
+fn format_file_entry(out: &mut String, name: &str, content: &str) {
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Very short content: one-liner
+    if lines.len() <= 2 {
+        let oneliner = lines.join(" | ");
+        out.push_str(&format!("**{}**: {}\n", name, oneliner));
+        return;
     }
-    format!("{} lines", lines.len())
+
+    // Multi-line signatures (imports + exports)
+    let has_signatures = lines.iter().any(|l| {
+        l.starts_with("export ") || l.starts_with("import ") || l.starts_with("pub ")
+            || l.starts_with("fn ") || l.starts_with("def ") || l.starts_with("class ")
+            || l.starts_with("use ")
+    });
+
+    if has_signatures {
+        // Group: imports on first line, then signatures one per line
+        let imports: Vec<&&str> = lines.iter().filter(|l| l.starts_with("import ") || l.starts_with("use ") || l.starts_with("from ")).collect();
+        let sigs: Vec<&&str> = lines.iter().filter(|l| !l.starts_with("import ") && !l.starts_with("use ") && !l.starts_with("from ") && !l.is_empty()).collect();
+
+        out.push_str(&format!("**{}**:", name));
+        if !sigs.is_empty() {
+            out.push_str(&format!(" {}\n", sigs.iter().map(|s| **s).collect::<Vec<_>>().join(", ")));
+        } else {
+            out.push('\n');
+        }
+    } else {
+        // Data or config: show as-is but compact
+        if lines.len() > 10 {
+            out.push_str(&format!("**{}**\n", name));
+            for line in lines.iter().take(8) {
+                out.push_str(line);
+                out.push('\n');
+            }
+            out.push_str(&format!("... ({} lines)\n", lines.len()));
+        } else {
+            out.push_str(&format!("**{}**\n{}\n", name, content));
+        }
+    }
+    out.push('\n');
 }
 
 /// Build readable tree: directories separated, files wrapped at ~70 chars.
