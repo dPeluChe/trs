@@ -40,13 +40,15 @@ const SKIP_FILES: &[&str] = &[
     ".DS_Store", "Thumbs.db",
 ];
 
-/// Directories to always skip (generated/vendor content).
+/// Directories to always skip (generated/vendor/historical content).
 const SKIP_DIRS: &[&str] = &[
     ".git", "node_modules", ".next", "__pycache__", ".pytest_cache",
     "dist", "build", "target", ".build", "DerivedData",
     "_generated", ".ruff_cache", ".mypy_cache", "coverage",
     ".turbo", ".nuxt", ".output", ".svelte-kit",
     "vendor", "venv", ".venv", "env",
+    "archived", "archive", "old", "legacy", "deprecated",
+    "TASK_COMPLETED",
 ];
 
 /// Max file size to include (64 KB — large files are usually data, not code).
@@ -1017,12 +1019,17 @@ fn build_digest(
             if content.is_empty() { continue; }
 
             if ext == "md" {
-                // Docs: full content with header, truncate if huge
+                let line_count = content.lines().count();
+                let is_readme = file.rel_path.to_lowercase().contains("readme");
+                // README: top ~40 lines (what it does, stack, features)
+                // Other docs: top ~60 lines
+                let max_lines = if is_readme { 40 } else { 60 };
+
                 out.push_str(&format!("## {}\n\n", file.rel_path));
-                if content.lines().count() > 80 {
-                    let preview: String = content.lines().take(60).collect::<Vec<_>>().join("\n");
+                if line_count > max_lines + 10 {
+                    let preview: String = content.lines().take(max_lines).collect::<Vec<_>>().join("\n");
                     out.push_str(&preview);
-                    out.push_str(&format!("\n... ({} lines total)\n\n", content.lines().count()));
+                    out.push_str(&format!("\n... ({} lines total)\n\n", line_count));
                 } else {
                     out.push_str(content);
                     out.push_str("\n\n");
