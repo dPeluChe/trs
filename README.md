@@ -224,6 +224,22 @@ Note: rtk silently replaces `find` with an internal walker (undocumented), which
 
 Run it yourself: `./scripts/benchmark.sh` or `./scripts/benchmark-real.sh [project-path]`
 
+### Ingest quality (vs repomix)
+
+`trs ingest` produces LLM-ready project digests. We benchmarked quality by sending both trs and [repomix](https://github.com/yamadashy/repomix) digests to Ollama (gemma4) and scoring what the model understood:
+
+| | trs ingest | repomix (truncated) | repomix (full) |
+|---|---|---|---|
+| Mundialito (React+Convex) | **19/20** | 7/20 | 1/20 |
+| Spark (Rust TUI) | 13/20 | **14/20** | 0/20 |
+| gstack (TS CLI) | **11/20** | **11/20** | n/a |
+| Input size | **16-58 KB** | 24 KB (truncated) | 665-813 KB |
+| Hallucinations | **0** | 0 | Yes ("Next.js", "JWT") |
+
+trs achieves equal or better quality with 50-113x fewer tokens. repomix full (raw concatenation) consistently causes models to hallucinate or produce generic responses.
+
+Tested on 9 repos: Rust, TypeScript, Python, React+Convex, Tauri, Go, docs/skills collections.
+
 ## Configuration
 
 Optional — trs works without config. For tuning:
@@ -276,6 +292,7 @@ This project wouldn't exist without the work of others in the token-reduction sp
 - [rtk](https://github.com/rtk-ai/rtk) — the project that sparked this one. Their approach to token reduction for AI agents showed me the problem was worth solving, and studying their Rust CLI architecture taught me a lot. We benchmark against rtk regularly to keep both projects honest and push each other forward.
 - [token-saver](https://github.com/nicobailey/token-saver) — a Python-based alternative with a different design philosophy (wrap.py pipeline). Comparing against it helped us understand the tradeoffs between native binaries and scripted approaches, especially around startup time.
 - [caveman](https://github.com/JuliusBrussee/caveman) — a complementary approach: instead of compressing terminal output, caveman reduces AI *response* tokens by making Claude speak concisely. Different layer, same goal (token efficiency). Their benchmark methodology and validation pipeline are well worth studying.
+- [repomix](https://github.com/yamadashy/repomix) — the most popular codebase-to-markdown tool (~22k stars). Studying it helped us design `trs ingest` with a different philosophy: intelligent extraction instead of raw concatenation. Their tree-sitter compression feature is worth exploring.
 - [claw-compactor](https://github.com/open-compress/claw-compactor) — compression patterns (LogCrunch, DiffCrunch, Ionizer) that influenced our log/diff/json handlers.
 - [tokf](https://github.com/mpecan/tokf) — TOML filter pipeline concept.
 
