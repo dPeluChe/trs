@@ -640,8 +640,9 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     let lower_name = name.to_lowercase();
 
-    // Skip: CSS, HTML, SVG, lock files, minified, type declarations
-    if matches!(ext.as_str(), "css" | "scss" | "less" | "svg" | "html" | "htm") {
+    // Skip: CSS, HTML, SVG, XML, plist, lock files, minified, type declarations
+    if matches!(ext.as_str(), "css" | "scss" | "less" | "svg" | "html" | "htm"
+        | "xml" | "plist" | "xib" | "storyboard") {
         return None;
     }
     if lower_name.ends_with(".lock") || lower_name.ends_with(".min.js")
@@ -771,9 +772,19 @@ fn extract_signatures(content: &str, ext: &str) -> String {
         if !is_class && seen_sigs.contains(&cleaned) { continue; }
         seen_sigs.insert(cleaned.clone());
 
-        // Add blank line before classes for visual grouping
-        if is_class && !result.is_empty() && !result.ends_with("\n\n") {
-            result.push('\n');
+        // Add blank line before a class only if the previous line was a method
+        // (not before consecutive class declarations with no methods)
+        if is_class && !result.is_empty() {
+            let last_line = result.lines().last().unwrap_or("");
+            let prev_is_method = !last_line.is_empty()
+                && !last_line.starts_with("class ")
+                && !last_line.starts_with("struct ")
+                && !last_line.starts_with("interface ")
+                && !last_line.starts_with("enum ")
+                && !last_line.starts_with("trait ");
+            if prev_is_method {
+                result.push('\n');
+            }
         }
 
         if cleaned.len() > 120 {
@@ -786,9 +797,9 @@ fn extract_signatures(content: &str, ext: &str) -> String {
     }
 
     if result.is_empty() {
-        let lines: Vec<&str> = content.lines().collect();
-        lines.iter().take(10).for_each(|l| { result.push_str(l); result.push('\n'); });
-        if lines.len() > 10 { result.push_str(&format!("... ({} lines)\n", lines.len())); }
+        // No recognizable signatures — just report size
+        let line_count = content.lines().count();
+        result.push_str(&format!("({} lines)\n", line_count));
     }
     result
 }
