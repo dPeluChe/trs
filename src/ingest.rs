@@ -725,29 +725,33 @@ fn summarize_json_value(val: &serde_json::Value, depth: usize) -> String {
 }
 
 /// Extract function/class signatures from source code — names without bodies.
+/// Deduplicates repeated functions, adds spacing before classes.
 fn extract_signatures(content: &str, ext: &str) -> String {
     let mut result = String::new();
+    let mut seen_sigs: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     for line in content.lines() {
         let t = line.trim();
-        // Keep imports
+
+        // Skip imports (agent can see these in package.json/Cargo.toml)
         if t.starts_with("import ") || t.starts_with("use ") || t.starts_with("from ") {
-            result.push_str(t);
-            result.push('\n');
             continue;
         }
-        // Keep signatures by language
+
+        let is_class = t.starts_with("class ") || t.starts_with("interface ")
+            || t.starts_with("struct ") || t.starts_with("enum ")
+            || t.starts_with("trait ") || t.starts_with("impl ")
+            || (t.starts_with("export ") && (t.contains("class ") || t.contains("interface ")));
+
         let keep = match ext {
             "ts" | "tsx" | "js" | "jsx" | "mjs" | "mts" | "vue" | "svelte" =>
-                t.starts_with("export ") || t.starts_with("function ") ||
-                t.starts_with("class ") || t.starts_with("interface ") ||
-                t.starts_with("type ") || t.starts_with("enum ") ||
+                t.starts_with("export ") || t.starts_with("function ") || is_class ||
+                t.starts_with("type ") ||
                 t.starts_with("const ") && (t.contains("= mutation(") || t.contains("= query(") ||
                     t.contains("= action(") || t.contains("= internalMutation(") ||
                     t.contains("=> {") || t.contains("= defineTable(")),
             "rs" =>
-                t.starts_with("pub ") || t.starts_with("fn ") || t.starts_with("struct ") ||
-                t.starts_with("enum ") || t.starts_with("trait ") || t.starts_with("impl ") ||
+                t.starts_with("pub ") || t.starts_with("fn ") || is_class ||
                 t.starts_with("mod ") || t.starts_with("type "),
             "py" | "pyi" =>
                 t.starts_with("def ") || t.starts_with("class ") || t.starts_with("async def "),
@@ -757,16 +761,27 @@ fn extract_signatures(content: &str, ext: &str) -> String {
                 t.starts_with("export ") || t.starts_with("pub ") || t.starts_with("fn ") ||
                 t.starts_with("def ") || t.starts_with("class ") || t.starts_with("function "),
         };
-        if keep {
-            let cleaned = clean_signature(t);
-            if cleaned.is_empty() { continue; }
-            if cleaned.len() > 120 {
-                result.push_str(&cleaned[..117]);
-                result.push_str("...\n");
-            } else {
-                result.push_str(&cleaned);
-                result.push('\n');
-            }
+
+        if !keep { continue; }
+
+        let cleaned = clean_signature(t);
+        if cleaned.is_empty() { continue; }
+
+        // Dedup: skip if we've seen this exact signature before (e.g. multiple to_dict)
+        if !is_class && seen_sigs.contains(&cleaned) { continue; }
+        seen_sigs.insert(cleaned.clone());
+
+        // Add blank line before classes for visual grouping
+        if is_class && !result.is_empty() && !result.ends_with("\n\n") {
+            result.push('\n');
+        }
+
+        if cleaned.len() > 120 {
+            result.push_str(&cleaned[..117]);
+            result.push_str("...\n");
+        } else {
+            result.push_str(&cleaned);
+            result.push('\n');
         }
     }
 
@@ -1068,13 +1083,17 @@ fn format_file_entry(out: &mut String, name: &str, content: &str) {
 
     if has_signatures {
         let sigs: Vec<&str> = lines.iter()
-            .filter(|l| !l.starts_with("import ") && !l.starts_with("use ") && !l.starts_with("from ") && !l.is_empty())
+            .filter(|l| !l.starts_with("import ") && !l.starts_with("use ") && !l.starts_with("from "))
             .map(|l| *l)
             .collect();
 
         out.push_str(&format!("**{}**\n", name));
         for sig in &sigs {
-            out.push_str(&format!("  {}\n", sig));
+            if sig.is_empty() {
+                out.push('\n'); // preserve class spacing
+            } else {
+                out.push_str(&format!("  {}\n", sig));
+            }
         }
     } else {
         // Data or config: show as-is but compact
@@ -1373,7 +1392,22 @@ fn strip_html_from_markdown(content: &str) -> String {
         }
 
         prev_blank = false;
-        result.push_str(line);
+
+        // Clean markdown formatting noise
+        let mut cleaned = line.to_string();
+        // Strip bold markers: **text** -> text
+        while cleaned.contains("**") {
+            cleaned = cleaned.replacen("**", "", 2);
+        }
+        // Strip inline code in doc context: `foo` -> foo
+        // (keep backticks that wrap actual code references)
+        // Convert bullet markers: *   text -> - text
+        if cleaned.trim_start().starts_with("*   ") || cleaned.trim_start().starts_with("*  ") {
+            let indent = cleaned.len() - cleaned.trim_start().len();
+            cleaned = format!("{}- {}", " ".repeat(indent), cleaned.trim_start().trim_start_matches('*').trim());
+        }
+
+        result.push_str(&cleaned);
         result.push('\n');
     }
 
