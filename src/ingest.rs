@@ -53,6 +53,8 @@ const SKIP_DIRS: &[&str] = &[
     "fixtures", "testdata", "test_data",
     ".claude", ".cursor", ".windsurf", ".copilot", ".codeium",
     ".agents", ".claude-plugin", ".codex-plugin",
+    ".codex", ".codebuddy", ".kiro", ".gemini", ".goose",
+    ".kilocode", ".trae", ".qoder",
     ".vscode", ".idea", ".fleet",
 ];
 
@@ -1044,7 +1046,19 @@ fn build_digest(
         .and_then(|n| n.to_str())
         .unwrap_or("project");
 
-    out.push_str(&format!("# {} ({} files, {} tokens)\n\n", project_name, total_files, format_tokens(total_tokens)));
+    // Detect project type: if >60% of files are .md, it's a docs/skills project
+    let md_count = files.iter().filter(|f| {
+        Path::new(&f.rel_path).extension().and_then(|e| e.to_str()) == Some("md")
+    }).count();
+    // Also count .txt files as docs
+    let txt_count = files.iter().filter(|f| {
+        Path::new(&f.rel_path).extension().and_then(|e| e.to_str()) == Some("txt")
+    }).count();
+    let docs_count = md_count + txt_count;
+    let is_docs_project = total_files > 0 && docs_count * 100 / total_files.max(1) > 50;
+
+    let project_type = if is_docs_project { "docs/skills" } else { "code" };
+    out.push_str(&format!("# {} ({} files, {} tokens, {})\n\n", project_name, total_files, format_tokens(total_tokens), project_type));
 
     // Structure
     out.push_str("## Structure\n\n");
@@ -1073,9 +1087,12 @@ fn build_digest(
             if ext == "md" {
                 let line_count = content.lines().count();
                 let is_readme = file.rel_path.to_lowercase().contains("readme");
-                // README: top ~40 lines (what it does, stack, features)
-                // Other docs: top ~60 lines
-                let max_lines = if is_readme { 40 } else { 60 };
+                // Docs projects: README is the index, show more
+                // Code projects: README truncated (setup/install not needed)
+                let max_lines = if is_docs_project && is_readme { 80 }
+                    else if is_readme { 40 }
+                    else if is_docs_project { 40 }
+                    else { 60 };
 
                 out.push_str(&format!("## {}\n\n", file.rel_path));
                 if line_count > max_lines + 10 {
@@ -1108,10 +1125,11 @@ fn build_digest(
                 .and_then(|n| n.to_str()).unwrap_or(&file.rel_path);
 
             if ext == "md" {
-                // Docs in subdirs: truncate long ones
                 let line_count = content.lines().count();
-                if line_count > 30 {
-                    let preview: String = content.lines().take(20).collect::<Vec<_>>().join("\n");
+                // Docs projects: skills/guides are the product, show more
+                let sub_max = if is_docs_project { 40 } else { 20 };
+                if line_count > sub_max + 10 {
+                    let preview: String = content.lines().take(sub_max).collect::<Vec<_>>().join("\n");
                     out.push_str(&format!("**{}**\n{}\n... ({} lines)\n\n", name, preview, line_count));
                 } else {
                     out.push_str(&format!("**{}**\n{}\n\n", name, content));
