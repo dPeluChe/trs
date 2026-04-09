@@ -680,11 +680,14 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
     }
 
     // All markdown files: treat as docs, never extract signatures
-    // Code snippets inside .md are examples, not real code
     if ext == "md" || ext == "mdx" {
+        // Translated READMEs (README_es.md, README_fr.md, etc.): skip content
+        // They're variants of README.md — just mention they exist
+        if lower_name.starts_with("readme_") || lower_name.starts_with("readme-") {
+            return Some(format!("(translation of README.md, {} lines)", content.lines().count()));
+        }
+
         let cleaned = strip_html_from_markdown(&content);
-        // Key docs: more generous (40 lines)
-        // Other .md: truncate to ~20 lines
         let is_key = matches!(lower_name.as_str(),
             "readme.md" | "claude.md" | "agents.md" | "contributing.md" | "changelog.md"
         );
