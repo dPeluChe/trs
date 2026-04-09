@@ -759,6 +759,7 @@ fn extract_signatures(content: &str, ext: &str) -> String {
         };
         if keep {
             let cleaned = clean_signature(t);
+            if cleaned.is_empty() { continue; }
             if cleaned.len() > 120 {
                 result.push_str(&cleaned[..117]);
                 result.push_str("...\n");
@@ -785,36 +786,52 @@ fn extract_signatures(content: &str, ext: &str) -> String {
 fn clean_signature(line: &str) -> String {
     let mut s = line.to_string();
 
-    // Strip trailing { and whitespace
+    // Strip trailing { => { = [ = { : ;
     s = s.trim_end().to_string();
-    while s.ends_with('{') || s.ends_with("=> {") {
+    loop {
+        let before = s.len();
         if s.ends_with("=> {") {
             s = s[..s.len() - 4].trim_end().to_string();
-            // Close the paren if we stripped => {
             if !s.ends_with(')') { s.push(')'); }
-        } else {
-            s = s[..s.len() - 1].trim_end().to_string();
+        }
+        while s.ends_with('{') || s.ends_with('}') || s.ends_with('[') || s.ends_with(']') {
+            s.pop();
+            s = s.trim_end().to_string();
+        }
+        for suffix in &["= ", "=", ":", ";"] {
+            if s.ends_with(suffix) {
+                s = s[..s.len() - suffix.len()].trim_end().to_string();
+            }
+        }
+        if s.len() == before { break; }
+    }
+
+    // Python: strip self from first param
+    // def foo(self, x, y) -> def foo(x, y)
+    // def foo(self) -> def foo()
+    if s.contains("(self, ") {
+        s = s.replace("(self, ", "(");
+    } else if s.contains("(self)") {
+        s = s.replace("(self)", "()");
+    }
+
+    // Strip pub(crate) -> pub
+    s = s.replace("pub(crate) ", "pub ");
+
+    // Simplify long Result types: Result<Vec<Account>, String> -> Result<Vec<Account>>
+    if let Some(result_start) = s.find("Result<") {
+        if let Some(comma) = s[result_start..].find(", String>") {
+            let end = result_start + comma + ", String>".len();
+            let inner = &s[result_start + 7..result_start + comma];
+            s = format!("{}Result<{}>{}",
+                &s[..result_start], inner, &s[end..]);
         }
     }
 
-    // Strip trailing = [ or = {
-    if s.ends_with("= [") || s.ends_with("= {") {
-        s = s[..s.len() - 3].trim_end().to_string();
-    }
-
-    // Strip trailing = for const assignments
-    if s.ends_with('=') {
-        s = s[..s.len() - 1].trim_end().to_string();
-    }
-
-    // Strip trailing : (Python)
-    if s.ends_with(':') {
-        s = s[..s.len() - 1].trim_end().to_string();
-    }
-
-    // Strip trailing ;
-    if s.ends_with(';') {
-        s = s[..s.len() - 1].trim_end().to_string();
+    // Strip struct field declarations (pub id: String, etc.)
+    if s.starts_with("pub ") && s.contains(": ") && !s.contains("fn ") && !s.contains("async ") && !s.contains("struct ") {
+        // It's a struct field like "pub id: String," — skip these
+        return String::new();
     }
 
     s
@@ -1050,15 +1067,14 @@ fn format_file_entry(out: &mut String, name: &str, content: &str) {
     });
 
     if has_signatures {
-        // Group: imports on first line, then signatures one per line
-        let imports: Vec<&&str> = lines.iter().filter(|l| l.starts_with("import ") || l.starts_with("use ") || l.starts_with("from ")).collect();
-        let sigs: Vec<&&str> = lines.iter().filter(|l| !l.starts_with("import ") && !l.starts_with("use ") && !l.starts_with("from ") && !l.is_empty()).collect();
+        let sigs: Vec<&str> = lines.iter()
+            .filter(|l| !l.starts_with("import ") && !l.starts_with("use ") && !l.starts_with("from ") && !l.is_empty())
+            .map(|l| *l)
+            .collect();
 
-        out.push_str(&format!("**{}**:", name));
-        if !sigs.is_empty() {
-            out.push_str(&format!(" {}\n", sigs.iter().map(|s| **s).collect::<Vec<_>>().join(", ")));
-        } else {
-            out.push('\n');
+        out.push_str(&format!("**{}**\n", name));
+        for sig in &sigs {
+            out.push_str(&format!("  {}\n", sig));
         }
     } else {
         // Data or config: show as-is but compact
