@@ -141,6 +141,16 @@ trs benchmark git status              # compression metrics per command
 trs benchmark cargo test --repeat 5   # averaged over N runs
 trs benchmark ls -la --json           # machine-readable output
 
+# Project digest (LLM-ready codebase index)
+trs ingest                            # digest current project (minimal)
+trs ingest --budget 32k               # fit to token budget
+trs ingest --changed                  # only uncommitted files
+trs ingest --since HEAD~5             # last 5 commits
+trs ingest -l aggressive              # signatures only
+trs ingest --ollama auto              # LLM-formatted summary
+trs ingest --list                     # show saved digests
+trs ingest --read myproject           # read a saved digest
+
 # Utilities
 trs is-clean                          # exit 0=clean, 1=dirty
 trs raw gh api /repos/user/repo       # no compression, tracked in stats
@@ -244,7 +254,7 @@ json_max_depth = 10
 | Binary | ~5.9 MB (LTO + strip), no runtime dependencies |
 | CLI | clap 4 (bypassed on hot path for ~3ms overhead) |
 | Search | ripgrep (grep crate) |
-| Tests | 2,098 passing, 0 warnings |
+| Tests | 2,104 passing, 0 warnings |
 | Architecture | 210+ files, <500 lines each — [details](AGENTS.md) |
 
 ## Contributing
@@ -252,7 +262,7 @@ json_max_depth = 10
 ```bash
 git clone https://github.com/dPeluChe/trs.git
 cd trs
-cargo test                     # 2,098 tests must pass
+cargo test                     # 2,104 tests must pass
 cargo clippy -- -D warnings    # no warnings allowed
 cargo fmt -- --check           # formatting must match
 ```

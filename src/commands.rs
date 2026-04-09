@@ -100,8 +100,16 @@ pub enum Commands {
         #[arg(default_value = ".")]
         path: String,
 
+        /// List saved digests instead of generating
+        #[arg(long)]
+        list: bool,
+
+        /// Read a saved digest (by project name, or current repo if omitted)
+        #[arg(long)]
+        read: Option<Option<String>>,
+
         /// Compression level: full, minimal, aggressive
-        #[arg(short, long, default_value = "full")]
+        #[arg(short, long, default_value = "minimal")]
         level: String,
 
         /// Token budget (e.g. 128k, 64000)
