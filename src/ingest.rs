@@ -51,6 +51,9 @@ const SKIP_DIRS: &[&str] = &[
     "TASK_COMPLETED",
     "tests", "test", "__tests__", "spec", "specs",
     "fixtures", "testdata", "test_data",
+    ".claude", ".cursor", ".windsurf", ".copilot", ".codeium",
+    ".agents", ".claude-plugin", ".codex-plugin",
+    ".vscode", ".idea", ".fleet",
 ];
 
 /// Max file size to include (64 KB — large files are usually data, not code).
@@ -676,11 +679,33 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
         return None;
     }
 
-    // Key docs: full content, strip HTML noise
-    if matches!(lower_name.as_str(),
-        "readme.md" | "claude.md" | "agents.md" | "contributing.md" | "changelog.md"
-    ) {
-        return Some(strip_html_from_markdown(&content));
+    // All markdown files: treat as docs, never extract signatures
+    // Code snippets inside .md are examples, not real code
+    if ext == "md" || ext == "mdx" {
+        let cleaned = strip_html_from_markdown(&content);
+        // Key docs: more generous (40 lines)
+        // Other .md: truncate to ~20 lines
+        let is_key = matches!(lower_name.as_str(),
+            "readme.md" | "claude.md" | "agents.md" | "contributing.md" | "changelog.md"
+        );
+        let max_lines = if is_key { 40 } else { 20 };
+        let lines: Vec<&str> = cleaned.lines().collect();
+        if lines.len() > max_lines + 5 {
+            let preview: String = lines[..max_lines].join("\n");
+            return Some(format!("{}\n... ({} lines)", preview, lines.len()));
+        }
+        return Some(cleaned);
+    }
+
+    // SKILL files and similar: cap at ~1KB
+    if lower_name.contains("skill") || lower_name.ends_with(".prompt") {
+        if content.len() > 1024 {
+            let mut cut = 1024;
+            while cut > 0 && !content.is_char_boundary(cut) { cut -= 1; }
+            if let Some(nl) = content[..cut].rfind('\n') { cut = nl; }
+            return Some(format!("{}\n... ({} lines)", &content[..cut], content.lines().count()));
+        }
+        return Some(content);
     }
 
     // package.json: compress to name + deps names only
