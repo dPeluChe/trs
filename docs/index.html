@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TarsCLI — Terminal compression for AI agents</title>
-  <meta name="description" content="Compact terminal output for humans and AI agents. Rust. 2,098 tests. 74% reduction on real projects.">
+  <meta name="description" content="Compact terminal output for humans and AI agents. Rust. 2,104 tests. 74% reduction on real projects.">
   <style>
     :root {
       --bg: #06080f;
@@ -346,7 +346,7 @@
     <div class="hero-stats">
       <span class="hero-stat"><strong>Rust</strong></span>
       <span class="hero-stat"><strong>5.9 MB</strong> binary</span>
-      <span class="hero-stat"><strong>2,098</strong> tests</span>
+      <span class="hero-stat"><strong>2,104</strong> tests</span>
       <span class="hero-stat"><strong>74%</strong> reduction</span>
       <span class="hero-stat"><strong>~3ms</strong> overhead</span>
     </div>
@@ -542,6 +542,10 @@ src/main.rs (3):
       <div class="feature">
         <div class="feature-title">Built-in benchmark</div>
         <div class="feature-desc"><code>trs benchmark git status</code> measures compression ratio, token savings, and execution time per command.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Project digest (trs ingest)</div>
+        <div class="feature-desc">Generate an LLM-ready index of any codebase. Budget-aware (<code>--budget 32k</code>), git-aware (<code>--changed</code>), with optional Ollama integration. 87% smaller than raw concatenation.</div>
       </div>
     </div>
   </div>
