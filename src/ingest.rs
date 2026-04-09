@@ -49,6 +49,8 @@ const SKIP_DIRS: &[&str] = &[
     "vendor", "venv", ".venv", "env",
     "archived", "archive", "old", "legacy", "deprecated",
     "TASK_COMPLETED",
+    "tests", "test", "__tests__", "spec", "specs",
+    "fixtures", "testdata", "test_data",
 ];
 
 /// Max file size to include (64 KB — large files are usually data, not code).
@@ -614,9 +616,24 @@ fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
         }
         let hash = files[i].content.bytes().fold(0u64, |acc, b| acc.wrapping_add(b as u64).wrapping_mul(31));
         if let Some(&original_idx) = seen.get(&hash) {
-            // Merge name into original
+            // Merge name into original (max 2 names, then count)
             let dup_name = files[i].rel_path.clone();
-            files[original_idx].rel_path = format!("{} & {}", files[original_idx].rel_path, dup_name);
+            let current = &files[original_idx].rel_path;
+            if !current.contains(" & ") {
+                files[original_idx].rel_path = format!("{} & {}", current, dup_name);
+            } else if !current.contains("(+") {
+                files[original_idx].rel_path = format!("{} (+1 more)", current);
+            } else {
+                // Increment counter
+                if let Some(start) = current.rfind("(+") {
+                    if let Some(end) = current.rfind(" more)") {
+                        if let Ok(n) = current[start+2..end].parse::<usize>() {
+                            let base = &current[..start];
+                            files[original_idx].rel_path = format!("{}(+{} more)", base, n + 1);
+                        }
+                    }
+                }
+            }
             to_remove.push(i);
         } else {
             seen.insert(hash, i);
@@ -648,7 +665,14 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
         return None;
     }
     if lower_name.ends_with(".lock") || lower_name.ends_with(".min.js")
-        || lower_name.ends_with(".min.css") || lower_name.ends_with(".d.ts") {
+        || lower_name.ends_with(".min.css") || lower_name.ends_with(".d.ts")
+        || lower_name == "__init__.py" || lower_name == ".gitkeep"
+        || lower_name == ".nojekyll" || lower_name == ".gitattributes"
+        || lower_name == "py.typed" {
+        return None;
+    }
+    // Skip empty or near-empty files
+    if content.trim().len() < 5 {
         return None;
     }
 
@@ -1395,8 +1419,11 @@ fn strip_html_from_markdown(content: &str) -> String {
             continue;
         }
 
-        // Skip img tags inline
+        // Skip img tags and badge lines
         if trimmed.contains("<img ") && trimmed.contains("src=") {
+            continue;
+        }
+        if trimmed.starts_with("[![") || (trimmed.starts_with("[!") && trimmed.contains("](http")) {
             continue;
         }
 
