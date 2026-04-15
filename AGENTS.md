@@ -17,6 +17,13 @@ src/
 ├── classifier_exec.rs         # Execute → parse → format pipeline
 ├── classifier_transfer.rs     # Compact git push/pull/fetch output
 ├── config.rs                  # Config system (~/.trs/config.toml)
+├── ingest/
+│   ├── mod.rs                 # IngestConfig, DigestFile, run_ingest, resolve_project_root
+│   ├── collect.rs             # File walker, read_and_compress, apply_budget
+│   ├── deps.rs                # Import graph: extract_raw_imports, build_dep_graph, format_dep_*
+│   ├── format.rs              # build_digest, build_tree, format_bytes/tokens
+│   ├── ollama.rs              # Ollama post-processing (ollama_format)
+│   └── store.rs               # ~/.trs/ingest/ persistence (save, list, read)
 ├── discover.rs                # trs discover — scan history for missed savings
 ├── init.rs                    # trs init — hook installer for 6 AI tools
 ├── rewrite.rs                 # trs rewrite — hook command rewriter engine
