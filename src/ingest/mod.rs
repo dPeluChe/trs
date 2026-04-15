@@ -56,7 +56,7 @@ pub(crate) const SKIP_DIRS: &[&str] = &[
     "_generated", ".ruff_cache", ".mypy_cache", "coverage",
     ".turbo", ".nuxt", ".output", ".svelte-kit",
     "vendor", "venv", ".venv", "env",
-    "archived", "archive", "old", "legacy", "deprecated",
+    "archived", "archives", "archive", "old", "legacy", "deprecated",
     "TASK_COMPLETED",
     "tests", "test", "__tests__", "spec", "specs",
     "fixtures", "testdata", "test_data",
