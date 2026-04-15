@@ -185,7 +185,8 @@ fn extract_python(content: &str) -> Vec<String> {
     let mut out = Vec::new();
     for line in content.lines() {
         let t = line.trim();
-        // from .foo import ...  (relative imports only)
+
+        // from .foo import ...  (relative imports)
         if let Some(rest) = t.strip_prefix("from .") {
             let module = rest
                 .split_whitespace()
@@ -195,7 +196,23 @@ fn extract_python(content: &str) -> Vec<String> {
             if !module.is_empty() && module != "import" {
                 out.push(module.to_string());
             }
+            continue;
         }
+
+        // from package.submodule import ...  (absolute internal imports)
+        // e.g. `from nanobot.agent.hook import AgentHook`
+        // Convert dots to slashes for path-suffix resolution
+        if let Some(rest) = t.strip_prefix("from ") {
+            let module = rest.split_whitespace().next().unwrap_or("");
+            // Skip stdlib/builtins: no dot means single-word (os, sys, typing, etc.)
+            // Multi-component paths (has dot) are likely project-internal
+            if module.contains('.') && !module.starts_with('_') {
+                let path = module.replace('.', "/");
+                out.push(path);
+            }
+            continue;
+        }
+
         // Stop after class/def definitions start — imports are at top
         if t.starts_with("def ") || t.starts_with("class ") || t.starts_with("if __name__") {
             if !out.is_empty() { break; }
