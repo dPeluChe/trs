@@ -10,6 +10,9 @@
 //! - Ollama integration: optionally format digest with a local LLM
 
 mod collect;
+mod collect_compress;
+mod deps;
+mod deps_extract;
 mod format;
 mod ollama;
 mod store;
@@ -18,6 +21,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use collect::{apply_budget, collect_files, get_changed_files};
+use deps::{build_dep_graph, format_dep_full, format_dep_summary};
 use format::{build_digest, format_bytes, format_tokens};
 use ollama::ollama_format;
 use store::save_to_store;
@@ -29,40 +33,83 @@ pub(crate) const BYTES_PER_TOKEN: f64 = 4.0;
 
 /// Files to always skip (binary, generated, large).
 pub(crate) const SKIP_EXTENSIONS: &[&str] = &[
-    "png", "jpg", "jpeg", "gif", "ico", "svg", "webp", "bmp",
-    "woff", "woff2", "ttf", "eot", "otf",
-    "zip", "tar", "gz", "bz2", "xz", "7z", "rar",
-    "exe", "dll", "so", "dylib", "bin",
-    "pdf", "doc", "docx", "xls", "xlsx",
-    "mp3", "mp4", "wav", "avi", "mov", "mkv",
-    "db", "sqlite", "sqlite3",
-    "pyc", "pyo", "class", "o", "obj",
-    "wasm", "map",
+    "png", "jpg", "jpeg", "gif", "ico", "svg", "webp", "bmp", "woff", "woff2", "ttf", "eot", "otf",
+    "zip", "tar", "gz", "bz2", "xz", "7z", "rar", "exe", "dll", "so", "dylib", "bin", "pdf", "doc",
+    "docx", "xls", "xlsx", "mp3", "mp4", "wav", "avi", "mov", "mkv", "db", "sqlite", "sqlite3",
+    "pyc", "pyo", "class", "o", "obj", "wasm", "map",
 ];
 
 /// Files to always skip by name.
 pub(crate) const SKIP_FILES: &[&str] = &[
-    "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
-    "Cargo.lock", "Gemfile.lock", "poetry.lock", "composer.lock",
-    ".DS_Store", "Thumbs.db",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "Cargo.lock",
+    "Gemfile.lock",
+    "poetry.lock",
+    "composer.lock",
+    ".DS_Store",
+    "Thumbs.db",
 ];
 
 /// Directories to always skip (generated/vendor/historical content).
 pub(crate) const SKIP_DIRS: &[&str] = &[
-    ".git", "node_modules", ".next", "__pycache__", ".pytest_cache",
-    "dist", "build", "target", ".build", "DerivedData",
-    "_generated", ".ruff_cache", ".mypy_cache", "coverage",
-    ".turbo", ".nuxt", ".output", ".svelte-kit",
-    "vendor", "venv", ".venv", "env",
-    "archived", "archive", "old", "legacy", "deprecated",
+    ".git",
+    "node_modules",
+    ".next",
+    "__pycache__",
+    ".pytest_cache",
+    "dist",
+    "build",
+    "target",
+    ".build",
+    "DerivedData",
+    "_generated",
+    ".ruff_cache",
+    ".mypy_cache",
+    "coverage",
+    ".turbo",
+    ".nuxt",
+    ".output",
+    ".svelte-kit",
+    "vendor",
+    "venv",
+    ".venv",
+    "env",
+    "archived",
+    "archives",
+    "archive",
+    "old",
+    "legacy",
+    "deprecated",
     "TASK_COMPLETED",
-    "tests", "test", "__tests__", "spec", "specs",
-    "fixtures", "testdata", "test_data",
-    ".claude", ".cursor", ".windsurf", ".copilot", ".codeium",
-    ".agents", ".claude-plugin", ".codex-plugin",
-    ".codex", ".codebuddy", ".kiro", ".gemini", ".goose",
-    ".kilocode", ".trae", ".qoder",
-    ".vscode", ".idea", ".fleet",
+    "tests",
+    "test",
+    "__tests__",
+    "spec",
+    "specs",
+    "fixtures",
+    "testdata",
+    "test_data",
+    ".claude",
+    ".cursor",
+    ".windsurf",
+    ".copilot",
+    ".codeium",
+    ".agents",
+    ".claude-plugin",
+    ".codex-plugin",
+    ".codex",
+    ".codebuddy",
+    ".kiro",
+    ".gemini",
+    ".goose",
+    ".kilocode",
+    ".trae",
+    ".qoder",
+    ".vscode",
+    ".idea",
+    ".fleet",
 ];
 
 /// Max file size to include (64 KB -- large files are usually data, not code).
@@ -103,6 +150,8 @@ pub struct IngestConfig {
     pub exclude: Vec<String>,
     pub output_file: Option<PathBuf>,
     pub ollama_model: Option<String>,
+    /// Output only the dependency graph, no file content.
+    pub deps_only: bool,
 }
 
 /// A file entry in the digest.
@@ -111,6 +160,8 @@ pub(crate) struct DigestFile {
     pub(crate) content: String,
     pub(crate) tokens: usize,
     pub(crate) is_changed: bool,
+    /// Raw import tokens extracted from original file content (before compression).
+    pub(crate) raw_imports: Vec<String>,
 }
 
 /// Resolve the project root: find git root or use the given path.
@@ -202,10 +253,16 @@ pub fn resolve_project_root(path: &Path) -> Result<PathBuf, String> {
             return Err(msg);
         }
 
-        eprintln!("trs ingest: warning: {} is not a git repository", abs_path.display());
+        eprintln!(
+            "trs ingest: warning: {} is not a git repository",
+            abs_path.display()
+        );
         Ok(abs_path)
     } else {
-        Err(format!("{} is not a directory or git repository", path.display()))
+        Err(format!(
+            "{} is not a directory or git repository",
+            path.display()
+        ))
     }
 }
 
@@ -247,8 +304,42 @@ pub fn run_ingest(config: &IngestConfig) {
         apply_budget(&mut files, budget, config.level, &config.root);
     }
 
+    // Build dependency graph
+    let graph = build_dep_graph(&files);
+    let project_name = config
+        .root
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("project");
+
+    // --deps mode: output only the graph, no file content
+    if config.deps_only {
+        let output = format_dep_full(&graph, project_name);
+        let tokens = (output.len() as f64 / BYTES_PER_TOKEN) as usize;
+        eprintln!(
+            "trs ingest --deps: {} ({} tokens)",
+            format_bytes(output.len()),
+            format_tokens(tokens),
+        );
+        print!("{}", output);
+        return;
+    }
+
+    // Build the dep summary for header injection
+    let dep_summary = if graph.is_empty() {
+        String::new()
+    } else {
+        format_dep_summary(&graph)
+    };
+
     // Build output
-    let output = build_digest(&files, config, &changed_set, start.elapsed().as_millis() as u64);
+    let output = build_digest(
+        &files,
+        config,
+        &changed_set,
+        &dep_summary,
+        start.elapsed().as_millis() as u64,
+    );
 
     // Ollama post-processing
     let final_output = if let Some(ref model) = config.ollama_model {
@@ -333,9 +424,27 @@ mod tests {
     #[test]
     fn test_build_tree() {
         let files = vec![
-            DigestFile { rel_path: "src/main.rs".into(), content: String::new(), tokens: 0, is_changed: false },
-            DigestFile { rel_path: "src/lib.rs".into(), content: String::new(), tokens: 0, is_changed: false },
-            DigestFile { rel_path: "README.md".into(), content: String::new(), tokens: 0, is_changed: false },
+            DigestFile {
+                rel_path: "src/main.rs".into(),
+                content: String::new(),
+                tokens: 0,
+                is_changed: false,
+                raw_imports: vec![],
+            },
+            DigestFile {
+                rel_path: "src/lib.rs".into(),
+                content: String::new(),
+                tokens: 0,
+                is_changed: false,
+                raw_imports: vec![],
+            },
+            DigestFile {
+                rel_path: "README.md".into(),
+                content: String::new(),
+                tokens: 0,
+                is_changed: false,
+                raw_imports: vec![],
+            },
         ];
         let tree = format::build_tree(&files);
         assert!(tree.contains("src/"));

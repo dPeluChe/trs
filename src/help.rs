@@ -521,6 +521,7 @@ OPTIONS:
     -e, --exclude <PAT>    Exclude paths matching pattern (repeatable)
     -o, --output <FILE>    Write to file instead of stdout
     --ollama <MODEL>       Format digest with local Ollama model (e.g. llama3)
+    --deps                 Output only the dependency graph (no file content)
 
 EXAMPLES:
     trs ingest                              # full project digest
@@ -531,6 +532,7 @@ EXAMPLES:
     trs ingest src/ -e tests -e fixtures    # src/ only, exclude tests
     trs ingest -o digest.md                 # write to file
     trs ingest --ollama llama3              # LLM-formatted summary
+    trs ingest --deps                       # import graph only, no file content
     trs ingest --budget 64k -l minimal      # compressed, budget-fitted
 
 OUTPUT:

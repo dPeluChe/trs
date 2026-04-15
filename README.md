@@ -148,6 +148,7 @@ trs ingest --changed                  # only uncommitted files
 trs ingest --since HEAD~5             # last 5 commits
 trs ingest -l aggressive              # signatures only
 trs ingest --ollama auto              # LLM-formatted summary
+trs ingest --deps                     # dependency graph only (no file content)
 trs ingest --list                     # show saved digests
 trs ingest --read myproject           # read a saved digest
 

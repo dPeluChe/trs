@@ -66,7 +66,13 @@ pub fn list_ingests() {
             current_owner = owner.clone();
         }
         let tokens = (*size as f64 / BYTES_PER_TOKEN) as usize;
-        println!("  {}  ({}, {} tokens, {})", repo, format_bytes(*size as usize), format_tokens(tokens), modified);
+        println!(
+            "  {}  ({}, {} tokens, {})",
+            repo,
+            format_bytes(*size as usize),
+            format_tokens(tokens),
+            modified
+        );
     }
 }
 
@@ -118,17 +124,18 @@ pub fn read_digest(name: Option<&str>, project_path: &Path) {
             eprintln!("No digest found for '{}'. Available:", search);
             list_ingests();
         }
-        1 => {
-            match std::fs::read_to_string(&matches[0]) {
-                Ok(content) => print!("{}", content),
-                Err(e) => eprintln!("trs ingest: error reading {}: {}", matches[0].display(), e),
-            }
-        }
+        1 => match std::fs::read_to_string(&matches[0]) {
+            Ok(content) => print!("{}", content),
+            Err(e) => eprintln!("trs ingest: error reading {}: {}", matches[0].display(), e),
+        },
         _ => {
             eprintln!("Multiple matches for '{}'. Be more specific:", search);
             for m in &matches {
                 let display = m.strip_prefix(&base).unwrap_or(m);
-                eprintln!("  trs ingest --read {}", display.to_string_lossy().trim_end_matches(".md"));
+                eprintln!(
+                    "  trs ingest --read {}",
+                    display.to_string_lossy().trim_end_matches(".md")
+                );
             }
         }
     }

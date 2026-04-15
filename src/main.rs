@@ -29,10 +29,10 @@ mod cli;
 mod commands;
 pub(crate) mod config;
 mod discover;
-mod ingest;
 mod doctor;
 mod formatter;
 mod help;
+mod ingest;
 mod init;
 #[allow(dead_code)]
 mod process;
@@ -77,7 +77,8 @@ fn main() {
             // Fast find: trs find --gitignore . -name "*.rs"
             // Uses internal walker (respects .gitignore) instead of spawning find
             if (cmd == "find" || cmd == "fd") && rest.iter().any(|a| a == "--gitignore") {
-                let find_args: Vec<&str> = rest.iter()
+                let find_args: Vec<&str> = rest
+                    .iter()
                     .filter(|a| a.as_str() != "--gitignore")
                     .map(|a| a.as_str())
                     .collect();
@@ -156,6 +157,7 @@ fn main() {
             exclude,
             output,
             ollama,
+            deps,
         }) => {
             if *list {
                 ingest::list_ingests();
@@ -180,6 +182,7 @@ fn main() {
                     exclude: exclude.clone(),
                     output_file: output.as_ref().map(std::path::PathBuf::from),
                     ollama_model: ollama.clone(),
+                    deps_only: *deps,
                 };
                 ingest::run_ingest(&config);
             }
@@ -323,12 +326,34 @@ fn is_external_fast_path(args: &[String]) -> bool {
     // Known trs subcommands (and aliases) that must go through clap
     !matches!(
         first,
-        "parse" | "search" | "replace" | "run" | "tail" | "clean" | "trim"
-            | "html2md" | "txt2md" | "is-clean" | "clean?" | "repo-clean"
-            | "read" | "json" | "err"
-            | "rewrite" | "discover" | "init" | "doctor" | "benchmark"
-            | "ingest" | "stats" | "raw"
-            | "help" | "--help" | "-h" | "--version" | "-V"
+        "parse"
+            | "search"
+            | "replace"
+            | "run"
+            | "tail"
+            | "clean"
+            | "trim"
+            | "html2md"
+            | "txt2md"
+            | "is-clean"
+            | "clean?"
+            | "repo-clean"
+            | "read"
+            | "json"
+            | "err"
+            | "rewrite"
+            | "discover"
+            | "init"
+            | "doctor"
+            | "benchmark"
+            | "ingest"
+            | "stats"
+            | "raw"
+            | "help"
+            | "--help"
+            | "-h"
+            | "--version"
+            | "-V"
     )
 }
 
