@@ -70,7 +70,7 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
         }
 
         // Read and compress file content
-        let content = match read_and_compress(path, config.level) {
+        let (content, raw_imports) = match read_and_compress(path, config.level) {
             Some(c) => c,
             None => continue,
         };
@@ -82,6 +82,7 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
             content,
             tokens,
             is_changed: false,
+            raw_imports,
         });
     }
 
@@ -139,7 +140,9 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
 }
 
 /// Intelligently extract what matters from a file for LLM consumption.
-fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
+/// Returns (compressed_content, raw_imports) where raw_imports are extracted
+/// from the original content before compression.
+fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(String, Vec<String>)> {
     let content = std::fs::read_to_string(path).ok()?;
 
     if content.chars().take(512).any(|c| c == '\0') {
@@ -167,12 +170,17 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
         return None;
     }
 
+    // Extract imports from raw content now, before any compression transforms it
+    let raw_imports = super::deps::extract_raw_imports(&content, &ext);
+
+    let ok = |s: String| Some((s, raw_imports.clone()));
+
     // All markdown files: treat as docs, never extract signatures
     if ext == "md" || ext == "mdx" {
         // Translated READMEs (README_es.md, README_fr.md, etc.): skip content
         // They're variants of README.md -- just mention they exist
         if lower_name.starts_with("readme_") || lower_name.starts_with("readme-") {
-            return Some(format!("(translation of README.md, {} lines)", content.lines().count()));
+            return ok(format!("(translation of README.md, {} lines)", content.lines().count()));
         }
 
         let cleaned = super::format::strip_html_from_markdown(&content);
@@ -183,9 +191,9 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
         let lines: Vec<&str> = cleaned.lines().collect();
         if lines.len() > max_lines + 5 {
             let preview: String = lines[..max_lines].join("\n");
-            return Some(format!("{}\n... ({} lines)", preview, lines.len()));
+            return ok(format!("{}\n... ({} lines)", preview, lines.len()));
         }
-        return Some(cleaned);
+        return ok(cleaned);
     }
 
     // SKILL files and similar: cap at ~1KB
@@ -194,27 +202,27 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<String> {
             let mut cut = 1024;
             while cut > 0 && !content.is_char_boundary(cut) { cut -= 1; }
             if let Some(nl) = content[..cut].rfind('\n') { cut = nl; }
-            return Some(format!("{}\n... ({} lines)", &content[..cut], content.lines().count()));
+            return ok(format!("{}\n... ({} lines)", &content[..cut], content.lines().count()));
         }
-        return Some(content);
+        return ok(content);
     }
 
     // package.json: compress to name + deps names only
     if lower_name == "package.json" {
-        return Some(compress_package_json(&content));
+        return ok(compress_package_json(&content));
     }
 
     // JSON/YAML: extract schema (keys + 1 sample), not all data
     let lang = detect_language(&path.to_path_buf());
     if lang == Language::Data {
-        return Some(extract_data_schema(&content, &ext));
+        return ok(extract_data_schema(&content, &ext));
     }
 
     // Source code: always extract signatures in minimal/aggressive mode
     // An agent needs to know WHAT exists, not HOW it's implemented
     match level {
-        IngestLevel::Full => Some(content),
-        _ => Some(extract_signatures(&content, &ext)),
+        IngestLevel::Full => ok(content),
+        _ => ok(extract_signatures(&content, &ext)),
     }
 }
 
@@ -481,7 +489,7 @@ pub(super) fn apply_budget(files: &mut Vec<DigestFile>, budget: usize, level: In
             if file.tokens > 500 && !file.is_changed {
                 // Re-read with ABSOLUTE path from project root
                 let path = root.join(&file.rel_path);
-                if let Some(compressed) = read_and_compress(&path, IngestLevel::Aggressive) {
+                if let Some((compressed, _)) = read_and_compress(&path, IngestLevel::Aggressive) {
                     file.content = compressed;
                     file.tokens = (file.content.len() as f64 / BYTES_PER_TOKEN) as usize;
                 }
@@ -511,6 +519,7 @@ pub(super) fn apply_budget(files: &mut Vec<DigestFile>, budget: usize, level: In
             content: note,
             tokens: 10,
             is_changed: false,
+            raw_imports: vec![],
         });
     }
 }

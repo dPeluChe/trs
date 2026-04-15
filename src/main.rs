@@ -156,6 +156,7 @@ fn main() {
             exclude,
             output,
             ollama,
+            deps,
         }) => {
             if *list {
                 ingest::list_ingests();
@@ -180,6 +181,7 @@ fn main() {
                     exclude: exclude.clone(),
                     output_file: output.as_ref().map(std::path::PathBuf::from),
                     ollama_model: ollama.clone(),
+                    deps_only: *deps,
                 };
                 ingest::run_ingest(&config);
             }

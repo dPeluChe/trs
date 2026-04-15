@@ -8,6 +8,7 @@ pub(super) fn build_digest(
     files: &[DigestFile],
     config: &IngestConfig,
     _changed_set: &Option<Vec<String>>,
+    dep_summary: &str,
     elapsed_ms: u64,
 ) -> String {
     let mut out = String::new();
@@ -38,6 +39,11 @@ pub(super) fn build_digest(
     out.push_str("## Structure\n\n");
     out.push_str(&build_tree(files));
     out.push('\n');
+
+    // Key Dependencies (injected from dep graph, code projects only)
+    if !is_docs_project && !dep_summary.is_empty() {
+        out.push_str(dep_summary);
+    }
 
     // Group files by parent directory
     let mut groups: BTreeMap<String, Vec<&DigestFile>> = BTreeMap::new();
@@ -146,7 +152,7 @@ fn format_file_entry(out: &mut String, name: &str, content: &str) {
     if has_signatures {
         let sigs: Vec<&str> = lines.iter()
             .filter(|l| !l.starts_with("import ") && !l.starts_with("use ") && !l.starts_with("from "))
-            .map(|l| *l)
+            .copied()
             .collect();
 
         out.push_str(&format!("**{}**\n", name));

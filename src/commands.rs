@@ -135,6 +135,10 @@ pub enum Commands {
         /// Format digest with local Ollama model (e.g. llama3, mistral)
         #[arg(long)]
         ollama: Option<String>,
+
+        /// Output only the import/dependency graph (no file content)
+        #[arg(long)]
+        deps: bool,
     },
 
     /// Execute command without filtering but track usage
