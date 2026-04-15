@@ -14,6 +14,7 @@ pub(crate) enum AiTool {
     Codex,
     OpenCode,
     Kilo,
+    Antigravity,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -33,6 +34,7 @@ impl AiTool {
             "codex" => Some(Self::Codex),
             "opencode" => Some(Self::OpenCode),
             "kilo" | "kilocode" => Some(Self::Kilo),
+            "antigravity" | "gravity" => Some(Self::Antigravity),
             _ => None,
         }
     }
@@ -45,14 +47,15 @@ impl AiTool {
             Self::Codex => "Codex",
             Self::OpenCode => "OpenCode",
             Self::Kilo => "Kilo Code",
+            Self::Antigravity => "Google Antigravity",
         }
     }
 
     pub(crate) fn all_names() -> &'static str {
-        "claude, gemini, cursor, codex, opencode, kilo"
+        "claude, gemini, cursor, codex, opencode, kilo, antigravity"
     }
 
-    pub(crate) fn all_tools() -> [Self; 6] {
+    pub(crate) fn all_tools() -> [Self; 7] {
         [
             Self::Claude,
             Self::Gemini,
@@ -60,6 +63,7 @@ impl AiTool {
             Self::Codex,
             Self::OpenCode,
             Self::Kilo,
+            Self::Antigravity,
         ]
     }
 
@@ -94,6 +98,12 @@ impl AiTool {
                 global_dir: None,
                 filename: "trs.ts",
                 content: OPENCODE_PLUGIN,
+            }),
+            Self::Antigravity => Some(HookSpec {
+                local_dir: ".antigravity",
+                global_dir: Some(".antigravity"),
+                filename: "settings.json",
+                content: GEMINI_HOOKS, // Same hook format as Gemini CLI
             }),
             Self::Codex => None, // Codex uses AGENTS.md append, not a spec
         }

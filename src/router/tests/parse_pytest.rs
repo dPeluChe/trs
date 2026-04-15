@@ -284,6 +284,65 @@ tests/test_main.py::test_subtract PASSED
 }
 
 // ============================================================
+// Pytest Quiet Mode Tests
+// ============================================================
+
+#[test]
+fn test_parse_pytest_quiet_all_passed() {
+    let input = "........                                                           [100%]\n8 passed in 0.12s";
+    let result = ParseHandler::parse_pytest(input).unwrap();
+
+    assert!(result.success);
+    assert_eq!(result.tests.len(), 8);
+    assert_eq!(result.summary.passed, 8);
+    assert!(result.tests.iter().all(|t| t.status == TestStatus::Passed));
+}
+
+#[test]
+fn test_parse_pytest_quiet_mixed() {
+    let input = ".....F..x.s                                                        [100%]\n1 failed, 8 passed, 1 skipped, 1 xfailed in 0.12s";
+    let result = ParseHandler::parse_pytest(input).unwrap();
+
+    assert!(!result.success);
+    assert_eq!(result.tests.len(), 11);
+    // Count from progress chars
+    let passed = result
+        .tests
+        .iter()
+        .filter(|t| t.status == TestStatus::Passed)
+        .count();
+    let failed = result
+        .tests
+        .iter()
+        .filter(|t| t.status == TestStatus::Failed)
+        .count();
+    let skipped = result
+        .tests
+        .iter()
+        .filter(|t| t.status == TestStatus::Skipped)
+        .count();
+    let xfailed = result
+        .tests
+        .iter()
+        .filter(|t| t.status == TestStatus::XFailed)
+        .count();
+    assert_eq!(passed, 8);
+    assert_eq!(failed, 1);
+    assert_eq!(skipped, 1);
+    assert_eq!(xfailed, 1);
+}
+
+#[test]
+fn test_parse_pytest_quiet_no_progress_indicator() {
+    // -q without percentage
+    let input = "...F.\n1 failed, 4 passed in 0.05s";
+    let result = ParseHandler::parse_pytest(input).unwrap();
+
+    assert!(!result.success);
+    assert_eq!(result.tests.len(), 5);
+}
+
+// ============================================================
 // Router Integration Tests
 // ============================================================
 

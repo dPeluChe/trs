@@ -52,6 +52,22 @@ fn test_truncate() {
 }
 
 #[test]
+fn test_truncate_utf8_multibyte() {
+    // Emoji: each is 4 bytes. "😀😀😀" = 12 bytes.
+    // Truncating at max_len=8 should not panic (would slice mid-emoji at byte 5).
+    let emoji_str = "😀😀😀";
+    let result = truncate(emoji_str, 8);
+    assert!(result.ends_with("..."));
+    // Should have sliced at a char boundary (4 bytes for 1 emoji + "...")
+    assert_eq!(result, "😀...");
+
+    // 2-byte chars: "ñ" is 2 bytes. "ñañaña" = 12 bytes.
+    let result2 = truncate("ñañañañaña", 8);
+    assert!(result2.ends_with("..."));
+    // Must not panic — that's the main assertion
+}
+
+#[test]
 fn test_format_duration() {
     assert_eq!(format_duration(500), "500ms");
     assert_eq!(format_duration(1500), "1.50s");

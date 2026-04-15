@@ -71,6 +71,16 @@ impl ParseHandler {
                 continue;
             }
 
+            // Quiet mode progress line: ".....F..x.s [100%]"
+            let quiet_results = Self::parse_pytest_quiet_progress(trimmed);
+            if !quiet_results.is_empty() {
+                if let Some(test) = current_test.take() {
+                    output.tests.push(test);
+                }
+                output.tests.extend(quiet_results);
+                continue;
+            }
+
             // Detect summary line
             // "N passed, M failed, K skipped in X.XXs"
             // Also: "N passed in X.XXs"
@@ -224,6 +234,49 @@ impl ParseHandler {
         output.is_empty = output.tests.is_empty() && output.summary.total == 0;
 
         Ok(output)
+    }
+
+    /// Parse a pytest quiet-mode progress line (e.g. ".....F..x.s  [100%]").
+    /// Returns individual test results inferred from the progress characters.
+    fn parse_pytest_quiet_progress(line: &str) -> Vec<TestResult> {
+        // Strip trailing progress indicator like " [100%]" or "  [50%]"
+        let chars_part = line
+            .find('[')
+            .map(|pos| line[..pos].trim_end())
+            .unwrap_or(line.trim());
+
+        // Must be only valid progress chars: . F s x X E
+        if chars_part.is_empty()
+            || !chars_part
+                .chars()
+                .all(|c| matches!(c, '.' | 'F' | 's' | 'x' | 'X' | 'E'))
+        {
+            return vec![];
+        }
+
+        chars_part
+            .chars()
+            .enumerate()
+            .map(|(i, c)| {
+                let status = match c {
+                    '.' => TestStatus::Passed,
+                    'F' => TestStatus::Failed,
+                    's' => TestStatus::Skipped,
+                    'x' => TestStatus::XFailed,
+                    'X' => TestStatus::XPassed,
+                    'E' => TestStatus::Error,
+                    _ => TestStatus::Passed,
+                };
+                TestResult {
+                    name: format!("test_{}", i + 1),
+                    status,
+                    duration: None,
+                    file: None,
+                    line: None,
+                    error_message: None,
+                }
+            })
+            .collect()
     }
 
     /// Parse a single test result line from pytest output.
