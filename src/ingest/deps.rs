@@ -213,19 +213,32 @@ fn extract_go(content: &str) -> Vec<String> {
         if in_import_block && t == ")" { break; }
         // Single import: import "path"
         if let Some(rest) = t.strip_prefix("import \"") {
-            let path = rest.trim_end_matches('"');
-            if path.starts_with("./") || path.starts_with("../") {
+            let path = rest.trim_end_matches('"').trim_end_matches('"');
+            if is_go_project_import(path) {
                 out.push(path.to_string());
             }
+            continue;
         }
         if in_import_block {
             let path = t.trim_matches('"').trim_matches('`');
-            if path.starts_with("./") || path.starts_with("../") {
+            if is_go_project_import(path) {
                 out.push(path.to_string());
             }
         }
     }
     out
+}
+
+/// True for imports that might be project-internal (has a package path, not stdlib).
+/// Go stdlib packages have no `.` in the first component (e.g. `fmt`, `os/exec`).
+/// Module imports have a host (e.g. `github.com/owner/repo/pkg`).
+fn is_go_project_import(path: &str) -> bool {
+    if path.is_empty() { return false; }
+    let first = path.split('/').next().unwrap_or("");
+    // Relative (rare in Go but handle it)
+    if first == "." || first == ".." { return true; }
+    // Module path: first component contains a dot (github.com, golang.org, etc.)
+    first.contains('.')
 }
 
 /// Resolve raw import tokens to actual project file rel_paths.
@@ -244,10 +257,14 @@ fn resolve_imports(
 
     for import in raw {
         let found = if import.starts_with("./") || import.starts_with("../") || import.starts_with("@/") {
-            // Relative/alias path resolution (TS/Go, @/ Next.js/Vite aliases)
+            // Relative/alias path resolution (TS/Go relative, @/ Next.js/Vite aliases)
             resolve_relative(import, &importer_dir, all_paths)
+        } else if import.contains('/') {
+            // Module-path import (Go: github.com/owner/repo/pkg/foo)
+            // Try to match by the last 1-2 path components against project files
+            resolve_module_path(import, all_paths)
         } else {
-            // Module name resolution (Rust/Python)
+            // Short name (Rust `use crate::X`, Python `from .X import`)
             resolve_by_stem(import, stem_index)
         };
 
@@ -333,6 +350,32 @@ fn resolve_by_stem(name: &str, stem_index: &HashMap<String, Vec<&str>>) -> Optio
         .find(|p| p.starts_with("src/"))
         .or_else(|| candidates.first())
         .map(|p| p.to_string())
+}
+
+/// Resolve a Go module-path import to a project file.
+/// Tries matching the last 2 components, then last 1 component.
+/// e.g. `github.com/owner/repo/internal/agent` → find file in `internal/agent/`
+fn resolve_module_path(import: &str, all_paths: &[&str]) -> Option<String> {
+    let parts: Vec<&str> = import.split('/').collect();
+    // Try last 2 components first (e.g. "internal/agent"), then last 1 ("agent")
+    for n in [2usize, 1] {
+        if parts.len() < n { continue; }
+        let suffix = parts[parts.len() - n..].join("/");
+        if let Some(found) = resolve_by_suffix(&suffix, all_paths) {
+            return Some(found);
+        }
+        // Also try matching as a directory: files whose parent dir ends with suffix
+        for path in all_paths {
+            let parent = Path::new(path)
+                .parent()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+            if parent == suffix || parent.ends_with(&format!("/{}", suffix)) {
+                return Some(path.to_string());
+            }
+        }
+    }
+    None
 }
 
 fn normalize_path(base: &str, import: &str) -> String {
