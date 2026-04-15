@@ -10,7 +10,9 @@
 //! - Ollama integration: optionally format digest with a local LLM
 
 mod collect;
+mod collect_compress;
 mod deps;
+mod deps_extract;
 mod format;
 mod ollama;
 mod store;
