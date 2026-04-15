@@ -158,7 +158,9 @@ fn extract_ts(content: &str) -> Vec<String> {
         // Find `from '...'` or `from "..."`
         let path = extract_from_path(t);
         if let Some(p) = path {
-            if p.starts_with("./") || p.starts_with("../") {
+            // Relative imports: ./foo or ../bar
+            // Alias imports: @/lib/foo (Next.js, Vite, etc.)
+            if p.starts_with("./") || p.starts_with("../") || p.starts_with("@/") {
                 out.push(p);
             }
         }
@@ -241,8 +243,8 @@ fn resolve_imports(
     let mut resolved = Vec::new();
 
     for import in raw {
-        let found = if import.starts_with("./") || import.starts_with("../") {
-            // Relative path resolution (TS/Go)
+        let found = if import.starts_with("./") || import.starts_with("../") || import.starts_with("@/") {
+            // Relative/alias path resolution (TS/Go, @/ Next.js/Vite aliases)
             resolve_relative(import, &importer_dir, all_paths)
         } else {
             // Module name resolution (Rust/Python)
@@ -262,6 +264,11 @@ fn resolve_imports(
 }
 
 fn resolve_relative(import: &str, importer_dir: &str, all_paths: &[&str]) -> Option<String> {
+    // @/ alias (Next.js, Vite, etc.) — strip prefix and match by path suffix
+    if let Some(alias_path) = import.strip_prefix("@/") {
+        return resolve_by_suffix(alias_path, all_paths);
+    }
+
     let normalized = normalize_path(importer_dir, import);
 
     // Try exact match first, then with common extensions
@@ -285,6 +292,36 @@ fn resolve_relative(import: &str, importer_dir: &str, all_paths: &[&str]) -> Opt
         }
     }
     None
+}
+
+/// Resolve an alias path like `lib/cn` by finding any project file whose
+/// path ends with that suffix (e.g. `packages/web/src/lib/cn.ts`).
+fn resolve_by_suffix(suffix: &str, all_paths: &[&str]) -> Option<String> {
+    let suffix_no_ext = Path::new(suffix)
+        .with_extension("")
+        .to_string_lossy()
+        .to_string();
+
+    // Score: prefer shorter paths (closer to root match), then alphabetical
+    let mut best: Option<(&str, usize)> = None;
+    for path in all_paths {
+        let path_no_ext = Path::new(path)
+            .with_extension("")
+            .to_string_lossy()
+            .to_string();
+
+        let matches = path_no_ext.ends_with(&suffix_no_ext)
+            && (path_no_ext.len() == suffix_no_ext.len()
+                || path_no_ext[..path_no_ext.len() - suffix_no_ext.len()].ends_with('/'));
+
+        if matches {
+            let score = path.len(); // shorter = better match
+            if best.map_or(true, |(_, s)| score < s) {
+                best = Some((path, score));
+            }
+        }
+    }
+    best.map(|(p, _)| p.to_string())
 }
 
 fn resolve_by_stem(name: &str, stem_index: &HashMap<String, Vec<&str>>) -> Option<String> {
