@@ -8,8 +8,6 @@ use std::path::Path;
 
 use super::DigestFile;
 
-pub(crate) use super::deps_extract::extract_raw_imports;
-
 /// Project-internal dependency graph.
 pub(super) struct DepGraph {
     /// file rel_path → files it imports (project-internal only)
