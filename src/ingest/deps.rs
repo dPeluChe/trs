@@ -39,22 +39,41 @@ pub(super) fn build_dep_graph(files: &[DigestFile]) -> DepGraph {
     // Fast lookup: module stem → list of rel_paths with that stem
     let mut stem_index: HashMap<String, Vec<&str>> = HashMap::new();
     for file in files {
-        if file.rel_path.is_empty() { continue; }
+        if file.rel_path.is_empty() {
+            continue;
+        }
         let path = Path::new(&file.rel_path);
         // Index by file stem (e.g. "config" for "src/config.rs")
         if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-            stem_index.entry(stem.to_lowercase()).or_default().push(&file.rel_path);
+            stem_index
+                .entry(stem.to_lowercase())
+                .or_default()
+                .push(&file.rel_path);
         }
         // Also index "mod" files by their parent dir name (e.g. "ingest" for "src/ingest/mod.rs")
         if path.file_stem().and_then(|s| s.to_str()) == Some("mod") {
-            if let Some(parent_stem) = path.parent().and_then(|p| p.file_name()).and_then(|n| n.to_str()) {
-                stem_index.entry(parent_stem.to_lowercase()).or_default().push(&file.rel_path);
+            if let Some(parent_stem) = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+            {
+                stem_index
+                    .entry(parent_stem.to_lowercase())
+                    .or_default()
+                    .push(&file.rel_path);
             }
         }
         // Index by index.ts/index.js parent dir too
         if matches!(path.file_stem().and_then(|s| s.to_str()), Some("index")) {
-            if let Some(parent_stem) = path.parent().and_then(|p| p.file_name()).and_then(|n| n.to_str()) {
-                stem_index.entry(parent_stem.to_lowercase()).or_default().push(&file.rel_path);
+            if let Some(parent_stem) = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+            {
+                stem_index
+                    .entry(parent_stem.to_lowercase())
+                    .or_default()
+                    .push(&file.rel_path);
             }
         }
     }
@@ -65,7 +84,9 @@ pub(super) fn build_dep_graph(files: &[DigestFile]) -> DepGraph {
     let mut imported_by: HashMap<String, Vec<String>> = HashMap::new();
 
     for file in files {
-        if file.rel_path.is_empty() || file.raw_imports.is_empty() { continue; }
+        if file.rel_path.is_empty() || file.raw_imports.is_empty() {
+            continue;
+        }
 
         let resolved = resolve_imports(&file.raw_imports, &file.rel_path, &stem_index, &all_paths);
 
@@ -116,7 +137,12 @@ fn extract_rust(content: &str) -> Vec<String> {
         // use crate::X or use crate::X::Y
         if let Some(rest) = t.strip_prefix("use crate::") {
             if let Some(first) = rest.split("::").next() {
-                let name = first.split('{').next().unwrap_or("").trim().trim_end_matches(';');
+                let name = first
+                    .split('{')
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .trim_end_matches(';');
                 if !name.is_empty() {
                     out.push(name.to_string());
                 }
@@ -126,7 +152,12 @@ fn extract_rust(content: &str) -> Vec<String> {
         // use super::X
         if let Some(rest) = t.strip_prefix("use super::") {
             if let Some(first) = rest.split("::").next() {
-                let name = first.split('{').next().unwrap_or("").trim().trim_end_matches(';');
+                let name = first
+                    .split('{')
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .trim_end_matches(';');
                 if !name.is_empty() {
                     out.push(name.to_string());
                 }
@@ -143,7 +174,9 @@ fn extract_rust(content: &str) -> Vec<String> {
             && !t.starts_with("extern crate")
         {
             // Give up early — imports are at the top in Rust
-            if out.len() > 0 { break; }
+            if out.len() > 0 {
+                break;
+            }
         }
     }
     out
@@ -153,7 +186,9 @@ fn extract_ts(content: &str) -> Vec<String> {
     let mut out = Vec::new();
     for line in content.lines() {
         let t = line.trim();
-        if !t.starts_with("import ") && !t.starts_with("export ") { continue; }
+        if !t.starts_with("import ") && !t.starts_with("export ") {
+            continue;
+        }
 
         // Find `from '...'` or `from "..."`
         let path = extract_from_path(t);
@@ -215,7 +250,9 @@ fn extract_python(content: &str) -> Vec<String> {
 
         // Stop after class/def definitions start — imports are at top
         if t.starts_with("def ") || t.starts_with("class ") || t.starts_with("if __name__") {
-            if !out.is_empty() { break; }
+            if !out.is_empty() {
+                break;
+            }
         }
     }
     out
@@ -226,8 +263,13 @@ fn extract_go(content: &str) -> Vec<String> {
     let mut in_import_block = false;
     for line in content.lines() {
         let t = line.trim();
-        if t.starts_with("import (") || t == "import(" { in_import_block = true; continue; }
-        if in_import_block && t == ")" { break; }
+        if t.starts_with("import (") || t == "import(" {
+            in_import_block = true;
+            continue;
+        }
+        if in_import_block && t == ")" {
+            break;
+        }
         // Single import: import "path"
         if let Some(rest) = t.strip_prefix("import \"") {
             let path = rest.trim_end_matches('"').trim_end_matches('"');
@@ -250,10 +292,14 @@ fn extract_go(content: &str) -> Vec<String> {
 /// Go stdlib packages have no `.` in the first component (e.g. `fmt`, `os/exec`).
 /// Module imports have a host (e.g. `github.com/owner/repo/pkg`).
 fn is_go_project_import(path: &str) -> bool {
-    if path.is_empty() { return false; }
+    if path.is_empty() {
+        return false;
+    }
     let first = path.split('/').next().unwrap_or("");
     // Relative (rare in Go but handle it)
-    if first == "." || first == ".." { return true; }
+    if first == "." || first == ".." {
+        return true;
+    }
     // Module path: first component contains a dot (github.com, golang.org, etc.)
     first.contains('.')
 }
@@ -273,17 +319,18 @@ fn resolve_imports(
     let mut resolved = Vec::new();
 
     for import in raw {
-        let found = if import.starts_with("./") || import.starts_with("../") || import.starts_with("@/") {
-            // Relative/alias path resolution (TS/Go relative, @/ Next.js/Vite aliases)
-            resolve_relative(import, &importer_dir, all_paths)
-        } else if import.contains('/') {
-            // Module-path import (Go: github.com/owner/repo/pkg/foo)
-            // Try to match by the last 1-2 path components against project files
-            resolve_module_path(import, all_paths)
-        } else {
-            // Short name (Rust `use crate::X`, Python `from .X import`)
-            resolve_by_stem(import, stem_index)
-        };
+        let found =
+            if import.starts_with("./") || import.starts_with("../") || import.starts_with("@/") {
+                // Relative/alias path resolution (TS/Go relative, @/ Next.js/Vite aliases)
+                resolve_relative(import, &importer_dir, all_paths)
+            } else if import.contains('/') {
+                // Module-path import (Go: github.com/owner/repo/pkg/foo)
+                // Try to match by the last 1-2 path components against project files
+                resolve_module_path(import, all_paths)
+            } else {
+                // Short name (Rust `use crate::X`, Python `from .X import`)
+                resolve_by_stem(import, stem_index)
+            };
 
         if let Some(dep) = found {
             if dep != importer {
@@ -376,7 +423,9 @@ fn resolve_module_path(import: &str, all_paths: &[&str]) -> Option<String> {
     let parts: Vec<&str> = import.split('/').collect();
     // Try last 2 components first (e.g. "internal/agent"), then last 1 ("agent")
     for n in [2usize, 1] {
-        if parts.len() < n { continue; }
+        if parts.len() < n {
+            continue;
+        }
         let suffix = parts[parts.len() - n..].join("/");
         if let Some(found) = resolve_by_suffix(&suffix, all_paths) {
             return Some(found);
@@ -404,7 +453,9 @@ fn normalize_path(base: &str, import: &str) -> String {
     for segment in import.split('/') {
         match segment {
             "." | "" => {}
-            ".." => { parts.pop(); }
+            ".." => {
+                parts.pop();
+            }
             s => parts.push(s),
         }
     }
@@ -422,13 +473,20 @@ pub(super) fn format_dep_summary(graph: &DepGraph) -> String {
 
     // Collect all rel_paths that will be displayed (both as targets and importers)
     // to decide when we need parent dir context for disambiguation
-    let all_display: Vec<&str> = top.iter().map(|(f, _)| *f)
-        .chain(top.iter().flat_map(|(_, imp)| imp.iter().map(|s| s.as_str())))
+    let all_display: Vec<&str> = top
+        .iter()
+        .map(|(f, _)| *f)
+        .chain(
+            top.iter()
+                .flat_map(|(_, imp)| imp.iter().map(|s| s.as_str())),
+        )
         .collect();
 
     let mut out = String::from("## Key Dependencies\n\n");
     for (file, importers) in &top {
-        if importers.len() < 2 { break; } // stop at singletons
+        if importers.len() < 2 {
+            break;
+        } // stop at singletons
         let file_label = short_label(file, &all_display);
         let n = importers.len();
         let shown: Vec<String> = importers
@@ -437,7 +495,12 @@ pub(super) fn format_dep_summary(graph: &DepGraph) -> String {
             .map(|s| short_label(s, &all_display))
             .collect();
         if n > 4 {
-            out.push_str(&format!("  {} ← {} (+{})\n", file_label, shown.join(", "), n - 4));
+            out.push_str(&format!(
+                "  {} ← {} (+{})\n",
+                file_label,
+                shown.join(", "),
+                n - 4
+            ));
         } else {
             out.push_str(&format!("  {} ← {}\n", file_label, shown.join(", ")));
         }
@@ -453,9 +516,10 @@ fn short_label(rel_path: &str, all_paths: &[&str]) -> String {
         .and_then(|n| n.to_str())
         .unwrap_or(rel_path);
     // Count how many paths share this filename
-    let count = all_paths.iter().filter(|p| {
-        Path::new(p).file_name().and_then(|n| n.to_str()) == Some(filename)
-    }).count();
+    let count = all_paths
+        .iter()
+        .filter(|p| Path::new(p).file_name().and_then(|n| n.to_str()) == Some(filename))
+        .count();
     if count <= 1 {
         return filename.to_string();
     }
@@ -475,7 +539,9 @@ pub(super) fn format_dep_full(graph: &DepGraph, project_name: &str) -> String {
     let mut out = format!("# {} — import graph\n\n", project_name);
 
     // Build full path list for disambiguation
-    let all_paths: Vec<&str> = graph.imported_by.keys()
+    let all_paths: Vec<&str> = graph
+        .imported_by
+        .keys()
         .chain(graph.edges.keys())
         .map(|s| s.as_str())
         .collect();
@@ -494,12 +560,18 @@ pub(super) fn format_dep_full(graph: &DepGraph, project_name: &str) -> String {
             if n > 5 {
                 out.push_str(&format!(
                     "{} ({} files)\n  ← {}, +{} more\n",
-                    file_label, n, shown.join(", "), n - 5
+                    file_label,
+                    n,
+                    shown.join(", "),
+                    n - 5
                 ));
             } else {
                 out.push_str(&format!(
                     "{} ({} file{})\n  ← {}\n",
-                    file_label, n, if n == 1 { "" } else { "s" }, shown.join(", ")
+                    file_label,
+                    n,
+                    if n == 1 { "" } else { "s" },
+                    shown.join(", ")
                 ));
             }
         }
@@ -513,11 +585,10 @@ pub(super) fn format_dep_full(graph: &DepGraph, project_name: &str) -> String {
     if !all_importers.is_empty() {
         out.push_str("## All imports\n\n");
         for (file, deps) in all_importers {
-            if deps.is_empty() { continue; }
-            let shown: Vec<String> = deps
-                .iter()
-                .map(|d| short_label(d, &all_paths))
-                .collect();
+            if deps.is_empty() {
+                continue;
+            }
+            let shown: Vec<String> = deps.iter().map(|d| short_label(d, &all_paths)).collect();
             out.push_str(&format!("{} → {}\n", file, shown.join(", ")));
         }
     }
@@ -581,7 +652,10 @@ import React from 'react';
 
     #[test]
     fn test_normalize_path() {
-        assert_eq!(normalize_path("src/ingest", "./format"), "src/ingest/format");
+        assert_eq!(
+            normalize_path("src/ingest", "./format"),
+            "src/ingest/format"
+        );
         assert_eq!(normalize_path("src/ingest", "../router"), "src/router");
         assert_eq!(normalize_path("", "./foo"), "foo");
     }
@@ -605,6 +679,9 @@ import React from 'react';
             },
         };
         let summary = format_dep_summary(&graph);
-        assert!(summary.is_empty(), "Singleton should be excluded from summary");
+        assert!(
+            summary.is_empty(),
+            "Singleton should be excluded from summary"
+        );
     }
 }

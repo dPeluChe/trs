@@ -4,8 +4,8 @@ use std::process::Command;
 use crate::router::handlers::read_filters::{detect_language, Language};
 
 use super::{
-    DigestFile, IngestConfig, IngestLevel,
-    BYTES_PER_TOKEN, MAX_FILE_SIZE, SKIP_DIRS, SKIP_EXTENSIONS, SKIP_FILES,
+    DigestFile, IngestConfig, IngestLevel, BYTES_PER_TOKEN, MAX_FILE_SIZE, SKIP_DIRS,
+    SKIP_EXTENSIONS, SKIP_FILES,
 };
 
 /// Collect all eligible files from the project.
@@ -106,7 +106,10 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
         if files[i].content.is_empty() || files[i].rel_path.is_empty() {
             continue;
         }
-        let hash = files[i].content.bytes().fold(0u64, |acc, b| acc.wrapping_add(b as u64).wrapping_mul(31));
+        let hash = files[i]
+            .content
+            .bytes()
+            .fold(0u64, |acc, b| acc.wrapping_add(b as u64).wrapping_mul(31));
         if let Some(&original_idx) = seen.get(&hash) {
             // Merge name into original (max 2 names, then count)
             let dup_name = files[i].rel_path.clone();
@@ -119,7 +122,7 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
                 // Increment counter
                 if let Some(start) = current.rfind("(+") {
                     if let Some(end) = current.rfind(" more)") {
-                        if let Ok(n) = current[start+2..end].parse::<usize>() {
+                        if let Ok(n) = current[start + 2..end].parse::<usize>() {
                             let base = &current[..start];
                             files[original_idx].rel_path = format!("{}(+{} more)", base, n + 1);
                         }
@@ -149,20 +152,31 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(String, Vec<Str
         return None;
     }
 
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     let lower_name = name.to_lowercase();
 
     // Skip: CSS, HTML, SVG, XML, plist, lock files, minified, type declarations
-    if matches!(ext.as_str(), "css" | "scss" | "less" | "svg" | "html" | "htm"
-        | "xml" | "plist" | "xib" | "storyboard") {
+    if matches!(
+        ext.as_str(),
+        "css" | "scss" | "less" | "svg" | "html" | "htm" | "xml" | "plist" | "xib" | "storyboard"
+    ) {
         return None;
     }
-    if lower_name.ends_with(".lock") || lower_name.ends_with(".min.js")
-        || lower_name.ends_with(".min.css") || lower_name.ends_with(".d.ts")
-        || lower_name == "__init__.py" || lower_name == ".gitkeep"
-        || lower_name == ".nojekyll" || lower_name == ".gitattributes"
-        || lower_name == "py.typed" {
+    if lower_name.ends_with(".lock")
+        || lower_name.ends_with(".min.js")
+        || lower_name.ends_with(".min.css")
+        || lower_name.ends_with(".d.ts")
+        || lower_name == "__init__.py"
+        || lower_name == ".gitkeep"
+        || lower_name == ".nojekyll"
+        || lower_name == ".gitattributes"
+        || lower_name == "py.typed"
+    {
         return None;
     }
     // Skip empty or near-empty files
@@ -180,11 +194,15 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(String, Vec<Str
         // Translated READMEs (README_es.md, README_fr.md, etc.): skip content
         // They're variants of README.md -- just mention they exist
         if lower_name.starts_with("readme_") || lower_name.starts_with("readme-") {
-            return ok(format!("(translation of README.md, {} lines)", content.lines().count()));
+            return ok(format!(
+                "(translation of README.md, {} lines)",
+                content.lines().count()
+            ));
         }
 
         let cleaned = super::format::strip_html_from_markdown(&content);
-        let is_key = matches!(lower_name.as_str(),
+        let is_key = matches!(
+            lower_name.as_str(),
             "readme.md" | "claude.md" | "agents.md" | "contributing.md" | "changelog.md"
         );
         let max_lines = if is_key { 40 } else { 20 };
@@ -200,9 +218,17 @@ fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(String, Vec<Str
     if lower_name.contains("skill") || lower_name.ends_with(".prompt") {
         if content.len() > 1024 {
             let mut cut = 1024;
-            while cut > 0 && !content.is_char_boundary(cut) { cut -= 1; }
-            if let Some(nl) = content[..cut].rfind('\n') { cut = nl; }
-            return ok(format!("{}\n... ({} lines)", &content[..cut], content.lines().count()));
+            while cut > 0 && !content.is_char_boundary(cut) {
+                cut -= 1;
+            }
+            if let Some(nl) = content[..cut].rfind('\n') {
+                cut = nl;
+            }
+            return ok(format!(
+                "{}\n... ({} lines)",
+                &content[..cut],
+                content.lines().count()
+            ));
         }
         return ok(content);
     }
@@ -289,37 +315,67 @@ fn extract_signatures(content: &str, ext: &str) -> String {
             continue;
         }
 
-        let is_class = t.starts_with("class ") || t.starts_with("interface ")
-            || t.starts_with("struct ") || t.starts_with("enum ")
-            || t.starts_with("trait ") || t.starts_with("impl ")
+        let is_class = t.starts_with("class ")
+            || t.starts_with("interface ")
+            || t.starts_with("struct ")
+            || t.starts_with("enum ")
+            || t.starts_with("trait ")
+            || t.starts_with("impl ")
             || (t.starts_with("export ") && (t.contains("class ") || t.contains("interface ")));
 
         let keep = match ext {
-            "ts" | "tsx" | "js" | "jsx" | "mjs" | "mts" | "vue" | "svelte" =>
-                t.starts_with("export ") || t.starts_with("function ") || is_class ||
-                t.starts_with("type ") ||
-                t.starts_with("const ") && (t.contains("= mutation(") || t.contains("= query(") ||
-                    t.contains("= action(") || t.contains("= internalMutation(") ||
-                    t.contains("=> {") || t.contains("= defineTable(")),
-            "rs" =>
-                t.starts_with("pub ") || t.starts_with("fn ") || is_class ||
-                t.starts_with("mod ") || t.starts_with("type "),
-            "py" | "pyi" =>
-                t.starts_with("def ") || t.starts_with("class ") || t.starts_with("async def "),
-            "go" =>
-                t.starts_with("func ") || t.starts_with("type ") || t.starts_with("var ") || t.starts_with("const "),
-            _ =>
-                t.starts_with("export ") || t.starts_with("pub ") || t.starts_with("fn ") ||
-                t.starts_with("def ") || t.starts_with("class ") || t.starts_with("function "),
+            "ts" | "tsx" | "js" | "jsx" | "mjs" | "mts" | "vue" | "svelte" => {
+                t.starts_with("export ")
+                    || t.starts_with("function ")
+                    || is_class
+                    || t.starts_with("type ")
+                    || t.starts_with("const ")
+                        && (t.contains("= mutation(")
+                            || t.contains("= query(")
+                            || t.contains("= action(")
+                            || t.contains("= internalMutation(")
+                            || t.contains("=> {")
+                            || t.contains("= defineTable("))
+            }
+            "rs" => {
+                t.starts_with("pub ")
+                    || t.starts_with("fn ")
+                    || is_class
+                    || t.starts_with("mod ")
+                    || t.starts_with("type ")
+            }
+            "py" | "pyi" => {
+                t.starts_with("def ") || t.starts_with("class ") || t.starts_with("async def ")
+            }
+            "go" => {
+                t.starts_with("func ")
+                    || t.starts_with("type ")
+                    || t.starts_with("var ")
+                    || t.starts_with("const ")
+            }
+            _ => {
+                t.starts_with("export ")
+                    || t.starts_with("pub ")
+                    || t.starts_with("fn ")
+                    || t.starts_with("def ")
+                    || t.starts_with("class ")
+                    || t.starts_with("function ")
+            }
         };
 
-        if !keep { continue; }
+        if !keep {
+            continue;
+        }
 
         let cleaned = clean_signature(t);
-        if cleaned.is_empty() { continue; }
+        if cleaned.is_empty() {
+            continue;
+        }
 
         // Dedup: skip if we've seen this exact signature before (e.g. multiple to_dict)
-        if !is_class && seen_sigs.contains(&cleaned) { continue; }
+        if !is_class && seen_sigs.contains(&cleaned) {
+            continue;
+        }
         seen_sigs.insert(cleaned.clone());
 
         // Add blank line before a class only if the previous line was a method
@@ -368,7 +424,9 @@ fn clean_signature(line: &str) -> String {
         let before = s.len();
         if s.ends_with("=> {") {
             s = s[..s.len() - 4].trim_end().to_string();
-            if !s.ends_with(')') { s.push(')'); }
+            if !s.ends_with(')') {
+                s.push(')');
+            }
         }
         while s.ends_with('{') || s.ends_with('}') || s.ends_with('[') || s.ends_with(']') {
             s.pop();
@@ -379,7 +437,9 @@ fn clean_signature(line: &str) -> String {
                 s = s[..s.len() - suffix.len()].trim_end().to_string();
             }
         }
-        if s.len() == before { break; }
+        if s.len() == before {
+            break;
+        }
     }
 
     // Python: strip self from first param
@@ -399,13 +459,17 @@ fn clean_signature(line: &str) -> String {
         if let Some(comma) = s[result_start..].find(", String>") {
             let end = result_start + comma + ", String>".len();
             let inner = &s[result_start + 7..result_start + comma];
-            s = format!("{}Result<{}>{}",
-                &s[..result_start], inner, &s[end..]);
+            s = format!("{}Result<{}>{}", &s[..result_start], inner, &s[end..]);
         }
     }
 
     // Strip struct field declarations (pub id: String, etc.)
-    if s.starts_with("pub ") && s.contains(": ") && !s.contains("fn ") && !s.contains("async ") && !s.contains("struct ") {
+    if s.starts_with("pub ")
+        && s.contains(": ")
+        && !s.contains("fn ")
+        && !s.contains("async ")
+        && !s.contains("struct ")
+    {
         // It's a struct field like "pub id: String," -- skip these
         return String::new();
     }
@@ -417,10 +481,17 @@ fn clean_signature(line: &str) -> String {
 fn compress_package_json(content: &str) -> String {
     if let Ok(val) = serde_json::from_str::<serde_json::Value>(content) {
         let mut out = String::new();
-        if let Some(n) = val.get("name").and_then(|v| v.as_str()) { out.push_str(&format!("name: {}\n", n)); }
-        if let Some(v) = val.get("version").and_then(|v| v.as_str()) { out.push_str(&format!("version: {}\n", v)); }
+        if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+            out.push_str(&format!("name: {}\n", n));
+        }
+        if let Some(v) = val.get("version").and_then(|v| v.as_str()) {
+            out.push_str(&format!("version: {}\n", v));
+        }
         if let Some(s) = val.get("scripts").and_then(|v| v.as_object()) {
-            out.push_str(&format!("scripts: {}\n", s.keys().cloned().collect::<Vec<_>>().join(", ")));
+            out.push_str(&format!(
+                "scripts: {}\n",
+                s.keys().cloned().collect::<Vec<_>>().join(", ")
+            ));
         }
         for key in &["dependencies", "devDependencies"] {
             if let Some(deps) = val.get(*key).and_then(|v| v.as_object()) {
@@ -451,7 +522,11 @@ pub(super) fn get_changed_files(root: &Path, since: Option<&str>) -> Option<Vec<
     let stdout = String::from_utf8_lossy(&output.stdout);
     let files: Vec<String> = if since.is_some() {
         // git diff --name-only output
-        stdout.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect()
+        stdout
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect()
     } else {
         // git status --porcelain: "XY path" where XY = 2 status chars + 1 space
         // DO NOT trim -- the leading space is part of the format (e.g. " M src/file.rs")
@@ -476,7 +551,12 @@ pub(super) fn get_changed_files(root: &Path, since: Option<&str>) -> Option<Vec<
 }
 
 /// Apply token budget: prioritize changed files, truncate or drop large files.
-pub(super) fn apply_budget(files: &mut Vec<DigestFile>, budget: usize, level: IngestLevel, root: &Path) {
+pub(super) fn apply_budget(
+    files: &mut Vec<DigestFile>,
+    budget: usize,
+    level: IngestLevel,
+    root: &Path,
+) {
     let total_tokens: usize = files.iter().map(|f| f.tokens).sum();
 
     if total_tokens <= budget {

@@ -22,18 +22,30 @@ pub(super) fn build_digest(
         .unwrap_or("project");
 
     // Detect project type: if >60% of files are .md, it's a docs/skills project
-    let md_count = files.iter().filter(|f| {
-        Path::new(&f.rel_path).extension().and_then(|e| e.to_str()) == Some("md")
-    }).count();
+    let md_count = files
+        .iter()
+        .filter(|f| Path::new(&f.rel_path).extension().and_then(|e| e.to_str()) == Some("md"))
+        .count();
     // Also count .txt files as docs
-    let txt_count = files.iter().filter(|f| {
-        Path::new(&f.rel_path).extension().and_then(|e| e.to_str()) == Some("txt")
-    }).count();
+    let txt_count = files
+        .iter()
+        .filter(|f| Path::new(&f.rel_path).extension().and_then(|e| e.to_str()) == Some("txt"))
+        .count();
     let docs_count = md_count + txt_count;
     let is_docs_project = total_files > 0 && docs_count * 100 / total_files.max(1) > 50;
 
-    let project_type = if is_docs_project { "docs/skills" } else { "code" };
-    out.push_str(&format!("# {} ({} files, {} tokens, {})\n\n", project_name, total_files, format_tokens(total_tokens), project_type));
+    let project_type = if is_docs_project {
+        "docs/skills"
+    } else {
+        "code"
+    };
+    out.push_str(&format!(
+        "# {} ({} files, {} tokens, {})\n\n",
+        project_name,
+        total_files,
+        format_tokens(total_tokens),
+        project_type
+    ));
 
     // Structure
     out.push_str("## Structure\n\n");
@@ -48,7 +60,9 @@ pub(super) fn build_digest(
     // Group files by parent directory
     let mut groups: BTreeMap<String, Vec<&DigestFile>> = BTreeMap::new();
     for file in files {
-        if file.rel_path.is_empty() { continue; }
+        if file.rel_path.is_empty() {
+            continue;
+        }
         let dir = Path::new(&file.rel_path)
             .parent()
             .map(|p| p.to_string_lossy().to_string())
@@ -59,24 +73,37 @@ pub(super) fn build_digest(
     // Root docs first (README, CLAUDE, AGENTS etc.) -- full content
     if let Some(root_files) = groups.remove("") {
         for file in &root_files {
-            let ext = Path::new(&file.rel_path).extension()
-                .and_then(|e| e.to_str()).unwrap_or("");
+            let ext = Path::new(&file.rel_path)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
             let content = file.content.trim();
-            if content.is_empty() { continue; }
+            if content.is_empty() {
+                continue;
+            }
 
             if ext == "md" {
                 let line_count = content.lines().count();
                 let is_readme = file.rel_path.to_lowercase().contains("readme");
                 // Docs projects: README is the index, show more
                 // Code projects: README truncated (setup/install not needed)
-                let max_lines = if is_docs_project && is_readme { 80 }
-                    else if is_readme { 40 }
-                    else if is_docs_project { 40 }
-                    else { 60 };
+                let max_lines = if is_docs_project && is_readme {
+                    80
+                } else if is_readme {
+                    40
+                } else if is_docs_project {
+                    40
+                } else {
+                    60
+                };
 
                 out.push_str(&format!("## {}\n\n", file.rel_path));
                 if line_count > max_lines + 10 {
-                    let preview: String = content.lines().take(max_lines).collect::<Vec<_>>().join("\n");
+                    let preview: String = content
+                        .lines()
+                        .take(max_lines)
+                        .collect::<Vec<_>>()
+                        .join("\n");
                     out.push_str(&preview);
                     out.push_str(&format!("\n... ({} lines total)\n\n", line_count));
                 } else {
@@ -97,20 +124,30 @@ pub(super) fn build_digest(
 
         for file in dir_files {
             let content = file.content.trim();
-            if content.is_empty() { continue; }
+            if content.is_empty() {
+                continue;
+            }
 
-            let ext = Path::new(&file.rel_path).extension()
-                .and_then(|e| e.to_str()).unwrap_or("");
-            let name = Path::new(&file.rel_path).file_name()
-                .and_then(|n| n.to_str()).unwrap_or(&file.rel_path);
+            let ext = Path::new(&file.rel_path)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
+            let name = Path::new(&file.rel_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(&file.rel_path);
 
             if ext == "md" {
                 let line_count = content.lines().count();
                 // Docs projects: skills/guides are the product, show more
                 let sub_max = if is_docs_project { 40 } else { 20 };
                 if line_count > sub_max + 10 {
-                    let preview: String = content.lines().take(sub_max).collect::<Vec<_>>().join("\n");
-                    out.push_str(&format!("**{}**\n{}\n... ({} lines)\n\n", name, preview, line_count));
+                    let preview: String =
+                        content.lines().take(sub_max).collect::<Vec<_>>().join("\n");
+                    out.push_str(&format!(
+                        "**{}**\n{}\n... ({} lines)\n\n",
+                        name, preview, line_count
+                    ));
                 } else {
                     out.push_str(&format!("**{}**\n{}\n\n", name, content));
                 }
@@ -144,14 +181,21 @@ fn format_file_entry(out: &mut String, name: &str, content: &str) {
 
     // Multi-line signatures (imports + exports)
     let has_signatures = lines.iter().any(|l| {
-        l.starts_with("export ") || l.starts_with("import ") || l.starts_with("pub ")
-            || l.starts_with("fn ") || l.starts_with("def ") || l.starts_with("class ")
+        l.starts_with("export ")
+            || l.starts_with("import ")
+            || l.starts_with("pub ")
+            || l.starts_with("fn ")
+            || l.starts_with("def ")
+            || l.starts_with("class ")
             || l.starts_with("use ")
     });
 
     if has_signatures {
-        let sigs: Vec<&str> = lines.iter()
-            .filter(|l| !l.starts_with("import ") && !l.starts_with("use ") && !l.starts_with("from "))
+        let sigs: Vec<&str> = lines
+            .iter()
+            .filter(|l| {
+                !l.starts_with("import ") && !l.starts_with("use ") && !l.starts_with("from ")
+            })
             .copied()
             .collect();
 
@@ -184,10 +228,18 @@ pub(crate) fn build_tree(files: &[DigestFile]) -> String {
     let mut dirs: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
     for file in files {
-        if file.rel_path.is_empty() { continue; }
+        if file.rel_path.is_empty() {
+            continue;
+        }
         let path = Path::new(&file.rel_path);
-        let parent = path.parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
-        let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        let parent = path
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
         dirs.entry(parent).or_default().push(name);
     }
 
@@ -275,7 +327,11 @@ pub(crate) fn strip_html_from_markdown(content: &str) -> String {
         // Convert bullet markers: *   text -> - text
         if cleaned.trim_start().starts_with("*   ") || cleaned.trim_start().starts_with("*  ") {
             let indent = cleaned.len() - cleaned.trim_start().len();
-            cleaned = format!("{}- {}", " ".repeat(indent), cleaned.trim_start().trim_start_matches('*').trim());
+            cleaned = format!(
+                "{}- {}",
+                " ".repeat(indent),
+                cleaned.trim_start().trim_start_matches('*').trim()
+            );
         }
 
         result.push_str(&cleaned);
@@ -334,7 +390,9 @@ pub(crate) fn format_tokens(n: usize) -> String {
 }
 
 pub(super) fn format_modified(entry: &std::fs::DirEntry) -> String {
-    let modified = entry.metadata().ok()
+    let modified = entry
+        .metadata()
+        .ok()
         .and_then(|m| m.modified().ok())
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_secs())

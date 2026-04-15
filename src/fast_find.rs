@@ -134,7 +134,9 @@ pub(crate) fn run(args: &[&str], ctx: &CommandContext) {
     let cmd = format!(
         "find --gitignore {} {}",
         root,
-        name_pattern.map(|p| format!("-name {}", p)).unwrap_or_default()
+        name_pattern
+            .map(|p| format!("-name {}", p))
+            .unwrap_or_default()
     );
     crate::tracker::log_execution(&cmd, raw_est, out_est.min(raw_est), duration_ms);
 
@@ -171,10 +173,7 @@ fn print_compact(files: &[String], dirs: &[String], _root: &str) {
         print!("{}/", dir);
         if filenames.len() <= 8 {
             // Inline
-            println!(
-                " {}",
-                filenames.join(" ")
-            );
+            println!(" {}", filenames.join(" "));
         } else {
             // Show first 6 + count
             println!(
@@ -224,8 +223,7 @@ fn glob_match_inner(p: &[char], n: &[char]) -> bool {
                 skip += 1;
             }
             let p = &p[skip - 1..]; // keep one star
-            glob_match_inner(&p[1..], n)
-                || (!n.is_empty() && glob_match_inner(p, &n[1..]))
+            glob_match_inner(&p[1..], n) || (!n.is_empty() && glob_match_inner(p, &n[1..]))
         }
         (Some('?'), Some(_)) => glob_match_inner(&p[1..], &n[1..]),
         (Some(&pc), Some(&nc)) if pc == nc => glob_match_inner(&p[1..], &n[1..]),

@@ -95,11 +95,7 @@ impl ParseHandler {
         }
 
         // Estimate total change lines (only +/- lines, not context)
-        let total_change_lines: usize = diff
-            .files
-            .iter()
-            .map(|f| f.additions + f.deletions)
-            .sum();
+        let total_change_lines: usize = diff.files.iter().map(|f| f.additions + f.deletions).sum();
 
         // For very large diffs (>500 change lines), show summary only
         if total_change_lines > 500 {
