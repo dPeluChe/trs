@@ -126,11 +126,9 @@ pub(crate) fn run_discover(all_projects: bool, since_days: usize) {
     }
 
     let missed_total: usize = missed.values().sum();
-    let adoption_pct = if total_commands > 0 {
-        trs_commands * 100 / total_commands
-    } else {
-        0
-    };
+    let adoption_pct = (trs_commands * 100)
+        .checked_div(total_commands)
+        .unwrap_or(0);
 
     println!("trs discover — missed savings\n");
     println!(

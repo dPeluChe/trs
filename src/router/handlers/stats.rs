@@ -204,7 +204,7 @@ fn print_summary(entries: &[HistoryEntry]) {
     }
 
     let mut sorted: Vec<(String, CommandAgg)> = agg.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.saved().cmp(&a.1.saved()));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.1.saved()));
     sorted.truncate(10);
 
     if !sorted.is_empty() {
@@ -320,7 +320,7 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
         e.out_bytes += entry.out_bytes;
     }
     let mut sorted: Vec<(String, CommandAgg)> = agg.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.saved().cmp(&a.1.saved()));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.1.saved()));
     sorted.truncate(10);
 
     let top: Vec<serde_json::Value> = sorted

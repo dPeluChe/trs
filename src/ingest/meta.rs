@@ -52,8 +52,7 @@ pub(crate) fn load_meta(digest_path: &Path) -> Option<IngestMeta> {
 /// Save metadata sidecar next to the digest file.
 pub(crate) fn save_meta(digest_path: &Path, meta: &IngestMeta) -> std::io::Result<()> {
     let meta_path = meta_path_for(digest_path);
-    let json = serde_json::to_string_pretty(meta)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let json = serde_json::to_string_pretty(meta).map_err(std::io::Error::other)?;
     std::fs::write(meta_path, json)
 }
 
