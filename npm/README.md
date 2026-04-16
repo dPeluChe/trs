@@ -8,7 +8,7 @@ A CLI toolkit for developers, automation pipelines, and AI agents.
 ## Install
 
 ```bash
-npm install -g tars-cli
+npm install -g @dpeluche/trs
 ```
 
 Or with other package managers:

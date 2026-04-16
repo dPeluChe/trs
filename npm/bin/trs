@@ -15,15 +15,15 @@ function isMusl() {
 
 const PLATFORMS = {
   win32: {
-    x64: "@anthropics/trs-cli-win32-x64/trs.exe",
+    x64: "@dpeluche/trs-cli-win32-x64/trs.exe",
   },
   darwin: {
-    x64: "@anthropics/trs-cli-darwin-x64/trs",
-    arm64: "@anthropics/trs-cli-darwin-arm64/trs",
+    x64: "@dpeluche/trs-cli-darwin-x64/trs",
+    arm64: "@dpeluche/trs-cli-darwin-arm64/trs",
   },
   linux: {
-    x64: "@anthropics/trs-cli-linux-x64/trs",
-    arm64: "@anthropics/trs-cli-linux-arm64/trs",
+    x64: "@dpeluche/trs-cli-linux-x64/trs",
+    arm64: "@dpeluche/trs-cli-linux-arm64/trs",
   },
 };
 

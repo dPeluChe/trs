@@ -1,5 +1,5 @@
 {
-  "name": "@anthropics/trs-cli-linux-x64",
+  "name": "@dpeluche/trs-cli-linux-x64",
   "version": "0.5.0",
   "description": "trs binary for linux x64",
   "license": "MIT",

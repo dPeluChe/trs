@@ -1,5 +1,5 @@
 {
-  "name": "tars-cli",
+  "name": "@dpeluche/trs",
   "version": "0.5.0",
   "description": "Transform noisy terminal output into compact, structured signal. CLI toolkit for developers, automation pipelines, and AI agents. 68-90% token savings.",
   "license": "MIT",
@@ -36,10 +36,10 @@
     "compact"
   ],
   "optionalDependencies": {
-    "@anthropics/trs-cli-darwin-x64": "0.5.0",
-    "@anthropics/trs-cli-darwin-arm64": "0.5.0",
-    "@anthropics/trs-cli-linux-x64": "0.5.0",
-    "@anthropics/trs-cli-linux-arm64": "0.5.0",
-    "@anthropics/trs-cli-win32-x64": "0.5.0"
+    "@dpeluche/trs-cli-darwin-x64": "0.5.0",
+    "@dpeluche/trs-cli-darwin-arm64": "0.5.0",
+    "@dpeluche/trs-cli-linux-x64": "0.5.0",
+    "@dpeluche/trs-cli-linux-arm64": "0.5.0",
+    "@dpeluche/trs-cli-win32-x64": "0.5.0"
   }
 }
