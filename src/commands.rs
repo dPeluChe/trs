@@ -155,6 +155,10 @@ pub enum Commands {
         /// Force regeneration even if HEAD unchanged (disables --fresh)
         #[arg(long)]
         force: bool,
+
+        /// Print digest contents to stdout instead of just the path
+        #[arg(long)]
+        print: bool,
     },
 
     /// Execute command without filtering but track usage

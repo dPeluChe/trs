@@ -159,6 +159,8 @@ pub struct IngestConfig {
     pub fresh_check: bool,
     /// Force regeneration, bypassing fresh check.
     pub force: bool,
+    /// Print digest contents to stdout instead of just the saved path.
+    pub print_content: bool,
 }
 
 /// A file entry in the digest.
@@ -304,12 +306,14 @@ pub fn run_ingest(config: &IngestConfig) {
                             current,
                             path.display()
                         );
-                        if let Ok(content) = std::fs::read_to_string(&path) {
-                            if config.output_file.is_none() {
+                        if config.print_content {
+                            if let Ok(content) = std::fs::read_to_string(&path) {
                                 print!("{}", content);
                             }
-                            return;
+                        } else {
+                            println!("{}", path.display());
                         }
+                        return;
                     }
                 }
             }
@@ -400,29 +404,11 @@ pub fn run_ingest(config: &IngestConfig) {
     let total_tokens = (final_output.len() as f64 / BYTES_PER_TOKEN) as usize;
     let file_count = files.iter().filter(|f| !f.rel_path.is_empty()).count();
 
-    if let Some(ref out_path) = config.output_file {
-        // Explicit --output: write only there, no shadow save. The caller
-        // (e.g. spark) manages storage; trs should stay out of the way.
-        match std::fs::write(out_path, &final_output) {
-            Ok(()) => {
-                eprintln!(
-                    "trs ingest: {} ({} tokens, {} files) -> {}",
-                    format_bytes(final_output.len()),
-                    format_tokens(total_tokens),
-                    file_count,
-                    out_path.display(),
-                );
-            }
-            Err(e) => {
-                eprintln!("trs ingest: write failed: {}", e);
-                std::process::exit(1);
-            }
-        }
-        return;
-    }
+    // stdout contract:
+    //   default                → print the saved path (cheap for callers)
+    //   --print                → print the digest content (legacy behavior)
+    // stderr always gets a one-line summary with bytes/tokens/file counts.
 
-    // No --output: shadow-save to ~/.trs/ingest/<owner>/<repo>.md with metadata
-    // sidecar, and print to stdout for interactive/piped use.
     let digest_meta = meta::IngestMeta {
         head_sha: meta::get_head_sha(&config.root),
         timestamp: meta::now_unix(),
@@ -432,19 +418,45 @@ pub fn run_ingest(config: &IngestConfig) {
         trs_version: env!("CARGO_PKG_VERSION").to_string(),
     };
 
-    let saved_path = save_to_store(&final_output, config);
-    if let Some(ref p) = saved_path {
-        let digest_path = std::path::PathBuf::from(p);
-        let _ = meta::save_meta(&digest_path, &digest_meta);
+    // Resolve the output destination:
+    //   --output <path>  → write there, no shadow save
+    //   no flag          → shadow save to ~/.trs/ingest/<owner>/<repo>.md
+    let written_path: Option<String> = if let Some(ref out_path) = config.output_file {
+        if let Some(parent) = out_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        match std::fs::write(out_path, &final_output) {
+            Ok(()) => Some(out_path.display().to_string()),
+            Err(e) => {
+                eprintln!("trs ingest: write failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+    } else {
+        let saved_path = save_to_store(&final_output, config);
+        if let Some(ref p) = saved_path {
+            let digest_path = std::path::PathBuf::from(p);
+            let _ = meta::save_meta(&digest_path, &digest_meta);
+        }
+        saved_path
+    };
+
+    if let Some(ref p) = written_path {
         eprintln!(
-            "trs ingest: {} ({} tokens) -> {}",
+            "trs ingest: {} ({} tokens, {} files) -> {}",
             format_bytes(final_output.len()),
             format_tokens(total_tokens),
-            p
+            file_count,
+            p,
         );
     }
 
-    print!("{}", final_output);
+    if config.print_content {
+        print!("{}", final_output);
+    } else if let Some(ref p) = written_path {
+        // Default: emit just the path on stdout for easy capture.
+        println!("{}", p);
+    }
 }
 
 #[cfg(test)]

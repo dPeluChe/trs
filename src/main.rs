@@ -167,6 +167,7 @@ fn main() {
             since_last,
             fresh,
             force,
+            print,
         }) => {
             if *list {
                 ingest::list_ingests();
@@ -195,6 +196,7 @@ fn main() {
                     since_last: *since_last,
                     fresh_check: *fresh,
                     force: *force,
+                    print_content: *print,
                 };
                 ingest::run_ingest(&config);
             }
