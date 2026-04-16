@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#06080f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="20%" r="60%">
+      <stop offset="0" stop-color="#f0a030" stop-opacity="0.22"/>
+      <stop offset="0.7" stop-color="#f0a030" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Big brand -->
+  <text x="600" y="230" font-family="'SF Mono','Fira Code',Menlo,Consolas,monospace" font-size="180" font-weight="800" fill="#f0a030" text-anchor="middle" letter-spacing="-4">trs</text>
+
+  <text x="600" y="285" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" font-size="18" font-weight="500" fill="#8b949e" text-anchor="middle" letter-spacing="6">TARSCLI</text>
+
+  <!-- Tagline -->
+  <text x="600" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" font-size="38" font-weight="600" fill="#e6edf3" text-anchor="middle">Terminal compression for AI agents</text>
+  <text x="600" y="410" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" font-size="24" font-weight="400" fill="#8b949e" text-anchor="middle">68&#8211;99% smaller output, same signal</text>
+
+  <!-- Stat pills -->
+  <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" font-size="18">
+    <g transform="translate(240,490)">
+      <rect width="160" height="44" rx="22" fill="#0d1117" stroke="#21262d"/>
+      <text x="80" y="28" fill="#e6edf3" text-anchor="middle"><tspan font-weight="700">6 MB</tspan> <tspan fill="#8b949e">binary</tspan></text>
+    </g>
+    <g transform="translate(420,490)">
+      <rect width="170" height="44" rx="22" fill="#0d1117" stroke="#21262d"/>
+      <text x="85" y="28" fill="#e6edf3" text-anchor="middle"><tspan fill="#f0a030" font-weight="700">~12 ms</tspan> <tspan fill="#8b949e">startup</tspan></text>
+    </g>
+    <g transform="translate(610,490)">
+      <rect width="170" height="44" rx="22" fill="#0d1117" stroke="#21262d"/>
+      <text x="85" y="28" fill="#e6edf3" text-anchor="middle"><tspan font-weight="700">9</tspan> <tspan fill="#8b949e">AI tool hooks</tspan></text>
+    </g>
+    <g transform="translate(800,490)">
+      <rect width="160" height="44" rx="22" fill="#0d1117" stroke="#21262d"/>
+      <text x="80" y="28" fill="#e6edf3" text-anchor="middle"><tspan font-weight="700">30+</tspan> <tspan fill="#8b949e">parsers</tspan></text>
+    </g>
+  </g>
+
+  <!-- Footer line -->
+  <text x="600" y="590" font-family="'SF Mono','Fira Code',monospace" font-size="16" fill="#8b949e" text-anchor="middle">github.com/dPeluChe/trs &#183; Rust &#183; MIT</text>
+</svg>

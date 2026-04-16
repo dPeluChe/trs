@@ -154,6 +154,8 @@ trs ingest --ollama auto              # LLM-formatted summary
 trs ingest --deps                     # dependency graph only (no file content)
 trs ingest --since-last               # only files changed since last ingest
 trs ingest --fresh                    # reuse cached digest if HEAD unchanged
+trs ingest -o path.md                 # write only to path.md (no shadow save)
+trs ingest --print                    # emit content to stdout (default: path)
 trs ingest --list                     # show saved digests with HEAD sha + stale info
 trs ingest --read myproject           # read a saved digest
 
