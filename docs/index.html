@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TarsCLI — Terminal compression for AI agents</title>
-  <meta name="description" content="Compact terminal output for humans and AI agents. Rust. 2,104 tests. 74% reduction on real projects.">
+  <meta name="description" content="Compact terminal output for humans and AI agents. Rust-native, cross-platform, ~12ms startup, zero Node overhead on macOS/Linux.">
   <style>
     :root {
       --bg: #06080f;
@@ -345,22 +345,22 @@
 
     <div class="hero-stats">
       <span class="hero-stat"><strong>Rust</strong></span>
-      <span class="hero-stat"><strong>5.9 MB</strong> binary</span>
-      <span class="hero-stat"><strong>2,104</strong> tests</span>
-      <span class="hero-stat"><strong>74%</strong> reduction</span>
-      <span class="hero-stat"><strong>~3ms</strong> overhead</span>
+      <span class="hero-stat"><strong>6 MB</strong> single binary</span>
+      <span class="hero-stat"><strong>~12ms</strong> startup</span>
+      <span class="hero-stat">68&ndash;99% output <strong>compression</strong></span>
+      <span class="hero-stat">9 AI tool <strong>hooks</strong></span>
     </div>
 
     <div class="badges">
       <a href="https://github.com/dPeluChe/trs/actions"><img src="https://github.com/dPeluChe/trs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
       <a href="https://github.com/dPeluChe/trs/releases"><img src="https://img.shields.io/github/v/release/dPeluChe/trs" alt="Release"></a>
-      <a href="https://www.npmjs.com/package/tars-cli"><img src="https://img.shields.io/npm/v/tars-cli" alt="npm"></a>
+      <a href="https://www.npmjs.com/package/@dpeluche/trs"><img src="https://img.shields.io/npm/v/@dpeluche/trs" alt="npm"></a>
       <a href="https://github.com/dPeluChe/trs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
     </div>
 
     <div class="install-box">
       <span class="prompt">$</span>
-      <code id="install-cmd">npm install -g tars-cli</code>
+      <code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh</code>
       <button class="copy-btn" onclick="copyInstall(this)">Copy</button>
     </div>
   </div>
@@ -441,62 +441,57 @@ src/main.rs (3):
   </div>
 </section>
 
-<!-- Benchmarks -->
+<!-- Compression results (reference numbers, not a scoreboard) -->
 <section>
   <div class="container">
-    <h2>Benchmarks</h2>
-    <p style="color: var(--text-muted); margin-bottom: 24px;">vs <a href="https://github.com/rtk-ai/rtk" style="color: var(--blue);">rtk</a> 0.35.0 and <a href="https://github.com/nicobailey/token-saver" style="color: var(--blue);">token-saver</a> 2.2.1 across 18 tests.</p>
+    <h2>What compression looks like</h2>
+    <p style="color: var(--text-muted); margin-bottom: 24px;">
+      Typical reductions on commands people run dozens of times a day.
+      Numbers are representative; your repo will vary.
+    </p>
 
-    <h3>Compression</h3>
     <div style="overflow-x: auto;">
       <table>
         <thead>
-          <tr><th>Command</th><th>Raw</th><th>trs</th><th>rtk</th><th>Winner</th></tr>
+          <tr><th>Command</th><th>Raw</th><th>trs</th><th>Reduction</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>cargo test</code></td><td>8.1 KB</td><td>58 B</td><td>58 B</td><td>tie</td></tr>
-          <tr><td><code>git status</code></td><td>1.4 KB</td><td class="winner">336 B</td><td>599 B</td><td class="winner">trs</td></tr>
-          <tr><td><code>git log -10</code></td><td>7.6 KB</td><td class="winner">689 B</td><td>2.8 KB</td><td class="winner">trs</td></tr>
-          <tr><td><code>git diff</code></td><td>14.6 KB</td><td class="winner">8.0 KB</td><td>12.1 KB</td><td class="winner">trs</td></tr>
-          <tr><td><code>ls -la</code></td><td>1.4 KB</td><td>270 B</td><td>257 B</td><td>rtk</td></tr>
-          <tr><td><code>env</code></td><td>2.9 KB</td><td class="winner">728 B</td><td>1.1 KB</td><td class="winner">trs</td></tr>
-          <tr><td><code>find *.rs</code></td><td>4.4 KB</td><td>2.4 KB</td><td>760 B</td><td>rtk</td></tr>
-          <tr><td><code>curl -I</code></td><td>201 B</td><td class="winner">115 B</td><td>192 B</td><td class="winner">trs</td></tr>
-          <tr><td><code>gh pr list</code></td><td>560 B</td><td class="winner">348 B</td><td>384 B</td><td class="winner">trs</td></tr>
+          <tr><td><code>cargo test</code></td><td>8.1 KB</td><td>58 B</td><td class="winner">99%</td></tr>
+          <tr><td><code>cargo clippy</code></td><td>55 KB</td><td>5.5 KB</td><td class="winner">90%</td></tr>
+          <tr><td><code>git log -10</code></td><td>7.6 KB</td><td>689 B</td><td class="winner">91%</td></tr>
+          <tr><td><code>git status</code></td><td>1.4 KB</td><td>336 B</td><td class="winner">76%</td></tr>
+          <tr><td><code>git diff</code></td><td>14.6 KB</td><td>8.0 KB</td><td class="winner">45%</td></tr>
+          <tr><td><code>gh pr list</code></td><td>560 B</td><td>348 B</td><td class="winner">38%</td></tr>
+          <tr><td><code>env</code></td><td>2.9 KB</td><td>728 B</td><td class="winner">75%</td></tr>
+          <tr><td><code>trs ingest</code> (this repo)</td><td>600+ KB raw source</td><td>16 KB digest</td><td class="winner">97%</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h3>Speed (local commands)</h3>
-    <div style="overflow-x: auto;">
-      <table>
-        <thead>
-          <tr><th></th><th>trs</th><th>rtk</th><th>token-saver</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Overhead vs raw</td><td class="winner">27%</td><td>45%</td><td>274%</td></tr>
-          <tr><td>Speed wins</td><td class="winner">12</td><td>2</td><td>0</td></tr>
-          <tr><td>Startup</td><td class="winner">3.2ms</td><td>4.5ms</td><td>~55ms</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <p style="color: var(--text-muted); margin-top: 20px; font-size: 13px;">
+      Want to reproduce on your machine, or compare against other tools? The
+      <a href="https://github.com/dPeluChe/trs/tree/main/docs/benchmarks" style="color: var(--blue);">docs/benchmarks/</a>
+      folder holds the scripts we use internally as a calibration lab &mdash;
+      not as a marketing scoreboard. Run them, read them, submit cases where
+      trs underperforms.
+    </p>
 
     <div class="bench-summary">
       <div class="bench-card">
-        <div class="num">13/18</div>
-        <div class="label">compression wins vs rtk</div>
+        <div class="num">~12ms</div>
+        <div class="label">startup on macOS / Linux</div>
       </div>
       <div class="bench-card">
-        <div class="num">45%</div>
-        <div class="label">diff compression (vs 17% rtk)</div>
+        <div class="num">0ms</div>
+        <div class="label">Node overhead (shell launcher)</div>
       </div>
       <div class="bench-card">
-        <div class="num">~3ms</div>
-        <div class="label">overhead per command</div>
+        <div class="num">68&ndash;99%</div>
+        <div class="label">output compression range</div>
       </div>
       <div class="bench-card">
-        <div class="num">27%</div>
-        <div class="label">overhead vs raw (rtk 45%)</div>
+        <div class="num">30+</div>
+        <div class="label">dedicated parsers</div>
       </div>
     </div>
   </div>
@@ -528,8 +523,8 @@ src/main.rs (3):
         <div class="feature-desc">Ripgrep-powered <code>trs search</code> and <code>trs replace --dry-run</code>. Compact output grouped by file.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">AI tool hooks</div>
-        <div class="feature-desc"><code>trs init claude</code> installs hooks for Claude Code, Gemini, Cursor, Codex, OpenCode, and Kilo Code.</div>
+        <div class="feature-title">AI tool hooks &amp; rules</div>
+        <div class="feature-desc"><code>trs init --all</code> installs hooks in Claude Code, Gemini CLI, Cursor, OpenCode, Kilo, Factory Droid (programmatic) and drops rules files for Codex, Antigravity, Windsurf. Smart-merge into existing settings.json &mdash; user config preserved.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Fast find</div>
@@ -545,7 +540,15 @@ src/main.rs (3):
       </div>
       <div class="feature">
         <div class="feature-title">Project digest (trs ingest)</div>
-        <div class="feature-desc">Generate an LLM-ready index of any codebase. Scores 19/20 vs repomix's 5/20 on quality benchmarks with 50x fewer tokens. Budget-aware, git-aware, Ollama integration. Auto-detects code vs docs/skills projects.</div>
+        <div class="feature-desc">LLM-ready index of any codebase. Budget-aware (<code>--budget 128k</code>), git-aware (<code>--since-last</code>, <code>--fresh</code>), dependency graph (<code>--deps</code>), stale detection in <code>--list</code>, Ollama post-processing. Output: path on stdout, digest on disk.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Chain-aware rewrite</div>
+        <div class="feature-desc"><code>cd X && git status</code> or <code>cargo fmt && cargo clippy</code> get each rewritable segment wrapped with trs. Pipes and semicolons pass through untouched.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Token savings dashboard</div>
+        <div class="feature-desc"><code>trs stats</code> shows cumulative compression across all tracked commands, period range, tokens saved per day. JSON output for dashboards.</div>
       </div>
     </div>
   </div>
@@ -557,22 +560,30 @@ src/main.rs (3):
     <h2>Install</h2>
     <div class="install-grid">
       <div class="install-option">
-        <div class="method">npm (precompiled)</div>
-        <code>npm install -g tars-cli</code>
+        <div class="method">universal (macOS / Linux)</div>
+        <code style="white-space: normal; word-break: break-all;">curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh</code>
       </div>
       <div class="install-option">
-        <div class="method">try without installing</div>
-        <code>npx tars-cli git status</code>
+        <div class="method">Windows (PowerShell)</div>
+        <code style="white-space: normal; word-break: break-all;">irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex</code>
       </div>
       <div class="install-option">
-        <div class="method">from source</div>
-        <code>cargo install --path .</code>
+        <div class="method">npm (cross-platform)</div>
+        <code>npm install -g @dpeluche/trs</code>
+      </div>
+      <div class="install-option">
+        <div class="method">from source (Rust toolchain)</div>
+        <code>cargo install tars-cli</code>
       </div>
       <div class="install-option">
         <div class="method">pre-built binaries</div>
         <code><a href="https://github.com/dPeluChe/trs/releases" style="color: var(--blue); text-decoration: none;">github.com/dPeluChe/trs/releases</a></code>
       </div>
     </div>
+    <p style="color: var(--text-muted); margin-top: 16px; font-size: 13px;">
+      The install script and npm package ship the same Rust binary. Shell
+      launcher on Unix means zero Node overhead at runtime.
+    </p>
   </div>
 </section>
 
