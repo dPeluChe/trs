@@ -1,6 +1,6 @@
 {
   "name": "@dpeluche/trs-cli-win32-x64",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "trs binary for win32 x64",
   "license": "MIT",
   "repository": {
