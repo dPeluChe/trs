@@ -111,10 +111,15 @@ fn handle_json_protocol(json: &serde_json::Value) {
     };
 
     if let Some(rewritten) = maybe_rewrite(cmd) {
-        // Output modified tool_input
+        // Output in Claude Code PreToolUse hook format
         let output = serde_json::json!({
-            "tool_input": {
-                "command": rewritten
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+                "permissionDecisionReason": "trs auto-rewrite",
+                "updatedInput": {
+                    "command": rewritten
+                }
             }
         });
         println!("{}", output);
