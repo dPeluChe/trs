@@ -227,7 +227,7 @@ vs [rtk](https://github.com/rtk-ai/rtk) 0.35.0 and [token-saver](https://github.
 
 Note: rtk silently replaces `find` with an internal walker (undocumented), which makes it appear faster on file searches. trs always executes the real command. Use `trs find --gitignore` for an explicit fast walker that respects `.gitignore`.
 
-Run it yourself: `./scripts/benchmark.sh` or `./scripts/benchmark-real.sh [project-path]`
+Run it yourself: `./docs/benchmarks/benchmark.sh` or `./docs/benchmarks/benchmark-real.sh [project-path]`
 
 ### Ingest quality (vs repomix)
 

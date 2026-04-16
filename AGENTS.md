@@ -116,7 +116,7 @@ tests/
 cargo build                    # Build
 cargo test                     # Run 2,123+ tests
 cargo install --path .         # Install globally
-./scripts/benchmark.sh         # Compare vs rtk (trs 13:4 rtk)
+./docs/benchmarks/benchmark.sh # Compare vs rtk (see docs/benchmarks/README.md)
 ```
 
 ## Testing
