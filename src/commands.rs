@@ -143,6 +143,18 @@ pub enum Commands {
         /// Output only the import/dependency graph (no file content)
         #[arg(long)]
         deps: bool,
+
+        /// Only include files changed since the last ingest (uses stored HEAD)
+        #[arg(long)]
+        since_last: bool,
+
+        /// Skip regeneration if HEAD unchanged since last ingest (use cached digest)
+        #[arg(long)]
+        fresh: bool,
+
+        /// Force regeneration even if HEAD unchanged (disables --fresh)
+        #[arg(long)]
+        force: bool,
     },
 
     /// Execute command without filtering but track usage

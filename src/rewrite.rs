@@ -142,6 +142,28 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
+    // Chain handling: split on " && " and rewrite each segment independently.
+    // Checked BEFORE SKIP_PREFIXES so `cd X && git Y` isn't short-circuited by
+    // the "cd" skip. Pipes (`|`) and semicolons (`;`) are left to the shell.
+    if trimmed.contains(" && ") && !trimmed.contains(" | ") && !trimmed.contains(" ; ") {
+        let segments: Vec<&str> = trimmed.split(" && ").map(str::trim).collect();
+        let mut any_changed = false;
+        let mut rewritten: Vec<String> = Vec::with_capacity(segments.len());
+        for seg in &segments {
+            match maybe_rewrite(seg) {
+                Some(r) => {
+                    any_changed = true;
+                    rewritten.push(r);
+                }
+                None => rewritten.push(seg.to_string()),
+            }
+        }
+        if any_changed {
+            return Some(rewritten.join(" && "));
+        }
+        return None;
+    }
+
     // Never rewrite internal/shell commands
     for skip in SKIP_PREFIXES {
         if trimmed.starts_with(skip) || trimmed == skip.trim() {
@@ -149,8 +171,8 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         }
     }
 
-    // Never rewrite pipes or chains (let the shell handle them)
-    if trimmed.contains(" | ") || trimmed.contains(" && ") || trimmed.contains(" ; ") {
+    // Never rewrite pipes or semicolons (let the shell handle them)
+    if trimmed.contains(" | ") || trimmed.contains(" ; ") {
         return None;
     }
 
@@ -282,5 +304,42 @@ mod tests {
     fn test_skip_shell_builtins() {
         assert_eq!(maybe_rewrite("export PATH=/usr/bin"), None);
         assert_eq!(maybe_rewrite("source .env"), None);
+    }
+
+    #[test]
+    fn test_rewrite_cd_chain() {
+        assert_eq!(
+            maybe_rewrite("cd /tmp && git status"),
+            Some("cd /tmp && trs git status".into())
+        );
+        assert_eq!(
+            maybe_rewrite("cd /path/to/project && cargo test"),
+            Some("cd /path/to/project && trs cargo test".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_multi_chain() {
+        // All rewritable segments get rewritten independently
+        assert_eq!(
+            maybe_rewrite("cd /tmp && git status && git log"),
+            Some("cd /tmp && trs git status && trs git log".into())
+        );
+        assert_eq!(
+            maybe_rewrite("cargo fmt && cargo clippy"),
+            Some("trs cargo fmt && trs cargo clippy".into())
+        );
+    }
+
+    #[test]
+    fn test_skip_cd_chain_with_pipe() {
+        // If any segment has a pipe, disable chain handling entirely
+        assert_eq!(maybe_rewrite("cd /tmp && git status | less"), None);
+    }
+
+    #[test]
+    fn test_skip_cd_chain_all_skips() {
+        // Only non-rewritable commands — nothing changes
+        assert_eq!(maybe_rewrite("cd /tmp && echo hello"), None);
     }
 }

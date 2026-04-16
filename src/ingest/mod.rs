@@ -14,6 +14,7 @@ mod collect_compress;
 mod deps;
 mod deps_extract;
 mod format;
+mod meta;
 mod ollama;
 mod store;
 
@@ -152,6 +153,12 @@ pub struct IngestConfig {
     pub ollama_model: Option<String>,
     /// Output only the dependency graph, no file content.
     pub deps_only: bool,
+    /// Use stored HEAD from last ingest as --since reference.
+    pub since_last: bool,
+    /// Skip regeneration if HEAD unchanged since last ingest.
+    pub fresh_check: bool,
+    /// Force regeneration, bypassing fresh check.
+    pub force: bool,
 }
 
 /// A file entry in the digest.
@@ -270,6 +277,45 @@ pub fn resolve_project_root(path: &Path) -> Result<PathBuf, String> {
 pub fn run_ingest(config: &IngestConfig) {
     let start = std::time::Instant::now();
 
+    // Resolve --since-last: look up stored HEAD from last ingest
+    let effective_since = if config.since_last {
+        match store::stored_head_for(&config.root) {
+            Some(sha) => {
+                eprintln!("trs ingest: --since-last using stored HEAD {}", sha);
+                Some(sha)
+            }
+            None => {
+                eprintln!("trs ingest: --since-last: no previous ingest found, using full mode");
+                None
+            }
+        }
+    } else {
+        config.since.clone()
+    };
+
+    // Fresh check: skip if HEAD unchanged since last ingest
+    if config.fresh_check && !config.force && !config.deps_only {
+        if let Some(current) = meta::get_head_sha(&config.root) {
+            if let Some(prev) = store::stored_head_for(&config.root) {
+                if current == prev {
+                    if let Some(path) = store::digest_path_for(&config.root) {
+                        eprintln!(
+                            "trs ingest: HEAD unchanged ({}), reusing cached digest at {}",
+                            current,
+                            path.display()
+                        );
+                        if let Ok(content) = std::fs::read_to_string(&path) {
+                            if config.output_file.is_none() {
+                                print!("{}", content);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Collect files
     let mut files = collect_files(config);
 
@@ -279,15 +325,15 @@ pub fn run_ingest(config: &IngestConfig) {
     }
 
     // Get changed files from git (if needed)
-    let changed_set = if config.changed_only || config.since.is_some() {
-        get_changed_files(&config.root, config.since.as_deref())
+    let changed_set = if config.changed_only || effective_since.is_some() {
+        get_changed_files(&config.root, effective_since.as_deref())
     } else {
         None
     };
 
     // Filter to changed files only
     if let Some(ref changed) = changed_set {
-        if config.changed_only || config.since.is_some() {
+        if config.changed_only || effective_since.is_some() {
             files.retain(|f| changed.contains(&f.rel_path));
         }
     }
@@ -351,8 +397,23 @@ pub fn run_ingest(config: &IngestConfig) {
         output
     };
 
+    // Build metadata for sidecar file
+    let total_tokens = (final_output.len() as f64 / BYTES_PER_TOKEN) as usize;
+    let digest_meta = meta::IngestMeta {
+        head_sha: meta::get_head_sha(&config.root),
+        timestamp: meta::now_unix(),
+        file_count: files.iter().filter(|f| !f.rel_path.is_empty()).count(),
+        tokens: total_tokens,
+        project_root: config.root.display().to_string(),
+        trs_version: env!("CARGO_PKG_VERSION").to_string(),
+    };
+
     // Save to ~/.trs/ingest/<repo-name>.md (single file per project, overwrites)
     let saved_path = save_to_store(&final_output, config);
+    if let Some(ref p) = saved_path {
+        let digest_path = std::path::PathBuf::from(p);
+        let _ = meta::save_meta(&digest_path, &digest_meta);
+    }
 
     // Also write to explicit output file if requested
     if let Some(ref out_path) = config.output_file {
@@ -361,12 +422,11 @@ pub fn run_ingest(config: &IngestConfig) {
         }
     }
 
-    let tokens = (final_output.len() as f64 / BYTES_PER_TOKEN) as usize;
     if let Some(ref path) = saved_path {
         eprintln!(
             "trs ingest: {} ({} tokens) -> {}",
             format_bytes(final_output.len()),
-            format_tokens(tokens),
+            format_tokens(total_tokens),
             path
         );
     }

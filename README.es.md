@@ -177,7 +177,7 @@ vs [rtk](https://github.com/rtk-ai/rtk) (el proyecto que inspiró este):
 
 **Velocidad**: trs agrega ~3ms de overhead, rtk ~7ms.
 
-Ejecútalo tú mismo: `./scripts/benchmark.sh`
+Ejecútalo tú mismo: `./docs/benchmarks/benchmark.sh`
 
 ## Contribuir
 

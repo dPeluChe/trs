@@ -166,6 +166,9 @@ fn main() {
             output,
             ollama,
             deps,
+            since_last,
+            fresh,
+            force,
         }) => {
             if *list {
                 ingest::list_ingests();
@@ -191,6 +194,9 @@ fn main() {
                     output_file: output.as_ref().map(std::path::PathBuf::from),
                     ollama_model: ollama.clone(),
                     deps_only: *deps,
+                    since_last: *since_last,
+                    fresh_check: *fresh,
+                    force: *force,
                 };
                 ingest::run_ingest(&config);
             }

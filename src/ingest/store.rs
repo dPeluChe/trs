@@ -2,7 +2,17 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::format::{format_bytes, format_modified, format_tokens};
+use super::meta;
 use super::{IngestConfig, BYTES_PER_TOKEN};
+
+/// Info for one listed digest, used to build the output.
+struct ListEntry {
+    owner: String,
+    repo: String,
+    size: u64,
+    modified: String,
+    digest_path: PathBuf,
+}
 
 /// List saved ingest digests.
 pub fn list_ingests() {
@@ -19,8 +29,7 @@ pub fn list_ingests() {
         return;
     }
 
-    // (owner, repo, size, modified)
-    let mut entries: Vec<(String, String, u64, String)> = Vec::new();
+    let mut entries: Vec<ListEntry> = Vec::new();
 
     if let Ok(owners) = std::fs::read_dir(&base) {
         for owner_entry in owners.flatten() {
@@ -31,7 +40,13 @@ pub fn list_ingests() {
                     let size = owner_entry.metadata().map(|m| m.len()).unwrap_or(0);
                     let modified = format_modified(&owner_entry);
                     let repo = name.strip_suffix(".md").unwrap_or(&name).to_string();
-                    entries.push(("local".to_string(), repo, size, modified));
+                    entries.push(ListEntry {
+                        owner: "local".to_string(),
+                        repo,
+                        size,
+                        modified,
+                        digest_path: owner_entry.path(),
+                    });
                 }
                 continue;
             }
@@ -43,7 +58,13 @@ pub fn list_ingests() {
                         let size = file.metadata().map(|m| m.len()).unwrap_or(0);
                         let modified = format_modified(&file);
                         let repo = name.strip_suffix(".md").unwrap_or(&name).to_string();
-                        entries.push((owner_name.clone(), repo, size, modified));
+                        entries.push(ListEntry {
+                            owner: owner_name.clone(),
+                            repo,
+                            size,
+                            modified,
+                            digest_path: file.path(),
+                        });
                     }
                 }
             }
@@ -56,22 +77,54 @@ pub fn list_ingests() {
         return;
     }
 
-    entries.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+    entries.sort_by(|a, b| a.owner.cmp(&b.owner).then(a.repo.cmp(&b.repo)));
 
     println!("Saved digests ({}):\n", base.display());
     let mut current_owner = String::new();
-    for (owner, repo, size, modified) in &entries {
-        if *owner != current_owner {
-            println!("{}:", owner);
-            current_owner = owner.clone();
+    for e in &entries {
+        if e.owner != current_owner {
+            println!("{}:", e.owner);
+            current_owner = e.owner.clone();
         }
-        let tokens = (*size as f64 / BYTES_PER_TOKEN) as usize;
+        let meta = meta::load_meta(&e.digest_path);
+        let tokens = meta
+            .as_ref()
+            .map(|m| m.tokens)
+            .unwrap_or_else(|| (e.size as f64 / BYTES_PER_TOKEN) as usize);
+
+        // Stale indicator: compare stored HEAD vs current HEAD (if project still exists)
+        let stale = meta
+            .as_ref()
+            .and_then(|m| {
+                let root = Path::new(&m.project_root);
+                let sha = m.head_sha.as_deref()?;
+                if !root.exists() {
+                    return None;
+                }
+                meta::commits_since(root, sha)
+            })
+            .unwrap_or(0);
+
+        let stale_str = if stale > 0 {
+            format!("  ● {} commits behind", stale)
+        } else {
+            String::new()
+        };
+
+        let sha_str = meta
+            .as_ref()
+            .and_then(|m| m.head_sha.clone())
+            .map(|s| format!(" @{}", s))
+            .unwrap_or_default();
+
         println!(
-            "  {}  ({}, {} tokens, {})",
-            repo,
-            format_bytes(*size as usize),
+            "  {}{}  ({}, {} tokens, {}){}",
+            e.repo,
+            sha_str,
+            format_bytes(e.size as usize),
             format_tokens(tokens),
-            modified
+            e.modified,
+            stale_str,
         );
     }
 }
@@ -237,4 +290,20 @@ pub(super) fn save_to_store(content: &str, config: &IngestConfig) -> Option<Stri
 
     std::fs::write(&filepath, content).ok()?;
     Some(filepath.to_string_lossy().to_string())
+}
+
+/// Get the digest file path for a project root (without creating it).
+pub(super) fn digest_path_for(root: &Path) -> Option<PathBuf> {
+    let base = ingest_store_dir()?;
+    let (owner, repo) = get_repo_identity(root);
+    Some(base.join(owner).join(format!("{}.md", repo)))
+}
+
+/// Get stored HEAD sha from the metadata sidecar of a project's digest.
+pub(super) fn stored_head_for(root: &Path) -> Option<String> {
+    let digest_path = digest_path_for(root)?;
+    if !digest_path.exists() {
+        return None;
+    }
+    meta::load_meta(&digest_path).and_then(|m| m.head_sha)
 }

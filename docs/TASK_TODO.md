@@ -26,6 +26,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ### Improvements to existing parsers
 - [ ] Log timestamp normalization (first = t0, rest = relative delta)
+- [ ] Rewrite hook: detect `cd X && git Y` chains and rewrite inner command (e.g., `cd X && git status` → `cd X && trs git status`). Currently skipped by design to not break pipes, but cd-chain is a common pattern.
 
 ---
 

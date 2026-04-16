@@ -18,6 +18,53 @@ fn local_offset() -> time::UtcOffset {
     time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC)
 }
 
+/// Format a Unix timestamp as YYYY-MM-DD in local time.
+fn format_date(ts: u64) -> String {
+    let offset = local_offset();
+    match OffsetDateTime::from_unix_timestamp(ts as i64) {
+        Ok(dt) => {
+            let local = dt.to_offset(offset);
+            format!(
+                "{:04}-{:02}-{:02}",
+                local.year(),
+                local.month() as u8,
+                local.day()
+            )
+        }
+        Err(_) => "—".to_string(),
+    }
+}
+
+/// Format a date range compactly.
+/// - Same month:          "Apr 2026"
+/// - Same year, diff mo:  "Feb → Apr 2026"
+/// - Different years:     "2025 → 2026"
+fn format_period(first_ts: u64, last_ts: u64) -> String {
+    let offset = local_offset();
+    let first = OffsetDateTime::from_unix_timestamp(first_ts as i64)
+        .map(|dt| dt.to_offset(offset))
+        .ok();
+    let last = OffsetDateTime::from_unix_timestamp(last_ts as i64)
+        .map(|dt| dt.to_offset(offset))
+        .ok();
+    match (first, last) {
+        (Some(f), Some(l)) => {
+            let fm = MONTHS[f.month() as usize - 1];
+            let lm = MONTHS[l.month() as usize - 1];
+            if f.year() == l.year() {
+                if f.month() == l.month() {
+                    format!("{} {}", lm, l.year())
+                } else {
+                    format!("{} → {} {}", fm, lm, l.year())
+                }
+            } else {
+                format!("{} → {}", f.year(), l.year())
+            }
+        }
+        _ => "—".to_string(),
+    }
+}
+
 /// Format a Unix timestamp (seconds) into "Mar 27 14:32" local-time string.
 fn format_timestamp(ts: u64, offset: time::UtcOffset) -> String {
     let dt = OffsetDateTime::from_unix_timestamp(ts as i64).unwrap_or(OffsetDateTime::UNIX_EPOCH);
@@ -107,8 +154,22 @@ fn print_summary(entries: &[HistoryEntry]) {
     let out_tokens = total_out / 4;
     let saved_tokens = total_saved / 4;
 
+    // Date range: earliest and latest timestamps (entries come pre-sorted by ts)
+    let first_ts = entries.iter().map(|e| e.ts).min().unwrap_or(0);
+    let last_ts = entries.iter().map(|e| e.ts).max().unwrap_or(0);
+    let span_secs = last_ts.saturating_sub(first_ts);
+    // Days of activity: at least 1, ceil of span_secs / 86400
+    let days = ((span_secs as f64 / 86400.0).ceil() as u64).max(1);
+    let tokens_per_day = saved_tokens as u64 / days;
+
     println!("trs Token Savings");
     println!("{}", "=".repeat(35));
+    println!(
+        "Period:            {} ({} day{})",
+        format_period(first_ts, last_ts),
+        days,
+        if days == 1 { "" } else { "s" }
+    );
     println!("Total commands:    {}", total_cmds);
     println!("Input tokens:      {}", format_bytes_human(in_tokens));
     println!("Output tokens:     {}", format_bytes_human(out_tokens));
@@ -116,6 +177,10 @@ fn print_summary(entries: &[HistoryEntry]) {
         "Tokens saved:      {} ({:.1}%)",
         format_bytes_human(saved_tokens),
         avg_pct
+    );
+    println!(
+        "Tokens per day:    {}",
+        format_bytes_human(tokens_per_day as usize)
     );
 
     // Efficiency meter
@@ -139,7 +204,7 @@ fn print_summary(entries: &[HistoryEntry]) {
     }
 
     let mut sorted: Vec<(String, CommandAgg)> = agg.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.saved().cmp(&a.1.saved()));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.1.saved()));
     sorted.truncate(10);
 
     if !sorted.is_empty() {
@@ -200,8 +265,18 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
         (total_saved as f64 / total_in as f64) * 100.0
     };
 
+    let first_ts = entries.iter().map(|e| e.ts).min().unwrap_or(0);
+    let last_ts = entries.iter().map(|e| e.ts).max().unwrap_or(0);
+    let span_secs = last_ts.saturating_sub(first_ts);
+    let days = ((span_secs as f64 / 86400.0).ceil() as u64).max(1);
+    let saved_tokens = total_saved / 4;
+
     let mut json = serde_json::json!({
         "total_commands": entries.len(),
+        "period_start": format_date(first_ts),
+        "period_end": format_date(last_ts),
+        "period_days": days,
+        "tokens_per_day": saved_tokens as u64 / days,
         "input_bytes": total_in,
         "output_bytes": total_out,
         "saved_bytes": total_saved,
@@ -245,7 +320,7 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
         e.out_bytes += entry.out_bytes;
     }
     let mut sorted: Vec<(String, CommandAgg)> = agg.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.saved().cmp(&a.1.saved()));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.1.saved()));
     sorted.truncate(10);
 
     let top: Vec<serde_json::Value> = sorted
