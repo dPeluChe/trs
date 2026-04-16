@@ -12,7 +12,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] Shell completions (bash, zsh, fish)
 
 ### AI Tool Integrations
-- [x] `trs init` — hook installer for Claude Code, Gemini, Cursor, Codex, OpenCode, Kilo
+- [x] `trs init` — hook installer for Claude Code, Gemini, Cursor, Codex, OpenCode, Kilo, Antigravity
 - [x] `trs rewrite` — hook command rewriter (JSON + plain text protocol)
 - [x] `trs discover` — scan Claude Code history for missed savings
 - [x] `--no-verify` blocker — prevents agents from skipping pre-commit hooks
@@ -27,7 +27,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] kubectl (pods, services, deployments, logs)
 - [ ] AWS CLI (s3 ls, ec2 describe-instances, cloudwatch)
 - [ ] gh pr view / gh issue view (detail view, not just list)
-- [ ] go test
+- [x] go test
 - [ ] next build / prisma generate
 - [ ] playwright test (E2E summaries)
 - [ ] Gradle / Maven build output
