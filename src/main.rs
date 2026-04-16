@@ -128,10 +128,8 @@ fn main() {
                     ),
                 }
             } else {
-                println!("Usage: trs init <tool> [--global]");
-                println!("       trs init --all [--global]");
-                println!("       trs init --show");
-                println!("\nSupported tools: {}", init::AiTool::all_names());
+                // No args: show current status + usage hint combined.
+                init::show_status_and_usage();
             }
         }
         Some(Commands::Doctor { json }) => {

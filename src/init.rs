@@ -6,6 +6,15 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// How the tool integrates with trs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum IntegrationKind {
+    /// Programmatic hook — rewrites the shell command before execution.
+    Hooks,
+    /// Prompt-level guidance only — appends rules to an instruction file.
+    Rules,
+}
+
 /// Supported AI tools for hook installation.
 pub(crate) enum AiTool {
     Claude,
@@ -15,6 +24,8 @@ pub(crate) enum AiTool {
     OpenCode,
     Kilo,
     Antigravity,
+    Droid,
+    Windsurf,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -35,6 +46,8 @@ impl AiTool {
             "opencode" => Some(Self::OpenCode),
             "kilo" | "kilocode" => Some(Self::Kilo),
             "antigravity" | "gravity" => Some(Self::Antigravity),
+            "droid" | "factory" => Some(Self::Droid),
+            "windsurf" | "cascade" => Some(Self::Windsurf),
             _ => None,
         }
     }
@@ -48,14 +61,16 @@ impl AiTool {
             Self::OpenCode => "OpenCode",
             Self::Kilo => "Kilo Code",
             Self::Antigravity => "Google Antigravity",
+            Self::Droid => "Factory Droid",
+            Self::Windsurf => "Windsurf",
         }
     }
 
     pub(crate) fn all_names() -> &'static str {
-        "claude, gemini, cursor, codex, opencode, kilo, antigravity"
+        "claude, gemini, cursor, codex, opencode, kilo, antigravity, droid, windsurf"
     }
 
-    pub(crate) fn all_tools() -> [Self; 7] {
+    pub(crate) fn all_tools() -> [Self; 9] {
         [
             Self::Claude,
             Self::Gemini,
@@ -64,7 +79,57 @@ impl AiTool {
             Self::OpenCode,
             Self::Kilo,
             Self::Antigravity,
+            Self::Droid,
+            Self::Windsurf,
         ]
+    }
+
+    /// Integration style: "hooks" (programmatic) or "rules" (prompt instructions).
+    pub(crate) fn kind(&self) -> IntegrationKind {
+        match self {
+            Self::Codex | Self::Antigravity | Self::Windsurf => IntegrationKind::Rules,
+            _ => IntegrationKind::Hooks,
+        }
+    }
+
+    /// Best-effort detection: is the tool installed on this system?
+    /// Checks for the CLI binary and/or the common config directory.
+    pub(crate) fn detect_installed(&self) -> bool {
+        let home = std::env::var("HOME").ok().map(PathBuf::from);
+        let home_has = |rel: &str| home.as_ref().map(|h| h.join(rel).exists()).unwrap_or(false);
+        let in_path = |bin: &str| {
+            std::process::Command::new("sh")
+                .args(["-c", &format!("command -v {}", bin)])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+        };
+        let app_exists = |name: &str| {
+            Path::new(&format!("/Applications/{}.app", name)).exists()
+                || Path::new(&format!(
+                    "{}/Applications/{}.app",
+                    std::env::var("HOME").unwrap_or_default(),
+                    name
+                ))
+                .exists()
+        };
+        match self {
+            Self::Claude => in_path("claude") || home_has(".claude"),
+            Self::Gemini => in_path("gemini") || home_has(".gemini"),
+            Self::Cursor => in_path("cursor") || app_exists("Cursor") || home_has(".cursor"),
+            Self::Codex => {
+                in_path("codex") || home_has(".codex") || Path::new("AGENTS.md").exists()
+            }
+            Self::OpenCode => in_path("opencode") || home_has(".opencode"),
+            Self::Kilo => in_path("kilo") || home_has(".kilo"),
+            Self::Antigravity => app_exists("Antigravity") || home_has(".antigravity"),
+            Self::Droid => in_path("droid") || home_has(".factory"),
+            Self::Windsurf => {
+                in_path("windsurf") || app_exists("Windsurf") || home_has(".windsurfrules")
+            }
+        }
     }
 
     fn spec(&self) -> Option<HookSpec> {
@@ -99,25 +164,36 @@ impl AiTool {
                 filename: "trs.ts",
                 content: OPENCODE_PLUGIN,
             }),
-            Self::Antigravity => Some(HookSpec {
-                local_dir: ".antigravity",
-                global_dir: Some(".antigravity"),
+            Self::Droid => Some(HookSpec {
+                local_dir: ".factory",
+                global_dir: Some(".factory"),
                 filename: "settings.json",
-                content: GEMINI_HOOKS, // Same hook format as Gemini CLI
+                content: CLAUDE_HOOKS, // Factory Droid uses the same matcher/hooks shape
             }),
-            Self::Codex => None, // Codex uses AGENTS.md append, not a spec
+            // Rules-based tools (no programmatic hooks) — handled via
+            // install_codex / install_rules / install_windsurf_rules instead.
+            Self::Codex | Self::Antigravity | Self::Windsurf => None,
         }
     }
 }
 
 /// Install hooks for the specified tool.
 pub(crate) fn install_hook(tool: &AiTool, global: bool) {
-    let result = if let AiTool::Codex = tool {
-        install_codex()
-    } else if let Some(spec) = tool.spec() {
-        install_from_spec(&spec, global)
-    } else {
-        Err("No hook spec for this tool".to_string())
+    let result = match tool {
+        AiTool::Codex => install_codex(),
+        AiTool::Antigravity => install_rules(
+            ".agent/rules",
+            "antigravity-trs-rules.md",
+            ANTIGRAVITY_RULES,
+        ),
+        AiTool::Windsurf => install_windsurf_rules(),
+        _ => {
+            if let Some(spec) = tool.spec() {
+                install_from_spec(&spec, global)
+            } else {
+                Err("No hook spec for this tool".to_string())
+            }
+        }
     };
 
     match result {
@@ -139,16 +215,21 @@ pub(crate) fn install_hook(tool: &AiTool, global: bool) {
     }
 }
 
-/// Install hooks for all supported tools, skipping already-configured ones.
+/// Install hooks for all detected tools, skipping already-configured ones.
+/// Tools not detected on the system are reported but not installed.
 pub(crate) fn install_all(global: bool) {
     let tools = AiTool::all_tools();
     let mut installed = 0;
     let mut skipped = 0;
+    let mut undetected = 0;
 
     for tool in &tools {
         if check_tool(tool) {
             println!("  + {} (already configured)", tool.name());
             skipped += 1;
+        } else if !tool.detect_installed() {
+            println!("  - {} (not detected on system, skipping)", tool.name());
+            undetected += 1;
         } else {
             install_hook(tool, global);
             installed += 1;
@@ -156,9 +237,10 @@ pub(crate) fn install_all(global: bool) {
     }
 
     println!(
-        "\n{} installed, {} already configured, {} total",
+        "\n{} installed, {} already configured, {} skipped (not detected), {} total",
         installed,
         skipped,
+        undetected,
         tools.len()
     );
     if installed > 0 {
@@ -178,26 +260,78 @@ fn is_trs_in_path() -> bool {
 }
 
 /// Show current hook installation status.
+///
+/// Markers:
+/// - `+` configured with trs
+/// - `•` installed on system, not configured
+/// - `-` not detected (config still possible for future installs)
 pub(crate) fn show_status() {
     println!("trs init — hook status\n");
 
     let tools = AiTool::all_tools();
-    let mut count = 0;
+    let mut configured = 0;
+    let mut detected_total = 0;
     for tool in &tools {
-        let installed = check_tool(tool);
-        let marker = if installed { "+" } else { "-" };
-        println!("  {} {}", marker, tool.name());
-        if installed {
-            count += 1;
+        let is_configured = check_tool(tool);
+        let is_detected = tool.detect_installed();
+        let marker = if is_configured {
+            "+"
+        } else if is_detected {
+            "•"
+        } else {
+            "-"
+        };
+        let kind_tag = match tool.kind() {
+            IntegrationKind::Hooks => "",
+            IntegrationKind::Rules => "  (rules file only)",
+        };
+        let detect_tag = if !is_detected && !is_configured {
+            "  — not detected on this system"
+        } else {
+            ""
+        };
+        println!("  {} {}{}{}", marker, tool.name(), kind_tag, detect_tag);
+        if is_configured {
+            configured += 1;
+        }
+        if is_detected {
+            detected_total += 1;
         }
     }
-    println!("\n{}/{} tools configured", count, tools.len());
+    println!(
+        "\n{}/{} configured  ({} detected on system)",
+        configured,
+        tools.len(),
+        detected_total
+    );
+}
+
+/// Print `trs init` usage help — combined with status by default.
+pub(crate) fn show_status_and_usage() {
+    show_status();
+    println!();
+    println!("Usage:");
+    println!("  trs init <tool> [--global]      install for a specific tool");
+    println!("  trs init --all [--global]       install for all detected tools");
+    println!("  trs init --show                 show this status");
+    println!();
+    println!("Supported tools: {}", AiTool::all_names());
 }
 
 /// Check if a tool has trs hooks installed (local or global).
 pub(crate) fn check_tool(tool: &AiTool) -> bool {
-    if let AiTool::Codex = tool {
-        return check_file_contains("AGENTS.md", "trs");
+    match tool {
+        AiTool::Codex => return check_file_contains("AGENTS.md", "trs (TARS CLI)"),
+        AiTool::Antigravity => {
+            return check_file_contains_path(
+                Path::new(".agent/rules/antigravity-trs-rules.md"),
+                "trs (TARS CLI)",
+            );
+        }
+        AiTool::Windsurf => {
+            return check_file_contains(".windsurfrules", "trs (TARS CLI)");
+        }
+        _ => {}
     }
     if let Some(spec) = tool.spec() {
         // Check local
@@ -235,7 +369,8 @@ fn install_from_spec(spec: &HookSpec, global: bool) -> Result<String, String> {
             let path = dir.join(spec.filename);
             return write_hook(&dir, &path, spec.content);
         }
-        return Err("--global not supported for this tool, installing locally".to_string());
+        // No global config location for this tool — fall back to local install.
+        eprintln!("note: --global not supported for this tool, installing locally instead");
     }
     let dir = PathBuf::from(spec.local_dir);
     let path = dir.join(spec.filename);
@@ -253,12 +388,53 @@ fn install_codex() -> Result<String, String> {
     if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         if content.contains(marker) {
-            return Err("AGENTS.md already configured for trs".to_string());
+            // Idempotent: already installed is a success, not a failure.
+            return Ok(format!("{} (already configured)", path.display()));
         }
         let updated = format!("{}\n{}", content, CODEX_AGENTS_SECTION);
         fs::write(&path, updated).map_err(|e| e.to_string())?;
     } else {
         fs::write(&path, CODEX_AGENTS_SECTION.trim()).map_err(|e| e.to_string())?;
+    }
+    Ok(path.display().to_string())
+}
+
+// ============================================================
+// Rules-based tools (Antigravity, Windsurf)
+// ============================================================
+
+/// Install a rules/instructions file. Project-local only (rules tools lack a
+/// global equivalent today). Idempotent: re-running is a no-op.
+fn install_rules(dir_rel: &str, filename: &str, content: &str) -> Result<String, String> {
+    let dir = PathBuf::from(dir_rel);
+    let path = dir.join(filename);
+    if path.exists() {
+        let existing = fs::read_to_string(&path).unwrap_or_default();
+        if existing.contains("trs (TARS CLI)") || existing.contains("trs rewrite") {
+            return Ok(format!("{} (already configured)", path.display()));
+        }
+        // Append instead of overwriting — the user may have their own rules.
+        let updated = format!("{}\n\n{}", existing.trim_end(), content);
+        fs::write(&path, updated).map_err(|e| e.to_string())?;
+    } else {
+        fs::create_dir_all(&dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
+        fs::write(&path, content.trim_start()).map_err(|e| e.to_string())?;
+    }
+    Ok(path.display().to_string())
+}
+
+/// Windsurf uses `.windsurfrules` at the project root (no subdirectory).
+fn install_windsurf_rules() -> Result<String, String> {
+    let path = PathBuf::from(".windsurfrules");
+    if path.exists() {
+        let existing = fs::read_to_string(&path).unwrap_or_default();
+        if existing.contains("trs (TARS CLI)") || existing.contains("trs rewrite") {
+            return Ok(format!("{} (already configured)", path.display()));
+        }
+        let updated = format!("{}\n\n{}", existing.trim_end(), WINDSURF_RULES);
+        fs::write(&path, updated).map_err(|e| e.to_string())?;
+    } else {
+        fs::write(&path, WINDSURF_RULES.trim_start()).map_err(|e| e.to_string())?;
     }
     Ok(path.display().to_string())
 }
@@ -285,22 +461,125 @@ fn check_file_contains_path(path: &Path, needle: &str) -> bool {
             .unwrap_or(false)
 }
 
-/// Write a hook file, but don't overwrite existing files that aren't ours.
+/// Write a hook file. For JSON settings files, merge our `hooks` section into
+/// existing content (preserving user's other config). For non-JSON files,
+/// refuse to overwrite if the file already has foreign content.
 fn write_hook(dir: &Path, path: &Path, content: &str) -> Result<String, String> {
+    let is_json = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("json"));
+
+    if is_json {
+        return merge_json_hook(dir, path, content);
+    }
+
+    // Non-JSON file (e.g. plugin .ts, hooks.json written by us directly).
     if path.exists() {
         let existing = fs::read_to_string(path).unwrap_or_default();
-        if existing.contains("trs") {
-            return Err(format!("{} already configured for trs", path.display()));
+        if existing.contains("trs rewrite") || existing.contains("trs (TARS CLI)") {
+            return Ok(format!("{} (already configured)", path.display()));
         }
-        // File exists but isn't ours — warn and don't overwrite
         return Err(format!(
-            "{} exists with other config. Add trs hook manually or remove it first.",
+            "{} exists with other config.\n  Back up and re-run `trs init` to replace.",
             path.display()
         ));
     }
     fs::create_dir_all(dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
     fs::write(path, content).map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
     Ok(path.display().to_string())
+}
+
+/// Merge the `hooks` section from a template into an existing JSON settings file.
+/// Keeps user's other keys (model, auth, permissions, etc.) intact.
+fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, String> {
+    let template_value: serde_json::Value = serde_json::from_str(template)
+        .map_err(|e| format!("internal: template JSON invalid: {}", e))?;
+    let template_hooks = template_value
+        .get("hooks")
+        .ok_or_else(|| "internal: template has no `hooks` key".to_string())?;
+
+    let mut root = if path.exists() {
+        let content = fs::read_to_string(path).unwrap_or_default();
+        if content.trim().is_empty() {
+            serde_json::json!({})
+        } else {
+            serde_json::from_str(&content).map_err(|e| {
+                format!(
+                    "{} is not valid JSON ({}). Fix it manually or back up and re-run.",
+                    path.display(),
+                    e
+                )
+            })?
+        }
+    } else {
+        serde_json::json!({})
+    };
+
+    let Some(root_obj) = root.as_object_mut() else {
+        return Err(format!("{} root is not a JSON object", path.display()));
+    };
+
+    let existing_hooks = root_obj
+        .entry("hooks".to_string())
+        .or_insert_with(|| serde_json::json!({}));
+    if !existing_hooks.is_object() {
+        return Err(format!(
+            "{} has a `hooks` key that is not an object",
+            path.display()
+        ));
+    }
+    let existing_hooks_obj = existing_hooks.as_object_mut().unwrap();
+
+    let Some(template_hooks_obj) = template_hooks.as_object() else {
+        return Err("internal: template `hooks` is not an object".into());
+    };
+
+    let mut appended_any = false;
+    for (event, tmpl_entries) in template_hooks_obj {
+        let event_arr = existing_hooks_obj
+            .entry(event.clone())
+            .or_insert_with(|| serde_json::json!([]));
+        if !event_arr.is_array() {
+            return Err(format!(
+                "{} has `hooks.{}` that is not an array",
+                path.display(),
+                event
+            ));
+        }
+        let event_arr_mut = event_arr.as_array_mut().unwrap();
+
+        // Skip if any existing entry already references trs rewrite.
+        if event_arr_mut.iter().any(contains_trs_rewrite) {
+            continue;
+        }
+        if let Some(tmpl_arr) = tmpl_entries.as_array() {
+            for entry in tmpl_arr {
+                event_arr_mut.push(entry.clone());
+                appended_any = true;
+            }
+        }
+    }
+
+    if !appended_any && path.exists() {
+        return Ok(format!("{} (already configured)", path.display()));
+    }
+
+    fs::create_dir_all(dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
+    let pretty = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
+    fs::write(path, format!("{}\n", pretty))
+        .map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
+    Ok(path.display().to_string())
+}
+
+/// Recursively check if any string in a JSON value contains "trs rewrite".
+fn contains_trs_rewrite(val: &serde_json::Value) -> bool {
+    match val {
+        serde_json::Value::String(s) => s.contains("trs rewrite"),
+        serde_json::Value::Object(o) => o.values().any(contains_trs_rewrite),
+        serde_json::Value::Array(a) => a.iter().any(contains_trs_rewrite),
+        _ => false,
+    }
 }
 
 // ============================================================
@@ -398,4 +677,54 @@ trs cargo clippy
 
 This reduces token consumption by 68-99% without losing signal.
 See https://github.com/dPeluChe/trs for details.
+"#;
+
+const ANTIGRAVITY_RULES: &str = r#"
+# trs (TARS CLI) — terminal output optimization
+
+Antigravity does not support pre-execution hooks, so this rules file is the
+only mechanism to opt into trs for this project. When you run shell commands,
+prefix them with `trs` to get compact, structured output.
+
+```bash
+# Instead of:
+git status
+cargo test
+npm test
+
+# Use:
+trs git status
+trs cargo test
+trs npm test
+```
+
+Commands without a dedicated trs parser still get whitespace / ANSI
+compression (~30-40% reduction). Pipes and chains are passed through unchanged.
+
+Reference: https://github.com/dPeluChe/trs
+"#;
+
+const WINDSURF_RULES: &str = r#"
+# trs (TARS CLI) — terminal output optimization
+
+Windsurf Cascade does not expose a pre-execution hook, so this rules file is
+the way to opt into trs for this project. When running shell commands, prefix
+them with `trs` to get compact, structured output.
+
+```bash
+# Instead of:
+git status
+cargo test
+pnpm test
+
+# Use:
+trs git status
+trs cargo test
+trs pnpm test
+```
+
+Commands without a dedicated trs parser still get whitespace / ANSI
+compression (~30-40% reduction). Pipes and chains are passed through unchanged.
+
+Reference: https://github.com/dPeluChe/trs
 "#;
