@@ -49,3 +49,7 @@ coverage/
 # Debug files
 *.dSYM/
 *.su
+
+# npm platform binaries (added by CI, not committed)
+npm/platforms/*/trs
+npm/platforms/*/trs.exe
