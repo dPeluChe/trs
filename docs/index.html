@@ -167,23 +167,23 @@
       color: var(--text);
     }
 
-    /* Flow diagram (ASCII, works without JS) */
-    .flow-diagram {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      margin: 16px 0;
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 13px;
-      line-height: 1.8;
-      overflow-x: auto;
-      white-space: pre;
-      color: var(--text);
+    /* Flow diagram (SVG) */
+    .flow-svg {
+      width: 100%;
+      height: auto;
+      max-width: 880px;
+      display: block;
+      margin: 16px auto;
     }
-    .flow-diagram .accent { color: var(--accent); }
-    .flow-diagram .muted { color: var(--text-muted); }
-    .flow-diagram .green { color: var(--green); }
+    .flow-svg .box-bg { fill: var(--bg-card); stroke: var(--border); stroke-width: 1.5; }
+    .flow-svg .box-accent { fill: var(--bg-card); stroke: var(--accent); stroke-width: 2; }
+    .flow-svg .box-title { fill: var(--text); font-family: 'SF Mono','Fira Code',monospace; font-size: 15px; font-weight: 700; }
+    .flow-svg .box-title.accent { fill: var(--accent); }
+    .flow-svg .box-sub { fill: var(--text-muted); font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; }
+    .flow-svg .arrow { stroke: var(--text-muted); stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    .flow-svg .arrow-muted { stroke: var(--border); stroke-width: 1.5; fill: none; stroke-dasharray: 4 3; marker-end: url(#arrowhead-muted); }
+    .flow-svg .label { fill: var(--text-muted); font-family: -apple-system, sans-serif; font-size: 11px; }
+    .flow-svg .label-green { fill: var(--green); font-family: -apple-system, sans-serif; font-size: 11px; font-weight: 600; }
 
     /* Origin / Why quote */
     .origin-block {
@@ -303,6 +303,7 @@
       line-height: 1.7;
       overflow-x: auto;
       margin-bottom: 20px;
+      white-space: pre;
     }
     .digest-code .prompt { color: var(--text-muted); }
     .digest-code .cmd { color: var(--accent); }
@@ -546,17 +547,52 @@
       compact version built for both humans and LLMs.
     </p>
 
-    <div class="flow-diagram">   your command              <span class="accent">trs</span> binary          compact output
-   <span class="muted">(git, cargo, ls, ...)</span>       <span class="muted">parse + reshape</span>      <span class="muted">(JSON, agent, compact)</span>
+    <svg class="flow-svg" viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="trs flow diagram: user command goes through trs parser, emits compact output, and logs to a tracker">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#8b949e"/>
+        </marker>
+        <marker id="arrowhead-muted" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#21262d"/>
+        </marker>
+      </defs>
 
-       <span class="muted">&#x25B6;&#x25B6;&#x25B6;</span>                       <span class="muted">&#x25B6;&#x25B6;&#x25B6;</span>                       <span class="muted">&#x25B6;&#x25B6;&#x25B6;</span>
+      <!-- Box 1: your command -->
+      <rect class="box-bg" x="20" y="50" width="220" height="100" rx="8"/>
+      <text class="box-title" x="130" y="90" text-anchor="middle">your command</text>
+      <text class="box-sub" x="130" y="112" text-anchor="middle">git status</text>
+      <text class="box-sub" x="130" y="128" text-anchor="middle">cargo test · ls -la · ...</text>
+      <text class="label" x="130" y="170" text-anchor="middle">1.4 KB raw · ~350 tok</text>
 
-   <span class="muted">1.4 KB raw git status</span>    <span class="muted">few ms, no shell</span>      <span class="green">336 B  (&minus;76%)</span>
-                              <span class="muted">spawned via exec</span>      <span class="muted">same info, compact form</span>
+      <!-- Arrow 1 -->
+      <line class="arrow" x1="245" y1="100" x2="325" y2="100"/>
 
-                                      <span class="muted">&#x2193;  every command logged</span>
+      <!-- Box 2: trs binary (accent) -->
+      <rect class="box-accent" x="330" y="50" width="220" height="100" rx="8"/>
+      <text class="box-title accent" x="440" y="90" text-anchor="middle">trs</text>
+      <text class="box-sub" x="440" y="112" text-anchor="middle">spawn · parse · reshape</text>
+      <text class="box-sub" x="440" y="128" text-anchor="middle">~12 ms · native binary</text>
+      <text class="label" x="440" y="170" text-anchor="middle">zero runtime deps</text>
 
-                              <span class="muted">~/.trs/history.jsonl</span>      fuels <span class="accent">trs stats</span></div>
+      <!-- Arrow 2 -->
+      <line class="arrow" x1="555" y1="100" x2="635" y2="100"/>
+
+      <!-- Box 3: compact output -->
+      <rect class="box-bg" x="640" y="50" width="220" height="100" rx="8"/>
+      <text class="box-title" x="750" y="90" text-anchor="middle">compact output</text>
+      <text class="box-sub" x="750" y="112" text-anchor="middle">compact · JSON · agent</text>
+      <text class="box-sub" x="750" y="128" text-anchor="middle">CSV · TSV · raw</text>
+      <text class="label-green" x="750" y="170" text-anchor="middle">336 B · ~84 tok (-76%)</text>
+
+      <!-- Arrow 3: down from trs to tracker -->
+      <line class="arrow-muted" x1="440" y1="155" x2="440" y2="225"/>
+      <text class="label" x="455" y="195">every command logged</text>
+
+      <!-- Box 4: tracker -->
+      <rect class="box-bg" x="270" y="225" width="340" height="75" rx="8"/>
+      <text class="box-title" x="440" y="258" text-anchor="middle">~/.trs/history.jsonl</text>
+      <text class="box-sub" x="440" y="283" text-anchor="middle">fuels &#x2009;trs stats&#x2009;· savings dashboard</text>
+    </svg>
 
     <p style="font-size: 13px;">
       Raw command runs unchanged. Parsers only reshape what the user sees.
