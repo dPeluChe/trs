@@ -142,23 +142,26 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
-    // Special case: `cd X && <cmd>` — rewrite only the inner command.
-    // Checked BEFORE SKIP_PREFIXES to avoid the "cd " skip short-circuiting.
-    // Only applies when it's a single `cd ... && <cmd>` chain (no further chaining).
-    if let Some(rest) = trimmed.strip_prefix("cd ") {
-        if let Some(split) = rest.find(" && ") {
-            let cd_part = &trimmed[..3 + split]; // "cd X"
-            let inner = rest[split + 4..].trim(); // after "cd X && "
-            if !inner.contains(" && ")
-                && !inner.contains(" | ")
-                && !inner.contains(" ; ")
-                && !inner.is_empty()
-            {
-                if let Some(inner_rewritten) = maybe_rewrite(inner) {
-                    return Some(format!("{} && {}", cd_part, inner_rewritten));
+    // Chain handling: split on " && " and rewrite each segment independently.
+    // Checked BEFORE SKIP_PREFIXES so `cd X && git Y` isn't short-circuited by
+    // the "cd" skip. Pipes (`|`) and semicolons (`;`) are left to the shell.
+    if trimmed.contains(" && ") && !trimmed.contains(" | ") && !trimmed.contains(" ; ") {
+        let segments: Vec<&str> = trimmed.split(" && ").map(str::trim).collect();
+        let mut any_changed = false;
+        let mut rewritten: Vec<String> = Vec::with_capacity(segments.len());
+        for seg in &segments {
+            match maybe_rewrite(seg) {
+                Some(r) => {
+                    any_changed = true;
+                    rewritten.push(r);
                 }
+                None => rewritten.push(seg.to_string()),
             }
         }
+        if any_changed {
+            return Some(rewritten.join(" && "));
+        }
+        return None;
     }
 
     // Never rewrite internal/shell commands
@@ -168,8 +171,8 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         }
     }
 
-    // Never rewrite pipes or chains (let the shell handle them)
-    if trimmed.contains(" | ") || trimmed.contains(" && ") || trimmed.contains(" ; ") {
+    // Never rewrite pipes or semicolons (let the shell handle them)
+    if trimmed.contains(" | ") || trimmed.contains(" ; ") {
         return None;
     }
 
@@ -316,15 +319,27 @@ mod tests {
     }
 
     #[test]
-    fn test_skip_cd_chain_with_multiple_chains() {
-        // Only single cd-chain is rewritten; multi-chain stays safe
-        assert_eq!(maybe_rewrite("cd /tmp && git status && git log"), None);
+    fn test_rewrite_multi_chain() {
+        // All rewritable segments get rewritten independently
+        assert_eq!(
+            maybe_rewrite("cd /tmp && git status && git log"),
+            Some("cd /tmp && trs git status && trs git log".into())
+        );
+        assert_eq!(
+            maybe_rewrite("cargo fmt && cargo clippy"),
+            Some("trs cargo fmt && trs cargo clippy".into())
+        );
+    }
+
+    #[test]
+    fn test_skip_cd_chain_with_pipe() {
+        // If any segment has a pipe, disable chain handling entirely
         assert_eq!(maybe_rewrite("cd /tmp && git status | less"), None);
     }
 
     #[test]
-    fn test_skip_cd_chain_unknown_inner() {
-        // Inner command "echo hello" is in SKIP list, so chain is not rewritten
+    fn test_skip_cd_chain_all_skips() {
+        // Only non-rewritable commands — nothing changes
         assert_eq!(maybe_rewrite("cd /tmp && echo hello"), None);
     }
 }

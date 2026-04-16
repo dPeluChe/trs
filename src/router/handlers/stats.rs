@@ -35,6 +35,36 @@ fn format_date(ts: u64) -> String {
     }
 }
 
+/// Format a date range compactly.
+/// - Same month:          "Apr 2026"
+/// - Same year, diff mo:  "Feb → Apr 2026"
+/// - Different years:     "2025 → 2026"
+fn format_period(first_ts: u64, last_ts: u64) -> String {
+    let offset = local_offset();
+    let first = OffsetDateTime::from_unix_timestamp(first_ts as i64)
+        .map(|dt| dt.to_offset(offset))
+        .ok();
+    let last = OffsetDateTime::from_unix_timestamp(last_ts as i64)
+        .map(|dt| dt.to_offset(offset))
+        .ok();
+    match (first, last) {
+        (Some(f), Some(l)) => {
+            let fm = MONTHS[f.month() as usize - 1];
+            let lm = MONTHS[l.month() as usize - 1];
+            if f.year() == l.year() {
+                if f.month() == l.month() {
+                    format!("{} {}", lm, l.year())
+                } else {
+                    format!("{} → {} {}", fm, lm, l.year())
+                }
+            } else {
+                format!("{} → {}", f.year(), l.year())
+            }
+        }
+        _ => "—".to_string(),
+    }
+}
+
 /// Format a Unix timestamp (seconds) into "Mar 27 14:32" local-time string.
 fn format_timestamp(ts: u64, offset: time::UtcOffset) -> String {
     let dt = OffsetDateTime::from_unix_timestamp(ts as i64).unwrap_or(OffsetDateTime::UNIX_EPOCH);
@@ -135,9 +165,8 @@ fn print_summary(entries: &[HistoryEntry]) {
     println!("trs Token Savings");
     println!("{}", "=".repeat(35));
     println!(
-        "Period:            {} → {} ({} day{})",
-        format_date(first_ts),
-        format_date(last_ts),
+        "Period:            {} ({} day{})",
+        format_period(first_ts, last_ts),
         days,
         if days == 1 { "" } else { "s" }
     );
