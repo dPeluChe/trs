@@ -1,6 +1,6 @@
 {
   "name": "@dpeluche/trs-cli-linux-arm64",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "trs binary for linux arm64",
   "license": "MIT",
   "repository": {
