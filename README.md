@@ -91,7 +91,7 @@ trs git status / diff / log / branch / push / pull / fetch
 trs cargo clippy / eslint / ruff / biome / golangci-lint
 
 # Test runners
-trs cargo test / pytest / jest / vitest / npm test / pnpm test / bun test
+trs cargo test / go test / pytest / jest / vitest / npm test / pnpm test / bun test
 
 # Files & search
 trs ls -la / find / grep / tree
@@ -164,6 +164,7 @@ trs init cursor                       # install Cursor hook
 trs init codex                        # append trs instructions to AGENTS.md
 trs init opencode                     # install OpenCode plugin
 trs init kilo                         # install Kilo Code plugin
+trs init antigravity                  # install Google Antigravity hook
 trs init --show                       # show which tools are configured
 
 # Discover missed savings (scan Claude Code history)
