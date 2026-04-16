@@ -80,6 +80,7 @@ src/
             ├── extra_env.rs       # env handler (grouped, filtered)
             ├── extra_services.rs  # gh pr/issue/run (truncated titles)
             ├── extra_cargo_test.rs # cargo test parser
+            ├── go_test.rs         # go test parser (verbose + default mode)
             └── lint.rs            # lint parser (clippy, eslint, ruff, biome, golangci-lint)
 
 tests/
@@ -113,7 +114,7 @@ tests/
 
 ```bash
 cargo build                    # Build
-cargo test                     # Run 2,056+ tests
+cargo test                     # Run 2,123+ tests
 cargo install --path .         # Install globally
 ./scripts/benchmark.sh         # Compare vs rtk (trs 13:4 rtk)
 ```

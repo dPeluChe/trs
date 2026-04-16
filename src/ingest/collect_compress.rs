@@ -146,7 +146,10 @@ fn summarize_json_value(val: &serde_json::Value, depth: usize) -> String {
             let mut out = String::from("{\n");
             for (key, val) in map.iter() {
                 let v = match val {
-                    serde_json::Value::String(s) if s.len() > 40 => format!("\"{}...\"", &s[..37]),
+                    serde_json::Value::String(s) if s.len() > 40 => {
+                        let t: String = s.chars().take(37).collect();
+                        format!("\"{}...\"", t)
+                    }
                     serde_json::Value::String(s) => format!("\"{}\"", s),
                     serde_json::Value::Number(n) => n.to_string(),
                     serde_json::Value::Bool(b) => b.to_string(),
@@ -163,7 +166,10 @@ fn summarize_json_value(val: &serde_json::Value, depth: usize) -> String {
             out.push_str(&format!("{}}}", indent));
             out
         }
-        serde_json::Value::String(s) if s.len() > 40 => format!("\"{}...\"", &s[..37]),
+        serde_json::Value::String(s) if s.len() > 40 => {
+            let t: String = s.chars().take(37).collect();
+            format!("\"{}...\"", t)
+        }
         other => other.to_string(),
     }
 }
@@ -261,7 +267,11 @@ fn extract_signatures(content: &str, ext: &str) -> String {
         }
 
         if cleaned.len() > 120 {
-            result.push_str(&cleaned[..117]);
+            let mut end = 117;
+            while end > 0 && !cleaned.is_char_boundary(end) {
+                end -= 1;
+            }
+            result.push_str(&cleaned[..end]);
             result.push_str("...\n");
         } else {
             result.push_str(&cleaned);

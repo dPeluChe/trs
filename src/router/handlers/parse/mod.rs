@@ -17,6 +17,7 @@ pub(crate) mod git_diff_format;
 pub(crate) mod git_log;
 pub(crate) mod git_status;
 pub(crate) mod git_status_format;
+pub(crate) mod go_test;
 pub(crate) mod grep;
 pub(crate) mod grep_format;
 pub(crate) mod jest_format;
@@ -124,6 +125,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::GhIssue { file } => Self::handle_gh_issue(file, ctx),
             ParseCommands::GhRun { file } => Self::handle_gh_run(file, ctx),
             ParseCommands::CargoTest { file } => Self::handle_cargo_test(file, ctx),
+            ParseCommands::GoTest { file } => Self::handle_go_test(file, ctx),
             ParseCommands::Lint { file } => Self::handle_lint(file, ctx),
             ParseCommands::Db { file } => Self::handle_db(file, ctx),
         }

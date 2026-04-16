@@ -26,6 +26,7 @@ pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
         ("cargo", "clippy") => 0.15,
         ("cargo", "build" | "check") => 0.10,
         ("cargo", "test") => 0.05,
+        ("go", "test") => 0.08,
         ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
         ("pytest" | "jest" | "vitest", _) => 0.10,
         ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
@@ -274,10 +275,12 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             _ => None,
         },
         "make" | "cmake" => Some(ParseCommands::Build { file: None }),
-        "tsc" | "gcc" | "g++" | "clang" | "javac" | "go" if subcmd == "build" => {
-            Some(ParseCommands::Build { file: None })
-        }
-        "tsc" => Some(ParseCommands::Build { file: None }),
+        "tsc" | "gcc" | "g++" | "clang" | "javac" => Some(ParseCommands::Build { file: None }),
+        "go" => match subcmd {
+            "build" => Some(ParseCommands::Build { file: None }),
+            "test" => Some(ParseCommands::GoTest { file: None }),
+            _ => None,
+        },
 
         // GitHub CLI
         "gh" => match subcmd {
@@ -368,6 +371,7 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::GhIssue { .. } => ParseCommands::GhIssue { file: Some(path) },
         ParseCommands::GhRun { .. } => ParseCommands::GhRun { file: Some(path) },
         ParseCommands::CargoTest { .. } => ParseCommands::CargoTest { file: Some(path) },
+        ParseCommands::GoTest { .. } => ParseCommands::GoTest { file: Some(path) },
         ParseCommands::Lint { .. } => ParseCommands::Lint { file: Some(path) },
         ParseCommands::Db { .. } => ParseCommands::Db { file: Some(path) },
     }

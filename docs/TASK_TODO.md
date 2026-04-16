@@ -10,13 +10,6 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] npm publish (`npm install -g tars-cli`)
 - [ ] Homebrew formula
 - [ ] Shell completions (bash, zsh, fish)
-
-### AI Tool Integrations
-- [x] `trs init` — hook installer for Claude Code, Gemini, Cursor, Codex, OpenCode, Kilo
-- [x] `trs rewrite` — hook command rewriter (JSON + plain text protocol)
-- [x] `trs discover` — scan Claude Code history for missed savings
-- [x] `--no-verify` blocker — prevents agents from skipping pre-commit hooks
-- [x] PATH validation — warns if trs not in PATH after hook install
 - [ ] Copilot hook (needs PreToolUse research)
 - [ ] Detect pipe context — skip rewriting find/fd when piped
 
@@ -27,7 +20,6 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] kubectl (pods, services, deployments, logs)
 - [ ] AWS CLI (s3 ls, ec2 describe-instances, cloudwatch)
 - [ ] gh pr view / gh issue view (detail view, not just list)
-- [ ] go test
 - [ ] next build / prisma generate
 - [ ] playwright test (E2E summaries)
 - [ ] Gradle / Maven build output
@@ -49,7 +41,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ## Phase 4 — Plugin System (future evaluation)
 
-- [ ] TOML filter pipeline (inspired by tokf/RTK)
+- [ ] TOML filter pipeline
 - [ ] Eject system (copy built-in filter to local for customization)
 - [ ] Embedded stdlib of filters (compiled into the binary)
 - [ ] SemanticDedup (shingle-based cross-block deduplication)
