@@ -782,6 +782,57 @@ ad55480 feat(init): smart JSON merge
       digest: structure, key files, dependency graph, and compressed signatures.
     </p>
 
+    <svg class="flow-svg" viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="trs ingest flow: source tree goes through trs ingest, produces LLM-ready digest plus metadata sidecar">
+      <defs>
+        <marker id="arrowhead2" markerWidth="10" markerHeight="10" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#8b949e"/>
+        </marker>
+        <marker id="arrowhead2-muted" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#21262d"/>
+        </marker>
+      </defs>
+
+      <!-- Box 1: source tree -->
+      <rect class="box-bg" x="20" y="50" width="220" height="110" rx="8"/>
+      <text class="box-title" x="130" y="85" text-anchor="middle">codebase</text>
+      <text class="box-sub" x="130" y="108" text-anchor="middle">src/ · docs/ · Cargo.toml</text>
+      <text class="box-sub" x="130" y="124" text-anchor="middle">~400 files · 600+ KB</text>
+      <text class="box-sub" x="130" y="142" text-anchor="middle">.gitignore respected</text>
+      <text class="label" x="130" y="180" text-anchor="middle">raw source · too big for LLM</text>
+
+      <!-- Arrow 1 -->
+      <line x1="245" y1="105" x2="325" y2="105" stroke="#8b949e" stroke-width="2" fill="none" marker-end="url(#arrowhead2)"/>
+
+      <!-- Box 2: trs ingest (accent) -->
+      <rect class="box-accent" x="330" y="50" width="220" height="110" rx="8"/>
+      <text class="box-title accent" x="440" y="85" text-anchor="middle">trs ingest</text>
+      <text class="box-sub" x="440" y="108" text-anchor="middle">walk · parse · compress</text>
+      <text class="box-sub" x="440" y="124" text-anchor="middle">build dep graph</text>
+      <text class="box-sub" x="440" y="142" text-anchor="middle">budget + git aware</text>
+      <text class="label" x="440" y="180" text-anchor="middle">--budget · --deps · --since-last</text>
+
+      <!-- Arrow 2 -->
+      <line x1="555" y1="105" x2="635" y2="105" stroke="#8b949e" stroke-width="2" fill="none" marker-end="url(#arrowhead2)"/>
+
+      <!-- Box 3: digest output -->
+      <rect class="box-bg" x="640" y="50" width="220" height="110" rx="8"/>
+      <text class="box-title" x="750" y="85" text-anchor="middle">digest.md</text>
+      <text class="box-sub" x="750" y="108" text-anchor="middle">structure · key deps</text>
+      <text class="box-sub" x="750" y="124" text-anchor="middle">signatures · changed files</text>
+      <text class="box-sub" x="750" y="142" text-anchor="middle">ready to Read by the agent</text>
+      <text class="label-green" x="750" y="180" text-anchor="middle">16 KB · fits in context</text>
+
+      <!-- Arrow 3: down from trs ingest to sidecar -->
+      <line x1="440" y1="165" x2="440" y2="235" stroke="#21262d" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#arrowhead2-muted)"/>
+      <text class="label" x="455" y="205">sidecar metadata</text>
+
+      <!-- Box 4: sidecar metadata -->
+      <rect class="box-bg" x="270" y="235" width="340" height="80" rx="8"/>
+      <text class="box-title" x="440" y="268" text-anchor="middle">.trs/ingest · &lt;repo&gt;.json</text>
+      <text class="box-sub" x="440" y="290" text-anchor="middle">head_sha · tokens · file_count · timestamp</text>
+      <text class="box-sub" x="440" y="305" text-anchor="middle">fuels --fresh cache &amp; stale detection</text>
+    </svg>
+
     <div class="digest-block">
       <div class="digest-title">One command, digest in hand <span class="tag">ingest</span></div>
       <div class="digest-sub">
