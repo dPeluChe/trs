@@ -14,6 +14,7 @@
   },
   "files": [
     "bin/trs",
+    "bin/trs.cmd",
     "README.md"
   ],
   "engines": {

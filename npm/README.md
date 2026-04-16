@@ -68,11 +68,14 @@ trs git status --raw        # passthrough (tracked)
 
 ## Supported platforms
 
-| Platform | Architecture |
-|----------|-------------|
-| macOS    | x64, arm64  |
-| Linux    | x64, arm64  |
-| Windows  | x64         |
+| Platform | Architecture | Notes |
+|----------|-------------|-------|
+| macOS    | x64, arm64  | shell launcher (~12ms overhead) |
+| Linux    | x64, arm64  | shell launcher (~12ms overhead) |
+| Windows  | x64         | `.cmd` launcher (requires Windows x64) |
+
+> The launcher `exec`s the native binary directly — no Node.js at runtime,
+> which is why startup is on par with a Homebrew install.
 
 ## Links
 

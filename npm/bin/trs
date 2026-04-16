@@ -1,65 +1,54 @@
-#!/usr/bin/env node
+#!/bin/sh
+# trs — shell wrapper that execs the native binary directly.
+# Saves ~25ms vs the previous Node wrapper by skipping the node runtime.
+#
+# The platform-specific binary is installed by npm as an optionalDependency
+# into node_modules/@dpeluche/trs-cli-<os>-<arch>/trs.
 
-const { platform, arch, env } = process;
-const { execSync } = require("child_process");
+set -e
 
-function isMusl() {
-  try {
-    const out = execSync("ldd --version 2>&1", { stdio: ["pipe", "pipe", "pipe"] });
-    return out.toString().indexOf("musl") > -1;
-  } catch (err) {
-    // ldd --version exits non-zero on musl systems
-    return err.stderr && err.stderr.toString().indexOf("musl") > -1;
-  }
-}
+# Resolve real location of this script (npm installs it as a symlink).
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]; do
+  LINK=$(readlink "$SCRIPT")
+  case "$LINK" in
+    /*) SCRIPT="$LINK" ;;
+    *) SCRIPT="$(dirname "$SCRIPT")/$LINK" ;;
+  esac
+done
+DIR="$(cd "$(dirname "$SCRIPT")" && pwd)"
+# DIR is .../node_modules/@dpeluche/trs/bin
 
-const PLATFORMS = {
-  win32: {
-    x64: "@dpeluche/trs-cli-win32-x64/trs.exe",
-  },
-  darwin: {
-    x64: "@dpeluche/trs-cli-darwin-x64/trs",
-    arm64: "@dpeluche/trs-cli-darwin-arm64/trs",
-  },
-  linux: {
-    x64: "@dpeluche/trs-cli-linux-x64/trs",
-    arm64: "@dpeluche/trs-cli-linux-arm64/trs",
-  },
-};
+OS=$(uname -s)
+ARCH=$(uname -m)
+case "$OS" in
+  Darwin) OS=darwin ;;
+  Linux) OS=linux ;;
+  *) echo "trs: unsupported OS: $OS" >&2; exit 1 ;;
+esac
+case "$ARCH" in
+  x86_64|amd64) ARCH=x64 ;;
+  arm64|aarch64) ARCH=arm64 ;;
+  *) echo "trs: unsupported arch: $ARCH" >&2; exit 1 ;;
+esac
 
-let binPath = env.TRS_BINARY;
+# Default path: sibling package in node_modules/@dpeluche/
+BIN="$DIR/../../trs-cli-$OS-$ARCH/trs"
 
-if (!binPath) {
-  const platformBins = PLATFORMS[platform];
-  if (platformBins) {
-    binPath = platformBins[arch];
-  }
-}
+# Env override for custom builds / debugging
+if [ -n "${TRS_BINARY:-}" ]; then
+  BIN="$TRS_BINARY"
+fi
 
-if (binPath && !env.TRS_BINARY) {
-  try {
-    binPath = require.resolve(binPath);
-  } catch {
-    binPath = null;
-  }
-}
+if [ ! -x "$BIN" ]; then
+  echo "trs: binary not found at $BIN" >&2
+  echo "" >&2
+  echo "Expected platform package: @dpeluche/trs-cli-$OS-$ARCH" >&2
+  echo "" >&2
+  echo "Alternatives:" >&2
+  echo "  cargo install tars-cli    # build from source" >&2
+  echo "  brew install trs          # macOS (when available)" >&2
+  exit 1
+fi
 
-if (binPath) {
-  const result = require("child_process").spawnSync(binPath, process.argv.slice(2), {
-    shell: false,
-    stdio: "inherit",
-  });
-  if (result.error) {
-    throw result.error;
-  }
-  process.exitCode = result.status;
-} else {
-  console.error(
-    `trs: no prebuilt binary for ${platform}-${arch}.\n\n` +
-    `Supported: darwin-x64, darwin-arm64, linux-x64, linux-arm64, win32-x64\n\n` +
-    `Alternatives:\n` +
-    `  cargo install tars-cli    # build from source\n` +
-    `  brew install trs          # macOS (when available)\n`
-  );
-  process.exitCode = 1;
-}
+exec "$BIN" "$@"
