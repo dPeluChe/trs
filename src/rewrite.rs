@@ -142,6 +142,25 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
+    // Special case: `cd X && <cmd>` — rewrite only the inner command.
+    // Checked BEFORE SKIP_PREFIXES to avoid the "cd " skip short-circuiting.
+    // Only applies when it's a single `cd ... && <cmd>` chain (no further chaining).
+    if let Some(rest) = trimmed.strip_prefix("cd ") {
+        if let Some(split) = rest.find(" && ") {
+            let cd_part = &trimmed[..3 + split]; // "cd X"
+            let inner = rest[split + 4..].trim(); // after "cd X && "
+            if !inner.contains(" && ")
+                && !inner.contains(" | ")
+                && !inner.contains(" ; ")
+                && !inner.is_empty()
+            {
+                if let Some(inner_rewritten) = maybe_rewrite(inner) {
+                    return Some(format!("{} && {}", cd_part, inner_rewritten));
+                }
+            }
+        }
+    }
+
     // Never rewrite internal/shell commands
     for skip in SKIP_PREFIXES {
         if trimmed.starts_with(skip) || trimmed == skip.trim() {
@@ -282,5 +301,30 @@ mod tests {
     fn test_skip_shell_builtins() {
         assert_eq!(maybe_rewrite("export PATH=/usr/bin"), None);
         assert_eq!(maybe_rewrite("source .env"), None);
+    }
+
+    #[test]
+    fn test_rewrite_cd_chain() {
+        assert_eq!(
+            maybe_rewrite("cd /tmp && git status"),
+            Some("cd /tmp && trs git status".into())
+        );
+        assert_eq!(
+            maybe_rewrite("cd /path/to/project && cargo test"),
+            Some("cd /path/to/project && trs cargo test".into())
+        );
+    }
+
+    #[test]
+    fn test_skip_cd_chain_with_multiple_chains() {
+        // Only single cd-chain is rewritten; multi-chain stays safe
+        assert_eq!(maybe_rewrite("cd /tmp && git status && git log"), None);
+        assert_eq!(maybe_rewrite("cd /tmp && git status | less"), None);
+    }
+
+    #[test]
+    fn test_skip_cd_chain_unknown_inner() {
+        // Inner command "echo hello" is in SKIP list, so chain is not rewritten
+        assert_eq!(maybe_rewrite("cd /tmp && echo hello"), None);
     }
 }
