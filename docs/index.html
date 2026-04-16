@@ -35,6 +35,7 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
@@ -67,46 +68,120 @@
     .theme-toggle:hover { border-color: var(--accent); }
 
     /* Hero */
-    .hero { text-align: center; padding: 80px 0 48px; }
+    .hero {
+      text-align: center;
+      padding: 80px 0 56px;
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(600px 240px at 50% 0%, rgba(240,160,48,0.08), transparent 70%);
+      pointer-events: none;
+    }
+    .hero > .container { position: relative; z-index: 1; }
     .hero-name {
       font-size: 64px;
       font-weight: 800;
       letter-spacing: -2px;
       color: var(--text);
+      line-height: 1;
     }
     .hero-name span { color: var(--accent); }
-    .hero-sub {
-      font-size: 14px;
+    .hero-meta {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 3px;
-      margin-top: 4px;
+      letter-spacing: 1.5px;
+      font-variant-numeric: tabular-nums;
     }
+    .hero-meta .dot { color: var(--border); }
     .hero-tagline {
-      font-size: 20px;
-      color: var(--text-muted);
-      margin-top: 16px;
-      font-weight: 400;
+      font-size: 24px;
+      color: var(--text);
+      margin-top: 24px;
+      font-weight: 500;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.35;
     }
+    .hero-tagline .muted { color: var(--text-muted); font-weight: 500; }
+    .hero-cta {
+      display: inline-flex;
+      gap: 14px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+      padding: 12px 26px;
+      font-size: 15px;
+      box-shadow: 0 8px 24px -8px rgba(240,160,48,0.45);
+    }
+    .btn-primary:hover {
+      background: var(--accent-dim);
+      color: var(--bg);
+      border-color: var(--accent-dim);
+      box-shadow: 0 10px 28px -10px rgba(240,160,48,0.55);
+    }
+    .hero-secondary-link {
+      display: block;
+      margin-top: 16px;
+      color: var(--text-muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .hero-secondary-link:hover { color: var(--accent); }
+
     .hero-stats {
-      display: flex; gap: 24px; justify-content: center;
-      margin-top: 24px; flex-wrap: wrap;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 40px;
+      flex-wrap: wrap;
     }
     .hero-stat {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-muted);
       background: var(--bg-card);
       border: 1px solid var(--border);
-      padding: 4px 12px;
+      padding: 6px 14px;
       border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-variant-numeric: tabular-nums;
     }
-    .hero-stat strong { color: var(--text); }
-
-    .badges {
-      display: flex; gap: 8px; justify-content: center;
-      margin-top: 20px; flex-wrap: wrap;
-    }
-    .badges img { height: 20px; }
+    .hero-stat strong { color: var(--text); font-weight: 600; }
+    .hero-stat .accent { color: var(--accent); }
 
     .install-box {
       margin-top: 32px;
@@ -543,28 +618,43 @@
 <div class="hero">
   <div class="container">
     <div class="hero-name"><span>trs</span></div>
-    <div class="hero-sub">TarsCLI</div>
-    <div class="hero-tagline">Terminal compression for AI agents</div>
-
-    <div class="hero-stats">
-      <span class="hero-stat"><strong>Rust</strong></span>
-      <span class="hero-stat"><strong>6 MB</strong> single binary</span>
-      <span class="hero-stat"><strong>~12ms</strong> startup</span>
-      <span class="hero-stat">68&ndash;99% output <strong>compression</strong></span>
-      <span class="hero-stat">9 AI tool <strong>hooks</strong></span>
+    <div class="hero-meta">
+      <span>TARSCLI</span>
+      <span class="dot">·</span>
+      <span>v0.5.3</span>
+      <span class="dot">·</span>
+      <span>Rust</span>
+      <span class="dot">·</span>
+      <span>MIT</span>
     </div>
 
-    <div class="badges">
-      <a href="https://github.com/dPeluChe/trs/actions"><img src="https://github.com/dPeluChe/trs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-      <a href="https://github.com/dPeluChe/trs/releases"><img src="https://img.shields.io/github/v/release/dPeluChe/trs" alt="Release"></a>
-      <a href="https://www.npmjs.com/package/@dpeluche/trs"><img src="https://img.shields.io/npm/v/@dpeluche/trs" alt="npm"></a>
-      <a href="https://github.com/dPeluChe/trs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+    <div class="hero-tagline">
+      Terminal compression for AI agents.
+      <span class="muted">68&ndash;99% smaller output, same signal.</span>
+    </div>
+
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#install">
+        &#x2193;&nbsp; Install trs
+      </a>
+      <a class="btn" href="https://github.com/dPeluChe/trs" target="_blank" rel="noopener">
+        &#x2197;&nbsp; GitHub
+      </a>
+    </div>
+    <a class="hero-secondary-link" href="#digest">&#x25CF; Also built-in: trs ingest &mdash; LLM-ready project digest &rarr;</a>
+
+    <div class="hero-stats">
+      <span class="hero-stat"><strong>6 MB</strong> single binary</span>
+      <span class="hero-stat"><span class="accent">~12 ms</span> startup</span>
+      <span class="hero-stat"><strong>9</strong> AI tool hooks</span>
+      <span class="hero-stat"><strong>30+</strong> parsers</span>
+      <span class="hero-stat">zero Node overhead</span>
     </div>
   </div>
 </div>
 
 <!-- Install (top) — same component as the bottom, for users who want it now -->
-<section>
+<section id="install">
   <div class="container">
     <h2>Install</h2>
     <p class="section-intro">
@@ -870,7 +960,7 @@ ad55480 feat(init): smart JSON merge
 </section>
 
 <!-- Project digest — dedicated -->
-<section>
+<section id="digest">
   <div class="container">
     <h2>Project digest <span style="color: var(--text-muted); font-weight: 400; font-size: 18px;">&mdash; <code class="inline">trs ingest</code></span></h2>
     <p class="section-intro">
@@ -1172,6 +1262,12 @@ ad55480 feat(init): smart JSON merge
 
 <footer>
   <div class="container">
+    <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; opacity: 0.9;">
+      <a href="https://github.com/dPeluChe/trs/actions"><img style="height: 18px;" src="https://github.com/dPeluChe/trs/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+      <a href="https://github.com/dPeluChe/trs/releases"><img style="height: 18px;" src="https://img.shields.io/github/v/release/dPeluChe/trs" alt="Release"></a>
+      <a href="https://www.npmjs.com/package/@dpeluche/trs"><img style="height: 18px;" src="https://img.shields.io/npm/v/@dpeluche/trs" alt="npm"></a>
+      <a href="https://github.com/dPeluChe/trs/blob/main/LICENSE"><img style="height: 18px;" src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+    </div>
     <p>Built with Rust &amp; caffeine by <a href="https://iteris.tech">Iteris</a> &middot; <a href="https://github.com/dPeluChe/trs">GitHub</a> &middot; <a href="https://github.com/dPeluChe/trs/tree/main/docs/benchmarks">benchmarks lab</a> &middot; MIT License</p>
   </div>
 </footer>
