@@ -1,11 +1,23 @@
 {
-  "name": "tars-cli",
+  "name": "@dpeluche/trs",
   "version": "0.5.0",
-  "description": "Transform noisy terminal output into compact, structured signal. A CLI toolkit for developers, automation pipelines, and AI agents.",
+  "description": "Transform noisy terminal output into compact, structured signal. CLI toolkit for developers, automation pipelines, and AI agents. 68-90% token savings.",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/dPeluChe/trs"
+  },
+  "homepage": "https://github.com/dPeluChe/trs",
+  "author": "Iteris <antonio@dpeluche.dev>",
+  "bin": {
+    "trs": "bin/trs"
+  },
+  "files": [
+    "bin/trs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=14"
   },
   "keywords": [
     "cli",
@@ -18,29 +30,16 @@
     "token",
     "reduction",
     "structured",
-    "json"
+    "json",
+    "llm",
+    "claude",
+    "compact"
   ],
-  "bin": {
-    "trs": "bin/trs"
-  },
-  "scripts": {
-    "postinstall": "node install.js"
-  },
-  "files": [
-    "bin/",
-    "install.js",
-    "README.md"
-  ],
-  "os": [
-    "darwin",
-    "linux",
-    "win32"
-  ],
-  "cpu": [
-    "x64",
-    "arm64"
-  ],
-  "engines": {
-    "node": ">=14"
+  "optionalDependencies": {
+    "@dpeluche/trs-cli-darwin-x64": "0.5.0",
+    "@dpeluche/trs-cli-darwin-arm64": "0.5.0",
+    "@dpeluche/trs-cli-linux-x64": "0.5.0",
+    "@dpeluche/trs-cli-linux-arm64": "0.5.0",
+    "@dpeluche/trs-cli-win32-x64": "0.5.0"
   }
 }

@@ -19,26 +19,36 @@ jobs:
             os: ubuntu-latest
             binary: trs
             artifact: trs-linux-x64
+            npm_dir: linux-x64
+            npm_bin: trs
 
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             binary: trs
             artifact: trs-linux-arm64
+            npm_dir: linux-arm64
+            npm_bin: trs
 
           - target: x86_64-apple-darwin
             os: macos-latest
             binary: trs
             artifact: trs-darwin-x64
+            npm_dir: darwin-x64
+            npm_bin: trs
 
           - target: aarch64-apple-darwin
             os: macos-latest
             binary: trs
             artifact: trs-darwin-arm64
+            npm_dir: darwin-arm64
+            npm_bin: trs
 
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             binary: trs.exe
             artifact: trs-windows-x64.exe
+            npm_dir: win32-x64
+            npm_bin: trs.exe
 
     steps:
       - uses: actions/checkout@v5
@@ -68,7 +78,7 @@ jobs:
             strip target/${{ matrix.target }}/release/${{ matrix.binary }}
           fi
 
-      - name: Rename binary
+      - name: Rename binary for GitHub Release
         shell: bash
         run: |
           cp target/${{ matrix.target }}/release/${{ matrix.binary }} ${{ matrix.artifact }}
@@ -79,8 +89,19 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
 
+      - name: Prepare npm platform package
+        shell: bash
+        run: |
+          cp target/${{ matrix.target }}/release/${{ matrix.binary }} npm/platforms/${{ matrix.npm_dir }}/${{ matrix.npm_bin }}
+
+      - name: Upload npm package artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: npm-${{ matrix.npm_dir }}
+          path: npm/platforms/${{ matrix.npm_dir }}/
+
   release:
-    name: Create Release
+    name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -101,3 +122,72 @@ jobs:
             artifacts/trs-darwin-x64/trs-darwin-x64
             artifacts/trs-darwin-arm64/trs-darwin-arm64
             artifacts/trs-windows-x64.exe/trs-windows-x64.exe
+
+  npm-publish:
+    name: Publish npm packages
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download all npm artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: artifacts/
+
+      - name: Sync version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+          # Update base package version
+          cd npm
+          node -e "
+            const pkg = require('./package.json');
+            pkg.version = '$VERSION';
+            for (const dep in pkg.optionalDependencies) {
+              pkg.optionalDependencies[dep] = '$VERSION';
+            }
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          cd ..
+
+          # Update platform package versions
+          for dir in npm/platforms/*/; do
+            node -e "
+              const pkg = require('./${dir}package.json');
+              pkg.version = '$VERSION';
+              require('fs').writeFileSync('./${dir}package.json', JSON.stringify(pkg, null, 2) + '\n');
+            "
+          done
+
+      - name: Assemble platform packages
+        run: |
+          # Copy binaries from artifacts into platform package dirs
+          for dir in darwin-x64 darwin-arm64 linux-x64 linux-arm64 win32-x64; do
+            cp -r artifacts/npm-${dir}/* npm/platforms/${dir}/
+            chmod +x npm/platforms/${dir}/trs* 2>/dev/null || true
+          done
+
+      - name: Publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for dir in npm/platforms/*/; do
+            echo "Publishing $(basename $dir)..."
+            cd "$dir"
+            npm publish --access public || echo "Failed to publish $(basename $dir), continuing..."
+            cd -
+          done
+
+      - name: Publish base package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd npm
+          npm publish --access public
