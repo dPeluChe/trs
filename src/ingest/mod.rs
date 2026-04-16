@@ -397,44 +397,54 @@ pub fn run_ingest(config: &IngestConfig) {
         output
     };
 
-    // Build metadata for sidecar file
     let total_tokens = (final_output.len() as f64 / BYTES_PER_TOKEN) as usize;
+    let file_count = files.iter().filter(|f| !f.rel_path.is_empty()).count();
+
+    if let Some(ref out_path) = config.output_file {
+        // Explicit --output: write only there, no shadow save. The caller
+        // (e.g. spark) manages storage; trs should stay out of the way.
+        match std::fs::write(out_path, &final_output) {
+            Ok(()) => {
+                eprintln!(
+                    "trs ingest: {} ({} tokens, {} files) -> {}",
+                    format_bytes(final_output.len()),
+                    format_tokens(total_tokens),
+                    file_count,
+                    out_path.display(),
+                );
+            }
+            Err(e) => {
+                eprintln!("trs ingest: write failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    // No --output: shadow-save to ~/.trs/ingest/<owner>/<repo>.md with metadata
+    // sidecar, and print to stdout for interactive/piped use.
     let digest_meta = meta::IngestMeta {
         head_sha: meta::get_head_sha(&config.root),
         timestamp: meta::now_unix(),
-        file_count: files.iter().filter(|f| !f.rel_path.is_empty()).count(),
+        file_count,
         tokens: total_tokens,
         project_root: config.root.display().to_string(),
         trs_version: env!("CARGO_PKG_VERSION").to_string(),
     };
 
-    // Save to ~/.trs/ingest/<repo-name>.md (single file per project, overwrites)
     let saved_path = save_to_store(&final_output, config);
     if let Some(ref p) = saved_path {
         let digest_path = std::path::PathBuf::from(p);
         let _ = meta::save_meta(&digest_path, &digest_meta);
-    }
-
-    // Also write to explicit output file if requested
-    if let Some(ref out_path) = config.output_file {
-        if std::fs::write(out_path, &final_output).is_ok() {
-            eprintln!("trs ingest: also wrote to {}", out_path.display());
-        }
-    }
-
-    if let Some(ref path) = saved_path {
         eprintln!(
             "trs ingest: {} ({} tokens) -> {}",
             format_bytes(final_output.len()),
             format_tokens(total_tokens),
-            path
+            p
         );
     }
 
-    // Print to stdout unless -o was specified
-    if config.output_file.is_none() {
-        print!("{}", final_output);
-    }
+    print!("{}", final_output);
 }
 
 #[cfg(test)]
