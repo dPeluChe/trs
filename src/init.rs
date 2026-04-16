@@ -15,6 +15,7 @@ pub(crate) enum AiTool {
     OpenCode,
     Kilo,
     Antigravity,
+    Droid,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -35,6 +36,7 @@ impl AiTool {
             "opencode" => Some(Self::OpenCode),
             "kilo" | "kilocode" => Some(Self::Kilo),
             "antigravity" | "gravity" => Some(Self::Antigravity),
+            "droid" | "factory" => Some(Self::Droid),
             _ => None,
         }
     }
@@ -48,14 +50,15 @@ impl AiTool {
             Self::OpenCode => "OpenCode",
             Self::Kilo => "Kilo Code",
             Self::Antigravity => "Google Antigravity",
+            Self::Droid => "Factory Droid",
         }
     }
 
     pub(crate) fn all_names() -> &'static str {
-        "claude, gemini, cursor, codex, opencode, kilo, antigravity"
+        "claude, gemini, cursor, codex, opencode, kilo, antigravity, droid"
     }
 
-    pub(crate) fn all_tools() -> [Self; 7] {
+    pub(crate) fn all_tools() -> [Self; 8] {
         [
             Self::Claude,
             Self::Gemini,
@@ -64,6 +67,7 @@ impl AiTool {
             Self::OpenCode,
             Self::Kilo,
             Self::Antigravity,
+            Self::Droid,
         ]
     }
 
@@ -104,6 +108,12 @@ impl AiTool {
                 global_dir: Some(".antigravity"),
                 filename: "settings.json",
                 content: GEMINI_HOOKS, // Same hook format as Gemini CLI
+            }),
+            Self::Droid => Some(HookSpec {
+                local_dir: ".factory",
+                global_dir: Some(".factory"),
+                filename: "settings.json",
+                content: CLAUDE_HOOKS, // Factory Droid uses the same matcher/hooks shape
             }),
             Self::Codex => None, // Codex uses AGENTS.md append, not a spec
         }
@@ -235,7 +245,8 @@ fn install_from_spec(spec: &HookSpec, global: bool) -> Result<String, String> {
             let path = dir.join(spec.filename);
             return write_hook(&dir, &path, spec.content);
         }
-        return Err("--global not supported for this tool, installing locally".to_string());
+        // No global config location for this tool — fall back to local install.
+        eprintln!("note: --global not supported for this tool, installing locally instead");
     }
     let dir = PathBuf::from(spec.local_dir);
     let path = dir.join(spec.filename);
@@ -253,7 +264,8 @@ fn install_codex() -> Result<String, String> {
     if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         if content.contains(marker) {
-            return Err("AGENTS.md already configured for trs".to_string());
+            // Idempotent: already installed is a success, not a failure.
+            return Ok(format!("{} (already configured)", path.display()));
         }
         let updated = format!("{}\n{}", content, CODEX_AGENTS_SECTION);
         fs::write(&path, updated).map_err(|e| e.to_string())?;
@@ -289,12 +301,14 @@ fn check_file_contains_path(path: &Path, needle: &str) -> bool {
 fn write_hook(dir: &Path, path: &Path, content: &str) -> Result<String, String> {
     if path.exists() {
         let existing = fs::read_to_string(path).unwrap_or_default();
-        if existing.contains("trs") {
-            return Err(format!("{} already configured for trs", path.display()));
+        if existing.contains("trs rewrite") || existing.contains("trs (TARS CLI)") {
+            // Idempotent: our hook is already there.
+            return Ok(format!("{} (already configured)", path.display()));
         }
-        // File exists but isn't ours — warn and don't overwrite
+        // File exists with foreign config — refuse to clobber, but point the user
+        // at the exact line they need to add.
         return Err(format!(
-            "{} exists with other config. Add trs hook manually or remove it first.",
+            "{} exists with other config.\n  Add trs hook manually or back up and re-run `trs init`.",
             path.display()
         ));
     }
