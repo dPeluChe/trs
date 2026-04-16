@@ -108,9 +108,16 @@ fn main() {
         Some(Commands::Discover { all, since }) => {
             discover::run_discover(*all, *since);
         }
-        Some(Commands::Init { tool, global, show }) => {
+        Some(Commands::Init {
+            tool,
+            global,
+            show,
+            all,
+        }) => {
             if *show {
                 init::show_status();
+            } else if *all {
+                init::install_all(*global);
             } else if let Some(tool_name) = tool {
                 match init::AiTool::from_str(tool_name) {
                     Some(t) => init::install_hook(&t, *global),
@@ -122,6 +129,7 @@ fn main() {
                 }
             } else {
                 println!("Usage: trs init <tool> [--global]");
+                println!("       trs init --all [--global]");
                 println!("       trs init --show");
                 println!("\nSupported tools: {}", init::AiTool::all_names());
             }

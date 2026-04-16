@@ -139,6 +139,33 @@ pub(crate) fn install_hook(tool: &AiTool, global: bool) {
     }
 }
 
+/// Install hooks for all supported tools, skipping already-configured ones.
+pub(crate) fn install_all(global: bool) {
+    let tools = AiTool::all_tools();
+    let mut installed = 0;
+    let mut skipped = 0;
+
+    for tool in &tools {
+        if check_tool(tool) {
+            println!("  + {} (already configured)", tool.name());
+            skipped += 1;
+        } else {
+            install_hook(tool, global);
+            installed += 1;
+        }
+    }
+
+    println!(
+        "\n{} installed, {} already configured, {} total",
+        installed,
+        skipped,
+        tools.len()
+    );
+    if installed > 0 {
+        eprintln!("note: restart any open AI tool sessions for hooks to take effect");
+    }
+}
+
 /// Check if trs binary is available in PATH.
 fn is_trs_in_path() -> bool {
     std::process::Command::new("trs")
