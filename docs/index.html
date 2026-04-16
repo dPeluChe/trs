@@ -3,8 +3,59 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TarsCLI — Terminal compression for AI agents</title>
-  <meta name="description" content="Compact terminal output for humans and AI agents. Rust-native, cross-platform, ~12ms startup, zero Node overhead on macOS/Linux.">
+  <meta name="theme-color" content="#f0a030">
+  <meta name="color-scheme" content="dark light">
+
+  <!-- Primary -->
+  <title>trs (TarsCLI) — Terminal compression for AI agents</title>
+  <meta name="description" content="Rust CLI that compresses noisy terminal output 68–99% for AI agents and humans. ~12ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
+  <meta name="keywords" content="trs, tarscli, terminal, CLI, token reduction, AI agents, Claude Code, Gemini, LLM, compression, ingest, digest, Rust">
+  <meta name="author" content="Iteris">
+  <link rel="canonical" href="https://dpeluche.github.io/trs/">
+
+  <!-- Favicon (inline SVG, no extra request) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23f0a030'/%3E%3Ctext x='50%25' y='54%25' font-family='SF Mono,Consolas,monospace' font-size='32' font-weight='800' fill='%23111' text-anchor='middle' dominant-baseline='middle'%3Etrs%3C/text%3E%3C/svg%3E">
+
+  <!-- Open Graph / LinkedIn / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="trs (TarsCLI)">
+  <meta property="og:title" content="trs — Terminal compression for AI agents">
+  <meta property="og:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12ms startup, zero Node overhead.">
+  <meta property="og:url" content="https://dpeluche.github.io/trs/">
+  <meta property="og:image" content="https://dpeluche.github.io/trs/og-image.png">
+  <meta property="og:image:alt" content="trs — Terminal compression for AI agents">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="trs — Terminal compression for AI agents">
+  <meta name="twitter:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12ms startup.">
+  <meta name="twitter:image" content="https://dpeluche.github.io/trs/og-image.png">
+
+  <!-- Robots -->
+  <meta name="robots" content="index, follow">
+
+  <!-- JSON-LD structured data (SoftwareApplication) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "trs (TarsCLI)",
+    "description": "Rust CLI that compresses noisy terminal output 68–99% for AI agents and humans. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
+    "url": "https://dpeluche.github.io/trs/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "macOS, Linux, Windows",
+    "programmingLanguage": "Rust",
+    "license": "https://opensource.org/licenses/MIT",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "codeRepository": "https://github.com/dPeluChe/trs",
+    "softwareVersion": "0.5.3",
+    "author": { "@type": "Organization", "name": "Iteris", "url": "https://iteris.tech" }
+  }
+  </script>
+
   <style>
     :root {
       --bg: #06080f;
