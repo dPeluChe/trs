@@ -123,6 +123,10 @@ pub(crate) fn install_hook(tool: &AiTool, global: bool) {
     match result {
         Ok(path) => {
             println!("trs hook installed for {} at {}", tool.name(), path);
+            eprintln!(
+                "note: restart any open {} sessions for the hook to take effect",
+                tool.name()
+            );
             // Warn if trs is not in PATH
             if !is_trs_in_path() {
                 eprintln!(
@@ -132,6 +136,33 @@ pub(crate) fn install_hook(tool: &AiTool, global: bool) {
             }
         }
         Err(e) => eprintln!("Failed to install hook for {}: {}", tool.name(), e),
+    }
+}
+
+/// Install hooks for all supported tools, skipping already-configured ones.
+pub(crate) fn install_all(global: bool) {
+    let tools = AiTool::all_tools();
+    let mut installed = 0;
+    let mut skipped = 0;
+
+    for tool in &tools {
+        if check_tool(tool) {
+            println!("  + {} (already configured)", tool.name());
+            skipped += 1;
+        } else {
+            install_hook(tool, global);
+            installed += 1;
+        }
+    }
+
+    println!(
+        "\n{} installed, {} already configured, {} total",
+        installed,
+        skipped,
+        tools.len()
+    );
+    if installed > 0 {
+        eprintln!("note: restart any open AI tool sessions for hooks to take effect");
     }
 }
 
@@ -179,6 +210,11 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
             if let Ok(home) = home_dir() {
                 let global_path = home.join(global).join(spec.filename);
                 if check_file_contains_path(&global_path, "trs") {
+                    return true;
+                }
+                // Also check settings.json (hooks can live there too)
+                let settings_path = home.join(global).join("settings.json");
+                if check_file_contains_path(&settings_path, "trs rewrite") {
                     return true;
                 }
             }

@@ -165,6 +165,7 @@ trs init codex                        # append trs instructions to AGENTS.md
 trs init opencode                     # install OpenCode plugin
 trs init kilo                         # install Kilo Code plugin
 trs init antigravity                  # install Google Antigravity hook
+trs init --all --global               # install all hooks globally
 trs init --show                       # show which tools are configured
 
 # Discover missed savings (scan Claude Code history)

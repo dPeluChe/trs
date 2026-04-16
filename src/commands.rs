@@ -64,6 +64,10 @@ pub enum Commands {
         /// Show current installation status
         #[arg(long)]
         show: bool,
+
+        /// Install hooks for all detected tools
+        #[arg(long)]
+        all: bool,
     },
 
     /// Validate trs installation health (binary, PATH, deps, config)
