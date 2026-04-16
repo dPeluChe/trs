@@ -70,7 +70,6 @@ fn parse_go_test(input: &str) -> GoTestResult {
     // Buffer output between === RUN and --- PASS/FAIL/SKIP
     // In go test -v, error lines appear BEFORE the --- FAIL line
     let mut run_buffer = String::new();
-    let mut current_fail_pkg = String::new();
 
     for line in input.lines() {
         let t = line.trim();
@@ -135,7 +134,6 @@ fn parse_go_test(input: &str) -> GoTestResult {
                         break;
                     }
                 }
-                current_fail_pkg = pkg;
             }
             if let Some(dur) = parts.last() {
                 let dur = dur.trim();

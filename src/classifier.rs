@@ -281,7 +281,6 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "test" => Some(ParseCommands::GoTest { file: None }),
             _ => None,
         },
-        "tsc" => Some(ParseCommands::Build { file: None }),
 
         // GitHub CLI
         "gh" => match subcmd {
