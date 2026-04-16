@@ -32,22 +32,40 @@ case "$ARCH" in
   *) echo "trs: unsupported arch: $ARCH" >&2; exit 1 ;;
 esac
 
-# Default path: sibling package in node_modules/@dpeluche/
-BIN="$DIR/../../trs-cli-$OS-$ARCH/trs"
+PKG="@dpeluche/trs-cli-$OS-$ARCH"
+BIN=""
 
-# Env override for custom builds / debugging
-if [ -n "${TRS_BINARY:-}" ]; then
+# Env override takes priority (custom builds / debugging)
+if [ -n "${TRS_BINARY:-}" ] && [ -x "$TRS_BINARY" ]; then
   BIN="$TRS_BINARY"
 fi
 
-if [ ! -x "$BIN" ]; then
-  echo "trs: binary not found at $BIN" >&2
+# Candidate locations npm may use for the optional dependency:
+#  - sibling: hoisted to parent node_modules (npm local install, npm >=7)
+#  - nested:  inside our own node_modules (npm install -g, pnpm isolated)
+#  - parent:  deduplicated one level up (workspaces)
+if [ -z "$BIN" ]; then
+  for candidate in \
+    "$DIR/../../trs-cli-$OS-$ARCH/trs" \
+    "$DIR/../node_modules/$PKG/trs" \
+    "$DIR/../../../$PKG/trs" \
+    "$DIR/../../node_modules/$PKG/trs"; do
+    if [ -x "$candidate" ]; then
+      BIN="$candidate"
+      break
+    fi
+  done
+fi
+
+if [ -z "$BIN" ]; then
+  echo "trs: platform binary not found" >&2
   echo "" >&2
-  echo "Expected platform package: @dpeluche/trs-cli-$OS-$ARCH" >&2
+  echo "Expected package: $PKG" >&2
+  echo "Searched near:    $DIR" >&2
   echo "" >&2
   echo "Alternatives:" >&2
   echo "  cargo install tars-cli    # build from source" >&2
-  echo "  brew install trs          # macOS (when available)" >&2
+  echo "  curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh" >&2
   exit 1
 fi
 
