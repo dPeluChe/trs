@@ -60,14 +60,17 @@ Commands without a dedicated parser still get basic compression (whitespace coll
 ## Install
 
 ```bash
-# npm (downloads precompiled binary)
-npm install -g tars-cli
+# Universal one-liner (macOS/Linux) — downloads the right binary, zero overhead
+curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
 
-# Try without installing
-npx tars-cli git status
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex
 
-# From source
-cargo install --path .
+# npm (cross-platform, ~12ms startup overhead via shell launcher)
+npm install -g @dpeluche/trs
+
+# From source (requires Rust toolchain)
+cargo install tars-cli
 
 # Pre-built binaries: https://github.com/dPeluChe/trs/releases
 ```
