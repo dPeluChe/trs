@@ -182,7 +182,10 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 count: None,
             }),
             "diff" => Some(ParseCommands::GitDiff { file: None }),
-            "log" => Some(ParseCommands::GitLog { file: None }),
+            "log" => Some(ParseCommands::GitLog {
+                file: None,
+                truncate: None,
+            }),
             "branch" => Some(ParseCommands::GitBranch { file: None }),
             _ => None,
         },
@@ -348,7 +351,10 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
             count,
         },
         ParseCommands::GitDiff { .. } => ParseCommands::GitDiff { file: Some(path) },
-        ParseCommands::GitLog { .. } => ParseCommands::GitLog { file: Some(path) },
+        ParseCommands::GitLog { truncate, .. } => ParseCommands::GitLog {
+            file: Some(path),
+            truncate,
+        },
         ParseCommands::GitBranch { .. } => ParseCommands::GitBranch { file: Some(path) },
         ParseCommands::Ls { .. } => ParseCommands::Ls { file: Some(path) },
         ParseCommands::Grep { .. } => ParseCommands::Grep { file: Some(path) },

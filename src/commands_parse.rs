@@ -107,6 +107,11 @@ pub enum ParseCommands {
         /// Input file (stdin if not specified)
         #[arg(short, long)]
         file: Option<PathBuf>,
+
+        /// Truncate commit subjects to N chars (adds "..."). Default: no truncation.
+        /// Useful when piping to a fixed-width context.
+        #[arg(long)]
+        truncate: Option<usize>,
     },
 
     /// Parse git branch output
