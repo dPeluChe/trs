@@ -511,7 +511,7 @@ Walks the project directory, reads files with optional compression,
 and produces a structured markdown digest optimized for AI context windows.
 
 USAGE:
-    trs ingest [PATH] [OPTIONS]
+    trs ingest [PATH|URL|owner/repo] [OPTIONS]
 
 OPTIONS:
     -l, --level <LEVEL>    Compression: full, minimal, aggressive (default: full)
@@ -522,10 +522,14 @@ OPTIONS:
     -o, --output <FILE>    Write to file instead of stdout
     --ollama <MODEL>       Format digest with local Ollama model (e.g. llama3)
     --deps                 Output only the dependency graph (no file content)
+    --tmp                  For URL input: shallow-clone into a tempdir (not saved)
 
 EXAMPLES:
-    trs ingest                              # full project digest
-    trs ingest --budget 128k               # fit to 128k token context
+    trs ingest                              # full project digest (cwd)
+    trs ingest owner/repo                   # clone via spark, then digest
+    trs ingest github.com/o/r               # same, host-prefixed shorthand
+    trs ingest https://github.com/o/r --tmp # ephemeral clone, auto-cleanup
+    trs ingest --budget 128k                # fit to 128k token context
     trs ingest --changed                    # only uncommitted changes
     trs ingest --changed -l aggressive      # signatures of changed files
     trs ingest --since HEAD~5               # last 5 commits
@@ -534,6 +538,13 @@ EXAMPLES:
     trs ingest --ollama llama3              # LLM-formatted summary
     trs ingest --deps                       # import graph only, no file content
     trs ingest --budget 64k -l minimal      # compressed, budget-fitted
+
+REMOTE INPUT:
+    Remote refs accepted: https://... | git@... | github.com/o/r | o/r
+    - With spark installed: clones to your spark-managed repos dir (persistent)
+    - Without spark (or --tmp): shallow-clone to a tempdir, auto-deleted on exit
+    - Local path wins when it exists: 'trs ingest owner/repo' uses ./owner/repo
+      if that dir exists, otherwise resolves as a GitHub shorthand
 
 OUTPUT:
     Structured markdown with:
