@@ -84,13 +84,21 @@ pub fn resolve_remote(input: &str, tmp: TmpMode) -> Result<ResolvedSource, Strin
     let use_tmp = matches!(tmp, TmpMode::Force) || !has_spark();
 
     if !use_tmp {
-        // Spark path: clone (idempotent if already present), then ask spark
-        // where the repo lives. spark search already prints only the path.
+        // Spark path: search first, clone only if not present. Avoids the
+        // failure mode where `spark clone` exits 1 on an already-cloned repo,
+        // and saves one subprocess when the repo is already local.
         let owner_repo = owner_repo_slash(&url)?;
-        spark_clone(&url)?;
-        let path = spark_search_first(&owner_repo)?;
+        let (path, cloned) = match spark_search_first(&owner_repo) {
+            Ok(p) => (p, false),
+            Err(_) => {
+                spark_clone(&url)?;
+                (spark_search_first(&owner_repo)?, true)
+            }
+        };
+        let verb = if cloned { "cloned via" } else { "found via" };
         eprintln!(
-            "trs ingest: cloned via spark → {} (use `spark ingest {}` to regenerate)",
+            "trs ingest: {} spark → {} (use `spark ingest {}` to regenerate)",
+            verb,
             path.display(),
             repo,
         );
