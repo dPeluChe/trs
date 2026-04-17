@@ -5,7 +5,9 @@
 
 use std::path::Path;
 
-use crate::router::handlers::read_filters::{detect_language, Language};
+use crate::router::handlers::read_filters::{
+    detect_language, filter_minimal, Language,
+};
 
 use super::collect_index::{extract_module_doc, extract_symbols, is_module_anchor};
 use super::collect_manifests::{
@@ -195,11 +197,14 @@ pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<Compr
         return ok(extract_data_schema(&content, &ext));
     }
 
-    // Source code: always extract signatures in minimal/aggressive mode
-    // An agent needs to know WHAT exists, not HOW it's implemented
+    // Source code compression ladder:
+    //   Full       — raw content, nothing removed
+    //   Minimal    — strip comments + normalize blank lines (shared with `trs read`)
+    //   Aggressive — signatures only (imports + defs), no function bodies
     match level {
         IngestLevel::Full => ok(content),
-        _ => ok(extract_signatures(&content, &ext)),
+        IngestLevel::Minimal => ok(filter_minimal(&content, lang)),
+        IngestLevel::Aggressive => ok(extract_signatures(&content, &ext)),
     }
 }
 
