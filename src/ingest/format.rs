@@ -34,10 +34,10 @@ pub(super) fn build_digest(
     let docs_count = md_count + txt_count;
     let is_docs_project = total_files > 0 && docs_count * 100 / total_files.max(1) > 50;
 
-    let project_type = if is_docs_project {
-        "docs/skills"
+    let project_type: String = if is_docs_project {
+        "docs/skills".to_string()
     } else {
-        "code"
+        detect_primary_language(files)
     };
     out.push_str(&format!(
         "# {} ({} files, {} tokens, {})\n\n",
@@ -55,6 +55,15 @@ pub(super) fn build_digest(
     // Key Dependencies (injected from dep graph, code projects only)
     if !is_docs_project && !dep_summary.is_empty() {
         out.push_str(dep_summary);
+    }
+
+    // Symbol index (opt-in via --symbols). Flat `name → path` list so an
+    // agent can resolve "where is X?" in one scan without reading any file.
+    if !is_docs_project && config.symbols_index {
+        let symbols_section = build_symbol_index(files);
+        if !symbols_section.is_empty() {
+            out.push_str(&symbols_section);
+        }
     }
 
     // Group files by parent directory
@@ -168,6 +177,60 @@ pub(super) fn build_digest(
     out
 }
 
+/// Detect the dominant programming language by extension count (code projects only).
+/// Returns labels like "rust", "typescript", "python", "go" — or "code" as fallback.
+pub(crate) fn detect_primary_language(files: &[DigestFile]) -> String {
+    use std::collections::HashMap;
+    let mut counts: HashMap<&'static str, usize> = HashMap::new();
+    for f in files {
+        let ext = Path::new(&f.rel_path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        let lang = match ext.as_str() {
+            "rs" => "rust",
+            "ts" | "tsx" | "mts" | "cts" => "typescript",
+            "js" | "jsx" | "mjs" | "cjs" => "javascript",
+            "py" | "pyi" => "python",
+            "go" => "go",
+            "java" => "java",
+            "kt" | "kts" => "kotlin",
+            "swift" => "swift",
+            "rb" => "ruby",
+            "php" => "php",
+            "c" | "h" => "c",
+            "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" => "c++",
+            "cs" => "c#",
+            "sh" | "bash" | "zsh" | "fish" => "shell",
+            "lua" => "lua",
+            "r" => "r",
+            "scala" => "scala",
+            "ex" | "exs" => "elixir",
+            "erl" => "erlang",
+            "dart" => "dart",
+            "zig" => "zig",
+            _ => continue,
+        };
+        *counts.entry(lang).or_insert(0) += 1;
+    }
+    if counts.is_empty() {
+        return "code".to_string();
+    }
+    // Pick the language with the most files.
+    let total: usize = counts.values().sum();
+    let (&primary, &primary_count) = counts.iter().max_by_key(|(_, c)| *c).unwrap();
+    // If the winner has <50%, also mention the second one.
+    if primary_count * 100 / total < 60 {
+        let mut ranked: Vec<(&&str, &usize)> = counts.iter().collect();
+        ranked.sort_by(|a, b| b.1.cmp(a.1));
+        if ranked.len() >= 2 {
+            return format!("{} / {}", ranked[0].0, ranked[1].0);
+        }
+    }
+    primary.to_string()
+}
+
 /// Format a single file entry -- code as signatures, data as schema, config as summary.
 fn format_file_entry(out: &mut String, name: &str, content: &str) {
     let lines: Vec<&str> = content.lines().collect();
@@ -208,8 +271,17 @@ fn format_file_entry(out: &mut String, name: &str, content: &str) {
             }
         }
     } else {
-        // Data or config: show as-is but compact
-        if lines.len() > 10 {
+        // Manifest files have already been compressed to a compact dep-complete
+        // form — never re-truncate them at this stage.
+        let lower = name.to_lowercase();
+        let is_manifest = lower.ends_with("package.json")
+            || lower.ends_with("cargo.toml")
+            || lower.ends_with("pyproject.toml")
+            || lower.ends_with("requirements.txt");
+        if is_manifest {
+            out.push_str(&format!("**{}**\n{}\n", name, content));
+        } else if lines.len() > 10 {
+            // Data or config: show as-is but compact
             out.push_str(&format!("**{}**\n", name));
             for line in lines.iter().take(8) {
                 out.push_str(line);
@@ -243,13 +315,21 @@ pub(crate) fn build_tree(files: &[DigestFile]) -> String {
         dirs.entry(parent).or_default().push(name);
     }
 
+    // Pre-index module docs so we can annotate directories in one pass.
+    // Key: parent directory path, Value: summary from mod.rs / __init__.py / etc.
+    let dir_annotations = collect_dir_annotations(files);
+
     let mut tree = String::new();
     for (dir, filenames) in &dirs {
-        // Directory header
-        if dir.is_empty() {
-            tree.push_str("/\n");
-        } else {
-            tree.push_str(&format!("{}/\n", dir));
+        // Directory header with optional annotation
+        let header_dir = if dir.is_empty() { "/" } else { dir.as_str() };
+        match dir_annotations.get(dir) {
+            Some(annotation) => {
+                tree.push_str(&format!("{}/  — {}\n", header_dir, annotation));
+            }
+            None => {
+                tree.push_str(&format!("{}/\n", header_dir));
+            }
         }
         // Wrap filenames at ~70 chars with indent
         let mut line = String::from("  ");
@@ -269,6 +349,80 @@ pub(crate) fn build_tree(files: &[DigestFile]) -> String {
         tree.push('\n');
     }
     tree
+}
+
+/// Build the Symbols section: flat `name → path` list sorted alphabetically.
+/// Caps at 200 entries — agents can use trs ingest --deps + file sections
+/// for repos larger than that.
+pub(crate) fn build_symbol_index(files: &[DigestFile]) -> String {
+    let mut entries: Vec<(String, String)> = Vec::new();
+    for file in files {
+        if file.rel_path.is_empty() {
+            continue;
+        }
+        for name in &file.symbols {
+            entries.push((name.clone(), file.rel_path.clone()));
+        }
+    }
+    if entries.is_empty() {
+        return String::new();
+    }
+    entries.sort_by(|a, b| {
+        a.0.to_lowercase()
+            .cmp(&b.0.to_lowercase())
+            .then(a.1.cmp(&b.1))
+    });
+    let total = entries.len();
+    let cap = 200;
+
+    // Column-align the arrow: widest name (within the capped set) + 2 spaces.
+    let shown: &[(String, String)] = if total > cap {
+        &entries[..cap]
+    } else {
+        &entries
+    };
+    let col = shown
+        .iter()
+        .map(|(n, _)| n.len())
+        .max()
+        .unwrap_or(0)
+        .min(40);
+
+    // Header always carries the totals so agents know at a glance whether
+    // the list is complete or truncated.
+    let header = if total > cap {
+        format!("## Symbols ({} of {} shown)\n\n", shown.len(), total)
+    } else {
+        format!("## Symbols ({})\n\n", total)
+    };
+
+    let mut out = header;
+    for (name, path) in shown {
+        out.push_str(&format!("  {:<col$}  → {}\n", name, path, col = col));
+    }
+    if total > cap {
+        out.push_str(&format!("  ... ({} more)\n", total - cap));
+    }
+    out.push('\n');
+    out
+}
+
+/// Collect directory annotations from anchor files (mod.rs / lib.rs / __init__.py / index.ts).
+/// Returns a map keyed by the parent directory path.
+fn collect_dir_annotations(files: &[DigestFile]) -> BTreeMap<String, String> {
+    let mut out: BTreeMap<String, String> = BTreeMap::new();
+    for file in files {
+        let Some(doc) = file.module_doc.as_ref() else {
+            continue;
+        };
+        let parent = Path::new(&file.rel_path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        // Only insert if not already set (first anchor wins).
+        out.entry(parent).or_insert_with(|| doc.clone());
+    }
+    out
 }
 
 /// Strip HTML tags from markdown content (badges, images, formatting).

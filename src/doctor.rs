@@ -218,21 +218,52 @@ fn check_version() -> Check {
     ])
 }
 
-/// Check: `trs` is findable in PATH (via `which`/`where`).
+/// Check: `trs` is findable in PATH (via `which -a` / `where` to catch duplicates).
 fn check_path_accessible() -> Check {
-    let cmd = if cfg!(windows) { "where" } else { "which" };
+    // `which -a` on Unix and `where` on Windows both print every match in PATH.
+    let (cmd, args): (&str, &[&str]) = if cfg!(windows) {
+        ("where", &["trs"])
+    } else {
+        ("which", &["-a", "trs"])
+    };
     match Command::new(cmd)
-        .arg("trs")
+        .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .output()
     {
         Ok(out) if out.status.success() => {
-            let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            Check::pass("PATH", "trs in PATH").with_sub(vec![format!("path: {}", path)])
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let paths: Vec<String> = stdout
+                .lines()
+                .map(|l| l.trim().to_string())
+                .filter(|l| !l.is_empty())
+                .collect();
+            if paths.is_empty() {
+                return Check::fail("PATH", "trs not found in PATH").with_hint(
+                    "curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh",
+                );
+            }
+            let primary = paths[0].clone();
+            if paths.len() == 1 {
+                Check::pass("PATH", "trs in PATH").with_sub(vec![format!("path: {}", primary)])
+            } else {
+                let mut sub = vec![format!("active: {}", primary)];
+                for p in paths.iter().skip(1) {
+                    sub.push(format!("shadowed: {}", p));
+                }
+                sub.push(format!(
+                    "{} trs binaries in PATH — the first one wins",
+                    paths.len()
+                ));
+                Check::warn("PATH", "multiple trs binaries found")
+                    .with_sub(sub)
+                    .with_hint("uninstall the duplicates (npm uninstall -g @dpeluche/trs / cargo uninstall tars-cli / brew uninstall trs) or reorder PATH")
+            }
         }
-        _ => Check::fail("PATH", "trs not found in PATH")
-            .with_hint("cargo install --path . or npm i -g tars-cli"),
+        _ => Check::fail("PATH", "trs not found in PATH").with_hint(
+            "curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh",
+        ),
     }
 }
 
@@ -364,15 +395,16 @@ fn check_stdin_pipeline() -> Check {
 /// Check: are any AI tool hooks installed? Delegates to init.rs.
 fn check_hooks_installed() -> Check {
     let tools = AiTool::all_tools();
+    let total = tools.len();
     let hooks_found = tools.iter().filter(|t| check_tool(t)).count();
     if hooks_found > 0 {
         Check::pass(
             "hooks",
-            format!("AI tool hooks ({}/6 configured)", hooks_found),
+            format!("AI tool hooks ({}/{} configured)", hooks_found, total),
         )
     } else {
         Check::warn("hooks", "no AI tool hooks installed")
-            .with_hint("trs init <tool>  (claude, gemini, cursor, codex, opencode, kilo)")
+            .with_hint("trs init --all  (or trs init <tool>)")
     }
 }
 

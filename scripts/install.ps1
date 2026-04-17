@@ -58,12 +58,20 @@ try {
     Write-Err "download failed: $_"
 }
 
+# --- Detect existing install (npm / choco / scoop / manual) ---
+$existing = Get-Command trs -ErrorAction SilentlyContinue
+if ($existing -and $existing.Source -ne $target) {
+    Write-Warning2 "Another trs is already installed at:"
+    Write-Host "       $($existing.Source)"
+    Write-Host "       PATH order decides which runs. Put $InstallDir first to prefer this install.`n"
+}
+
 # --- PATH hint ---
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$InstallDir*") {
     Write-Warning2 "$InstallDir is not in your PATH"
     Write-Host "  Add it with:"
-    Write-Host "    [Environment]::SetEnvironmentVariable('Path', '`$InstallDir;' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')" -ForegroundColor Cyan
+    Write-Host ("    [Environment]::SetEnvironmentVariable('Path', '{0};' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')" -f $InstallDir) -ForegroundColor Cyan
     Write-Host "  Then restart your terminal.`n"
 } else {
     Write-Ok "$InstallDir is already in PATH"

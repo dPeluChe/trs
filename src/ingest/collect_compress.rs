@@ -7,19 +7,33 @@ use std::path::Path;
 
 use crate::router::handlers::read_filters::{detect_language, Language};
 
+use super::collect_index::{extract_module_doc, extract_symbols, is_module_anchor};
+use super::collect_manifests::{
+    compress_jupyter_notebook, compress_package_json, compress_toml_manifest, extract_data_schema,
+};
 use super::IngestLevel;
 
+/// Output of a single-file compression pass.
+pub(super) struct CompressResult {
+    pub content: String,
+    pub raw_imports: Vec<String>,
+    /// Module-level doc for directory annotations (mod.rs / lib.rs / __init__.py).
+    pub module_doc: Option<String>,
+    /// Public / exported symbol names for the symbol index.
+    pub symbols: Vec<String>,
+}
+
 /// Intelligently extract what matters from a file for LLM consumption.
-/// Returns (compressed_content, raw_imports) where raw_imports are extracted
-/// from the original content before compression.
-pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(String, Vec<String>)> {
+/// Returns a `CompressResult` with the compressed content plus metadata
+/// (raw imports, module-level docstring, exported symbol names).
+pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<CompressResult> {
     let content = std::fs::read_to_string(path).ok()?;
 
     if content.chars().take(512).any(|c| c == '\0') {
         return None;
     }
 
-    let ext = path
+    let mut ext = path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("")
@@ -51,10 +65,51 @@ pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(Stri
         return None;
     }
 
-    // Extract imports from raw content now, before any compression transforms it
-    let raw_imports = super::deps_extract::extract_raw_imports(&content, &ext);
+    // No extension but has a shebang → infer language from the interpreter.
+    // This matters for files like `tmux-bridge`, `hooks/pre-commit`, etc.
+    if ext.is_empty() {
+        if let Some(first) = content.lines().next() {
+            if first.starts_with("#!") {
+                if first.contains("bash") || first.contains("/sh") || first.contains("zsh") {
+                    ext = "sh".to_string();
+                } else if first.contains("python") {
+                    ext = "py".to_string();
+                } else if first.contains("node") {
+                    ext = "js".to_string();
+                } else if first.contains("ruby") {
+                    ext = "rb".to_string();
+                }
+            }
+        }
+    }
 
-    let ok = |s: String| Some((s, raw_imports.clone()));
+    let raw_imports = super::deps_extract::extract_raw_imports(&content, &ext);
+    let module_doc = if is_module_anchor(&lower_name) {
+        extract_module_doc(&content, &ext)
+    } else {
+        None
+    };
+    let symbols = extract_symbols(&content, &ext);
+
+    // Wrap the compressed content in a CompressResult carrying the
+    // already-extracted metadata. Each early-return branch calls `ok` exactly
+    // once, so the metadata is moved (not cloned) into the result via
+    // interior mutability on an Option.
+    let mut meta = Some((raw_imports, module_doc, symbols));
+    let mut ok = |s: String| {
+        let (imports, doc, syms) = meta.take().expect("CompressResult built twice");
+        Some(CompressResult {
+            content: s,
+            raw_imports: imports,
+            module_doc: doc,
+            symbols: syms,
+        })
+    };
+
+    // Jupyter notebooks: parse JSON, show code + markdown cells.
+    if ext == "ipynb" {
+        return ok(compress_jupyter_notebook(&content));
+    }
 
     // All markdown files: treat as docs, never extract signatures
     if ext == "md" || ext == "mdx" {
@@ -76,7 +131,28 @@ pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(Stri
         let lines: Vec<&str> = cleaned.lines().collect();
         if lines.len() > max_lines + 5 {
             let preview: String = lines[..max_lines].join("\n");
-            return ok(format!("{}\n... ({} lines)", preview, lines.len()));
+            // Collect headings in the TRUNCATED portion so the reader knows
+            // what the truncation hid.
+            let tail_headings: Vec<String> = lines[max_lines..]
+                .iter()
+                .filter_map(|l| {
+                    let t = l.trim_start();
+                    t.strip_prefix("## ")
+                        .or_else(|| t.strip_prefix("# "))
+                        .map(|rest| rest.trim().to_string())
+                })
+                .take(8)
+                .collect();
+            let suffix = if tail_headings.is_empty() {
+                format!("\n... ({} lines)", lines.len())
+            } else {
+                format!(
+                    "\n... ({} lines, hidden sections: {})",
+                    lines.len(),
+                    tail_headings.join(" · ")
+                )
+            };
+            return ok(format!("{}{}", preview, suffix));
         }
         return ok(cleaned);
     }
@@ -100,9 +176,17 @@ pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(Stri
         return ok(content);
     }
 
-    // package.json: compress to name + deps names only
+    // Manifest files: compact + dependency-complete view. Never truncate the
+    // dep list — it's the most informative part of the manifest for an LLM.
     if lower_name == "package.json" {
         return ok(compress_package_json(&content));
+    }
+    if lower_name == "pyproject.toml" || lower_name == "cargo.toml" {
+        return ok(compress_toml_manifest(&content));
+    }
+    if lower_name == "requirements.txt" {
+        // requirements are already a list — pass through unchanged, it's small.
+        return ok(content);
     }
 
     // JSON/YAML: extract schema (keys + 1 sample), not all data
@@ -119,59 +203,78 @@ pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<(Stri
     }
 }
 
-/// Extract JSON schema: show structure with 1 sample, count arrays.
-fn extract_data_schema(content: &str, ext: &str) -> String {
-    if ext == "json" || ext == "jsonl" {
-        if let Ok(val) = serde_json::from_str::<serde_json::Value>(content) {
-            return summarize_json_value(&val, 0);
+/// Quick check: does this Python source have any multi-line `def`/`class`
+/// header that would benefit from the joining pass? If not, we can pipe the
+/// original content straight through and skip the allocation.
+fn has_multiline_python_sig(content: &str) -> bool {
+    let mut in_sig = false;
+    for line in content.lines() {
+        let t = line.trim_start();
+        if t.starts_with("def ") || t.starts_with("async def ") || t.starts_with("class ") {
+            let opens = t.matches('(').count();
+            let closes = t.matches(')').count();
+            if opens > closes {
+                return true;
+            }
+            in_sig = false;
+            // `def foo(` with comma-trailing on same line but no close: handled above.
+        } else if in_sig {
+            return true;
         }
     }
-    let lines: Vec<&str> = content.lines().collect();
-    if lines.len() <= 20 {
-        return content.to_string();
-    }
-    format!("{}\n... ({} lines)", lines[..20].join("\n"), lines.len())
+    false
 }
 
-fn summarize_json_value(val: &serde_json::Value, depth: usize) -> String {
-    let indent = "  ".repeat(depth);
-    match val {
-        serde_json::Value::Array(arr) if arr.is_empty() => "[]".into(),
-        serde_json::Value::Array(arr) => {
-            let first = summarize_json_value(&arr[0], depth + 1);
-            format!("[{}, ...] ({} items)", first, arr.len())
+/// Join multi-line Python `def name(...)` signatures onto a single line.
+/// Only touches `def`/`async def`/`class` headers; other lines pass through.
+fn join_python_multiline_sigs(content: &str) -> String {
+    let mut out = String::with_capacity(content.len());
+    let mut lines = content.lines().peekable();
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim_start();
+        let is_sig = trimmed.starts_with("def ")
+            || trimmed.starts_with("async def ")
+            || trimmed.starts_with("class ");
+        if !is_sig {
+            out.push_str(line);
+            out.push('\n');
+            continue;
         }
-        serde_json::Value::Object(map) if map.is_empty() => "{}".into(),
-        serde_json::Value::Object(map) => {
-            let mut out = String::from("{\n");
-            for (key, val) in map.iter() {
-                let v = match val {
-                    serde_json::Value::String(s) if s.len() > 40 => {
-                        let t: String = s.chars().take(37).collect();
-                        format!("\"{}...\"", t)
-                    }
-                    serde_json::Value::String(s) => format!("\"{}\"", s),
-                    serde_json::Value::Number(n) => n.to_string(),
-                    serde_json::Value::Bool(b) => b.to_string(),
-                    serde_json::Value::Null => "null".into(),
-                    serde_json::Value::Array(a) if a.is_empty() => "[]".into(),
-                    serde_json::Value::Array(a) => {
-                        let inner = summarize_json_value(&a[0], depth + 2);
-                        format!("[{}, ...] ({} items)", inner, a.len())
-                    }
-                    serde_json::Value::Object(_) => summarize_json_value(val, depth + 1),
-                };
-                out.push_str(&format!("{}  \"{}\": {},\n", indent, key, v));
+        // Count parenthesis balance across lines until we close the signature
+        // and reach a colon or line end without an open paren.
+        let mut accumulated = String::from(line);
+        let mut depth: i32 =
+            trimmed.matches('(').count() as i32 - trimmed.matches(')').count() as i32;
+        let ends_with_colon = |s: &str| {
+            let t = s.trim_end();
+            t.ends_with(':') || t.ends_with(": ...")
+        };
+        while depth > 0 || (!ends_with_colon(&accumulated) && accumulated.trim_end().ends_with(','))
+        {
+            let Some(next) = lines.next() else {
+                break;
+            };
+            depth += next.matches('(').count() as i32 - next.matches(')').count() as i32;
+            // Collapse continuation whitespace.
+            let cont = next.trim_start();
+            accumulated.push(' ');
+            accumulated.push_str(cont);
+            if depth <= 0 && ends_with_colon(&accumulated) {
+                break;
             }
-            out.push_str(&format!("{}}}", indent));
-            out
         }
-        serde_json::Value::String(s) if s.len() > 40 => {
-            let t: String = s.chars().take(37).collect();
-            format!("\"{}...\"", t)
-        }
-        other => other.to_string(),
+        // Tidy up the joined signature: remove redundant spaces around
+        // parens/brackets and trailing commas before closing brackets.
+        let tidy = accumulated
+            .replace("( ", "(")
+            .replace(" )", ")")
+            .replace(",)", ")")
+            .replace(", )", ")")
+            .replace("  ", " ");
+        out.push_str(&tidy);
+        out.push('\n');
     }
+    out
 }
 
 /// Extract function/class signatures from source code -- names without bodies.
@@ -180,7 +283,19 @@ fn extract_signatures(content: &str, ext: &str) -> String {
     let mut result = String::new();
     let mut seen_sigs: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-    for line in content.lines() {
+    // Python signatures commonly span multiple lines when they carry type
+    // annotations; fuse those back onto a single line so the extractor loop
+    // keeps the hints. Fast path: skip the allocation when the file has no
+    // multi-line headers to join.
+    let joined_buf: String;
+    let source: &str = if matches!(ext, "py" | "pyi") && has_multiline_python_sig(content) {
+        joined_buf = join_python_multiline_sigs(content);
+        &joined_buf
+    } else {
+        content
+    };
+
+    for line in source.lines() {
         let t = line.trim();
 
         // Skip imports (agent can see these in package.json/Cargo.toml)
@@ -226,6 +341,17 @@ fn extract_signatures(content: &str, ext: &str) -> String {
                     || t.starts_with("var ")
                     || t.starts_with("const ")
             }
+            "sh" | "bash" | "zsh" | "fish" => {
+                // Keep: function definitions (both `foo() {` and `function foo`),
+                // top-level constants (UPPER_CASE=...), and the usage() / help
+                // conventions. Comments that look like section headers are caught
+                // below via the #!/bin/... or ^# blocks.
+                t.ends_with("() {")
+                    || t.starts_with("function ")
+                    || (t.contains('=')
+                        && !t.contains(' ')
+                        && t.chars().next().is_some_and(|c| c.is_ascii_uppercase()))
+            }
             _ => {
                 t.starts_with("export ")
                     || t.starts_with("pub ")
@@ -266,8 +392,12 @@ fn extract_signatures(content: &str, ext: &str) -> String {
             }
         }
 
-        if cleaned.len() > 120 {
-            let mut end = 117;
+        // Signatures with type hints / generics pack a lot of info into a
+        // single line (e.g. `def encode(text: str, prepend: Optional[str] =
+        // None, num_threads: int = 8) -> list[int]:`). Prefer to keep the
+        // full signature — only truncate when it's truly verbose (>200c).
+        if cleaned.len() > 200 {
+            let mut end = 197;
             while end > 0 && !cleaned.is_char_boundary(end) {
                 end -= 1;
             }
@@ -305,7 +435,10 @@ fn clean_signature(line: &str) -> String {
                 s.push(')');
             }
         }
-        while s.ends_with('{') || s.ends_with('}') || s.ends_with('[') || s.ends_with(']') {
+        // Strip trailing block openers/closers but keep `[` / `]` — those are
+        // almost always part of type annotations like `list[int]`,
+        // `Optional[str]`, `Vec<T>` that we want to preserve.
+        while s.ends_with('{') || s.ends_with('}') {
             s.pop();
             s = s.trim_end().to_string();
         }
@@ -352,31 +485,4 @@ fn clean_signature(line: &str) -> String {
     }
 
     s
-}
-
-/// Compress package.json: name, version, scripts names, dep names.
-fn compress_package_json(content: &str) -> String {
-    if let Ok(val) = serde_json::from_str::<serde_json::Value>(content) {
-        let mut out = String::new();
-        if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
-            out.push_str(&format!("name: {}\n", n));
-        }
-        if let Some(v) = val.get("version").and_then(|v| v.as_str()) {
-            out.push_str(&format!("version: {}\n", v));
-        }
-        if let Some(s) = val.get("scripts").and_then(|v| v.as_object()) {
-            out.push_str(&format!(
-                "scripts: {}\n",
-                s.keys().cloned().collect::<Vec<_>>().join(", ")
-            ));
-        }
-        for key in &["dependencies", "devDependencies"] {
-            if let Some(deps) = val.get(*key).and_then(|v| v.as_object()) {
-                let names: Vec<&str> = deps.keys().map(|k| k.as_str()).collect();
-                out.push_str(&format!("{}: {}\n", key, names.join(", ")));
-            }
-        }
-        return out;
-    }
-    content.to_string()
 }

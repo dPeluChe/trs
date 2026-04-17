@@ -131,10 +131,48 @@ append_path_instructions() {
         printf 'your shell rc:\n'
     fi
     case "${SHELL:-}" in
-        */fish) printf '    %s%s%s\n' "$C_CYAN" "$fish_line" "$C_RESET" ;;
-        *)      printf '    %s%s%s\n' "$C_CYAN" "$export_line" "$C_RESET" ;;
+        */fish) printf '    %b%s%b\n' "$C_CYAN" "$fish_line" "$C_RESET" ;;
+        *)      printf '    %b%s%b\n' "$C_CYAN" "$export_line" "$C_RESET" ;;
     esac
-    printf '\n  Then restart your shell or: %bsource %s%s\n\n' "$C_CYAN" "${rc:-<rc>}" "$C_RESET"
+    printf '\n  Then restart your shell or: %bsource %s%b\n\n' "$C_CYAN" "${rc:-<rc>}" "$C_RESET"
+}
+
+# ------------------------------------------------------------------
+# Detect existing trs install (from npm / brew / cargo) and warn
+# ------------------------------------------------------------------
+
+check_existing_install() {
+    existing=$(command -v trs 2>/dev/null || true)
+    if [ -z "$existing" ]; then
+        return 0
+    fi
+    target="$INSTALL_DIR/$BIN_NAME"
+    # Resolve symlinks to compare real paths
+    existing_real=$(cd "$(dirname "$existing")" 2>/dev/null && pwd -P)/$(basename "$existing")
+    target_dir_real=$(mkdir -p "$INSTALL_DIR" && cd "$INSTALL_DIR" && pwd -P)
+    target_real="$target_dir_real/$BIN_NAME"
+    if [ "$existing_real" = "$target_real" ]; then
+        return 0
+    fi
+    # Detect source based on path heuristic
+    source_hint="unknown source"
+    case "$existing" in
+        */node_modules/*|*/npm/*|/opt/homebrew/bin/trs|/usr/local/bin/trs)
+            if [ -f "$HOME/.npmrc" ] || command -v npm >/dev/null 2>&1; then
+                source_hint="probably npm (try: npm uninstall -g @dpeluche/trs)"
+            else
+                source_hint="from Homebrew or system package manager"
+            fi
+            ;;
+        *"/.cargo/bin/"*) source_hint="from cargo (try: cargo uninstall tars-cli)" ;;
+    esac
+    printf '\n'
+    warn "Another trs is already installed at:"
+    printf '       %s\n' "$existing"
+    printf '       (%s)\n\n' "$source_hint"
+    printf '  After this install, PATH order decides which runs.\n'
+    printf '  Put %b%s%b first in PATH to prefer this new install.\n\n' \
+        "$C_CYAN" "$INSTALL_DIR" "$C_RESET"
 }
 
 # ------------------------------------------------------------------
@@ -146,6 +184,8 @@ printf '%b%s%b\n\n' "$C_GRAY" "https://github.com/$REPO" "$C_RESET"
 
 platform=$(detect_platform)
 info "platform: $platform"
+
+check_existing_install
 
 version=$(resolve_version)
 info "version:  $version"

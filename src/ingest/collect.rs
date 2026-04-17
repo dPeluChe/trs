@@ -70,19 +70,21 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
         }
 
         // Read and compress file content
-        let (content, raw_imports) = match read_and_compress(path, config.level) {
+        let result = match read_and_compress(path, config.level) {
             Some(c) => c,
             None => continue,
         };
 
-        let tokens = (content.len() as f64 / BYTES_PER_TOKEN) as usize;
+        let tokens = (result.content.len() as f64 / BYTES_PER_TOKEN) as usize;
 
         files.push(DigestFile {
             rel_path,
-            content,
+            content: result.content,
             tokens,
             is_changed: false,
-            raw_imports,
+            raw_imports: result.raw_imports,
+            module_doc: result.module_doc,
+            symbols: result.symbols,
         });
     }
 
@@ -207,8 +209,8 @@ pub(super) fn apply_budget(
             if file.tokens > 500 && !file.is_changed {
                 // Re-read with ABSOLUTE path from project root
                 let path = root.join(&file.rel_path);
-                if let Some((compressed, _)) = read_and_compress(&path, IngestLevel::Aggressive) {
-                    file.content = compressed;
+                if let Some(result) = read_and_compress(&path, IngestLevel::Aggressive) {
+                    file.content = result.content;
                     file.tokens = (file.content.len() as f64 / BYTES_PER_TOKEN) as usize;
                 }
             }
@@ -238,6 +240,8 @@ pub(super) fn apply_budget(
             tokens: 10,
             is_changed: false,
             raw_imports: vec![],
+            module_doc: None,
+            symbols: vec![],
         });
     }
 }
