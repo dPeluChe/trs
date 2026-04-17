@@ -159,6 +159,14 @@ pub enum Commands {
         /// Print digest contents to stdout instead of just the path
         #[arg(long)]
         print: bool,
+
+        /// Warn on stderr when digest exceeds N tokens (accepts "40k", "200k"). 0 disables.
+        #[arg(long, default_value = "40k")]
+        warn_at: String,
+
+        /// Emit a flat symbol → file index after the Structure tree
+        #[arg(long)]
+        symbols: bool,
     },
 
     /// Execute command without filtering but track usage

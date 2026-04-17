@@ -6,14 +6,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// How the tool integrates with trs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum IntegrationKind {
-    /// Programmatic hook — rewrites the shell command before execution.
-    Hooks,
-    /// Prompt-level guidance only — appends rules to an instruction file.
-    Rules,
-}
+use crate::init_templates::{
+    ANTIGRAVITY_RULES, CLAUDE_HOOKS, CODEX_AGENTS_SECTION, CURSOR_HOOKS, GEMINI_HOOKS,
+    OPENCODE_PLUGIN, WINDSURF_RULES,
+};
 
 /// Supported AI tools for hook installation.
 pub(crate) enum AiTool {
@@ -84,11 +80,19 @@ impl AiTool {
         ]
     }
 
-    /// Integration style: "hooks" (programmatic) or "rules" (prompt instructions).
-    pub(crate) fn kind(&self) -> IntegrationKind {
+    /// Short label describing where the integration lives, e.g. "~/.claude/settings.json"
+    /// or "AGENTS.md". Used in `trs init --show` for transparency.
+    pub(crate) fn target_label(&self) -> &'static str {
         match self {
-            Self::Codex | Self::Antigravity | Self::Windsurf => IntegrationKind::Rules,
-            _ => IntegrationKind::Hooks,
+            Self::Claude => "hooks → ~/.claude/settings.json",
+            Self::Gemini => "hooks → ~/.gemini/settings.json",
+            Self::Cursor => "hooks → ~/.cursor/hooks.json",
+            Self::Codex => "rules → AGENTS.md (hooks.json support is experimental)",
+            Self::OpenCode => "plugin → .opencode/plugins/trs.ts",
+            Self::Kilo => "plugin → .kilo/plugins/trs.ts",
+            Self::Antigravity => "rules → .agent/rules/antigravity-trs-rules.md",
+            Self::Droid => "hooks → ~/.factory/settings.json",
+            Self::Windsurf => "rules → .windsurfrules",
         }
     }
 
@@ -171,7 +175,7 @@ impl AiTool {
                 content: CLAUDE_HOOKS, // Factory Droid uses the same matcher/hooks shape
             }),
             // Rules-based tools (no programmatic hooks) — handled via
-            // install_codex / install_rules / install_windsurf_rules instead.
+            // install_codex / install_rules instead.
             Self::Codex | Self::Antigravity | Self::Windsurf => None,
         }
     }
@@ -181,12 +185,10 @@ impl AiTool {
 pub(crate) fn install_hook(tool: &AiTool, global: bool) {
     let result = match tool {
         AiTool::Codex => install_codex(),
-        AiTool::Antigravity => install_rules(
-            ".agent/rules",
-            "antigravity-trs-rules.md",
-            ANTIGRAVITY_RULES,
-        ),
-        AiTool::Windsurf => install_windsurf_rules(),
+        AiTool::Antigravity => {
+            install_rules(".agent/rules/antigravity-trs-rules.md", ANTIGRAVITY_RULES)
+        }
+        AiTool::Windsurf => install_rules(".windsurfrules", WINDSURF_RULES),
         _ => {
             if let Some(spec) = tool.spec() {
                 install_from_spec(&spec, global)
@@ -269,6 +271,9 @@ pub(crate) fn show_status() {
     println!("trs init — hook status\n");
 
     let tools = AiTool::all_tools();
+    // Compute column width so the target labels align regardless of tool name length.
+    let name_width = tools.iter().map(|t| t.name().len()).max().unwrap_or(0);
+
     let mut configured = 0;
     let mut detected_total = 0;
     for tool in &tools {
@@ -281,16 +286,20 @@ pub(crate) fn show_status() {
         } else {
             "-"
         };
-        let kind_tag = match tool.kind() {
-            IntegrationKind::Hooks => "",
-            IntegrationKind::Rules => "  (rules file only)",
-        };
-        let detect_tag = if !is_detected && !is_configured {
-            "  — not detected on this system"
+        let status = if is_configured {
+            tool.target_label()
+        } else if !is_detected {
+            "not detected on this system"
         } else {
-            ""
+            tool.target_label()
         };
-        println!("  {} {}{}{}", marker, tool.name(), kind_tag, detect_tag);
+        println!(
+            "  {} {:<width$}  {}",
+            marker,
+            tool.name(),
+            status,
+            width = name_width
+        );
         if is_configured {
             configured += 1;
         }
@@ -314,8 +323,6 @@ pub(crate) fn show_status_and_usage() {
     println!("  trs init <tool> [--global]      install for a specific tool");
     println!("  trs init --all [--global]       install for all detected tools");
     println!("  trs init --show                 show this status");
-    println!();
-    println!("Supported tools: {}", AiTool::all_names());
 }
 
 /// Check if a tool has trs hooks installed (local or global).
@@ -405,38 +412,29 @@ fn install_codex() -> Result<String, String> {
 
 /// Install a rules/instructions file. Project-local only (rules tools lack a
 /// global equivalent today). Idempotent: re-running is a no-op.
-fn install_rules(dir_rel: &str, filename: &str, content: &str) -> Result<String, String> {
-    let dir = PathBuf::from(dir_rel);
-    let path = dir.join(filename);
+fn install_rules(path_rel: &str, content: &str) -> Result<String, String> {
+    let path = PathBuf::from(path_rel);
     if path.exists() {
         let existing = fs::read_to_string(&path).unwrap_or_default();
-        if existing.contains("trs (TARS CLI)") || existing.contains("trs rewrite") {
+        if has_trs_marker(&existing) {
             return Ok(format!("{} (already configured)", path.display()));
         }
         // Append instead of overwriting — the user may have their own rules.
         let updated = format!("{}\n\n{}", existing.trim_end(), content);
         fs::write(&path, updated).map_err(|e| e.to_string())?;
     } else {
-        fs::create_dir_all(&dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Cannot create {}: {}", parent.display(), e))?;
+        }
         fs::write(&path, content.trim_start()).map_err(|e| e.to_string())?;
     }
     Ok(path.display().to_string())
 }
 
-/// Windsurf uses `.windsurfrules` at the project root (no subdirectory).
-fn install_windsurf_rules() -> Result<String, String> {
-    let path = PathBuf::from(".windsurfrules");
-    if path.exists() {
-        let existing = fs::read_to_string(&path).unwrap_or_default();
-        if existing.contains("trs (TARS CLI)") || existing.contains("trs rewrite") {
-            return Ok(format!("{} (already configured)", path.display()));
-        }
-        let updated = format!("{}\n\n{}", existing.trim_end(), WINDSURF_RULES);
-        fs::write(&path, updated).map_err(|e| e.to_string())?;
-    } else {
-        fs::write(&path, WINDSURF_RULES.trim_start()).map_err(|e| e.to_string())?;
-    }
-    Ok(path.display().to_string())
+/// True if the file content already carries one of our sentinel strings.
+fn has_trs_marker(content: &str) -> bool {
+    content.contains("trs (TARS CLI)") || content.contains("trs rewrite")
 }
 
 // ============================================================
@@ -477,7 +475,7 @@ fn write_hook(dir: &Path, path: &Path, content: &str) -> Result<String, String> 
     // Non-JSON file (e.g. plugin .ts, hooks.json written by us directly).
     if path.exists() {
         let existing = fs::read_to_string(path).unwrap_or_default();
-        if existing.contains("trs rewrite") || existing.contains("trs (TARS CLI)") {
+        if has_trs_marker(&existing) {
             return Ok(format!("{} (already configured)", path.display()));
         }
         return Err(format!(
@@ -581,150 +579,3 @@ fn contains_trs_rewrite(val: &serde_json::Value) -> bool {
         _ => false,
     }
 }
-
-// ============================================================
-// Hook templates
-// ============================================================
-
-const CLAUDE_HOOKS: &str = r#"{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "trs rewrite"
-          }
-        ],
-        "description": "Route commands through trs for token-optimized output"
-      }
-    ]
-  }
-}"#;
-
-const GEMINI_HOOKS: &str = r#"{
-  "hooks": {
-    "BeforeTool": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "trs rewrite",
-            "name": "trs-rewrite",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  }
-}"#;
-
-const CURSOR_HOOKS: &str = r#"{
-  "hooks": {
-    "beforeShellExecution": [
-      {
-        "command": "trs rewrite",
-        "event": "beforeShellExecution",
-        "description": "Route commands through trs for token-optimized output"
-      }
-    ]
-  }
-}"#;
-
-// OpenCode/Kilo plugin: unconditionally prefix trs, let trs decide
-// whether to compress or passthrough. No stale rewrite list needed.
-const OPENCODE_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
-import type { Plugin } from "opencode";
-
-export default function trsPlugin(): Plugin {
-  return {
-    name: "trs",
-    hooks: {
-      before_tool_call: async (ctx) => {
-        if (ctx.tool === "bash" && ctx.input?.command) {
-          const cmd = ctx.input.command;
-          // Skip if already using trs or if it's a trs command itself
-          if (!cmd.startsWith("trs ") && !cmd.startsWith("cd ")) {
-            ctx.input.command = `trs ${cmd}`;
-          }
-        }
-        return ctx;
-      },
-    },
-  };
-}
-"#;
-
-const CODEX_AGENTS_SECTION: &str = r#"
-## Terminal Output Optimization
-
-This project uses `trs` (TARS CLI) for token-optimized terminal output.
-When running shell commands, prefer prefixing with `trs` for compact output:
-
-```bash
-# Instead of:
-git status
-cargo test
-cargo clippy
-
-# Use:
-trs git status
-trs cargo test
-trs cargo clippy
-```
-
-This reduces token consumption by 68-99% without losing signal.
-See https://github.com/dPeluChe/trs for details.
-"#;
-
-const ANTIGRAVITY_RULES: &str = r#"
-# trs (TARS CLI) — terminal output optimization
-
-Antigravity does not support pre-execution hooks, so this rules file is the
-only mechanism to opt into trs for this project. When you run shell commands,
-prefix them with `trs` to get compact, structured output.
-
-```bash
-# Instead of:
-git status
-cargo test
-npm test
-
-# Use:
-trs git status
-trs cargo test
-trs npm test
-```
-
-Commands without a dedicated trs parser still get whitespace / ANSI
-compression (~30-40% reduction). Pipes and chains are passed through unchanged.
-
-Reference: https://github.com/dPeluChe/trs
-"#;
-
-const WINDSURF_RULES: &str = r#"
-# trs (TARS CLI) — terminal output optimization
-
-Windsurf Cascade does not expose a pre-execution hook, so this rules file is
-the way to opt into trs for this project. When running shell commands, prefix
-them with `trs` to get compact, structured output.
-
-```bash
-# Instead of:
-git status
-cargo test
-pnpm test
-
-# Use:
-trs git status
-trs cargo test
-trs pnpm test
-```
-
-Commands without a dedicated trs parser still get whitespace / ANSI
-compression (~30-40% reduction). Pipes and chains are passed through unchanged.
-
-Reference: https://github.com/dPeluChe/trs
-"#;

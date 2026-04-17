@@ -34,6 +34,7 @@ mod formatter;
 mod help;
 mod ingest;
 mod init;
+mod init_templates;
 #[allow(dead_code)]
 mod process;
 #[allow(dead_code)]
@@ -168,6 +169,8 @@ fn main() {
             fresh,
             force,
             print,
+            warn_at,
+            symbols,
         }) => {
             if *list {
                 ingest::list_ingests();
@@ -197,6 +200,15 @@ fn main() {
                     fresh_check: *fresh,
                     force: *force,
                     print_content: *print,
+                    warn_at_tokens: {
+                        let n = parse_token_budget(warn_at);
+                        if n == 0 {
+                            None
+                        } else {
+                            Some(n)
+                        }
+                    },
+                    symbols_index: *symbols,
                 };
                 ingest::run_ingest(&config);
             }

@@ -11,6 +11,8 @@
 
 mod collect;
 mod collect_compress;
+mod collect_index;
+mod collect_manifests;
 mod deps;
 mod deps_extract;
 mod format;
@@ -161,6 +163,13 @@ pub struct IngestConfig {
     pub force: bool,
     /// Print digest contents to stdout instead of just the saved path.
     pub print_content: bool,
+    /// Warn on stderr when the digest exceeds this many tokens. Pass None
+    /// (or 0 via CLI) to disable. Default: 40k — fine for GPT-4 / Claude
+    /// 200k / etc., but a signal that `--budget` may be warranted.
+    pub warn_at_tokens: Option<usize>,
+    /// Emit a flat symbol → file index after the Structure section. Lets
+    /// agents resolve "where is X?" in a single scan without reading any file.
+    pub symbols_index: bool,
 }
 
 /// A file entry in the digest.
@@ -171,6 +180,11 @@ pub(crate) struct DigestFile {
     pub(crate) is_changed: bool,
     /// Raw import tokens extracted from original file content (before compression).
     pub(crate) raw_imports: Vec<String>,
+    /// Module-level docstring pulled from mod.rs / lib.rs / __init__.py.
+    /// Used to annotate directory headers in the structure tree.
+    pub(crate) module_doc: Option<String>,
+    /// Public / exported symbol names declared in this file.
+    pub(crate) symbols: Vec<String>,
 }
 
 /// Resolve the project root: find git root or use the given path.
@@ -272,6 +286,21 @@ pub fn resolve_project_root(path: &Path) -> Result<PathBuf, String> {
             "{} is not a directory or git repository",
             path.display()
         ))
+    }
+}
+
+/// Return a human-friendly budget suggestion for a digest of `n` tokens.
+/// Picks a round budget that roughly halves the current output — enough
+/// compression pressure to matter, but not so aggressive it empties the digest.
+fn suggest_budget(n: usize) -> &'static str {
+    if n > 200_000 {
+        "128k"
+    } else if n > 80_000 {
+        "64k"
+    } else if n > 40_000 {
+        "32k"
+    } else {
+        "16k"
     }
 }
 
@@ -449,6 +478,21 @@ pub fn run_ingest(config: &IngestConfig) {
             file_count,
             p,
         );
+
+        // Warn when the digest gets large enough that it will dominate an
+        // agent's context window. Go to stderr only so spark / pipes stay
+        // clean.
+        if let Some(threshold) = config.warn_at_tokens {
+            if threshold > 0 && total_tokens > threshold {
+                let suggested = suggest_budget(total_tokens);
+                eprintln!(
+                    "  ⚠  {} tokens exceeds threshold ({}) — consider: trs ingest --budget {}",
+                    format_tokens(total_tokens),
+                    format_tokens(threshold),
+                    suggested,
+                );
+            }
+        }
     }
 
     if config.print_content {
@@ -512,6 +556,8 @@ mod tests {
                 tokens: 0,
                 is_changed: false,
                 raw_imports: vec![],
+                module_doc: None,
+                symbols: vec![],
             },
             DigestFile {
                 rel_path: "src/lib.rs".into(),
@@ -519,6 +565,8 @@ mod tests {
                 tokens: 0,
                 is_changed: false,
                 raw_imports: vec![],
+                module_doc: None,
+                symbols: vec![],
             },
             DigestFile {
                 rel_path: "README.md".into(),
@@ -526,6 +574,8 @@ mod tests {
                 tokens: 0,
                 is_changed: false,
                 raw_imports: vec![],
+                module_doc: None,
+                symbols: vec![],
             },
         ];
         let tree = format::build_tree(&files);
