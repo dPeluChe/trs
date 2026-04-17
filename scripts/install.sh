@@ -5,9 +5,14 @@
 #   curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
 #
 # Options (env vars):
-#   TRS_VERSION=v0.5.2  — pin a specific release (default: latest)
-#   TRS_INSTALL_DIR=... — install location (default: $HOME/.trs/bin)
-#   TRS_NO_MODIFY_PATH=1 — skip PATH shell-rc modification
+#   TRS_VERSION=v0.5.5  — pin a specific release (default: latest)
+#   TRS_INSTALL_DIR=... — override install location
+#
+# Install dir selection (in priority order):
+#   1. $TRS_INSTALL_DIR if set
+#   2. $HOME/.local/bin if already in $PATH (XDG, ~80% of modern systems)
+#   3. $HOME/bin if already in $PATH
+#   4. $HOME/.local/bin as fallback (with a one-time PATH warning)
 
 set -eu
 
@@ -16,8 +21,9 @@ set -eu
 # ------------------------------------------------------------------
 
 REPO="dPeluChe/trs"
-INSTALL_DIR="${TRS_INSTALL_DIR:-$HOME/.trs/bin}"
 BIN_NAME="trs"
+
+# INSTALL_DIR is resolved later by pick_install_dir so we can check $PATH.
 
 # ------------------------------------------------------------------
 # Colors (only when writing to a terminal)
@@ -101,11 +107,34 @@ download() {
 # PATH shell-rc hint
 # ------------------------------------------------------------------
 
-already_in_path() {
+path_contains() {
     case ":$PATH:" in
-        *":$INSTALL_DIR:"*) return 0 ;;
+        *":$1:"*) return 0 ;;
         *) return 1 ;;
     esac
+}
+
+already_in_path() {
+    path_contains "$INSTALL_DIR"
+}
+
+# Pick the best install dir: prefer one that's already in $PATH so new installs
+# work with zero shell-config changes. Falls back to $HOME/.local/bin (XDG).
+# Writes the chosen path to stdout; caller assigns to INSTALL_DIR.
+pick_install_dir() {
+    if [ -n "${TRS_INSTALL_DIR:-}" ]; then
+        echo "$TRS_INSTALL_DIR"
+        return
+    fi
+    for d in "$HOME/.local/bin" "$HOME/bin"; do
+        if path_contains "$d"; then
+            echo "$d"
+            return
+        fi
+    done
+    # Nothing in PATH yet — default to XDG convention so the user only has to
+    # add it to PATH once and it'll be correct for every future tool too.
+    echo "$HOME/.local/bin"
 }
 
 shell_rc_for() {
@@ -182,6 +211,8 @@ check_existing_install() {
 printf '\n%btrs installer%b\n' "$C_BOLD" "$C_RESET"
 printf '%b%s%b\n\n' "$C_GRAY" "https://github.com/$REPO" "$C_RESET"
 
+INSTALL_DIR=$(pick_install_dir)
+
 platform=$(detect_platform)
 info "platform: $platform"
 
@@ -214,14 +245,13 @@ fi
 mv "$tmp" "$INSTALL_DIR/$BIN_NAME"
 ok "installed $BIN_NAME $version to $INSTALL_DIR/$BIN_NAME"
 
-# PATH check
+# PATH check — with pick_install_dir's zero-config default, this should
+# rarely fire. When it does, print the exact line the user needs to add.
 if already_in_path; then
-    ok "$INSTALL_DIR is already in PATH"
-    printf '\nRun: %btrs --help%b\n' "$C_CYAN" "$C_RESET"
+    ok "$INSTALL_DIR is in PATH"
+    printf '\n%bDone.%b Run: %btrs doctor%b\n\n' "$C_GREEN" "$C_RESET" "$C_CYAN" "$C_RESET"
 else
-    if [ -z "${TRS_NO_MODIFY_PATH:-}" ]; then
-        append_path_instructions
-    fi
+    append_path_instructions
+    printf '%bDone.%b After reloading your shell, try: %btrs doctor%b\n\n' \
+        "$C_GREEN" "$C_RESET" "$C_CYAN" "$C_RESET"
 fi
-
-printf '\n%bDone.%b Try: %btrs doctor%b\n\n' "$C_GREEN" "$C_RESET" "$C_CYAN" "$C_RESET"
