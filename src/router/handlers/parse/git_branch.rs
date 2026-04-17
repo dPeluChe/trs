@@ -99,10 +99,7 @@ fn render_group(out: &mut String, branches: &[&String], indent: &str) {
     let mut bare: Vec<&str> = Vec::new(); // no slash → can't group
     for b in branches {
         match b.split_once('/') {
-            Some((prefix, rest)) => groups
-                .entry(prefix.to_string())
-                .or_default()
-                .push(rest),
+            Some((prefix, rest)) => groups.entry(prefix.to_string()).or_default().push(rest),
             None => bare.push(b.as_str()),
         }
     }

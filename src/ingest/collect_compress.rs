@@ -5,9 +5,7 @@
 
 use std::path::Path;
 
-use crate::router::handlers::read_filters::{
-    detect_language, filter_minimal, Language,
-};
+use crate::router::handlers::read_filters::{detect_language, filter_minimal, Language};
 
 use super::collect_index::{extract_module_doc, extract_symbols, is_module_anchor};
 use super::collect_manifests::{
