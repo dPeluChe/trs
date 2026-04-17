@@ -167,6 +167,11 @@ pub enum Commands {
         /// Emit a flat symbol → file index after the Structure tree
         #[arg(long)]
         symbols: bool,
+
+        /// For URL/remote input: shallow-clone into a tempdir (not saved).
+        /// Ignored when the input is a local path.
+        #[arg(long)]
+        tmp: bool,
     },
 
     /// Execute command without filtering but track usage

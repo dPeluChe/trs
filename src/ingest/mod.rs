@@ -18,7 +18,10 @@ mod deps_extract;
 mod format;
 mod meta;
 mod ollama;
+mod remote;
 mod store;
+
+pub use remote::{is_remote_ref, resolve_remote, TmpMode};
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

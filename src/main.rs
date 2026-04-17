@@ -171,6 +171,7 @@ fn main() {
             print,
             warn_at,
             symbols,
+            tmp,
         }) => {
             if *list {
                 ingest::list_ingests();
@@ -178,7 +179,30 @@ fn main() {
                 let project_path = std::path::Path::new(path);
                 ingest::read_digest(read_name.as_deref(), project_path);
             } else {
-                let root = match ingest::resolve_project_root(std::path::Path::new(path)) {
+                // Resolve remote inputs (URLs / owner/repo shorthands) to a
+                // local path. The guard keeps ephemeral clones alive until
+                // run_ingest finishes.
+                let remote_source = if ingest::is_remote_ref(path) {
+                    let mode = if *tmp {
+                        ingest::TmpMode::Force
+                    } else {
+                        ingest::TmpMode::Auto
+                    };
+                    match ingest::resolve_remote(path, mode) {
+                        Ok(src) => Some(src),
+                        Err(e) => {
+                            eprintln!("trs ingest: {}", e);
+                            std::process::exit(1);
+                        }
+                    }
+                } else {
+                    None
+                };
+                let input_path: std::path::PathBuf = match &remote_source {
+                    Some(src) => src.path.clone(),
+                    None => std::path::PathBuf::from(path),
+                };
+                let root = match ingest::resolve_project_root(&input_path) {
                     Ok(r) => r,
                     Err(e) => {
                         eprintln!("trs ingest: {}", e);
