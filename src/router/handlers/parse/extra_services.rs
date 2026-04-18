@@ -4,12 +4,9 @@ use crate::OutputFormat;
 
 impl ParseHandler {
     /// Truncate a string to max_len chars, appending "..." if truncated.
+    /// UTF-8 safe.
     fn truncate_str(s: &str, max_len: usize) -> String {
-        if s.len() <= max_len {
-            s.to_string()
-        } else {
-            format!("{}...", &s[..max_len.saturating_sub(3)])
-        }
+        crate::formatter::helpers::truncate(s, max_len)
     }
 
     /// Parse `gh pr list` output (TTY emoji format or non-TTY TSV).

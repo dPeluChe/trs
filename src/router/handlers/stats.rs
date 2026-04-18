@@ -343,11 +343,7 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
     );
 }
 
-/// Truncate a command string to fit within a given width.
+/// Truncate a command string to fit within a given width. UTF-8 safe.
 fn truncate_cmd(cmd: &str, max_len: usize) -> String {
-    if cmd.len() <= max_len {
-        cmd.to_string()
-    } else {
-        format!("{}...", &cmd[..max_len.saturating_sub(3)])
-    }
+    crate::formatter::helpers::truncate(cmd, max_len)
 }

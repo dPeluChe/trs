@@ -40,7 +40,6 @@ pub fn format_line(key: &str, value: impl std::fmt::Display) -> String {
 
 /// Truncate a string to a maximum length with ellipsis.
 /// UTF-8 safe: always slices at a char boundary.
-#[allow(dead_code)]
 pub fn truncate(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
         s.to_string()

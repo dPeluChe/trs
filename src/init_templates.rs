@@ -21,6 +21,27 @@ pub(crate) const CLAUDE_HOOKS: &str = r#"{
   }
 }"#;
 
+// Factory Droid: same envelope as Claude's PreToolUse, but Droid's shell tool
+// is named `Execute` (not `Bash`), so the matcher is widened. We use ".*" to
+// match any tool — trs rewrite internally skips commands that don't look like
+// shell invocations, so the overhead of a per-tool check is negligible.
+pub(crate) const DROID_HOOKS: &str = r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "trs rewrite"
+          }
+        ],
+        "description": "Route commands through trs for token-optimized output"
+      }
+    ]
+  }
+}"#;
+
 pub(crate) const GEMINI_HOOKS: &str = r#"{
   "hooks": {
     "BeforeTool": [
@@ -39,40 +60,45 @@ pub(crate) const GEMINI_HOOKS: &str = r#"{
   }
 }"#;
 
+// Cursor's `beforeShellExecution` hook can only allow/deny — it cannot
+// rewrite the command. The only hook with `updated_input` support is
+// `preToolUse`. `matcher: "Shell"` limits the hook to actual shell tool
+// invocations instead of every Read/Write/MCP call (observed: Cursor spams
+// Read on the terminal transcript file, so skipping those saves meaningful
+// subprocess overhead).
 pub(crate) const CURSOR_HOOKS: &str = r#"{
   "hooks": {
-    "beforeShellExecution": [
+    "preToolUse": [
       {
         "command": "trs rewrite",
-        "event": "beforeShellExecution",
-        "description": "Route commands through trs for token-optimized output"
+        "matcher": "Shell",
+        "description": "Route shell commands through trs for token-optimized output"
       }
     ]
   }
 }"#;
 
-// OpenCode/Kilo plugin: unconditionally prefix trs, let trs decide
-// whether to compress or passthrough. No stale rewrite list needed.
+// OpenCode/Kilo plugin: unconditionally prefix trs, let trs decide whether
+// to compress or passthrough. Uses OpenCode's documented plugin shape:
+//   - async function returning a hooks map
+//   - hook key `"tool.execute.before"` (string literal, not a property name)
+//   - `input.tool === "bash"` to gate shell commands
+//   - mutate `output.args.command` in-place
+// Reference: https://opencode.ai/docs/plugins/
 pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
-import type { Plugin } from "opencode";
 
-export default function trsPlugin(): Plugin {
+export const TrsPlugin = async () => {
   return {
-    name: "trs",
-    hooks: {
-      before_tool_call: async (ctx) => {
-        if (ctx.tool === "bash" && ctx.input?.command) {
-          const cmd = ctx.input.command;
-          // Skip if already using trs or if it's a trs command itself
-          if (!cmd.startsWith("trs ") && !cmd.startsWith("cd ")) {
-            ctx.input.command = `trs ${cmd}`;
-          }
-        }
-        return ctx;
-      },
+    "tool.execute.before": async (input, output) => {
+      if (input.tool !== "bash") return;
+      const cmd = output.args?.command;
+      if (typeof cmd !== "string") return;
+      // Skip if already routed through trs or if it's a cd (dir change).
+      if (cmd.startsWith("trs ") || cmd.startsWith("cd ")) return;
+      output.args.command = `trs ${cmd}`;
     },
   };
-}
+};
 "#;
 
 pub(crate) const CODEX_AGENTS_SECTION: &str = r#"
@@ -118,6 +144,22 @@ trs npm test
 
 Commands without a dedicated trs parser still get whitespace / ANSI
 compression (~30-40% reduction). Pipes and chains are passed through unchanged.
+
+## If `trs: command not found` in Antigravity's shell
+
+Antigravity's tool shell does not always inherit your login PATH. If `trs`
+runs from your terminal but fails here, fall back to the absolute binary
+path or make sure your PATH is exported for non-login shells:
+
+```bash
+# Option 1 — explicit path (always works):
+$HOME/.local/bin/trs git status
+
+# Option 2 — add to ~/.profile (read by non-login sh / bash):
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
+```
+
+Re-run `trs init antigravity` to pick up future updates to this guidance.
 
 Reference: https://github.com/dPeluChe/trs
 "#;

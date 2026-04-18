@@ -105,7 +105,7 @@ impl CommandHandler for ParseHandler {
         match input {
             ParseCommands::GitStatus { file, count } => Self::handle_git_status(file, count, ctx),
             ParseCommands::GitDiff { file } => Self::handle_git_diff(file, ctx),
-            ParseCommands::GitLog { file } => Self::handle_git_log(file, ctx),
+            ParseCommands::GitLog { file, truncate } => Self::handle_git_log(file, *truncate, ctx),
             ParseCommands::GitBranch { file } => Self::handle_git_branch(file, ctx),
             ParseCommands::Ls { file } => Self::handle_ls(file, ctx),
             ParseCommands::Grep { file } => Self::handle_grep(file, ctx),

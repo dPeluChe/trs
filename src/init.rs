@@ -7,7 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::init_templates::{
-    ANTIGRAVITY_RULES, CLAUDE_HOOKS, CODEX_AGENTS_SECTION, CURSOR_HOOKS, GEMINI_HOOKS,
+    ANTIGRAVITY_RULES, CLAUDE_HOOKS, CODEX_AGENTS_SECTION, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS,
     OPENCODE_PLUGIN, WINDSURF_RULES,
 };
 
@@ -156,15 +156,23 @@ impl AiTool {
                 filename: "hooks.json",
                 content: CURSOR_HOOKS,
             }),
+            // OpenCode auto-discovers plugins at startup from both the
+            // project-level `.opencode/plugins/` and the global
+            // `~/.config/opencode/plugins/`. No opencode.json registration is
+            // needed for file-based plugins.
             Self::OpenCode => Some(HookSpec {
                 local_dir: ".opencode/plugins",
-                global_dir: None,
+                global_dir: Some(".config/opencode/plugins"),
                 filename: "trs.ts",
                 content: OPENCODE_PLUGIN,
             }),
+            // Kilo mirrors OpenCode's plugin system: auto-discovery from
+            // `~/.config/kilo/plugins/` (global) and `.kilo/plugins/` (project).
+            // Shares OPENCODE_PLUGIN — the `tool.execute.before` hook API is
+            // identical.
             Self::Kilo => Some(HookSpec {
                 local_dir: ".kilo/plugins",
-                global_dir: None,
+                global_dir: Some(".config/kilo/plugins"),
                 filename: "trs.ts",
                 content: OPENCODE_PLUGIN,
             }),
@@ -172,7 +180,7 @@ impl AiTool {
                 local_dir: ".factory",
                 global_dir: Some(".factory"),
                 filename: "settings.json",
-                content: CLAUDE_HOOKS, // Factory Droid uses the same matcher/hooks shape
+                content: DROID_HOOKS,
             }),
             // Rules-based tools (no programmatic hooks) — handled via
             // install_codex / install_rules instead.
@@ -514,6 +522,11 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
         serde_json::json!({})
     };
 
+    // Snapshot the full root BEFORE taking mutable borrows for comparison.
+    // Lets us detect a true no-op at the end even when template changes
+    // (e.g. a widened matcher) would otherwise be silently skipped.
+    let before_snapshot = serde_json::to_string(&root).unwrap_or_default();
+
     let Some(root_obj) = root.as_object_mut() else {
         return Err(format!("{} root is not a JSON object", path.display()));
     };
@@ -533,7 +546,19 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
         return Err("internal: template `hooks` is not an object".into());
     };
 
-    let mut appended_any = false;
+    // Clean ALL existing trs entries across every event before re-inserting
+    // from the template. Templates can migrate between events over time
+    // (e.g. Cursor moving from beforeShellExecution → preToolUse to gain
+    // rewrite support). Scoping the cleanup to just the template's events
+    // would leave an orphaned entry on the old event, so we sweep broadly.
+    // User-added entries (notify scripts, analytics) that don't reference
+    // `trs rewrite` are preserved untouched.
+    for (_event, event_val) in existing_hooks_obj.iter_mut() {
+        if let Some(arr) = event_val.as_array_mut() {
+            arr.retain(|e| !contains_trs_rewrite(e));
+        }
+    }
+
     for (event, tmpl_entries) in template_hooks_obj {
         let event_arr = existing_hooks_obj
             .entry(event.clone())
@@ -547,19 +572,15 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
         }
         let event_arr_mut = event_arr.as_array_mut().unwrap();
 
-        // Skip if any existing entry already references trs rewrite.
-        if event_arr_mut.iter().any(contains_trs_rewrite) {
-            continue;
-        }
         if let Some(tmpl_arr) = tmpl_entries.as_array() {
             for entry in tmpl_arr {
                 event_arr_mut.push(entry.clone());
-                appended_any = true;
             }
         }
     }
 
-    if !appended_any && path.exists() {
+    let after_snapshot = serde_json::to_string(&root).unwrap_or_default();
+    if path.exists() && before_snapshot == after_snapshot {
         return Ok(format!("{} (already configured)", path.display()));
     }
 

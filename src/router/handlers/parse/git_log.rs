@@ -2,9 +2,19 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
 
+/// Truncate `subject` if `max` is set and leaves room for at least one real
+/// char plus the ellipsis (`max >= 4`). `None` / `Some(n<4)` is a no-op.
+fn apply_truncate(subject: &str, max: Option<usize>) -> String {
+    match max {
+        Some(n) if n >= 4 => crate::formatter::helpers::truncate(subject, n),
+        _ => subject.to_string(),
+    }
+}
+
 impl ParseHandler {
     pub(crate) fn handle_git_log(
         file: &Option<std::path::PathBuf>,
+        truncate: Option<usize>,
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
@@ -26,12 +36,7 @@ impl ParseHandler {
                 }
                 if let Some(space_pos) = trimmed.find(' ') {
                     let h = &trimmed[..space_pos];
-                    let m = &trimmed[space_pos + 1..];
-                    let m = if m.len() > 60 {
-                        format!("{}...", &m[..57])
-                    } else {
-                        m.to_string()
-                    };
+                    let m = apply_truncate(&trimmed[space_pos + 1..], truncate);
                     commits.push((h.to_string(), String::new(), String::new(), m));
                 }
             }
@@ -39,7 +44,7 @@ impl ParseHandler {
             for line in input.lines() {
                 if let Some(h) = line.strip_prefix("commit ") {
                     if in_commit {
-                        let subject = Self::extract_subject(&msg);
+                        let subject = apply_truncate(&Self::extract_subject(&msg), truncate);
                         commits.push((hash.clone(), date.clone(), author.clone(), subject));
                         msg.clear();
                     }
@@ -60,7 +65,7 @@ impl ParseHandler {
                 }
             }
             if in_commit {
-                let subject = Self::extract_subject(&msg);
+                let subject = apply_truncate(&Self::extract_subject(&msg), truncate);
                 commits.push((hash, date, author, subject));
             }
         }
@@ -126,12 +131,7 @@ impl ParseHandler {
 
     fn extract_subject(msg: &[String]) -> String {
         let full = msg.join(" ");
-        let subject = full.lines().next().unwrap_or("").trim().to_string();
-        if subject.len() > 60 {
-            format!("{}...", &subject[..57])
-        } else {
-            subject
-        }
+        full.lines().next().unwrap_or("").trim().to_string()
     }
 
     /// Convert a git date string to relative time like "5 min ago", "2 hrs ago", "3 days ago"

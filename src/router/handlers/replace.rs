@@ -379,13 +379,9 @@ impl ReplaceHandler {
         result
     }
 
-    /// Truncate a line to a maximum length.
+    /// Truncate a line to a maximum length. UTF-8 safe.
     pub(crate) fn truncate_line(line: &str, max_len: usize) -> String {
-        if line.len() <= max_len {
-            line.to_string()
-        } else {
-            format!("{}...", &line[..max_len.saturating_sub(3)])
-        }
+        crate::formatter::helpers::truncate(line, max_len)
     }
 
     /// Escape a field for CSV format.
