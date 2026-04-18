@@ -139,6 +139,22 @@ trs npm test
 Commands without a dedicated trs parser still get whitespace / ANSI
 compression (~30-40% reduction). Pipes and chains are passed through unchanged.
 
+## If `trs: command not found` in Antigravity's shell
+
+Antigravity's tool shell does not always inherit your login PATH. If `trs`
+runs from your terminal but fails here, fall back to the absolute binary
+path or make sure your PATH is exported for non-login shells:
+
+```bash
+# Option 1 — explicit path (always works):
+$HOME/.local/bin/trs git status
+
+# Option 2 — add to ~/.profile (read by non-login sh / bash):
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
+```
+
+Re-run `trs init antigravity` to pick up future updates to this guidance.
+
 Reference: https://github.com/dPeluChe/trs
 "#;
 

@@ -138,8 +138,17 @@ pick_install_dir() {
 }
 
 shell_rc_for() {
+    # Prefer the rc file that's read by ALL shell invocations — interactive,
+    # login, and non-interactive subshells (the kind IDE agents like
+    # Antigravity / Windsurf / Cursor spawn). Otherwise trs works in your
+    # terminal but `command not found` in IDE-spawned shells.
+    #
+    #   zsh  — .zshenv     (every invocation)   vs .zshrc (interactive only)
+    #   bash — .bashrc     (interactive non-login; also sourced by many IDEs)
+    #          (.profile covers the non-interactive case but is widely ignored)
+    #   fish — config.fish (fish reads this for both interactive and scripts)
     case "${SHELL:-}" in
-        */zsh)  echo "$HOME/.zshrc" ;;
+        */zsh)  echo "$HOME/.zshenv" ;;
         */bash) echo "$HOME/.bashrc" ;;
         */fish) echo "$HOME/.config/fish/config.fish" ;;
         *)      echo "" ;;
