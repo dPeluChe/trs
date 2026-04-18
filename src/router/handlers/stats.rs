@@ -35,36 +35,6 @@ fn format_date(ts: u64) -> String {
     }
 }
 
-/// Format a date range compactly.
-/// - Same month:          "Apr 2026"
-/// - Same year, diff mo:  "Feb → Apr 2026"
-/// - Different years:     "2025 → 2026"
-fn format_period(first_ts: u64, last_ts: u64) -> String {
-    let offset = local_offset();
-    let first = OffsetDateTime::from_unix_timestamp(first_ts as i64)
-        .map(|dt| dt.to_offset(offset))
-        .ok();
-    let last = OffsetDateTime::from_unix_timestamp(last_ts as i64)
-        .map(|dt| dt.to_offset(offset))
-        .ok();
-    match (first, last) {
-        (Some(f), Some(l)) => {
-            let fm = MONTHS[f.month() as usize - 1];
-            let lm = MONTHS[l.month() as usize - 1];
-            if f.year() == l.year() {
-                if f.month() == l.month() {
-                    format!("{} {}", lm, l.year())
-                } else {
-                    format!("{} → {} {}", fm, lm, l.year())
-                }
-            } else {
-                format!("{} → {}", f.year(), l.year())
-            }
-        }
-        _ => "—".to_string(),
-    }
-}
-
 /// Format a Unix timestamp (seconds) into "Mar 27 14:32" local-time string.
 fn format_timestamp(ts: u64, offset: time::UtcOffset) -> String {
     let dt = OffsetDateTime::from_unix_timestamp(ts as i64).unwrap_or(OffsetDateTime::UNIX_EPOCH);
@@ -149,24 +119,31 @@ fn print_summary(entries: &[HistoryEntry]) {
         (total_saved as f64 / total_in as f64) * 100.0
     };
 
-    // Convert bytes to estimated tokens (bytes / 4)
     let in_tokens = total_in / 4;
     let out_tokens = total_out / 4;
     let saved_tokens = total_saved / 4;
 
-    // Date range: earliest and latest timestamps (entries come pre-sorted by ts)
     let first_ts = entries.iter().map(|e| e.ts).min().unwrap_or(0);
     let last_ts = entries.iter().map(|e| e.ts).max().unwrap_or(0);
     let span_secs = last_ts.saturating_sub(first_ts);
-    // Days of activity: at least 1, ceil of span_secs / 86400
     let days = ((span_secs as f64 / 86400.0).ceil() as u64).max(1);
     let tokens_per_day = saved_tokens as u64 / days;
+
+    // Today window: entries whose ts falls on the same local date as `now`.
+    let offset = local_offset();
+    let today_entries = today_entries(entries, offset);
+    let today_saved_tokens: usize = today_entries
+        .iter()
+        .map(|e| e.in_bytes.saturating_sub(e.out_bytes))
+        .sum::<usize>()
+        / 4;
 
     println!("trs Token Savings");
     println!("{}", "=".repeat(35));
     println!(
-        "Period:            {} ({} day{})",
-        format_period(first_ts, last_ts),
+        "Period:            {} → {} ({} day{})",
+        format_timestamp(first_ts, offset),
+        format_timestamp(last_ts, offset),
         days,
         if days == 1 { "" } else { "s" }
     );
@@ -179,11 +156,16 @@ fn print_summary(entries: &[HistoryEntry]) {
         avg_pct
     );
     println!(
-        "Tokens per day:    {}",
+        "Tokens per day:    {} (avg)",
         format_bytes_human(tokens_per_day as usize)
     );
+    println!(
+        "Today:             {} saved across {} command{}",
+        format_bytes_human(today_saved_tokens),
+        today_entries.len(),
+        if today_entries.len() == 1 { "" } else { "s" }
+    );
 
-    // Efficiency meter
     let filled = (avg_pct / 5.0).round() as usize;
     let filled = filled.min(20);
     let empty = 20 - filled;
@@ -193,6 +175,17 @@ fn print_summary(entries: &[HistoryEntry]) {
         "\u{2591}".repeat(empty),
         avg_pct
     );
+
+    // Last command footer — confirms tracking is live and points at the
+    // detail view for anyone who wants more than the top-N summary.
+    if let Some(last) = entries.last() {
+        println!();
+        println!(
+            "Last: {} ({})",
+            truncate_cmd(&last.cmd, 40),
+            format_timestamp(last.ts, offset)
+        );
+    }
 
     // Top commands by tokens saved
     let mut agg: HashMap<String, CommandAgg> = HashMap::new();
@@ -221,6 +214,24 @@ fn print_summary(entries: &[HistoryEntry]) {
             );
         }
     }
+
+    println!();
+    println!("For full history: trs stats --history");
+}
+
+/// Entries whose timestamp falls on the same local-date as "now".
+fn today_entries(entries: &[HistoryEntry], offset: time::UtcOffset) -> Vec<&HistoryEntry> {
+    let now = OffsetDateTime::now_utc().to_offset(offset);
+    let (today_y, today_m, today_d) = (now.year(), now.month(), now.day());
+    entries
+        .iter()
+        .filter(|e| {
+            OffsetDateTime::from_unix_timestamp(e.ts as i64)
+                .map(|dt| dt.to_offset(offset))
+                .map(|dt| (dt.year(), dt.month(), dt.day()) == (today_y, today_m, today_d))
+                .unwrap_or(false)
+        })
+        .collect()
 }
 
 /// Print recent command history (last 20 entries).
