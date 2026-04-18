@@ -514,6 +514,11 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
         serde_json::json!({})
     };
 
+    // Snapshot the full root BEFORE taking mutable borrows for comparison.
+    // Lets us detect a true no-op at the end even when template changes
+    // (e.g. a widened matcher) would otherwise be silently skipped.
+    let before_snapshot = serde_json::to_string(&root).unwrap_or_default();
+
     let Some(root_obj) = root.as_object_mut() else {
         return Err(format!("{} root is not a JSON object", path.display()));
     };
@@ -533,7 +538,6 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
         return Err("internal: template `hooks` is not an object".into());
     };
 
-    let mut appended_any = false;
     for (event, tmpl_entries) in template_hooks_obj {
         let event_arr = existing_hooks_obj
             .entry(event.clone())
@@ -547,19 +551,21 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
         }
         let event_arr_mut = event_arr.as_array_mut().unwrap();
 
-        // Skip if any existing entry already references trs rewrite.
-        if event_arr_mut.iter().any(contains_trs_rewrite) {
-            continue;
-        }
+        // Drop any previous trs-owned entries so we re-add fresh from the
+        // template. This lets us upgrade stale installs (new matcher, new
+        // timeout, etc.) while preserving user-added entries (notify scripts,
+        // analytics, etc.) that don't reference `trs rewrite`.
+        event_arr_mut.retain(|e| !contains_trs_rewrite(e));
+
         if let Some(tmpl_arr) = tmpl_entries.as_array() {
             for entry in tmpl_arr {
                 event_arr_mut.push(entry.clone());
-                appended_any = true;
             }
         }
     }
 
-    if !appended_any && path.exists() {
+    let after_snapshot = serde_json::to_string(&root).unwrap_or_default();
+    if path.exists() && before_snapshot == after_snapshot {
         return Ok(format!("{} (already configured)", path.display()));
     }
 
