@@ -97,35 +97,38 @@ pub(crate) fn run_rewrite() {
     }
 }
 
-/// Handle JSON hook protocol. Claude Code and Gemini CLI share the same input
-/// envelope (`tool_input.command`) but expect different output shapes:
+/// Handle JSON hook protocol. Prints the response envelope (or nothing when
+/// no rewrite is needed). Pure formatting lives in `build_hook_response` for
+/// testability.
+fn handle_json_protocol(json: &serde_json::Value) {
+    if let Some(response) = build_hook_response(json) {
+        println!("{}", response);
+    }
+}
+
+/// Claude Code and Gemini CLI share the same input envelope
+/// (`tool_input.command`) but expect different output shapes:
 ///   Claude Code → hookSpecificOutput.updatedInput.command
 ///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
 /// We dispatch on the `hook_event_name` field: `PreToolUse` = Claude,
-/// `BeforeTool` = Gemini. Default to Claude format when ambiguous since that's
-/// the most common client.
-fn handle_json_protocol(json: &serde_json::Value) {
-    let command = json
+/// `BeforeTool` = Gemini. Default to Claude format when ambiguous since
+/// that's the most common client.
+///
+/// Returns `None` when the input has no bash command to rewrite (the hook
+/// should emit nothing so the original command runs unchanged).
+fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
+    let cmd = json
         .get("tool_input")
         .and_then(|ti| ti.get("command"))
-        .and_then(|c| c.as_str());
-
-    let Some(cmd) = command else {
-        // Not a bash command or unknown format — allow unchanged
-        return;
-    };
-
-    let Some(rewritten) = maybe_rewrite(cmd) else {
-        // Empty stdout = no change (allow as-is)
-        return;
-    };
+        .and_then(|c| c.as_str())?;
+    let rewritten = maybe_rewrite(cmd)?;
 
     let event = json
         .get("hook_event_name")
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    let output = if event == "BeforeTool" {
+    let response = if event == "BeforeTool" {
         // Gemini CLI: writes `hookSpecificOutput.tool_input` over the model's args.
         serde_json::json!({
             "systemMessage": "trs auto-rewrite",
@@ -145,7 +148,7 @@ fn handle_json_protocol(json: &serde_json::Value) {
             }
         })
     };
-    println!("{}", output);
+    Some(response)
 }
 
 /// Decide if a command should be rewritten to go through trs.
@@ -362,5 +365,119 @@ mod tests {
     fn test_skip_cd_chain_all_skips() {
         // Only non-rewritable commands — nothing changes
         assert_eq!(maybe_rewrite("cd /tmp && echo hello"), None);
+    }
+
+    // ----------------------------------------------------------------
+    // Hook-response dispatch: Claude Code vs Gemini CLI
+    // ----------------------------------------------------------------
+
+    fn parse_input(s: &str) -> serde_json::Value {
+        serde_json::from_str(s).expect("test input must be valid JSON")
+    }
+
+    #[test]
+    fn test_hook_response_claude_code_format() {
+        // Claude Code sends hook_event_name: PreToolUse — we emit Claude's
+        // updatedInput envelope.
+        let input = parse_input(
+            r#"{
+                "hook_event_name":"PreToolUse",
+                "tool_name":"Bash",
+                "tool_input":{"command":"git status"}
+            }"#,
+        );
+        let out = build_hook_response(&input).expect("should rewrite");
+        assert_eq!(
+            out["hookSpecificOutput"]["hookEventName"],
+            serde_json::json!("PreToolUse")
+        );
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["command"],
+            serde_json::json!("trs git status")
+        );
+        // Claude format must NOT carry Gemini's tool_input field.
+        assert!(out["hookSpecificOutput"]["tool_input"].is_null());
+        // No top-level `decision` in Claude's schema.
+        assert!(out.get("decision").is_none());
+    }
+
+    #[test]
+    fn test_hook_response_gemini_format() {
+        // Gemini CLI sends hook_event_name: BeforeTool — we emit its
+        // tool_input envelope with a top-level `decision` field.
+        let input = parse_input(
+            r#"{
+                "hook_event_name":"BeforeTool",
+                "tool_name":"run_shell_command",
+                "tool_input":{"command":"git status"}
+            }"#,
+        );
+        let out = build_hook_response(&input).expect("should rewrite");
+        assert_eq!(out["decision"], serde_json::json!("allow"));
+        assert_eq!(
+            out["hookSpecificOutput"]["tool_input"]["command"],
+            serde_json::json!("trs git status")
+        );
+        // Gemini format must NOT carry Claude's updatedInput field.
+        assert!(out["hookSpecificOutput"]["updatedInput"].is_null());
+    }
+
+    #[test]
+    fn test_hook_response_default_is_claude_format() {
+        // Missing / unknown hook_event_name defaults to Claude's shape so
+        // we don't silently break the majority client.
+        let input = parse_input(r#"{"tool_input":{"command":"git status"}}"#);
+        let out = build_hook_response(&input).expect("should rewrite");
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["command"],
+            serde_json::json!("trs git status")
+        );
+        assert!(out.get("decision").is_none());
+    }
+
+    #[test]
+    fn test_hook_response_no_rewrite_returns_none() {
+        // Commands that don't need rewriting produce no response — the hook
+        // is expected to emit nothing so the command runs unchanged.
+        let input = parse_input(
+            r#"{
+                "hook_event_name":"PreToolUse",
+                "tool_input":{"command":"echo hello"}
+            }"#,
+        );
+        assert!(build_hook_response(&input).is_none());
+    }
+
+    #[test]
+    fn test_hook_response_missing_command_returns_none() {
+        // Malformed input (no tool_input.command) — emit nothing.
+        let input = parse_input(r#"{"hook_event_name":"BeforeTool"}"#);
+        assert!(build_hook_response(&input).is_none());
+    }
+
+    #[test]
+    fn test_hook_response_chain_preserved_across_formats() {
+        // The chain-aware rewrite applies identically in both formats.
+        let claude = parse_input(
+            r#"{
+                "hook_event_name":"PreToolUse",
+                "tool_input":{"command":"cd /tmp && git status && cargo test"}
+            }"#,
+        );
+        let gemini = parse_input(
+            r#"{
+                "hook_event_name":"BeforeTool",
+                "tool_input":{"command":"cd /tmp && git status && cargo test"}
+            }"#,
+        );
+        let expected = "cd /tmp && trs git status && trs cargo test";
+        assert_eq!(
+            build_hook_response(&claude).unwrap()["hookSpecificOutput"]["updatedInput"]["command"],
+            serde_json::json!(expected)
+        );
+        assert_eq!(
+            build_hook_response(&gemini).unwrap()["hookSpecificOutput"]["tool_input"]["command"],
+            serde_json::json!(expected)
+        );
     }
 }
