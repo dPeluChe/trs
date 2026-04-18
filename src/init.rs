@@ -166,9 +166,13 @@ impl AiTool {
                 filename: "trs.ts",
                 content: OPENCODE_PLUGIN,
             }),
+            // Kilo mirrors OpenCode's plugin system: auto-discovery from
+            // `~/.config/kilo/plugins/` (global) and `.kilo/plugins/` (project).
+            // Shares OPENCODE_PLUGIN — the `tool.execute.before` hook API is
+            // identical.
             Self::Kilo => Some(HookSpec {
                 local_dir: ".kilo/plugins",
-                global_dir: None,
+                global_dir: Some(".config/kilo/plugins"),
                 filename: "trs.ts",
                 content: OPENCODE_PLUGIN,
             }),
