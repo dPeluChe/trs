@@ -72,28 +72,27 @@ pub(crate) const CURSOR_HOOKS: &str = r#"{
   }
 }"#;
 
-// OpenCode/Kilo plugin: unconditionally prefix trs, let trs decide
-// whether to compress or passthrough. No stale rewrite list needed.
+// OpenCode/Kilo plugin: unconditionally prefix trs, let trs decide whether
+// to compress or passthrough. Uses OpenCode's documented plugin shape:
+//   - async function returning a hooks map
+//   - hook key `"tool.execute.before"` (string literal, not a property name)
+//   - `input.tool === "bash"` to gate shell commands
+//   - mutate `output.args.command` in-place
+// Reference: https://opencode.ai/docs/plugins/
 pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
-import type { Plugin } from "opencode";
 
-export default function trsPlugin(): Plugin {
+export const TrsPlugin = async () => {
   return {
-    name: "trs",
-    hooks: {
-      before_tool_call: async (ctx) => {
-        if (ctx.tool === "bash" && ctx.input?.command) {
-          const cmd = ctx.input.command;
-          // Skip if already using trs or if it's a trs command itself
-          if (!cmd.startsWith("trs ") && !cmd.startsWith("cd ")) {
-            ctx.input.command = `trs ${cmd}`;
-          }
-        }
-        return ctx;
-      },
+    "tool.execute.before": async (input, output) => {
+      if (input.tool !== "bash") return;
+      const cmd = output.args?.command;
+      if (typeof cmd !== "string") return;
+      // Skip if already routed through trs or if it's a cd (dir change).
+      if (cmd.startsWith("trs ") || cmd.startsWith("cd ")) return;
+      output.args.command = `trs ${cmd}`;
     },
   };
-}
+};
 "#;
 
 pub(crate) const CODEX_AGENTS_SECTION: &str = r#"

@@ -156,9 +156,13 @@ impl AiTool {
                 filename: "hooks.json",
                 content: CURSOR_HOOKS,
             }),
+            // OpenCode auto-discovers plugins at startup from both the
+            // project-level `.opencode/plugins/` and the global
+            // `~/.config/opencode/plugins/`. No opencode.json registration is
+            // needed for file-based plugins.
             Self::OpenCode => Some(HookSpec {
                 local_dir: ".opencode/plugins",
-                global_dir: None,
+                global_dir: Some(".config/opencode/plugins"),
                 filename: "trs.ts",
                 content: OPENCODE_PLUGIN,
             }),
