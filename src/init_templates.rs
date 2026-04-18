@@ -21,6 +21,27 @@ pub(crate) const CLAUDE_HOOKS: &str = r#"{
   }
 }"#;
 
+// Factory Droid: same envelope as Claude's PreToolUse, but Droid's shell tool
+// is named `Execute` (not `Bash`), so the matcher is widened. We use ".*" to
+// match any tool — trs rewrite internally skips commands that don't look like
+// shell invocations, so the overhead of a per-tool check is negligible.
+pub(crate) const DROID_HOOKS: &str = r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "trs rewrite"
+          }
+        ],
+        "description": "Route commands through trs for token-optimized output"
+      }
+    ]
+  }
+}"#;
+
 pub(crate) const GEMINI_HOOKS: &str = r#"{
   "hooks": {
     "BeforeTool": [

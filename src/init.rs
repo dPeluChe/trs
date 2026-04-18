@@ -7,7 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::init_templates::{
-    ANTIGRAVITY_RULES, CLAUDE_HOOKS, CODEX_AGENTS_SECTION, CURSOR_HOOKS, GEMINI_HOOKS,
+    ANTIGRAVITY_RULES, CLAUDE_HOOKS, CODEX_AGENTS_SECTION, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS,
     OPENCODE_PLUGIN, WINDSURF_RULES,
 };
 
@@ -172,7 +172,7 @@ impl AiTool {
                 local_dir: ".factory",
                 global_dir: Some(".factory"),
                 filename: "settings.json",
-                content: CLAUDE_HOOKS, // Factory Droid uses the same matcher/hooks shape
+                content: DROID_HOOKS,
             }),
             // Rules-based tools (no programmatic hooks) — handled via
             // install_codex / install_rules instead.
