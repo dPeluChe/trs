@@ -25,7 +25,7 @@ src/
 │   ├── ollama.rs              # Ollama post-processing (ollama_format)
 │   └── store.rs               # ~/.trs/ingest/ persistence (save, list, read)
 ├── discover.rs                # trs discover — scan history for missed savings
-├── init.rs                    # trs init — hook installer for 6 AI tools
+├── init.rs                    # trs init — hook installer for 9 AI agents (see docs/agent-integrations.md)
 ├── rewrite.rs                 # trs rewrite — hook command rewriter engine
 ├── help.rs                    # Help text for all commands
 ├── process.rs                 # Process execution (spawn, capture, timeout)
@@ -109,6 +109,10 @@ tests/
 - **3-tier fallback**: parser OK → degraded → truncated passthrough with `[trs:passthrough]`
 - **Generic fallback**: commands without parser get whitespace/ANSI compression (20-40%)
 - **Config system**: `~/.trs/config.toml` for tunable limits
+- **Agent integrations**: 9 agents supported across 3 integration types
+  (hook / plugin / rules). Wire-format differs per hook agent
+  (Claude/Gemini/Cursor) — see [`docs/agent-integrations.md`](./docs/agent-integrations.md)
+  for per-agent mechanism, quirks, and test prompts.
 
 ## Development
 
