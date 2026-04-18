@@ -97,9 +97,14 @@ pub(crate) fn run_rewrite() {
     }
 }
 
-/// Handle JSON hook protocol (Claude Code PreToolUse / Gemini BeforeTool).
+/// Handle JSON hook protocol. Claude Code and Gemini CLI share the same input
+/// envelope (`tool_input.command`) but expect different output shapes:
+///   Claude Code → hookSpecificOutput.updatedInput.command
+///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
+/// We dispatch on the `hook_event_name` field: `PreToolUse` = Claude,
+/// `BeforeTool` = Gemini. Default to Claude format when ambiguous since that's
+/// the most common client.
 fn handle_json_protocol(json: &serde_json::Value) {
-    // Extract the command from tool_input.command
     let command = json
         .get("tool_input")
         .and_then(|ti| ti.get("command"))
@@ -110,21 +115,37 @@ fn handle_json_protocol(json: &serde_json::Value) {
         return;
     };
 
-    if let Some(rewritten) = maybe_rewrite(cmd) {
-        // Output in Claude Code PreToolUse hook format
-        let output = serde_json::json!({
+    let Some(rewritten) = maybe_rewrite(cmd) else {
+        // Empty stdout = no change (allow as-is)
+        return;
+    };
+
+    let event = json
+        .get("hook_event_name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let output = if event == "BeforeTool" {
+        // Gemini CLI: writes `hookSpecificOutput.tool_input` over the model's args.
+        serde_json::json!({
+            "systemMessage": "trs auto-rewrite",
+            "decision": "allow",
+            "hookSpecificOutput": {
+                "tool_input": { "command": rewritten }
+            }
+        })
+    } else {
+        // Claude Code PreToolUse format (also default for unknown events).
+        serde_json::json!({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "allow",
                 "permissionDecisionReason": "trs auto-rewrite",
-                "updatedInput": {
-                    "command": rewritten
-                }
+                "updatedInput": { "command": rewritten }
             }
-        });
-        println!("{}", output);
-    }
-    // Empty stdout = no change (allow as-is)
+        })
+    };
+    println!("{}", output);
 }
 
 /// Decide if a command should be rewritten to go through trs.
