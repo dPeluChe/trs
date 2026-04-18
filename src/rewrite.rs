@@ -106,19 +106,38 @@ fn handle_json_protocol(json: &serde_json::Value) {
     }
 }
 
-/// All supported hook protocols share the same input envelope
-/// (`tool_input.command`) but expect different output shapes:
+/// Which client's hook protocol are we speaking. Each emits a different
+/// rewrite envelope; the wire name of the `hook_event_name` field identifies
+/// the client. Claude Code is the default when the field is missing or unknown
+/// because it's by far the most common client.
+#[derive(Clone, Copy)]
+enum HookEvent {
+    /// Claude Code — `hook_event_name: "PreToolUse"` (capitalized).
+    ClaudePreToolUse,
+    /// Gemini CLI — `hook_event_name: "BeforeTool"`.
+    GeminiBeforeTool,
+    /// Cursor — `hook_event_name: "preToolUse"` (lowercase first letter).
+    CursorPreToolUse,
+}
+
+impl HookEvent {
+    fn from_wire(name: &str) -> Self {
+        match name {
+            "BeforeTool" => Self::GeminiBeforeTool,
+            "preToolUse" => Self::CursorPreToolUse,
+            _ => Self::ClaudePreToolUse,
+        }
+    }
+}
+
+/// Build the JSON response for the current hook event, or return `None` to
+/// emit nothing (the agent runs the original command unchanged).
 ///
-///   Claude Code (`PreToolUse`) → hookSpecificOutput.updatedInput.command
-///   Gemini CLI  (`BeforeTool`) → hookSpecificOutput.tool_input.command (+ top-level `decision`)
-///   Cursor      (`preToolUse`) → top-level `permission` + top-level `updated_input.command`
-///
-/// We dispatch on the `hook_event_name` field. `PreToolUse` and `preToolUse`
-/// differ by case only, so ordering / exact match matters. Default is Claude
-/// Code format since it's the most common client.
-///
-/// Returns `None` when the input has no bash command to rewrite (the hook
-/// should emit nothing so the original command runs unchanged).
+/// All supported clients share the same input envelope (`tool_input.command`)
+/// but expect different output shapes:
+///   Claude Code → hookSpecificOutput.updatedInput.command
+///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
+///   Cursor      → top-level `permission` + top-level `updated_input.command`
 fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
     let cmd = json
         .get("tool_input")
@@ -126,28 +145,25 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
         .and_then(|c| c.as_str())?;
     let rewritten = maybe_rewrite(cmd)?;
 
-    let event = json
-        .get("hook_event_name")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let event = HookEvent::from_wire(
+        json.get("hook_event_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or(""),
+    );
 
     let response = match event {
-        "BeforeTool" => serde_json::json!({
-            // Gemini CLI writes `hookSpecificOutput.tool_input` over the model's args.
+        HookEvent::GeminiBeforeTool => serde_json::json!({
             "systemMessage": "trs auto-rewrite",
             "decision": "allow",
             "hookSpecificOutput": {
                 "tool_input": { "command": rewritten }
             }
         }),
-        "preToolUse" => serde_json::json!({
-            // Cursor: flat `permission` + `updated_input`. Lowercase event name
-            // distinguishes this from Claude's `PreToolUse`.
+        HookEvent::CursorPreToolUse => serde_json::json!({
             "permission": "allow",
             "updated_input": { "command": rewritten }
         }),
-        // Claude Code PreToolUse — and default for unknown clients.
-        _ => serde_json::json!({
+        HookEvent::ClaudePreToolUse => serde_json::json!({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "allow",
@@ -174,10 +190,22 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
+    // Hot-path optimization: almost all incoming commands are plain "git X"
+    // with no shell operators. A single byte scan rejects that fast case before
+    // we do any of the more expensive `contains(" && ")` / shell-op lookups.
+    let has_shell_op = trimmed
+        .as_bytes()
+        .iter()
+        .any(|b| matches!(b, b'&' | b'|' | b'>' | b'<' | b';'));
+
     // Chain handling: split on " && " and rewrite each segment independently.
     // Checked BEFORE SKIP_PREFIXES so `cd X && git Y` isn't short-circuited by
     // the "cd" skip. Pipes (`|`) and semicolons (`;`) are left to the shell.
-    if trimmed.contains(" && ") && !trimmed.contains(" | ") && !trimmed.contains(" ; ") {
+    if has_shell_op
+        && trimmed.contains(" && ")
+        && !trimmed.contains(" | ")
+        && !trimmed.contains(" ; ")
+    {
         let segments: Vec<&str> = trimmed.split(" && ").map(str::trim).collect();
         let mut any_changed = false;
         let mut rewritten: Vec<String> = Vec::with_capacity(segments.len());
@@ -204,7 +232,7 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
     }
 
     // Semicolon chains are too unpredictable (independent commands) — skip.
-    if trimmed.contains(" ; ") {
+    if has_shell_op && trimmed.contains(" ; ") {
         return None;
     }
 
@@ -214,9 +242,11 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
     // the hook for those very common cases. Rewriting just the command that
     // produces the data preserves shell semantics while still applying trs
     // compression.
-    if let Some((first, rest)) = split_at_shell_op(trimmed) {
-        let rewritten = maybe_rewrite(first)?;
-        return Some(format!("{}{}", rewritten, rest));
+    if has_shell_op {
+        if let Some((first, rest)) = split_at_shell_op(trimmed) {
+            let rewritten = maybe_rewrite(first)?;
+            return Some(format!("{}{}", rewritten, rest));
+        }
     }
 
     // Never rewrite subshells or command substitution

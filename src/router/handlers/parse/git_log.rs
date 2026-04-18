@@ -2,20 +2,11 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
 
-/// Truncate `subject` if `max` is set and the subject exceeds it. Appends "..."
-/// after `max - 3` chars so the total stays within the budget. Returns the
-/// subject unchanged when `max` is `None` or `Some(0)` (no-op).
+/// Truncate `subject` if `max` is set and leaves room for at least one real
+/// char plus the ellipsis (`max >= 4`). `None` / `Some(n<4)` is a no-op.
 fn apply_truncate(subject: &str, max: Option<usize>) -> String {
     match max {
-        Some(n) if n >= 4 && subject.len() > n => {
-            let cut = n - 3;
-            // Walk back to a char boundary so multi-byte chars aren't split.
-            let mut end = cut;
-            while end > 0 && !subject.is_char_boundary(end) {
-                end -= 1;
-            }
-            format!("{}...", &subject[..end])
-        }
+        Some(n) if n >= 4 => crate::formatter::helpers::truncate(subject, n),
         _ => subject.to_string(),
     }
 }
