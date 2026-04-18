@@ -195,14 +195,20 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         }
     }
 
-    // Never rewrite pipes or semicolons (let the shell handle them)
-    if trimmed.contains(" | ") || trimmed.contains(" ; ") {
+    // Semicolon chains are too unpredictable (independent commands) — skip.
+    if trimmed.contains(" ; ") {
         return None;
     }
 
-    // Never rewrite commands with redirections
-    if trimmed.contains(" > ") || trimmed.contains(" >> ") || trimmed.contains(" < ") {
-        return None;
+    // Pipe / redirect: rewrite ONLY the first segment and keep the rest
+    // untouched. Agents routinely append `| head -N`, `| grep X`, or `> file`
+    // to cap / filter output; blocking rewrite on any pipe silently defeated
+    // the hook for those very common cases. Rewriting just the command that
+    // produces the data preserves shell semantics while still applying trs
+    // compression.
+    if let Some((first, rest)) = split_at_shell_op(trimmed) {
+        let rewritten = maybe_rewrite(first)?;
+        return Some(format!("{}{}", rewritten, rest));
     }
 
     // Never rewrite subshells or command substitution
@@ -236,6 +242,20 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
     Some(format!("trs {}", trimmed))
 }
 
+/// Split a command at the first shell operator (pipe or redirect) so the left
+/// side can be rewritten independently. Longer delimiters (`" >> "`) are
+/// tried before their prefixes (`" > "`) so we don't misclassify them.
+///
+/// Returns `(first_segment, operator_and_rest)` — splicing them back yields
+/// the original string.
+fn split_at_shell_op(s: &str) -> Option<(&str, &str)> {
+    [" | ", " >> ", " > ", " < "]
+        .iter()
+        .filter_map(|op| s.find(op).map(|pos| (pos, *op)))
+        .min_by_key(|(pos, _)| *pos)
+        .map(|(pos, _)| (&s[..pos], &s[pos..]))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -266,15 +286,54 @@ mod tests {
     }
 
     #[test]
-    fn test_skip_pipes() {
-        assert_eq!(maybe_rewrite("git log | grep fix"), None);
-        assert_eq!(maybe_rewrite("find . -name '*.rs' | xargs wc"), None);
+    fn test_rewrite_pipe_first_segment() {
+        // Agents frequently append `| head -N` / `| grep X` — rewrite only
+        // the command producing the data, leave the pipeline untouched.
+        assert_eq!(
+            maybe_rewrite("git log | grep fix"),
+            Some("trs git log | grep fix".into())
+        );
+        assert_eq!(
+            maybe_rewrite("find . -name '*.rs' | xargs wc"),
+            Some("trs find . -name '*.rs' | xargs wc".into())
+        );
+        assert_eq!(
+            maybe_rewrite("git status | head -3"),
+            Some("trs git status | head -3".into())
+        );
     }
 
     #[test]
-    fn test_skip_redirections() {
-        assert_eq!(maybe_rewrite("git diff > out.txt"), None);
+    fn test_rewrite_multi_pipe_first_segment_only() {
+        // Only the first segment gets rewritten; any further pipes are
+        // treated as opaque post-processing.
+        assert_eq!(
+            maybe_rewrite("git log | head -5 | tail -1"),
+            Some("trs git log | head -5 | tail -1".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_redirect_first_segment() {
+        // Redirects follow the same rule — rewrite the producer, keep the
+        // redirect target untouched.
+        assert_eq!(
+            maybe_rewrite("git diff > out.txt"),
+            Some("trs git diff > out.txt".into())
+        );
+        assert_eq!(
+            maybe_rewrite("git log >> history.txt"),
+            Some("trs git log >> history.txt".into())
+        );
+    }
+
+    #[test]
+    fn test_skip_pipe_when_first_segment_is_skipped() {
+        // If the left side is something we'd never rewrite (cat, echo,
+        // already-trs), the whole pipeline stays as-is.
         assert_eq!(maybe_rewrite("cat < input.txt"), None);
+        assert_eq!(maybe_rewrite("echo hello | xxd"), None);
+        assert_eq!(maybe_rewrite("trs git status | head -3"), None);
     }
 
     #[test]

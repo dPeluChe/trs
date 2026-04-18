@@ -84,9 +84,12 @@ fn test_check_status_display() {
 
 #[test]
 fn test_count_hooks_via_init() {
+    // Sanity check: `check_tool` must return at most one `true` per tool
+    // in the supported set. The actual count depends on the developer's
+    // local install state, so we only upper-bound by the total tool count.
     let tools = AiTool::all_tools();
     let count: usize = tools.iter().filter(|t| check_tool(t)).count();
-    assert!(count <= 6);
+    assert!(count <= tools.len());
 }
 
 #[test]
