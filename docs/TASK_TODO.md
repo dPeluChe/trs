@@ -70,7 +70,21 @@ per-agent reference. Outstanding items:
 
 ## Phase 4 — Analytics & Configuration
 
+- [ ] **`trs stats` header enhancements** (user feedback 2026-04-18):
+      - Show explicit date range: `From Apr 16, 14:52 → Apr 18, 17:04 (3 days)`
+        instead of just `Period: Apr 2026 (3 days)`.
+      - Add **Today** breakdown alongside the average: `Today: 12.3K tokens
+        (42 commands)` so users can see if they're trending up/down vs the
+        `Tokens per day: 71.1K` average.
+      - Show **Last command** footer: `Last: git checkout -b refact... (17:04)`
+        so users know the tracker is live and can spot if it stopped.
+      - Add footer hint: `For full history: trs stats --history` so the
+        detail view is discoverable from the summary.
+      - Rationale: current summary doesn't invite exploration, and users new
+        to trs don't know `--history` exists. Quick pulse-check on
+        "is tracking alive and healthy" needs to be at-a-glance.
 - [ ] `trs stats --graph` — ASCII bar chart (30-day view)
+- [ ] `trs stats --today` — today-only summary as a dedicated flag
 - [ ] Version check notification (no auto-update)
 - [ ] Consider migrating tracker from JSONL to SQLite (WAL mode, 90-day retention)
 - [ ] Command mutation (inject `--porcelain` for more parseable output)
