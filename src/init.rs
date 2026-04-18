@@ -546,6 +546,19 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
         return Err("internal: template `hooks` is not an object".into());
     };
 
+    // Clean ALL existing trs entries across every event before re-inserting
+    // from the template. Templates can migrate between events over time
+    // (e.g. Cursor moving from beforeShellExecution → preToolUse to gain
+    // rewrite support). Scoping the cleanup to just the template's events
+    // would leave an orphaned entry on the old event, so we sweep broadly.
+    // User-added entries (notify scripts, analytics) that don't reference
+    // `trs rewrite` are preserved untouched.
+    for (_event, event_val) in existing_hooks_obj.iter_mut() {
+        if let Some(arr) = event_val.as_array_mut() {
+            arr.retain(|e| !contains_trs_rewrite(e));
+        }
+    }
+
     for (event, tmpl_entries) in template_hooks_obj {
         let event_arr = existing_hooks_obj
             .entry(event.clone())
@@ -558,12 +571,6 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
             ));
         }
         let event_arr_mut = event_arr.as_array_mut().unwrap();
-
-        // Drop any previous trs-owned entries so we re-add fresh from the
-        // template. This lets us upgrade stale installs (new matcher, new
-        // timeout, etc.) while preserving user-added entries (notify scripts,
-        // analytics, etc.) that don't reference `trs rewrite`.
-        event_arr_mut.retain(|e| !contains_trs_rewrite(e));
 
         if let Some(tmpl_arr) = tmpl_entries.as_array() {
             for entry in tmpl_arr {

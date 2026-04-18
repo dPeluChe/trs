@@ -106,13 +106,16 @@ fn handle_json_protocol(json: &serde_json::Value) {
     }
 }
 
-/// Claude Code and Gemini CLI share the same input envelope
+/// All supported hook protocols share the same input envelope
 /// (`tool_input.command`) but expect different output shapes:
-///   Claude Code → hookSpecificOutput.updatedInput.command
-///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
-/// We dispatch on the `hook_event_name` field: `PreToolUse` = Claude,
-/// `BeforeTool` = Gemini. Default to Claude format when ambiguous since
-/// that's the most common client.
+///
+///   Claude Code (`PreToolUse`) → hookSpecificOutput.updatedInput.command
+///   Gemini CLI  (`BeforeTool`) → hookSpecificOutput.tool_input.command (+ top-level `decision`)
+///   Cursor      (`preToolUse`) → top-level `permission` + top-level `updated_input.command`
+///
+/// We dispatch on the `hook_event_name` field. `PreToolUse` and `preToolUse`
+/// differ by case only, so ordering / exact match matters. Default is Claude
+/// Code format since it's the most common client.
 ///
 /// Returns `None` when the input has no bash command to rewrite (the hook
 /// should emit nothing so the original command runs unchanged).
@@ -128,25 +131,30 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    let response = if event == "BeforeTool" {
-        // Gemini CLI: writes `hookSpecificOutput.tool_input` over the model's args.
-        serde_json::json!({
+    let response = match event {
+        "BeforeTool" => serde_json::json!({
+            // Gemini CLI writes `hookSpecificOutput.tool_input` over the model's args.
             "systemMessage": "trs auto-rewrite",
             "decision": "allow",
             "hookSpecificOutput": {
                 "tool_input": { "command": rewritten }
             }
-        })
-    } else {
-        // Claude Code PreToolUse format (also default for unknown events).
-        serde_json::json!({
+        }),
+        "preToolUse" => serde_json::json!({
+            // Cursor: flat `permission` + `updated_input`. Lowercase event name
+            // distinguishes this from Claude's `PreToolUse`.
+            "permission": "allow",
+            "updated_input": { "command": rewritten }
+        }),
+        // Claude Code PreToolUse — and default for unknown clients.
+        _ => serde_json::json!({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "allow",
                 "permissionDecisionReason": "trs auto-rewrite",
                 "updatedInput": { "command": rewritten }
             }
-        })
+        }),
     };
     Some(response)
 }
@@ -457,6 +465,29 @@ mod tests {
         // Claude format must NOT carry Gemini's tool_input field.
         assert!(out["hookSpecificOutput"]["tool_input"].is_null());
         // No top-level `decision` in Claude's schema.
+        assert!(out.get("decision").is_none());
+    }
+
+    #[test]
+    fn test_hook_response_cursor_format() {
+        // Cursor's preToolUse emits a flat envelope with `permission` and
+        // `updated_input` at the top level. Lowercase event name distinguishes
+        // it from Claude's PreToolUse.
+        let input = parse_input(
+            r#"{
+                "hook_event_name":"preToolUse",
+                "tool_name":"Shell",
+                "tool_input":{"command":"git status"}
+            }"#,
+        );
+        let out = build_hook_response(&input).expect("should rewrite");
+        assert_eq!(out["permission"], serde_json::json!("allow"));
+        assert_eq!(
+            out["updated_input"]["command"],
+            serde_json::json!("trs git status")
+        );
+        // Cursor format must NOT carry Claude's or Gemini's wrapping.
+        assert!(out.get("hookSpecificOutput").is_none());
         assert!(out.get("decision").is_none());
     }
 
