@@ -62,15 +62,17 @@ pub(crate) const GEMINI_HOOKS: &str = r#"{
 
 // Cursor's `beforeShellExecution` hook can only allow/deny — it cannot
 // rewrite the command. The only hook with `updated_input` support is
-// `preToolUse`, which fires for every tool call (Shell, Read, Write, MCP,
-// Task). Our `trs rewrite` internally checks for `tool_input.command` and
-// only rewrites shell-like invocations, so no matcher is needed.
+// `preToolUse`. `matcher: "Shell"` limits the hook to actual shell tool
+// invocations instead of every Read/Write/MCP call (observed: Cursor spams
+// Read on the terminal transcript file, so skipping those saves meaningful
+// subprocess overhead).
 pub(crate) const CURSOR_HOOKS: &str = r#"{
   "hooks": {
     "preToolUse": [
       {
         "command": "trs rewrite",
-        "description": "Route commands through trs for token-optimized output"
+        "matcher": "Shell",
+        "description": "Route shell commands through trs for token-optimized output"
       }
     ]
   }
