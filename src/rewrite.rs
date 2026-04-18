@@ -121,7 +121,7 @@ enum HookEvent {
 }
 
 impl HookEvent {
-    fn from_wire(name: &str) -> Self {
+    fn parse(name: &str) -> Self {
         match name {
             "BeforeTool" => Self::GeminiBeforeTool,
             "preToolUse" => Self::CursorPreToolUse,
@@ -145,7 +145,7 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
         .and_then(|c| c.as_str())?;
     let rewritten = maybe_rewrite(cmd)?;
 
-    let event = HookEvent::from_wire(
+    let event = HookEvent::parse(
         json.get("hook_event_name")
             .and_then(|v| v.as_str())
             .unwrap_or(""),
