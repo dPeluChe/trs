@@ -6,10 +6,21 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::init_collision;
 use crate::init_templates::{
     ANTIGRAVITY_RULES, CLAUDE_HOOKS, CODEX_AGENTS_SECTION, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS,
     OPENCODE_PLUGIN, WINDSURF_RULES,
 };
+
+/// Options for an install run. `global` picks home-dir vs project-local;
+/// `replace` scrubs competing compressor hooks before installing trs;
+/// `force` installs anyway when a collision is present.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct InstallOpts {
+    pub global: bool,
+    pub replace: bool,
+    pub force: bool,
+}
 
 /// Supported AI tools for hook installation.
 pub(crate) enum AiTool {
@@ -190,7 +201,26 @@ impl AiTool {
 }
 
 /// Install hooks for the specified tool.
-pub(crate) fn install_hook(tool: &AiTool, global: bool) {
+pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
+    // Pre-install: detect competing compressor hooks (rtk, token-optimizer).
+    // Default is to abort — --replace scrubs known competitors before the
+    // install proceeds, --force installs anyway and eats the risk.
+    let collisions = init_collision::detect(tool, opts.global);
+    if !collisions.is_empty() && !opts.force && !opts.replace {
+        eprintln!("{}", init_collision::format_report(tool, &collisions));
+        return;
+    }
+    if !collisions.is_empty() && opts.replace && !init_collision::any_hook_collisions(&collisions) {
+        // --replace has no automatic cleanup for text-file rules collisions;
+        // surface that clearly rather than silently doing nothing.
+        eprintln!("{}", init_collision::format_report(tool, &collisions));
+        eprintln!(
+            "note: --replace only scrubs JSON hook entries automatically.\n\
+             The rules-file collisions above need manual edits."
+        );
+        return;
+    }
+
     let result = match tool {
         AiTool::Codex => install_codex(),
         AiTool::Antigravity => {
@@ -199,7 +229,7 @@ pub(crate) fn install_hook(tool: &AiTool, global: bool) {
         AiTool::Windsurf => install_rules(".windsurfrules", WINDSURF_RULES),
         _ => {
             if let Some(spec) = tool.spec() {
-                install_from_spec(&spec, global)
+                install_from_spec(&spec, opts)
             } else {
                 Err("No hook spec for this tool".to_string())
             }
@@ -227,7 +257,7 @@ pub(crate) fn install_hook(tool: &AiTool, global: bool) {
 
 /// Install hooks for all detected tools, skipping already-configured ones.
 /// Tools not detected on the system are reported but not installed.
-pub(crate) fn install_all(global: bool) {
+pub(crate) fn install_all(opts: InstallOpts) {
     let tools = AiTool::all_tools();
     let mut installed = 0;
     let mut skipped = 0;
@@ -241,7 +271,7 @@ pub(crate) fn install_all(global: bool) {
             println!("  - {} (not detected on system, skipping)", tool.name());
             undetected += 1;
         } else {
-            install_hook(tool, global);
+            install_hook(tool, opts);
             installed += 1;
         }
     }
@@ -331,6 +361,10 @@ pub(crate) fn show_status_and_usage() {
     println!("  trs init <tool> [--global]      install for a specific tool");
     println!("  trs init --all [--global]       install for all detected tools");
     println!("  trs init --show                 show this status");
+    println!();
+    println!("Collision handling:");
+    println!("  --replace    remove competing compressor hooks (rtk, etc.)");
+    println!("  --force      install alongside anyway (risk: double-compression)");
 }
 
 /// Check if a tool has trs hooks installed (local or global).
@@ -376,20 +410,20 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
 // Data-driven installer
 // ============================================================
 
-fn install_from_spec(spec: &HookSpec, global: bool) -> Result<String, String> {
-    if global {
+fn install_from_spec(spec: &HookSpec, opts: InstallOpts) -> Result<String, String> {
+    if opts.global {
         if let Some(global_dir) = spec.global_dir {
             let home = home_dir()?;
             let dir = home.join(global_dir);
             let path = dir.join(spec.filename);
-            return write_hook(&dir, &path, spec.content);
+            return write_hook(&dir, &path, spec.content, opts.replace);
         }
         // No global config location for this tool — fall back to local install.
         eprintln!("note: --global not supported for this tool, installing locally instead");
     }
     let dir = PathBuf::from(spec.local_dir);
     let path = dir.join(spec.filename);
-    write_hook(&dir, &path, spec.content)
+    write_hook(&dir, &path, spec.content, opts.replace)
 }
 
 // ============================================================
@@ -470,14 +504,14 @@ fn check_file_contains_path(path: &Path, needle: &str) -> bool {
 /// Write a hook file. For JSON settings files, merge our `hooks` section into
 /// existing content (preserving user's other config). For non-JSON files,
 /// refuse to overwrite if the file already has foreign content.
-fn write_hook(dir: &Path, path: &Path, content: &str) -> Result<String, String> {
+fn write_hook(dir: &Path, path: &Path, content: &str, replace: bool) -> Result<String, String> {
     let is_json = path
         .extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| e.eq_ignore_ascii_case("json"));
 
     if is_json {
-        return merge_json_hook(dir, path, content);
+        return merge_json_hook(dir, path, content, replace);
     }
 
     // Non-JSON file (e.g. plugin .ts, hooks.json written by us directly).
@@ -498,7 +532,12 @@ fn write_hook(dir: &Path, path: &Path, content: &str) -> Result<String, String> 
 
 /// Merge the `hooks` section from a template into an existing JSON settings file.
 /// Keeps user's other keys (model, auth, permissions, etc.) intact.
-fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, String> {
+fn merge_json_hook(
+    dir: &Path,
+    path: &Path,
+    template: &str,
+    replace: bool,
+) -> Result<String, String> {
     let template_value: serde_json::Value = serde_json::from_str(template)
         .map_err(|e| format!("internal: template JSON invalid: {}", e))?;
     let template_hooks = template_value
@@ -555,7 +594,20 @@ fn merge_json_hook(dir: &Path, path: &Path, template: &str) -> Result<String, St
     // `trs rewrite` are preserved untouched.
     for (_event, event_val) in existing_hooks_obj.iter_mut() {
         if let Some(arr) = event_val.as_array_mut() {
-            arr.retain(|e| !contains_trs_rewrite(e));
+            arr.retain(|e| {
+                // Always drop our own prior entries (idempotent reinstall).
+                if contains_trs_rewrite(e) {
+                    return false;
+                }
+                // With --replace, also drop known competitors so trs isn't
+                // stacked on top of rtk / token-optimizer. Without --replace
+                // we leave foreign entries alone — install_hook already
+                // aborted earlier if a collision was detected.
+                if replace && init_collision::is_competitor_hook(e) {
+                    return false;
+                }
+                true
+            });
         }
     }
 

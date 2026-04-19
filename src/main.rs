@@ -35,6 +35,7 @@ mod formatter;
 mod help;
 mod ingest;
 mod init;
+mod init_collision;
 mod init_templates;
 #[allow(dead_code)]
 mod process;
@@ -115,14 +116,21 @@ fn main() {
             global,
             show,
             all,
+            replace,
+            force,
         }) => {
+            let opts = init::InstallOpts {
+                global: *global,
+                replace: *replace,
+                force: *force,
+            };
             if *show {
                 init::show_status();
             } else if *all {
-                init::install_all(*global);
+                init::install_all(opts);
             } else if let Some(tool_name) = tool {
                 match init::AiTool::from_str(tool_name) {
-                    Some(t) => init::install_hook(&t, *global),
+                    Some(t) => init::install_hook(&t, opts),
                     None => eprintln!(
                         "Unknown tool: '{}'. Supported: {}",
                         tool_name,

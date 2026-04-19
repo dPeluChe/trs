@@ -68,6 +68,16 @@ pub enum Commands {
         /// Install hooks for all detected tools
         #[arg(long)]
         all: bool,
+
+        /// Remove competing compressor hooks (rtk, token-optimizer) before
+        /// installing trs. Required when a collision is detected.
+        #[arg(long)]
+        replace: bool,
+
+        /// Install trs even if a competing compressor is already configured.
+        /// Risk: double-compression can corrupt command output.
+        #[arg(long)]
+        force: bool,
     },
 
     /// Validate trs installation health (binary, PATH, deps, config)

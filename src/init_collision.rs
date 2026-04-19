@@ -1,0 +1,337 @@
+//! Pre-install collision detection for `trs init`.
+//!
+//! Scans target config files for hooks or rules installed by other
+//! shell-compression tools (rtk, token-optimizer, …). Installing trs
+//! alongside another compressor risks double-compression — where our
+//! output feeds the other tool's parser, or vice versa, producing
+//! corrupted data that looks like success at the hook layer.
+//!
+//! The flow: `trs init` calls `detect`, prints the report, aborts unless
+//! the user passes `--replace` (scrub competitors, install trs) or
+//! `--force` (install alongside and eat the risk).
+//!
+//! Why heuristic-only: we deliberately do NOT flag every unknown hook —
+//! users have lint runners, analytics webhooks, notify scripts on their
+//! PreToolUse events that have nothing to do with us. We match on a
+//! short, curated list of known compressor binaries.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use crate::init::AiTool;
+
+#[derive(Debug, Clone)]
+pub(crate) struct Collision {
+    pub location: PathBuf,
+    pub kind: CollisionKind,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum CollisionKind {
+    /// A PreToolUse-style hook already runs a competing shell-rewrite
+    /// binary. Double-compression is the risk.
+    HookBinary { binary: String },
+    /// A rules/instructions file already references another compressor.
+    /// Adding trs won't corrupt output, but the agent sees conflicting
+    /// guidance.
+    RulesCompressor { signature: String },
+}
+
+/// Competitor hook-command substrings. Anything matched here inside a
+/// JSON config's string values is flagged. Keep this list short and
+/// specific — false positives here abort the user's install.
+const HOOK_COMPETITORS: &[&str] = &[
+    "rtk rewrite",
+    "rtk proxy",
+    "rtk git",
+    "token-optimizer",
+    "tokopt",
+];
+
+/// Competitor signatures in rules/docs files. Broader than the hook list
+/// because rules text can describe the tool without invoking it.
+const RULES_SIGNATURES: &[&str] = &[
+    "rtk (Rust Token Killer)",
+    "RTK - Rust Token Killer",
+    "rtk rewrite",
+    "token-optimizer",
+];
+
+/// Scan every target path for `tool` and return collisions.
+pub(crate) fn detect(tool: &AiTool, global: bool) -> Vec<Collision> {
+    let mut out = Vec::new();
+    for path in target_paths(tool, global) {
+        if !path.exists() {
+            continue;
+        }
+        let is_json = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("json"));
+        if is_json {
+            out.extend(scan_json(&path));
+        } else {
+            out.extend(scan_text(&path));
+        }
+    }
+    out
+}
+
+/// Paths where a competitor hook/rule could realistically live for
+/// `tool`. Mirrors the install targets so we don't miss the place
+/// we're about to write.
+fn target_paths(tool: &AiTool, global: bool) -> Vec<PathBuf> {
+    let home = std::env::var("HOME").ok().map(PathBuf::from);
+    let mut v = Vec::new();
+
+    // Helper closures for readability.
+    let push_home = |v: &mut Vec<PathBuf>, rel: &str| {
+        if let Some(h) = home.as_ref() {
+            v.push(h.join(rel));
+        }
+    };
+
+    match tool {
+        AiTool::Claude => {
+            push_home(&mut v, ".claude/settings.json");
+            push_home(&mut v, ".claude/CLAUDE.md");
+            if !global {
+                v.push(PathBuf::from("hooks/hooks.json"));
+                v.push(PathBuf::from("CLAUDE.md"));
+            }
+        }
+        AiTool::Gemini => {
+            push_home(&mut v, ".gemini/settings.json");
+            push_home(&mut v, ".gemini/GEMINI.md");
+            if !global {
+                v.push(PathBuf::from(".gemini/settings.json"));
+                v.push(PathBuf::from("GEMINI.md"));
+            }
+        }
+        AiTool::Cursor => {
+            push_home(&mut v, ".cursor/hooks.json");
+            if !global {
+                v.push(PathBuf::from(".cursor/hooks.json"));
+            }
+        }
+        AiTool::Droid => {
+            push_home(&mut v, ".factory/settings.json");
+            if !global {
+                v.push(PathBuf::from(".factory/settings.json"));
+            }
+        }
+        AiTool::OpenCode => {
+            push_home(&mut v, ".config/opencode/plugins/trs.ts");
+            if !global {
+                v.push(PathBuf::from(".opencode/plugins/trs.ts"));
+            }
+        }
+        AiTool::Kilo => {
+            push_home(&mut v, ".config/kilo/plugins/trs.ts");
+            if !global {
+                v.push(PathBuf::from(".kilo/plugins/trs.ts"));
+            }
+        }
+        AiTool::Codex => {
+            v.push(PathBuf::from("AGENTS.md"));
+            push_home(&mut v, ".codex/AGENTS.md");
+        }
+        AiTool::Antigravity => {
+            v.push(PathBuf::from(".agent/rules/antigravity-trs-rules.md"));
+        }
+        AiTool::Windsurf => {
+            v.push(PathBuf::from(".windsurfrules"));
+        }
+    }
+    v
+}
+
+fn scan_json(path: &Path) -> Vec<Collision> {
+    let Ok(content) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return Vec::new();
+    };
+    let mut strings = Vec::new();
+    collect_string_values(&val, &mut strings);
+
+    let mut out = Vec::new();
+    for s in &strings {
+        for comp in HOOK_COMPETITORS {
+            // `!contains("trs ")` guards against matching a user's own
+            // wrapper script like `./run-via-trs-and-rtk.sh`.
+            if s.contains(comp) && !s.contains("trs ") {
+                out.push(Collision {
+                    location: path.to_path_buf(),
+                    kind: CollisionKind::HookBinary {
+                        binary: comp.to_string(),
+                    },
+                    detail: truncate(s, 80),
+                });
+                break;
+            }
+        }
+    }
+    out
+}
+
+fn scan_text(path: &Path) -> Vec<Collision> {
+    let Ok(content) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for sig in RULES_SIGNATURES {
+        if content.contains(sig) {
+            out.push(Collision {
+                location: path.to_path_buf(),
+                kind: CollisionKind::RulesCompressor {
+                    signature: sig.to_string(),
+                },
+                detail: format!("file references another compressor ({})", sig),
+            });
+        }
+    }
+    out
+}
+
+fn collect_string_values(val: &serde_json::Value, out: &mut Vec<String>) {
+    match val {
+        serde_json::Value::String(s) => out.push(s.clone()),
+        serde_json::Value::Object(o) => {
+            for v in o.values() {
+                collect_string_values(v, out);
+            }
+        }
+        serde_json::Value::Array(a) => {
+            for v in a {
+                collect_string_values(v, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn truncate(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_string()
+    } else {
+        let truncated: String = s.chars().take(max).collect();
+        format!("{}…", truncated)
+    }
+}
+
+/// Render the collision report a user sees before the install aborts.
+pub(crate) fn format_report(tool: &AiTool, collisions: &[Collision]) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "\nFound {} potential collision(s) while preparing {} install:\n\n",
+        collisions.len(),
+        tool.name()
+    ));
+    for c in collisions {
+        match &c.kind {
+            CollisionKind::HookBinary { binary } => {
+                out.push_str(&format!(
+                    "  ! {} — existing hook runs '{}'\n    {}\n",
+                    c.location.display(),
+                    binary,
+                    c.detail
+                ));
+            }
+            CollisionKind::RulesCompressor { signature } => {
+                out.push_str(&format!(
+                    "  ! {} — references '{}'\n    {}\n",
+                    c.location.display(),
+                    signature,
+                    c.detail
+                ));
+            }
+        }
+    }
+    out.push('\n');
+    out.push_str("Risk: running two shell-compression tools on the same\n");
+    out.push_str("command can double-compress and corrupt output.\n\n");
+    out.push_str("Options:\n");
+    out.push_str("  trs init <tool> --replace   remove competitor hooks, install trs\n");
+    out.push_str("  trs init <tool> --force     install alongside (not recommended)\n");
+    out.push_str("  abort                       (default) fix the collisions manually\n");
+    out
+}
+
+/// True if any collision in the set is a JSON hook collision that
+/// `--replace` can scrub automatically. Rules-file collisions need
+/// manual edits — we don't rewrite someone's markdown for them.
+pub(crate) fn any_hook_collisions(collisions: &[Collision]) -> bool {
+    collisions
+        .iter()
+        .any(|c| matches!(c.kind, CollisionKind::HookBinary { .. }))
+}
+
+/// Scrub competitor entries from a parsed JSON hooks tree. Called from
+/// `init::merge_json_hook` when `--replace` is active.
+pub(crate) fn is_competitor_hook(val: &serde_json::Value) -> bool {
+    match val {
+        serde_json::Value::String(s) => {
+            HOOK_COMPETITORS.iter().any(|c| s.contains(c)) && !s.contains("trs ")
+        }
+        serde_json::Value::Object(o) => o.values().any(is_competitor_hook),
+        serde_json::Value::Array(a) => a.iter().any(is_competitor_hook),
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scan_json_flags_rtk_hook() {
+        let tmp = std::env::temp_dir().join("trs_collision_test_rtk.json");
+        fs::write(
+            &tmp,
+            r#"{"hooks":{"PreToolUse":[{"hooks":[{"command":"rtk rewrite"}]}]}}"#,
+        )
+        .unwrap();
+        let hits = scan_json(&tmp);
+        assert_eq!(hits.len(), 1);
+        assert!(matches!(hits[0].kind, CollisionKind::HookBinary { .. }));
+        fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn scan_json_ignores_trs_hook() {
+        let tmp = std::env::temp_dir().join("trs_collision_test_trs.json");
+        fs::write(
+            &tmp,
+            r#"{"hooks":{"PreToolUse":[{"hooks":[{"command":"trs rewrite"}]}]}}"#,
+        )
+        .unwrap();
+        let hits = scan_json(&tmp);
+        assert!(hits.is_empty());
+        fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn scan_text_flags_rtk_rules() {
+        let tmp = std::env::temp_dir().join("trs_collision_test_rtk_rules.md");
+        fs::write(&tmp, "# My rules\n\nUses rtk rewrite for things.\n").unwrap();
+        let hits = scan_text(&tmp);
+        assert_eq!(hits.len(), 1);
+        fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn is_competitor_hook_matches_nested() {
+        let v: serde_json::Value =
+            serde_json::from_str(r#"{"command":"rtk rewrite","description":"x"}"#).unwrap();
+        assert!(is_competitor_hook(&v));
+    }
+
+    #[test]
+    fn is_competitor_hook_rejects_trs() {
+        let v: serde_json::Value = serde_json::from_str(r#"{"command":"trs rewrite"}"#).unwrap();
+        assert!(!is_competitor_hook(&v));
+    }
+}
