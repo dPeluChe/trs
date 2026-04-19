@@ -189,9 +189,27 @@ fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::Path>) -> T
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
             }),
-        "droid" | "kilo" => Target::NotSupported {
-            reason: "plugin-based agent, no global rules channel",
-        },
+        // Kilo Code is a fork of OpenCode sharing the same loader — it
+        // auto-loads `~/.config/kilo/AGENTS.md` (confirmed in its
+        // session/instruction.ts). Kilo does expose an
+        // `experimental.chat.system.transform` plugin hook we could use
+        // for dynamic injection later, but the static AGENTS.md path
+        // isn't marked experimental so we prefer it.
+        "kilo" => push_home(".config/kilo/AGENTS.md")
+            .map(|path| Target::InlineFile { path })
+            .unwrap_or(Target::NotSupported {
+                reason: "HOME not set",
+            }),
+        // Factory Droid is an official AGENTS.md adopter — the CLI
+        // auto-loads `~/.factory/AGENTS.md` as the global fallback
+        // (project AGENTS.md files override it). Same pattern as
+        // Codex/OpenCode/Kilo. Reference:
+        //   https://docs.factory.ai/cli/configuration/agents-md
+        "droid" => push_home(".factory/AGENTS.md")
+            .map(|path| Target::InlineFile { path })
+            .unwrap_or(Target::NotSupported {
+                reason: "HOME not set",
+            }),
         "antigravity" => Target::NotSupported {
             reason: "rules are per-project only — run `trs init antigravity`",
         },
