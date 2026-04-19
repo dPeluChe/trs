@@ -607,13 +607,13 @@ pub(crate) fn output_has_failure_signal(text: &str) -> bool {
 const CREDENTIAL_MARKERS: &[&str] = &[
     "aws_access_key_id",
     "aws_secret_access_key",
-    "AKIA",  // AWS access key prefix (IAM user)
-    "ASIA",  // AWS temp session key prefix (STS)
-    "ghp_",  // GitHub personal access token
+    "AKIA", // AWS access key prefix (IAM user)
+    "ASIA", // AWS temp session key prefix (STS)
+    "ghp_", // GitHub personal access token
     "github_pat_",
-    "gho_",  // GitHub OAuth token
-    "ghu_",  // GitHub user-to-server token
-    "sk_live_",  // Stripe live secret
+    "gho_",     // GitHub OAuth token
+    "ghu_",     // GitHub user-to-server token
+    "sk_live_", // Stripe live secret
     "sk_test_",
     "rk_live_",
     "Bearer ",

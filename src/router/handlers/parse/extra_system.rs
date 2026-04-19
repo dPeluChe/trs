@@ -361,7 +361,10 @@ impl ParseHandler {
                     out.push_str(&format!("{}\n", info_last));
                 }
                 if !creds.is_empty() {
-                    out.push_str(&format!("preserved ({} credential-bearing):\n", creds.len()));
+                    out.push_str(&format!(
+                        "preserved ({} credential-bearing):\n",
+                        creds.len()
+                    ));
                     for c in &creds {
                         out.push_str(&format!("  {}\n", c));
                     }
