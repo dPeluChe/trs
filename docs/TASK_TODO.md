@@ -38,6 +38,38 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ---
 
+## Phase 2.5 — Ideas from competitor analysis (token-optimizer)
+
+Researched https://github.com/alexgreensh/token-optimizer (2026-04-18)
+for ideas. Items worth adopting:
+
+- [ ] **Credential preservation scan**: pre-scan every handler's input for
+      AWS keys, GitHub PATs, Stripe secrets, JWT tokens, HTTP basic-auth,
+      DB connection URIs. Re-inject any line containing them so
+      compression never silently drops a credential. High safety value,
+      low effort (one regex pre-pass across every parse handler).
+- [ ] **Multilingual error keywords**: add `fehler:`, `错误`, `エラー`,
+      `erreur:`, `ошибка:` to the list of tokens that surface a line as
+      "error". Today we only match English `error:`/`error[`. Low effort,
+      protects users running non-English locale tools.
+- [ ] **10% ratio gate**: if `compressed_bytes / input_bytes > 0.90`, skip
+      the compression and emit the raw output. Guards against handlers
+      that "succeed" but barely improve things — the risk of dropping
+      something meaningful isn't worth the 8% savings. Apply once in
+      `classifier_exec` after the handler returns.
+- [ ] **Fail-open on errors**: if the subprocess returned non-zero exit or
+      the output matches any `(error|panic|fatal|traceback)` pattern, skip
+      compression entirely. Today we still run the parser on error output
+      which can cut useful stack traces.
+- [ ] **Lint rule grouping**: for eslint/ruff/pylint/golangci-lint output,
+      group `file:line:col - rule (source)` entries by file and rule.
+      Reduces N file-repeated lines to a single "src/foo.rs (3): W
+      unused_import 8:23, 12:5, 45:7".
+- [ ] **SQLite metrics** (consider): token-optimizer uses a SQLite
+      `compression_events` table instead of JSONL. Enables trending
+      queries (`WHERE feature='git-status' AND quality_preserved=0`).
+      Medium effort, good-to-have.
+
 ## Phase 3 — Agent integration follow-ups
 
 Context: v0.5.6 fixed all 9 supported agents end-to-end. See
