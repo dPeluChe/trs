@@ -20,6 +20,20 @@ impl ParseHandler {
         let input = Self::read_input_raw(file)?;
         let input_bytes = input.len();
 
+        // Fail-open: brew crashes leak useful recovery info we don't want
+        // to compress away (e.g. "Permission denied", Ruby stack traces).
+        if super::super::common::output_has_failure_signal(&input) {
+            print!("{}", input);
+            if ctx.stats {
+                CommandStats::new()
+                    .with_reducer("brew-passthrough")
+                    .with_input_bytes(input_bytes)
+                    .with_output_bytes(input_bytes)
+                    .print();
+            }
+            return Ok(());
+        }
+
         let mut installed: Vec<String> = Vec::new();
         let mut errors: Vec<String> = Vec::new();
         let mut warnings: Vec<String> = Vec::new();
@@ -39,20 +53,18 @@ impl ParseHandler {
             // `==> …` lines: mostly noise (Fetching / Downloading / Pouring /
             // Installing), but errors/warnings sometimes ride the same prefix.
             if line.starts_with("==>") {
-                let lower = line.to_ascii_lowercase();
-                if lower.contains("error:") {
+                if super::super::common::is_error_line(line) {
                     errors.push(line.to_string());
-                } else if lower.contains("warning:") {
+                } else if super::super::common::is_warning_line(line) {
                     warnings.push(line.to_string());
                 }
                 continue;
             }
 
             // Freestanding errors/warnings (not under `==>`).
-            let lower = line.to_ascii_lowercase();
-            if lower.starts_with("error:") || lower.contains(": error:") {
+            if super::super::common::is_error_line(line) {
                 errors.push(line.to_string());
-            } else if lower.starts_with("warning:") || lower.contains(": warning:") {
+            } else if super::super::common::is_warning_line(line) {
                 warnings.push(line.to_string());
             }
         }

@@ -219,19 +219,19 @@ impl ParseHandler {
             if t.is_empty() {
                 continue;
             }
-            let lower = t.to_lowercase();
+            let lower = t.to_ascii_lowercase();
             if (lower.contains("added") || lower.contains("removed")) && lower.contains("package") {
                 summary = t.to_string();
             } else if lower.starts_with("successfully installed") {
                 for pkg in t.split_whitespace().skip(2) {
                     added.push(pkg.to_string());
                 }
-            } else if lower.starts_with("npm warn") || lower.starts_with("warn ") {
-                warnings += 1;
-            } else if lower.starts_with("npm error")
-                || lower.starts_with("error")
-                || lower.starts_with("err!")
+            } else if lower.starts_with("npm warn")
+                || lower.starts_with("warn ")
+                || super::super::common::is_warning_line(t)
             {
+                warnings += 1;
+            } else if lower.starts_with("npm error") || super::super::common::is_error_line(t) {
                 errors.push(t.to_string());
             }
         }
@@ -265,8 +265,25 @@ impl ParseHandler {
     ) -> CommandResult {
         let input = Self::read_input(file)?;
         let input_bytes = input.len();
+
+        // Fail-open: if the build subprocess clearly crashed (panic, traceback,
+        // fatal), don't let our signature/error extraction drop context the
+        // user needs to debug. Pass through verbatim.
+        if super::super::common::output_has_failure_signal(&input) {
+            print!("{}", input);
+            if ctx.stats {
+                CommandStats::new()
+                    .with_reducer("build-passthrough")
+                    .with_input_bytes(input_bytes)
+                    .with_output_bytes(input_bytes)
+                    .print();
+            }
+            return Ok(());
+        }
+
         let mut errors: Vec<String> = Vec::new();
         let mut warnings: Vec<String> = Vec::new();
+        let mut creds: Vec<String> = Vec::new();
         let mut info_last = String::new();
         let mut success = true;
 
@@ -275,42 +292,80 @@ impl ParseHandler {
             if t.is_empty() {
                 continue;
             }
-            let lower = t.to_lowercase();
-            if lower.contains("error[")
-                || lower.starts_with("error:")
-                || lower.contains("): error ")
-                || lower.contains(": error:")
-            {
+            // Preserve any line that looks credential-bearing. It stays in
+            // the output even when nothing else about the line would keep it.
+            if super::super::common::contains_credential(t) {
+                creds.push(t.to_string());
+            }
+            if super::super::common::is_error_line(t) {
                 errors.push(t.to_string());
                 success = false;
-            } else if lower.contains("warning[")
-                || lower.starts_with("warning:")
-                || lower.contains(": warning:")
-            {
+            } else if super::super::common::is_warning_line(t) {
                 warnings.push(t.to_string());
-            } else if lower.starts_with("compiling ") || lower.starts_with("finished ") {
-                info_last = t.to_string();
-            } else if lower.starts_with("build complete!")
-                || lower.starts_with("** build succeeded **")
-                || lower.starts_with("** build failed **")
-                || lower.starts_with("build succeeded")
-            {
-                // Swift (swift build) and xcodebuild success/failure sentinels.
-                info_last = t.to_string();
-                if lower.contains("failed") {
-                    success = false;
+            } else {
+                let lower = t.to_ascii_lowercase();
+                if lower.starts_with("compiling ") || lower.starts_with("finished ") {
+                    info_last = t.to_string();
+                } else if lower.starts_with("build complete!")
+                    || lower.starts_with("** build succeeded **")
+                    || lower.starts_with("** build failed **")
+                    || lower.starts_with("build succeeded")
+                {
+                    // Swift (swift build) and xcodebuild success/failure sentinels.
+                    info_last = t.to_string();
+                    if lower.contains("failed") {
+                        success = false;
+                    }
                 }
             }
         }
         warnings.dedup();
+        creds.dedup();
 
         let output = match ctx.format {
-            OutputFormat::Json => serde_json::json!({"success": success, "errors": errors, "error_count": errors.len(), "warnings": warnings, "warning_count": warnings.len()}).to_string(),
+            OutputFormat::Json => serde_json::json!({
+                "success": success,
+                "errors": errors,
+                "error_count": errors.len(),
+                "warnings": warnings,
+                "warning_count": warnings.len(),
+                "credentials_preserved": creds,
+            })
+            .to_string(),
             _ => {
-                let mut out = format!("build: {} ({} errors, {} warnings)\n", if success {"ok"} else {"FAILED"}, errors.len(), warnings.len());
-                if !errors.is_empty() { out.push_str(&format!("errors ({}):\n", errors.len())); for e in errors.iter().take(20) { out.push_str(&format!("  {}\n", e)); } if errors.len() > 20 { out.push_str(&format!("  ...+{} more\n", errors.len()-20)); } }
-                if !warnings.is_empty() { out.push_str(&format!("warnings ({}):\n", warnings.len())); for w in warnings.iter().take(10) { out.push_str(&format!("  {}\n", w)); } if warnings.len() > 10 { out.push_str(&format!("  ...+{} more\n", warnings.len()-10)); } }
-                if !info_last.is_empty() { out.push_str(&format!("{}\n", info_last)); }
+                let mut out = format!(
+                    "build: {} ({} errors, {} warnings)\n",
+                    if success { "ok" } else { "FAILED" },
+                    errors.len(),
+                    warnings.len()
+                );
+                if !errors.is_empty() {
+                    out.push_str(&format!("errors ({}):\n", errors.len()));
+                    for e in errors.iter().take(20) {
+                        out.push_str(&format!("  {}\n", e));
+                    }
+                    if errors.len() > 20 {
+                        out.push_str(&format!("  ...+{} more\n", errors.len() - 20));
+                    }
+                }
+                if !warnings.is_empty() {
+                    out.push_str(&format!("warnings ({}):\n", warnings.len()));
+                    for w in warnings.iter().take(10) {
+                        out.push_str(&format!("  {}\n", w));
+                    }
+                    if warnings.len() > 10 {
+                        out.push_str(&format!("  ...+{} more\n", warnings.len() - 10));
+                    }
+                }
+                if !info_last.is_empty() {
+                    out.push_str(&format!("{}\n", info_last));
+                }
+                if !creds.is_empty() {
+                    out.push_str(&format!("preserved ({} credential-bearing):\n", creds.len()));
+                    for c in &creds {
+                        out.push_str(&format!("  {}\n", c));
+                    }
+                }
                 out
             }
         };
