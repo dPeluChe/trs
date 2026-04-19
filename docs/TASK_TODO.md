@@ -40,6 +40,18 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] Brew install/upgrade handler — shipped in v0.5.7
 - [x] Ping handler — shipped in v0.5.7
 - [x] Swift / xcodebuild routing — shipped in v0.5.7
+- [x] **Collision check in `trs init`** — shipped in v0.5.7. Detects
+      competing compressor hooks (rtk / token-optimizer) in JSON hook
+      files AND rules files (with `@import` following for Claude /
+      Gemini). Scans home + project symmetrically. `--replace` scrubs
+      competitor hook entries, `--force` installs alongside, default
+      aborts with explicit recommendation.
+- [x] **`trs output-saver`** — shipped in v0.5.7. Closes the output-side
+      gap: installs a compact anti-preamble / anti-narration /
+      result-first rules block into each agent's global config.
+      Check-first UX, sentinel-wrapped idempotent re-install,
+      `--remove` for clean uninstall. 8/9 agents covered
+      (Antigravity is per-project only by design).
 
 ---
 

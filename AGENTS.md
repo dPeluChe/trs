@@ -17,9 +17,19 @@ Reduces token consumption by 68-90% for developers, AI agents, and automation pi
   and — for code fences — cross-references declared symbols against
   the actual source tree (so you can REMOVE ones already defined in src/
   and EXTRACT ones that don't live anywhere yet).
+- `trs output-saver` — install a short output-reduction rules block
+  into each agent's global config (AGENTS.md / CLAUDE.md / Cursor rules).
+  Closes the symmetric gap: trs compresses what agents SEE via
+  `trs rewrite`; output-saver compresses what they EMIT via
+  anti-preamble / anti-narration / structured-output directives.
+  Check-first by default (`--install` to commit, `--remove` to undo).
 - `trs ingest` — project digest for LLM consumption. Use symbol index,
   compression levels, or `owner/repo` URL shorthand.
 - `trs init --show` — see which AI agents have trs hooks installed.
+- `trs init <tool>` — now runs a collision pre-check: detects existing
+  rtk / token-optimizer hooks (via `@imports` too) and aborts by default.
+  `--replace` removes competitor hooks cleanly, `--force` installs
+  alongside (risky — double-compression can corrupt output).
 
 ## Architecture
 

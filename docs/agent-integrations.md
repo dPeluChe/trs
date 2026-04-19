@@ -4,7 +4,42 @@ How `trs` integrates with each supported AI coding agent. Use this doc when
 adding a new agent, debugging a broken integration, or reviewing why a
 specific quirk exists.
 
-Last validated: 2026-04-18 against `trs` v0.5.6.
+Last validated: 2026-04-19 against `trs` v0.5.7.
+
+## Output-saver matrix
+
+`trs output-saver` installs output-reduction rules into each agent's
+global config. Orthogonal to the input-side hook/plugin/rules install
+matrix below. Six distinct target paths across three mechanisms:
+
+| Agent | Mechanism | Path |
+|---|---|---|
+| Claude Code | standalone file + `@import` | `~/.claude/trs-output-saver.md` + line in `~/.claude/CLAUDE.md` |
+| Gemini CLI | standalone file + `@import` | `~/.gemini/trs-output-saver.md` + line in `~/.gemini/GEMINI.md` |
+| Cursor | auto-loaded rules file | `~/.cursor/rules/trs-output-saver.mdc` |
+| Codex | inline with sentinels | `~/.codex/AGENTS.md` |
+| Windsurf | inline with sentinels | `~/.codeium/windsurf/memories/global_rules.md` |
+| OpenCode | inline with sentinels | `~/.config/opencode/AGENTS.md` |
+| Kilo Code | inline with sentinels | `~/.config/kilo/AGENTS.md` |
+| Factory Droid | inline with sentinels | `~/.factory/AGENTS.md` |
+| Antigravity | not supported globally — use `trs init antigravity` per project |
+
+Inline installs use the sentinels
+`<!-- trs:output-saver:start v1 -->` / `<!-- trs:output-saver:end -->`
+so a second run replaces the block between them without touching the
+surrounding user content.
+
+**AGENTS.md convention:** Codex, OpenCode, Kilo, and Droid all auto-load
+the `AGENTS.md` convention (Droid is a signatory of the AGENTS.md
+consortium — see https://factory.ai/news/agents-md). That's why those
+four converge on the same install mechanism.
+
+**Plugin-level hook note:** OpenCode's plugin API has no prompt-layer
+hook (`tool.execute.*` only). Kilo exposes
+`experimental.chat.system.transform` and Droid exposes `SessionStart` /
+`UserPromptSubmit` — both could inject rules dynamically. For a static
+rules block the AGENTS.md file is simpler and less likely to break
+across agent updates.
 
 ## Integration types
 
