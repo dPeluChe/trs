@@ -221,6 +221,28 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
         return;
     }
 
+    // With --replace, scrub every distinct JSON location we flagged. Our
+    // install writes only to the tool's canonical target (e.g. hooks.json),
+    // but the competitor may live in a sibling file (settings.json). If we
+    // only scrub the file we write to, the competitor survives — and
+    // double-compression is back.
+    if opts.replace {
+        let mut seen = std::collections::HashSet::new();
+        for c in &collisions {
+            if !init_collision::is_json_location(c) {
+                continue;
+            }
+            if !seen.insert(c.location.clone()) {
+                continue;
+            }
+            match init_collision::scrub_file(&c.location) {
+                Ok(true) => println!("  scrubbed competitor hook from {}", c.location.display()),
+                Ok(false) => {}
+                Err(e) => eprintln!("  warning: could not scrub {}: {}", c.location.display(), e),
+            }
+        }
+    }
+
     let result = match tool {
         AiTool::Codex => install_codex(),
         AiTool::Antigravity => {

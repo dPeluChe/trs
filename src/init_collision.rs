@@ -269,6 +269,50 @@ pub(crate) fn any_hook_collisions(collisions: &[Collision]) -> bool {
         .any(|c| matches!(c.kind, CollisionKind::HookBinary { .. }))
 }
 
+/// Read `path` as JSON and drop any hook entries whose strings match a
+/// known competitor. Writes the file back when a change was made. Safe
+/// to call when the file isn't the one trs writes to — the scrub is
+/// scoped to arrays under a top-level `hooks` object, which is the
+/// convention every supported agent uses.
+///
+/// Returns `Ok(true)` when the file was modified, `Ok(false)` when it
+/// was already clean, `Err` on I/O or parse failures.
+pub(crate) fn scrub_file(path: &Path) -> Result<bool, String> {
+    let content = fs::read_to_string(path).map_err(|e| format!("{}: {}", path.display(), e))?;
+    let mut val: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("{}: {}", path.display(), e))?;
+
+    let mut changed = false;
+    if let Some(hooks) = val.get_mut("hooks").and_then(|h| h.as_object_mut()) {
+        for (_event, event_val) in hooks.iter_mut() {
+            if let Some(arr) = event_val.as_array_mut() {
+                let before = arr.len();
+                arr.retain(|e| !is_competitor_hook(e));
+                if arr.len() != before {
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    if changed {
+        let pretty =
+            serde_json::to_string_pretty(&val).map_err(|e| format!("{}: {}", path.display(), e))?;
+        fs::write(path, format!("{}\n", pretty))
+            .map_err(|e| format!("{}: {}", path.display(), e))?;
+    }
+    Ok(changed)
+}
+
+/// True when a collision lives in a JSON file we can auto-scrub.
+pub(crate) fn is_json_location(c: &Collision) -> bool {
+    c.location
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("json"))
+        && matches!(c.kind, CollisionKind::HookBinary { .. })
+}
+
 /// Scrub competitor entries from a parsed JSON hooks tree. Called from
 /// `init::merge_json_hook` when `--replace` is active.
 pub(crate) fn is_competitor_hook(val: &serde_json::Value) -> bool {
