@@ -178,10 +178,10 @@ pub(crate) fn estimate_tokens(text: &str) -> usize {
 // Block splitting
 // ================================================================
 
-/// Split content into paragraph-ish blocks:
-///   - blank lines or heading lines are separators
-///   - we track start/end line for reporting
-///   - each block's simhash is computed upfront
+/// Split content into paragraph-ish blocks. Only blank lines are boundaries —
+/// headings stay attached to their following paragraph so a bare `## Section`
+/// doesn't become its own "duplicate" when the same heading appears twice
+/// legitimately in different parts of a doc.
 fn split_into_blocks(content: &str) -> Vec<Block> {
     let mut blocks = Vec::new();
     let mut current = String::new();
@@ -189,24 +189,8 @@ fn split_into_blocks(content: &str) -> Vec<Block> {
     let lines: Vec<&str> = content.lines().collect();
 
     for (idx, line) in lines.iter().enumerate() {
-        let trimmed = line.trim();
-        let is_boundary = trimmed.is_empty() || trimmed.starts_with('#');
-        if is_boundary {
+        if line.trim().is_empty() {
             flush_block(&mut blocks, &mut current, start_line, idx);
-            if trimmed.starts_with('#') {
-                // Headings themselves become 1-line blocks so cross-file
-                // identical heading text still gets flagged.
-                let text = trimmed.to_string();
-                let simhash = compute_simhash(&text);
-                blocks.push(Block {
-                    file_idx: 0,
-                    start_line: idx + 1,
-                    end_line: idx + 1,
-                    text,
-                    simhash,
-                });
-            }
-            start_line = idx + 2;
             continue;
         }
         if current.is_empty() {
@@ -223,16 +207,26 @@ fn split_into_blocks(content: &str) -> Vec<Block> {
 fn flush_block(blocks: &mut Vec<Block>, buf: &mut String, start: usize, end_exclusive: usize) {
     let text = buf.trim().to_string();
     buf.clear();
-    if text.chars().count() < 20 {
-        // Blocks shorter than ~20 chars generate noisy near-duplicates
-        // (headings-only, bullet markers). Skip.
+    // Noise thresholds — too-short blocks generate false-positive duplicates
+    // (same short heading, same "```" code-fence marker, etc.)
+    const MIN_CHARS: usize = 60;
+    if text.chars().count() < MIN_CHARS {
+        return;
+    }
+    // Skip single-line blocks — almost always heading-only or import-style.
+    // Multi-line blocks are where real cross-file duplication hides.
+    if text.lines().count() < 2 {
         return;
     }
     let simhash = compute_simhash(&text);
+    // end_exclusive is the (1-based) index of the blank/EOF boundary; the
+    // last content line is end_exclusive itself when the caller passed a
+    // raw 0-based blank-line index, so `.max(start)` guards single-line
+    // blocks that somehow slipped past the 2-line filter.
     blocks.push(Block {
         file_idx: 0,
         start_line: start,
-        end_line: end_exclusive.saturating_sub(1).max(start),
+        end_line: end_exclusive.max(start),
         text,
         simhash,
     });
@@ -339,29 +333,35 @@ fn find_dead_refs(docs: &[DocFile], root: &Path) -> Vec<DeadRef> {
     out
 }
 
-/// Pick out `@path` imports and markdown `[text](./path)` links whose targets
-/// look like local files (skip URLs, anchors, empty paths).
+/// Pick out `@imports` and markdown `[text](./path)` links whose targets
+/// look like LOCAL files we should be able to resolve (skip URLs, anchors,
+/// npm package names, code-block content).
 fn extract_references(line: &str) -> Vec<String> {
     let mut refs: Vec<String> = Vec::new();
 
     // @imports — Claude Code / agent rules file include syntax.
+    // Be strict here: the `@foo/bar` form is also npm-package syntax
+    // (@heroicons/react, @types/bcryptjs). Only treat as an import if it
+    // has an explicit relative prefix or a recognizable doc extension.
     for token in line.split_whitespace() {
-        if let Some(rest) = token.strip_prefix('@') {
-            let cleaned = rest.trim_end_matches(|c: char| matches!(c, ',' | '.' | ';' | ':'));
-            if looks_like_local_path(cleaned) {
-                refs.push(cleaned.to_string());
-            }
+        let Some(rest) = token.strip_prefix('@') else {
+            continue;
+        };
+        let cleaned = rest.trim_end_matches(|c: char| matches!(c, ',' | '.' | ';' | ':' | ')'));
+        if looks_like_import_path(cleaned) {
+            refs.push(cleaned.to_string());
         }
     }
 
-    // Markdown links: [text](path) — only local paths
+    // Markdown links: [text](path) — only local paths. Same strictness
+    // applies, but markdown link targets are less ambiguous than @imports.
     let bytes = line.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b']' && i + 1 < bytes.len() && bytes[i + 1] == b'(' {
             if let Some(end) = line[i + 2..].find(')') {
                 let path = &line[i + 2..i + 2 + end];
-                if looks_like_local_path(path) {
+                if looks_like_local_markdown_link(path) {
                     refs.push(path.to_string());
                 }
                 i += 2 + end;
@@ -373,7 +373,26 @@ fn extract_references(line: &str) -> Vec<String> {
     refs
 }
 
-fn looks_like_local_path(s: &str) -> bool {
+/// True for tokens like `@./foo.md`, `@../rules/bar.md`, `@docs/guide.md`
+/// but NOT `@heroicons/react`, `@types/bcryptjs` (npm scope packages).
+fn looks_like_import_path(s: &str) -> bool {
+    let s = s.trim();
+    if s.is_empty() {
+        return false;
+    }
+    // Explicit relative path — definitely a local import.
+    if s.starts_with("./") || s.starts_with("../") {
+        return true;
+    }
+    // Has a doc-looking extension we expect to find on disk.
+    const DOC_EXTENSIONS: &[&str] = &[
+        ".md", ".mdx", ".txt", ".json", ".yaml", ".yml", ".toml", ".rs", ".ts", ".tsx", ".js",
+        ".jsx", ".py", ".go", ".rb", ".sh", ".html", ".xml", ".sql",
+    ];
+    DOC_EXTENSIONS.iter().any(|ext| s.ends_with(ext))
+}
+
+fn looks_like_local_markdown_link(s: &str) -> bool {
     let s = s.trim();
     if s.is_empty() || s.starts_with('#') {
         return false;
@@ -381,7 +400,7 @@ fn looks_like_local_path(s: &str) -> bool {
     if s.starts_with("http://") || s.starts_with("https://") || s.starts_with("mailto:") {
         return false;
     }
-    // Anchor-only (`#section`) filtered above. Allow `./x.md`, `../x`, `path/x`, `x.md`.
+    // Skip image/data URIs and anchors — require at least one path-ish char.
     s.contains('.') || s.contains('/')
 }
 
