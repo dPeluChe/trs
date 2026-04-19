@@ -180,7 +180,16 @@ fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::Path>) -> T
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
             }),
-        "droid" | "opencode" | "kilo" => Target::NotSupported {
+        // OpenCode's plugin API exposes tool-level hooks only (no
+        // prompt-mutation hook) — but it auto-loads
+        // `~/.config/opencode/AGENTS.md` globally per the rules docs, so
+        // we reach the LLM through that path instead.
+        "opencode" => push_home(".config/opencode/AGENTS.md")
+            .map(|path| Target::InlineFile { path })
+            .unwrap_or(Target::NotSupported {
+                reason: "HOME not set",
+            }),
+        "droid" | "kilo" => Target::NotSupported {
             reason: "plugin-based agent, no global rules channel",
         },
         "antigravity" => Target::NotSupported {
