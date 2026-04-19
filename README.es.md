@@ -30,7 +30,7 @@
 
 El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la` que el agente volcaba a su contexto costaba dinero real, y la relación señal/ruido en esos comandos era pésima. Empezamos a escribir herramientas pequeñas — primero para nosotros, después para el equipo — que redujeran lo que el agente realmente tenía que leer.
 
-En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Ver a otro equipo atacando el mismo problema en serio fue lo que nos empujó a dejar de tratar nuestro trabajo como tooling interno y publicarlo. rtk es excelente y vale la pena usarlo; trs existe porque queríamos aprender el dominio construyéndolo.
+En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Ver a otro equipo atacando el mismo problema en serio fue lo que nos empujó a dejar de tratar nuestro trabajo como tooling interno y publicarlo. trs nació de iniciativa propia — lo fuimos iterando y expandiendo conforme aprendíamos más sobre dónde se queman realmente los tokens.
 
 Mientras más lo usábamos, más vimos que la oportunidad era más grande que los hooks de input. `trs output-saver` instala reglas en la config global de cada agente para que las respuestas también regresen más cortas. `trs audit-docs` audita CLAUDE.md / AGENTS.md buscando el bloat que cada sesión vuelve a leer. `trs ingest` comprime repositorios enteros en un índice de contexto listo para el LLM y con control de budget. Sigue siendo un binario estático único, sin deps en runtime — la historia nada más creció más allá de los hooks.
 
