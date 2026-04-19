@@ -416,6 +416,16 @@ pub enum Commands {
         args: Vec<String>,
     },
 
+    /// Audit AI-agent instruction files (CLAUDE.md, AGENTS.md, .windsurfrules,
+    /// .cursor/rules/*, .agent/rules/*) for bloat, cross-file duplicates, dead
+    /// references, and staleness. Surfaces what's silently inflating every
+    /// agent session's context.
+    AuditDocs {
+        /// Project root to audit (default: current directory).
+        #[arg(default_value = ".")]
+        path: String,
+    },
+
     /// External command (auto-detected via allow_external_subcommands)
     #[command(external_subcommand)]
     External(Vec<String>),

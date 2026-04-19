@@ -21,6 +21,7 @@
 )]
 use clap::Parser;
 
+mod audit_docs;
 mod benchmark;
 mod classifier;
 mod classifier_exec;
@@ -144,6 +145,9 @@ fn main() {
             if has_fail {
                 std::process::exit(1);
             }
+        }
+        Some(Commands::AuditDocs { path }) => {
+            audit_docs::run_audit_docs(std::path::Path::new(path));
         }
         Some(Commands::Benchmark {
             command,
@@ -397,6 +401,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "doctor"
             | "benchmark"
             | "ingest"
+            | "audit-docs"
             | "stats"
             | "raw"
             | "help"
