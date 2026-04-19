@@ -30,7 +30,7 @@
 
 Token pricing kept climbing. Every `git status`, `cargo test`, and `ls -la` the agent rendered into its context cost real money, and the signal-to-noise ratio on those commands was painfully low. We started writing small tools — first for ourselves, then for the team — to reduce what the agent actually had to read.
 
-Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Watching rtk keep scaling in adoption is what pushed us to stop treating our work as internal tooling and publish it. trs grew from our own initiative — we kept iterating and expanding the approach as we learned more about where tokens actually burn.
+Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). By then our tools had been evolving on their own, and rtk's momentum confirmed what we'd started to feel — that the problem mattered beyond our own workflow. That's what pushed us to publish instead of keeping it internal. trs kept iterating and expanding as we learned more about where tokens actually burn.
 
 The more we used it, the more we saw the opportunity was bigger than input hooks. `trs output-saver` installs rules into each agent's global config so replies come back shorter too. `trs audit-docs` inspects CLAUDE.md / AGENTS.md for the bloat every session re-loads. `trs ingest` compresses whole repos into a budget-aware, LLM-ready context index. Still a single static binary with zero runtime deps — the story just got bigger than hooks.
 
