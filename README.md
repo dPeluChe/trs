@@ -28,7 +28,11 @@
 
 ## Why
 
-trs started as a learning project. AI coding sessions were burning tens of thousands of tokens just rendering `git status`, `cargo test`, and `ls -la` into the agent's context, and there had to be a better signal-to-noise ratio. We studied the prior art, then wrote trs from scratch in Rust to fit our own workflow: a single static binary, zero runtime deps, our own parsers per command, and an ingest story tuned for LLM context windows.
+Token pricing kept climbing. Every `git status`, `cargo test`, and `ls -la` the agent rendered into its context cost real money, and the signal-to-noise ratio on those commands was painfully low. We started writing small tools — first for ourselves, then for the team — to reduce what the agent actually had to read.
+
+Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Seeing another team pursue the same problem seriously is what pushed us to stop treating our work as internal tooling and publish it. rtk is excellent and worth using; trs exists because we wanted to really learn the domain by building it.
+
+The more we used it, the more we saw the opportunity was bigger than input hooks. `trs output-saver` installs rules into each agent's global config so replies come back shorter too. `trs audit-docs` inspects CLAUDE.md / AGENTS.md for the bloat every session re-loads. `trs ingest` compresses whole repos into a budget-aware, LLM-ready context index. Still a single static binary with zero runtime deps — the story just got bigger than hooks.
 
 The landing page has the full write-up: <https://dpeluche.github.io/trs/>
 

@@ -847,25 +847,32 @@
 
     <div class="origin-block">
       <p>
-        It started as a curiosity about token efficiency: AI coding sessions
-        were burning tens of thousands of tokens just rendering
+        Token pricing kept climbing. AI coding sessions were burning tens
+        of thousands of tokens just rendering
         <code class="inline">git status</code>, <code class="inline">cargo test</code>,
-        and <code class="inline">ls&nbsp;-la</code> into the agent's context.
-        There had to be a better signal-to-noise ratio.
+        and <code class="inline">ls&nbsp;-la</code> into the agent's context,
+        and the signal-to-noise ratio was painfully low. We started writing
+        small tools &mdash; first for ourselves, then for the team &mdash;
+        to reduce what the agent actually had to read.
       </p>
       <p>
-        The space already had thoughtful prior art &mdash; most notably
-        <a href="https://github.com/rtk-ai/rtk" style="color: var(--accent);">rtk</a>,
-        which we genuinely admire. We studied it to understand the problem
-        (output shapes, hook protocols, compression trade-offs), then wrote
-        trs from scratch in Rust to fit our own workflow: a single static
-        binary, zero runtime deps, our own parsers per command, and an
-        ingest story tuned for LLM context windows.
+        Along the way we came across
+        <a href="https://github.com/rtk-ai/rtk" style="color: var(--accent);">rtk</a>
+        (Rust Token Killer). Seeing another team pursue the same problem
+        seriously is what pushed us to stop treating our work as internal
+        tooling and publish it. rtk is excellent and worth using; trs
+        exists because we wanted to really learn the domain by building
+        it.
       </p>
-      <p class="credit">
-        Credit where it's due: rtk is excellent and worth using. trs exists
-        because we wanted to really learn the domain by building it, not
-        because their design was wrong.
+      <p>
+        The more we used it, the more we saw the opportunity was bigger
+        than input hooks. <code class="inline">trs output-saver</code>
+        installs rules into each agent's global config so replies come
+        back shorter. <code class="inline">trs audit-docs</code> inspects
+        CLAUDE.md / AGENTS.md for the bloat that loads on every session.
+        <code class="inline">trs ingest</code> compresses whole projects
+        into an LLM-ready context index. Still a single static binary,
+        zero runtime deps &mdash; the story just got bigger than hooks.
       </p>
     </div>
   </div>
