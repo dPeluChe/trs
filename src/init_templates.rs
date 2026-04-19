@@ -121,6 +121,25 @@ trs cargo clippy
 
 This reduces token consumption by 68-99% without losing signal.
 
+## Output hygiene
+
+Keep responses terse — these rules reduce token spend on every reply:
+
+- No preambles. Don't open with "Sure!", "Great question!", "Absolutely!",
+  "I'll help you...", or "You're absolutely right!". Start with the answer.
+- No narration. Don't announce what you're about to do or recap what you
+  just did — the diff / tool output already shows it.
+- Result first; explanation only if non-obvious. State the finding, show
+  the fix, stop.
+- Structured output when the data is structured: bullets, tables, JSON.
+  Prose only when the reader is human and the content is narrative.
+- Never invent file paths, function names, or API fields. If unknown,
+  say "UNKNOWN" or return null — guessing costs more tokens than asking.
+- One pass: don't iterate on passing code, don't refactor / polish unless
+  asked.
+
+User instructions always override these rules.
+
 ## Keeping this file lean
 
 Periodically run `trs audit-docs` in this project to surface content that
@@ -171,6 +190,25 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
 
 Re-run `trs init antigravity` to pick up future updates to this guidance.
 
+## Output hygiene
+
+Keep responses terse — these rules reduce token spend on every reply:
+
+- No preambles. Don't open with "Sure!", "Great question!", "Absolutely!",
+  "I'll help you...", or "You're absolutely right!". Start with the answer.
+- No narration. Don't announce what you're about to do or recap what you
+  just did — the diff / tool output already shows it.
+- Result first; explanation only if non-obvious. State the finding, show
+  the fix, stop.
+- Structured output when the data is structured: bullets, tables, JSON.
+  Prose only when the reader is human and the content is narrative.
+- Never invent file paths, function names, or API fields. If unknown,
+  say "UNKNOWN" or return null — guessing costs more tokens than asking.
+- One pass: don't iterate on passing code, don't refactor / polish unless
+  asked.
+
+User instructions always override these rules.
+
 ## Keeping this file lean
 
 Run `trs audit-docs` periodically to spot content that belongs elsewhere
@@ -202,6 +240,25 @@ trs pnpm test
 
 Commands without a dedicated trs parser still get whitespace / ANSI
 compression (~30-40% reduction). Pipes and chains are passed through unchanged.
+
+## Output hygiene
+
+Keep responses terse — these rules reduce token spend on every reply:
+
+- No preambles. Don't open with "Sure!", "Great question!", "Absolutely!",
+  "I'll help you...", or "You're absolutely right!". Start with the answer.
+- No narration. Don't announce what you're about to do or recap what you
+  just did — the diff / tool output already shows it.
+- Result first; explanation only if non-obvious. State the finding, show
+  the fix, stop.
+- Structured output when the data is structured: bullets, tables, JSON.
+  Prose only when the reader is human and the content is narrative.
+- Never invent file paths, function names, or API fields. If unknown,
+  say "UNKNOWN" or return null — guessing costs more tokens than asking.
+- One pass: don't iterate on passing code, don't refactor / polish unless
+  asked.
+
+User instructions always override these rules.
 
 ## Keeping this file lean
 
