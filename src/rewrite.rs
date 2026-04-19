@@ -65,6 +65,7 @@ const REWRITE_PREFIXES: &[&str] = &[
     "ollama ",
     "kubectl ",
     "swift ",
+    "xcodebuild ",
     "ping ",
 ];
 

@@ -288,6 +288,11 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "build" | "test" | "run" => Some(ParseCommands::Build { file: None }),
             _ => None,
         },
+        // xcodebuild output is among the chattiest — compile command echoes,
+        // Write auxiliary files, dependency checks — but we only need
+        // warnings/errors/BUILD-SUCCEEDED|FAILED. handle_build does exactly
+        // that via error:/warning: patterns + success sentinel matching.
+        "xcodebuild" => Some(ParseCommands::Build { file: None }),
 
         // Network diagnostics
         "ping" => Some(ParseCommands::Ping { file: None }),

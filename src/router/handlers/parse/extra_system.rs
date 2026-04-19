@@ -292,10 +292,14 @@ impl ParseHandler {
                 info_last = t.to_string();
             } else if lower.starts_with("build complete!")
                 || lower.starts_with("** build succeeded **")
+                || lower.starts_with("** build failed **")
                 || lower.starts_with("build succeeded")
             {
-                // Swift (swift build) and xcodebuild success sentinels.
+                // Swift (swift build) and xcodebuild success/failure sentinels.
                 info_last = t.to_string();
+                if lower.contains("failed") {
+                    success = false;
+                }
             }
         }
         warnings.dedup();
