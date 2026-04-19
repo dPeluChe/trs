@@ -35,36 +35,46 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 ### Improvements to existing parsers
 - [ ] Log timestamp normalization (first = t0, rest = relative delta)
 - [ ] `git diff` full (not just --stat) — reformat unified diff headers
+- [x] Pipe/redirect first-segment rewrite — shipped in v0.5.6
+- [x] Stats header UX overhaul — shipped in v0.5.7
+- [x] Brew install/upgrade handler — shipped in v0.5.7
+- [x] Ping handler — shipped in v0.5.7
+- [x] Swift / xcodebuild routing — shipped in v0.5.7
 
 ---
 
 ## Phase 2.5 — Ideas from competitor analysis (token-optimizer)
 
-Researched https://github.com/alexgreensh/token-optimizer (2026-04-18)
-for ideas. Items worth adopting:
+Researched https://github.com/alexgreensh/token-optimizer for ideas.
+Status of each candidate after v0.5.7:
 
-- [ ] **Credential preservation scan**: pre-scan every handler's input for
-      AWS keys, GitHub PATs, Stripe secrets, JWT tokens, HTTP basic-auth,
-      DB connection URIs. Re-inject any line containing them so
-      compression never silently drops a credential. High safety value,
-      low effort (one regex pre-pass across every parse handler).
-- [ ] **Multilingual error keywords**: add `fehler:`, `错误`, `エラー`,
-      `erreur:`, `ошибка:` to the list of tokens that surface a line as
-      "error". Today we only match English `error:`/`error[`. Low effort,
-      protects users running non-English locale tools.
+- [x] **Credential preservation scan** — shipped in v0.5.7.
+      `common::contains_credential` + new "preserved" bucket in
+      handle_build. Covers AWS/GitHub/Stripe/JWT/URL basic-auth/PEM.
+- [x] **Multilingual error keywords** — shipped in v0.5.7. 10 locales
+      (en/de/fr/es/pt/it/ru/zh-simp/zh-trad/ja/ko) in
+      `common::is_error_line` + `is_warning_line`.
+- [x] **Fail-open on errors** — shipped in v0.5.7.
+      `common::output_has_failure_signal` guards handle_build and
+      handle_brew (can extend to more handlers as feedback arrives).
 - [ ] **10% ratio gate**: if `compressed_bytes / input_bytes > 0.90`, skip
-      the compression and emit the raw output. Guards against handlers
-      that "succeed" but barely improve things — the risk of dropping
-      something meaningful isn't worth the 8% savings. Apply once in
-      `classifier_exec` after the handler returns.
-- [ ] **Fail-open on errors**: if the subprocess returned non-zero exit or
-      the output matches any `(error|panic|fatal|traceback)` pattern, skip
-      compression entirely. Today we still run the parser on error output
-      which can cut useful stack traces.
+      the compression and emit raw. Guards against handlers that succeed
+      but barely improve things. Apply once in `classifier_exec` after
+      the handler returns.
 - [ ] **Lint rule grouping**: for eslint/ruff/pylint/golangci-lint output,
       group `file:line:col - rule (source)` entries by file and rule.
-      Reduces N file-repeated lines to a single "src/foo.rs (3): W
-      unused_import 8:23, 12:5, 45:7".
+      Reduces N file-repeated lines to "src/foo.rs (3): W unused_import
+      8:23, 12:5, 45:7".
+- [ ] **Read caching** (newly-identified from fleet-auditor deep-dive).
+      If the agent reads the same file twice in a session, return the
+      first-read cache instead of re-reading. Saves real tokens on
+      multi-turn sessions where the agent inspects the same file
+      repeatedly. Opt-in flag to start (`trs --cache-reads`).
+- [ ] **Docs auditor extensions** (from v0.5.7 dog-fooding):
+      - recommend section-level split points (largest H2/H3 by tokens)
+      - detect CLAUDE.md content that duplicates README.md
+      - SQL / query detection in language-less fences (pure text that
+        reads like SQL)
 - [ ] **SQLite metrics** (consider): token-optimizer uses a SQLite
       `compression_events` table instead of JSONL. Enables trending
       queries (`WHERE feature='git-status' AND quality_preserved=0`).

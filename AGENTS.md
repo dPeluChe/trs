@@ -5,6 +5,22 @@
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
 Reduces token consumption by 68-90% for developers, AI agents, and automation pipelines.
 
+## Related commands worth knowing
+
+- `trs stats` — cumulative savings across commands (shows date range, today
+  vs. average, last command, top-reducers).
+- `trs doctor` — installation health check. Warns when AGENTS.md / CLAUDE.md
+  exceed ~5k tokens and points at `trs audit-docs`.
+- `trs audit-docs` — static analysis of agent instruction files
+  (CLAUDE.md, AGENTS.md, rules files). Surfaces cross-file duplicates,
+  embedded code/SQL/JSON blocks that belong elsewhere, dead `@imports`,
+  and — for code fences — cross-references declared symbols against
+  the actual source tree (so you can REMOVE ones already defined in src/
+  and EXTRACT ones that don't live anywhere yet).
+- `trs ingest` — project digest for LLM consumption. Use symbol index,
+  compression levels, or `owner/repo` URL shorthand.
+- `trs init --show` — see which AI agents have trs hooks installed.
+
 ## Architecture
 
 ```
