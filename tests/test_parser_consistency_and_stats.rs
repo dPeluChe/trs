@@ -221,7 +221,7 @@ fn test_parser_handles_empty_lines() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     // Should still parse the one valid line
-    assert!(json["files"].as_array().unwrap().len() > 0);
+    assert!(!json["files"].as_array().unwrap().is_empty());
 }
 
 #[test]

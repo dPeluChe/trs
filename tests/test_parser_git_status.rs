@@ -136,9 +136,9 @@ fn test_parse_git_status_mixed() {
     let stdout = String::from_utf8_lossy(&output);
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
-    assert!(json["staged"].as_array().unwrap().len() > 0);
-    assert!(json["unstaged"].as_array().unwrap().len() > 0);
-    assert!(json["untracked"].as_array().unwrap().len() > 0);
+    assert!(!json["staged"].as_array().unwrap().is_empty());
+    assert!(!json["unstaged"].as_array().unwrap().is_empty());
+    assert!(!json["untracked"].as_array().unwrap().is_empty());
 }
 
 #[test]

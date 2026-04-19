@@ -167,8 +167,10 @@ fn test_parse_grep_format_raw() {
 
 #[test]
 fn test_parse_grep_empty_compact() {
-    let mut result = GrepOutput::default();
-    result.is_empty = true;
+    let result = GrepOutput {
+        is_empty: true,
+        ..Default::default()
+    };
     let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
 
     assert!(output.contains("grep: no matches"));
@@ -342,7 +344,7 @@ fn test_parse_grep_truncation_fields_not_truncated() {
     let input = "src/main.rs:42:fn main() {";
     let result = ParseHandler::parse_grep(input).unwrap();
 
-    assert_eq!(result.is_truncated, false);
+    assert!(!result.is_truncated);
     assert_eq!(result.total_files, 1);
     assert_eq!(result.total_matches, 1);
     assert_eq!(result.files_shown, 1);
@@ -366,7 +368,7 @@ fn test_truncate_grep_files() {
     ParseHandler::truncate_grep(&mut result, 50, 20);
 
     // After truncation
-    assert_eq!(result.is_truncated, true);
+    assert!(result.is_truncated);
     assert_eq!(result.files_shown, 50);
     assert_eq!(result.total_files, 60);
     assert_eq!(result.files.len(), 50);
@@ -389,7 +391,7 @@ fn test_truncate_grep_matches_per_file() {
     ParseHandler::truncate_grep(&mut result, 50, 20);
 
     // After truncation
-    assert_eq!(result.is_truncated, true);
+    assert!(result.is_truncated);
     assert_eq!(result.matches_shown, 20);
     assert_eq!(result.total_matches, 25);
     assert_eq!(result.files[0].matches.len(), 20);
@@ -414,7 +416,7 @@ fn test_truncate_grep_both_limits() {
     ParseHandler::truncate_grep(&mut result, 50, 20);
 
     // After truncation: 50 files * 20 matches = 1000 matches shown
-    assert_eq!(result.is_truncated, true);
+    assert!(result.is_truncated);
     assert_eq!(result.files_shown, 50);
     assert_eq!(result.matches_shown, 1000);
     assert_eq!(result.files.len(), 50);

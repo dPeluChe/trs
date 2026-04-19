@@ -346,7 +346,8 @@ fn test_combined_large_array_with_id_fields() {
     let items: Vec<String> = (0..10)
         .map(|i| format!(r#"{{"user_id":{},"name":"user{}"}}"#, i, i))
         .collect();
-    let json_str = format!(r#"{{"users":{}}}"#, format!("[{}]", items.join(",")));
+    let users_array = format!("[{}]", items.join(","));
+    let json_str = format!(r#"{{"users":{}}}"#, users_array);
     let json: serde_json::Value = serde_json::from_str(&json_str).unwrap();
     let mut buf = String::new();
     format_structure(&json, &mut buf, 0, usize::MAX);
