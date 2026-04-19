@@ -15,10 +15,16 @@
 //! PreToolUse events that have nothing to do with us. We match on a
 //! short, curated list of known compressor binaries.
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::init::AiTool;
+
+/// Max recursion depth when following `@imports`. Claude Code currently
+/// caps imports at 5 levels — we stay below that so a circular chain
+/// never eats our stack even if the visited-set guard somehow missed it.
+const IMPORT_MAX_DEPTH: usize = 3;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Collision {
@@ -72,7 +78,8 @@ pub(crate) fn detect(tool: &AiTool, global: bool) -> Vec<Collision> {
         if is_json {
             out.extend(scan_json(&path));
         } else {
-            out.extend(scan_text(&path));
+            let mut visited = HashSet::new();
+            out.extend(scan_text(&path, IMPORT_MAX_DEPTH, &mut visited));
         }
     }
     out
@@ -177,10 +184,23 @@ fn scan_json(path: &Path) -> Vec<Collision> {
     out
 }
 
-fn scan_text(path: &Path) -> Vec<Collision> {
+/// Scan `path` for compressor signatures, then follow any `@file.md`
+/// import lines (Claude Code / Gemini CLI syntax) and scan those too.
+/// The `visited` set breaks import cycles; `depth` caps recursion.
+fn scan_text(path: &Path, depth: usize, visited: &mut HashSet<PathBuf>) -> Vec<Collision> {
+    if depth == 0 {
+        return Vec::new();
+    }
+    // Canonicalize where possible so symlinks + relative paths don't
+    // masquerade as distinct entries in the visited set.
+    let key = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    if !visited.insert(key) {
+        return Vec::new();
+    }
     let Ok(content) = fs::read_to_string(path) else {
         return Vec::new();
     };
+
     let mut out = Vec::new();
     for sig in RULES_SIGNATURES {
         if content.contains(sig) {
@@ -193,7 +213,51 @@ fn scan_text(path: &Path) -> Vec<Collision> {
             });
         }
     }
+
+    for import in extract_imports(&content, path) {
+        if import.exists() {
+            out.extend(scan_text(&import, depth - 1, visited));
+        }
+    }
     out
+}
+
+/// Extract `@file.md` imports from a Claude/Gemini rules file. Syntax:
+/// a line whose first non-whitespace character is `@`, followed by a
+/// path token terminated by whitespace or end-of-line. We deliberately
+/// ignore `@` mid-line (e.g. "see @foo.md for details") because that
+/// isn't the import form Claude recognises.
+fn extract_imports(content: &str, base_file: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim_start();
+        let Some(rest) = trimmed.strip_prefix('@') else {
+            continue;
+        };
+        // Comment / email / literal `@` — if there's no path-like token,
+        // skip.
+        let target = rest.split_whitespace().next().unwrap_or("");
+        if target.is_empty() {
+            continue;
+        }
+        if let Some(p) = resolve_import(target, base_file) {
+            out.push(p);
+        }
+    }
+    out
+}
+
+fn resolve_import(target: &str, base_file: &Path) -> Option<PathBuf> {
+    if let Some(rel) = target.strip_prefix("~/") {
+        let home = std::env::var("HOME").ok()?;
+        return Some(PathBuf::from(home).join(rel));
+    }
+    if target.starts_with('/') {
+        return Some(PathBuf::from(target));
+    }
+    // Relative to the file containing the import. Claude's docs state
+    // the base is the importing file's directory.
+    base_file.parent().map(|p| p.join(target))
 }
 
 fn collect_string_values(val: &serde_json::Value, out: &mut Vec<String>) {
@@ -361,9 +425,73 @@ mod tests {
     fn scan_text_flags_rtk_rules() {
         let tmp = std::env::temp_dir().join("trs_collision_test_rtk_rules.md");
         fs::write(&tmp, "# My rules\n\nUses rtk rewrite for things.\n").unwrap();
-        let hits = scan_text(&tmp);
+        let mut visited = HashSet::new();
+        let hits = scan_text(&tmp, IMPORT_MAX_DEPTH, &mut visited);
         assert_eq!(hits.len(), 1);
         fs::remove_file(&tmp).ok();
+    }
+
+    #[test]
+    fn scan_text_follows_at_imports() {
+        let dir = std::env::temp_dir().join("trs_collision_import_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let main = dir.join("CLAUDE.md");
+        let imported = dir.join("RTK.md");
+        fs::write(&main, "@RTK.md\n").unwrap();
+        fs::write(
+            &imported,
+            "# RTK - Rust Token Killer\n\nUses rtk rewrite.\n",
+        )
+        .unwrap();
+
+        let mut visited = HashSet::new();
+        let hits = scan_text(&main, IMPORT_MAX_DEPTH, &mut visited);
+        assert!(
+            !hits.is_empty(),
+            "expected imports to be followed: {:?}",
+            hits
+        );
+        assert!(hits.iter().all(|c| c.location == imported));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn scan_text_breaks_import_cycle() {
+        let dir = std::env::temp_dir().join("trs_collision_cycle_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let a = dir.join("A.md");
+        let b = dir.join("B.md");
+        fs::write(&a, "@B.md\nrtk rewrite\n").unwrap();
+        fs::write(&b, "@A.md\n").unwrap();
+        let mut visited = HashSet::new();
+        // Must terminate. Before the visited guard this would recurse
+        // until depth runs out.
+        let hits = scan_text(&a, IMPORT_MAX_DEPTH, &mut visited);
+        assert_eq!(hits.len(), 1);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn resolve_import_handles_home_and_relative() {
+        // SAFETY: mutating env in tests is awkward under parallel runs,
+        // but this is the only test that touches HOME and it's
+        // immediately read back — no cross-test leakage expected.
+        std::env::set_var("HOME", "/Users/test");
+        let base = PathBuf::from("/Users/test/.claude/CLAUDE.md");
+        assert_eq!(
+            resolve_import("~/other.md", &base),
+            Some(PathBuf::from("/Users/test/other.md"))
+        );
+        assert_eq!(
+            resolve_import("RTK.md", &base),
+            Some(PathBuf::from("/Users/test/.claude/RTK.md"))
+        );
+        assert_eq!(
+            resolve_import("/abs/path.md", &base),
+            Some(PathBuf::from("/abs/path.md"))
+        );
     }
 
     #[test]
