@@ -126,7 +126,47 @@ pub(crate) fn run_checks() -> Vec<Check> {
         check_history_writable(),
         check_stdin_pipeline(),
         check_hooks_installed(),
+        check_agent_docs_health(),
     ]
+}
+
+/// Quick scan of the cwd for agent instruction files that have grown
+/// oversized. If we find any above ~5k tokens, suggest `trs audit-docs`.
+/// Silent (status=pass, no hint) when nothing's bloated.
+fn check_agent_docs_health() -> Check {
+    let cwd = std::env::current_dir().ok();
+    let Some(root) = cwd else {
+        return Check::pass("agent docs", "no cwd").with_sub(vec![]);
+    };
+
+    // Use the same set of paths audit_docs walks, but we only need a rough
+    // token count per file — no duplicate / symbol analysis here.
+    const DOC_PATHS: &[&str] = &["CLAUDE.md", "AGENTS.md", "GEMINI.md", ".windsurfrules"];
+    const BLOAT_TOKENS: usize = 5000;
+
+    let mut bloated: Vec<(String, usize)> = Vec::new();
+    for rel in DOC_PATHS {
+        let path = root.join(rel);
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            let tokens = crate::audit_docs::estimate_tokens(&content);
+            if tokens > BLOAT_TOKENS {
+                bloated.push((rel.to_string(), tokens));
+            }
+        }
+    }
+
+    if bloated.is_empty() {
+        // No findings — don't clutter the doctor output with a pass entry.
+        return Check::pass("agent docs", "agent docs within budget").with_sub(vec![]);
+    }
+
+    let summary = bloated
+        .iter()
+        .map(|(name, t)| format!("{} ({}k)", name, t / 1000))
+        .collect::<Vec<_>>()
+        .join(", ");
+    Check::warn("agent docs", format!("oversized agent docs: {}", summary))
+        .with_hint("run `trs audit-docs` to find duplicates / dead refs / embedded bloat")
 }
 
 /// Print doctor results in spark-style format.

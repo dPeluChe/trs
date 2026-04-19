@@ -120,6 +120,16 @@ trs cargo clippy
 ```
 
 This reduces token consumption by 68-99% without losing signal.
+
+## Keeping this file lean
+
+Periodically run `trs audit-docs` in this project to surface content that
+bloats every agent session: duplicate sections across rules files, embedded
+code/SQL/JSON that should live in their own files, references to docs that
+no longer exist. The tool also cross-checks whether code snippets here
+already have definitions in the source tree — flagging them as "remove and
+link" vs "extract to a new file".
+
 See https://github.com/dPeluChe/trs for details.
 "#;
 
@@ -161,6 +171,13 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
 
 Re-run `trs init antigravity` to pick up future updates to this guidance.
 
+## Keeping this file lean
+
+Run `trs audit-docs` periodically to spot content that belongs elsewhere
+(duplicate sections, embedded SQL/JSON/code blocks, references to files
+that no longer exist). Every unnecessary token here loads on every agent
+call.
+
 Reference: https://github.com/dPeluChe/trs
 "#;
 
@@ -185,6 +202,13 @@ trs pnpm test
 
 Commands without a dedicated trs parser still get whitespace / ANSI
 compression (~30-40% reduction). Pipes and chains are passed through unchanged.
+
+## Keeping this file lean
+
+Run `trs audit-docs` periodically to surface content that inflates every
+agent session — duplicate sections across rules files, embedded code/SQL
+blocks that belong in their own files, dead references. Every unnecessary
+token here loads on every call.
 
 Reference: https://github.com/dPeluChe/trs
 "#;
