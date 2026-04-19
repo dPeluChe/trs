@@ -86,13 +86,17 @@ pub(crate) fn detect(tool: &AiTool, global: bool) -> Vec<Collision> {
 }
 
 /// Paths where a competitor hook/rule could realistically live for
-/// `tool`. Mirrors the install targets so we don't miss the place
-/// we're about to write.
-fn target_paths(tool: &AiTool, global: bool) -> Vec<PathBuf> {
+/// `tool`. Scans both home and project locations regardless of the
+/// install mode — the agent loads both at runtime, so a competitor in
+/// either location will still double-compress commands even if we only
+/// installed globally.
+///
+/// `_global` is kept in the signature for future extensibility (e.g.
+/// silencing project scans when running from an unrelated cwd).
+fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
     let home = std::env::var("HOME").ok().map(PathBuf::from);
     let mut v = Vec::new();
 
-    // Helper closures for readability.
     let push_home = |v: &mut Vec<PathBuf>, rel: &str| {
         if let Some(h) = home.as_ref() {
             v.push(h.join(rel));
@@ -103,54 +107,48 @@ fn target_paths(tool: &AiTool, global: bool) -> Vec<PathBuf> {
         AiTool::Claude => {
             push_home(&mut v, ".claude/settings.json");
             push_home(&mut v, ".claude/CLAUDE.md");
-            if !global {
-                v.push(PathBuf::from("hooks/hooks.json"));
-                v.push(PathBuf::from("CLAUDE.md"));
-            }
+            v.push(PathBuf::from("hooks/hooks.json"));
+            v.push(PathBuf::from(".claude/settings.json"));
+            v.push(PathBuf::from("CLAUDE.md"));
         }
         AiTool::Gemini => {
             push_home(&mut v, ".gemini/settings.json");
             push_home(&mut v, ".gemini/GEMINI.md");
-            if !global {
-                v.push(PathBuf::from(".gemini/settings.json"));
-                v.push(PathBuf::from("GEMINI.md"));
-            }
+            v.push(PathBuf::from(".gemini/settings.json"));
+            v.push(PathBuf::from("GEMINI.md"));
         }
         AiTool::Cursor => {
             push_home(&mut v, ".cursor/hooks.json");
-            if !global {
-                v.push(PathBuf::from(".cursor/hooks.json"));
-            }
+            v.push(PathBuf::from(".cursor/hooks.json"));
         }
         AiTool::Droid => {
             push_home(&mut v, ".factory/settings.json");
-            if !global {
-                v.push(PathBuf::from(".factory/settings.json"));
-            }
+            v.push(PathBuf::from(".factory/settings.json"));
         }
         AiTool::OpenCode => {
             push_home(&mut v, ".config/opencode/plugins/trs.ts");
-            if !global {
-                v.push(PathBuf::from(".opencode/plugins/trs.ts"));
-            }
+            v.push(PathBuf::from(".opencode/plugins/trs.ts"));
         }
         AiTool::Kilo => {
             push_home(&mut v, ".config/kilo/plugins/trs.ts");
-            if !global {
-                v.push(PathBuf::from(".kilo/plugins/trs.ts"));
-            }
+            v.push(PathBuf::from(".kilo/plugins/trs.ts"));
         }
         AiTool::Codex => {
-            v.push(PathBuf::from("AGENTS.md"));
             push_home(&mut v, ".codex/AGENTS.md");
+            v.push(PathBuf::from("AGENTS.md"));
         }
         AiTool::Antigravity => {
             v.push(PathBuf::from(".agent/rules/antigravity-trs-rules.md"));
         }
         AiTool::Windsurf => {
+            push_home(&mut v, ".codeium/windsurf/memories/global_rules.md");
             v.push(PathBuf::from(".windsurfrules"));
         }
     }
+    // Dedup: when cwd coincidentally equals $HOME the same path gets
+    // pushed twice — keeps the report clean.
+    v.sort();
+    v.dedup();
     v
 }
 
