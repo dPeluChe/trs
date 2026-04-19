@@ -64,6 +64,28 @@ struct DeadRef {
     reference: String,
 }
 
+/// An embedded block that likely belongs in its own file instead of inline
+/// in a rules/instructions doc.
+struct InlineBloat {
+    file_idx: usize,
+    start_line: usize,
+    end_line: usize,
+    kind: BloatKind,
+    preview: String,
+}
+
+enum BloatKind {
+    /// Fenced code block with a language tag we consider "reference" content
+    /// (SQL, JSON, YAML, XML, HTML, GraphQL) above the tight-threshold.
+    ReferenceCodeFence { lang: String, lines: usize },
+    /// Any fenced code block larger than the generic threshold, regardless
+    /// of language. Catches long TypeScript/Python/etc. snippets.
+    LargeCodeFence { lang: String, lines: usize },
+    /// Markdown table with more than TABLE_ROWS_THRESHOLD data rows — almost
+    /// always reference data (API fields, env-var lists) that inflates context.
+    LargeTable { rows: usize },
+}
+
 // ================================================================
 // Entry point
 // ================================================================
@@ -92,8 +114,9 @@ pub fn run_audit_docs(root: &Path) {
 
     let duplicates = find_near_duplicates(&all_blocks);
     let dead_refs = find_dead_refs(&docs, root);
+    let inline_bloat = find_inline_bloat(&docs);
 
-    render_report(&docs, &all_blocks, &duplicates, &dead_refs);
+    render_report(&docs, &all_blocks, &duplicates, &dead_refs, &inline_bloat);
 }
 
 // ================================================================
@@ -422,6 +445,166 @@ fn ref_resolves(reference: &str, doc_dir: &Path, root: &Path) -> bool {
 // Git staleness
 // ================================================================
 
+// ================================================================
+// Inline bloat detection (code fences + tables)
+// ================================================================
+
+/// Generic code-fence threshold — anything this big is probably better off
+/// in its own file that the doc links to.
+const GENERIC_CODE_FENCE_MIN: usize = 20;
+
+/// Tight threshold for reference-only languages. SQL/JSON/YAML/XML/GraphQL
+/// blocks above this size are almost always dumped reference material, not
+/// instructional content.
+const REFERENCE_CODE_FENCE_MIN: usize = 10;
+
+/// Any markdown table with more rows than this gets flagged as reference data.
+const TABLE_ROWS_THRESHOLD: usize = 8;
+
+const REFERENCE_LANGS: &[&str] = &[
+    "sql",
+    "postgres",
+    "postgresql",
+    "mysql",
+    "sqlite",
+    "json",
+    "yaml",
+    "yml",
+    "toml",
+    "xml",
+    "html",
+    "graphql",
+    "gql",
+    "csv",
+    "tsv",
+];
+
+fn find_inline_bloat(docs: &[DocFile]) -> Vec<InlineBloat> {
+    let mut out: Vec<InlineBloat> = Vec::new();
+    for (idx, doc) in docs.iter().enumerate() {
+        collect_code_fences(idx, &doc.content, &mut out);
+        collect_large_tables(idx, &doc.content, &mut out);
+    }
+    out
+}
+
+/// Walk fenced code blocks (lines starting with `~~~` or triple-backtick).
+/// Flag when they exceed the generic threshold, or a tighter threshold for
+/// reference-style languages (SQL, JSON, YAML, etc.).
+fn collect_code_fences(file_idx: usize, content: &str, out: &mut Vec<InlineBloat>) {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut i = 0;
+    while i < lines.len() {
+        let trimmed = lines[i].trim_start();
+        if let Some(lang) = fence_open_lang(trimmed) {
+            let start = i + 1; // 1-based: the opening fence line
+            let mut j = i + 1;
+            while j < lines.len() && !is_fence_close(lines[j].trim_start()) {
+                j += 1;
+            }
+            let inner_lines = j.saturating_sub(i + 1);
+            let end = j + 1; // 1-based closing fence line (or EOF)
+            let lang_lower = lang.to_ascii_lowercase();
+            let is_reference = REFERENCE_LANGS.iter().any(|l| lang_lower == *l);
+
+            let kind = if is_reference && inner_lines >= REFERENCE_CODE_FENCE_MIN {
+                Some(BloatKind::ReferenceCodeFence {
+                    lang: lang.clone(),
+                    lines: inner_lines,
+                })
+            } else if inner_lines >= GENERIC_CODE_FENCE_MIN {
+                Some(BloatKind::LargeCodeFence {
+                    lang: lang.clone(),
+                    lines: inner_lines,
+                })
+            } else {
+                None
+            };
+
+            if let Some(kind) = kind {
+                let preview_src = lines.get(i + 1).copied().unwrap_or("");
+                let preview: String = preview_src.trim().chars().take(60).collect();
+                out.push(InlineBloat {
+                    file_idx,
+                    start_line: start,
+                    end_line: end.min(lines.len()),
+                    kind,
+                    preview,
+                });
+            }
+            i = j + 1;
+            continue;
+        }
+        i += 1;
+    }
+}
+
+/// A fence opener is `~~~` or ``` (three backticks), optionally followed by
+/// a language hint token. Returns the hint (or empty string) or None if the
+/// line is not a fence opener.
+fn fence_open_lang(line: &str) -> Option<String> {
+    let stripped = line
+        .strip_prefix("```")
+        .or_else(|| line.strip_prefix("~~~"))?;
+    // Guard against `````` inline (multi-backtick) — treat as not-a-fence.
+    if stripped.starts_with('`') {
+        return None;
+    }
+    Some(stripped.split_whitespace().next().unwrap_or("").to_string())
+}
+
+fn is_fence_close(line: &str) -> bool {
+    line == "```" || line == "~~~" || line.starts_with("```") || line.starts_with("~~~")
+}
+
+/// Detect long markdown tables (`|---|---|` separator + many data rows).
+fn collect_large_tables(file_idx: usize, content: &str, out: &mut Vec<InlineBloat>) {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut i = 0;
+    while i < lines.len() {
+        // Pattern: a header row like `| a | b |` followed by `|---|---|`.
+        if is_table_row(lines[i]) && i + 1 < lines.len() && is_table_separator(lines[i + 1]) {
+            let start = i + 1; // header line in 1-based
+            let mut rows = 0usize;
+            let mut j = i + 2; // first data row
+            while j < lines.len() && is_table_row(lines[j]) {
+                rows += 1;
+                j += 1;
+            }
+            if rows >= TABLE_ROWS_THRESHOLD {
+                let preview: String = lines[i].trim().chars().take(60).collect();
+                out.push(InlineBloat {
+                    file_idx,
+                    start_line: start,
+                    end_line: j,
+                    kind: BloatKind::LargeTable { rows },
+                    preview,
+                });
+            }
+            i = j;
+            continue;
+        }
+        i += 1;
+    }
+}
+
+fn is_table_row(line: &str) -> bool {
+    let t = line.trim();
+    t.starts_with('|') && t.ends_with('|') && t.matches('|').count() >= 2
+}
+
+fn is_table_separator(line: &str) -> bool {
+    let t = line.trim();
+    if !t.starts_with('|') {
+        return false;
+    }
+    // Separator row cells look like `---`, `:---`, `---:`, `:---:`.
+    t.trim_matches('|').split('|').all(|cell| {
+        let c = cell.trim();
+        !c.is_empty() && c.chars().all(|ch| ch == '-' || ch == ':')
+    })
+}
+
 fn last_commit_days_ago(path: &Path, root: &Path) -> Option<u64> {
     let output = Command::new("git")
         .args(["log", "-1", "--format=%ct", "--"])
@@ -450,6 +633,7 @@ fn render_report(
     all_blocks: &[Block],
     duplicates: &[DupPair],
     dead_refs: &[DeadRef],
+    inline_bloat: &[InlineBloat],
 ) {
     let total_tokens: usize = docs.iter().map(|d| d.tokens).sum();
     println!(
@@ -560,9 +744,66 @@ fn render_report(
         }
     }
 
+    // Inline bloat: large code fences, reference-data dumps, big tables
+    if !inline_bloat.is_empty() {
+        println!();
+        println!(
+            "⚠ Embedded reference content ({} block{}):",
+            inline_bloat.len(),
+            if inline_bloat.len() == 1 { "" } else { "s" }
+        );
+        for b in inline_bloat.iter().take(10) {
+            let path = docs[b.file_idx].path.display();
+            let (label, hint) = match &b.kind {
+                BloatKind::ReferenceCodeFence { lang, lines } => (
+                    format!("`{}` code fence ({} lines)", lang, lines),
+                    match lang.to_ascii_lowercase().as_str() {
+                        "sql" | "postgres" | "postgresql" | "mysql" | "sqlite" => {
+                            "move queries to docs/queries.sql or a dedicated doc"
+                        }
+                        "json" | "yaml" | "yml" | "toml" => {
+                            "move config samples to a standalone example file"
+                        }
+                        "graphql" | "gql" => "move schema/queries to docs/schema.graphql",
+                        "xml" | "html" => "extract fixture to a standalone file, link it",
+                        _ => "move to a standalone file, link it from here",
+                    },
+                ),
+                BloatKind::LargeCodeFence { lang, lines } => {
+                    let lang_str = if lang.is_empty() {
+                        "code".to_string()
+                    } else {
+                        format!("`{}`", lang)
+                    };
+                    (
+                        format!("{} block ({} lines)", lang_str, lines),
+                        "extract to a source file the doc links to",
+                    )
+                }
+                BloatKind::LargeTable { rows } => (
+                    format!("markdown table ({} rows)", rows),
+                    "move reference tables (API fields, env vars) to their own doc",
+                ),
+            };
+            println!("  {}:{}-{}  {}", path, b.start_line, b.end_line, label);
+            if !b.preview.is_empty() {
+                println!("      \"{}…\"", b.preview);
+            }
+            println!("      → {}", hint);
+        }
+        if inline_bloat.len() > 10 {
+            println!("  ... +{} more", inline_bloat.len() - 10);
+        }
+    }
+
     // Recommendations
+    let has_bloat_file = docs.iter().any(|d| d.tokens > 5000);
+    let any_finding = !duplicates.is_empty()
+        || !dead_refs.is_empty()
+        || has_bloat_file
+        || !inline_bloat.is_empty();
     println!();
-    if duplicates.is_empty() && dead_refs.is_empty() && !docs.iter().any(|d| d.tokens > 5000) {
+    if !any_finding {
         println!("✓ No bloat, duplicates, or dead references detected.");
     } else {
         println!("Recommendations:");
@@ -577,6 +818,13 @@ fn render_report(
                 human_tokens(potential)
             );
         }
+        if !inline_bloat.is_empty() {
+            println!(
+                "  - Extract the {} embedded reference block{} to standalone files",
+                inline_bloat.len(),
+                if inline_bloat.len() == 1 { "" } else { "s" }
+            );
+        }
         if !dead_refs.is_empty() {
             println!(
                 "  - Fix or remove the {} dead reference{}",
@@ -584,7 +832,7 @@ fn render_report(
                 if dead_refs.len() == 1 { "" } else { "s" }
             );
         }
-        if docs.iter().any(|d| d.tokens > 5000) {
+        if has_bloat_file {
             println!("  - Split large files; link heavy sections from a small index");
         }
     }
