@@ -8,6 +8,7 @@ pub(crate) mod extra_cargo_test;
 pub(crate) mod extra_db;
 pub(crate) mod extra_download;
 pub(crate) mod extra_env;
+pub(crate) mod extra_network;
 pub(crate) mod extra_services;
 pub(crate) mod extra_system;
 pub(crate) mod find;
@@ -115,6 +116,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::Tree { file } => Self::handle_tree(file, ctx),
             ParseCommands::DockerPs { file } => Self::handle_docker_ps(file, ctx),
             ParseCommands::DockerLogs { file } => Self::handle_docker_logs(file, ctx),
+            ParseCommands::Ping { file } => Self::handle_ping(file, ctx),
             ParseCommands::Deps { file } => Self::handle_deps(file, ctx),
             ParseCommands::Install { file } => Self::handle_install(file, ctx),
             ParseCommands::Build { file } => Self::handle_build(file, ctx),

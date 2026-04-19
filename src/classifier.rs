@@ -284,6 +284,13 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "test" => Some(ParseCommands::GoTest { file: None }),
             _ => None,
         },
+        "swift" => match subcmd {
+            "build" | "test" | "run" => Some(ParseCommands::Build { file: None }),
+            _ => None,
+        },
+
+        // Network diagnostics
+        "ping" => Some(ParseCommands::Ping { file: None }),
 
         // GitHub CLI
         "gh" => match subcmd {
@@ -367,6 +374,7 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::Tree { .. } => ParseCommands::Tree { file: Some(path) },
         ParseCommands::DockerPs { .. } => ParseCommands::DockerPs { file: Some(path) },
         ParseCommands::DockerLogs { .. } => ParseCommands::DockerLogs { file: Some(path) },
+        ParseCommands::Ping { .. } => ParseCommands::Ping { file: Some(path) },
         ParseCommands::Deps { .. } => ParseCommands::Deps { file: Some(path) },
         ParseCommands::Install { .. } => ParseCommands::Install { file: Some(path) },
         ParseCommands::Build { .. } => ParseCommands::Build { file: Some(path) },
