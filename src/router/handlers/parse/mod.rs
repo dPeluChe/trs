@@ -2,6 +2,7 @@ use super::common::{CommandContext, CommandError, CommandResult};
 use super::types::*;
 use crate::ParseCommands;
 
+pub(crate) mod brew;
 pub(crate) mod bun_format;
 pub(crate) mod bun_parse;
 pub(crate) mod extra_cargo_test;
@@ -117,6 +118,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::DockerPs { file } => Self::handle_docker_ps(file, ctx),
             ParseCommands::DockerLogs { file } => Self::handle_docker_logs(file, ctx),
             ParseCommands::Ping { file } => Self::handle_ping(file, ctx),
+            ParseCommands::Brew { file } => Self::handle_brew(file, ctx),
             ParseCommands::Deps { file } => Self::handle_deps(file, ctx),
             ParseCommands::Install { file } => Self::handle_install(file, ctx),
             ParseCommands::Build { file } => Self::handle_build(file, ctx),

@@ -151,6 +151,16 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse `brew install|upgrade|reinstall` output — drops progress bars
+    /// and fetch/pour chatter, keeps the 🍺 install-result lines and errors.
+    ///
+    /// Example: brew install wget | trs parse brew
+    Brew {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse docker logs output
     ///
     /// Example: docker logs container | trs parse docker-logs

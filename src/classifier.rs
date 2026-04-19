@@ -297,6 +297,14 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // Network diagnostics
         "ping" => Some(ParseCommands::Ping { file: None }),
 
+        // Homebrew install/upgrade/reinstall/uninstall
+        "brew" => match subcmd {
+            "install" | "upgrade" | "reinstall" | "uninstall" | "remove" => {
+                Some(ParseCommands::Brew { file: None })
+            }
+            _ => None,
+        },
+
         // GitHub CLI
         "gh" => match subcmd {
             "pr" if args.get(1).map(|s| s.as_str()) == Some("list") => {
@@ -380,6 +388,7 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::DockerPs { .. } => ParseCommands::DockerPs { file: Some(path) },
         ParseCommands::DockerLogs { .. } => ParseCommands::DockerLogs { file: Some(path) },
         ParseCommands::Ping { .. } => ParseCommands::Ping { file: Some(path) },
+        ParseCommands::Brew { .. } => ParseCommands::Brew { file: Some(path) },
         ParseCommands::Deps { .. } => ParseCommands::Deps { file: Some(path) },
         ParseCommands::Install { .. } => ParseCommands::Install { file: Some(path) },
         ParseCommands::Build { .. } => ParseCommands::Build { file: Some(path) },
