@@ -3,6 +3,13 @@
 //! Kept in a separate module so `init.rs` stays focused on dispatch and
 //! detection logic. Each template is a single string constant used by
 //! `install_from_spec` / `install_rules` / `install_codex`.
+//!
+//! The Output saver block embedded in Codex/Antigravity/Windsurf rules
+//! templates is not duplicated — it expands from
+//! `output_saver_block_literal!()` so a change in one place flows to
+//! every install target.
+
+use crate::output_saver_block_literal;
 
 pub(crate) const CLAUDE_HOOKS: &str = r#"{
   "hooks": {
@@ -101,7 +108,8 @@ export const TrsPlugin = async () => {
 };
 "#;
 
-pub(crate) const CODEX_AGENTS_SECTION: &str = r#"
+pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
+    r#"
 ## Terminal Output Optimization
 
 This project uses `trs` (TARS CLI) for token-optimized terminal output.
@@ -121,24 +129,9 @@ trs cargo clippy
 
 This reduces token consumption by 68-99% without losing signal.
 
-## Output hygiene
-
-Keep responses terse — these rules reduce token spend on every reply:
-
-- No preambles. Don't open with "Sure!", "Great question!", "Absolutely!",
-  "I'll help you...", or "You're absolutely right!". Start with the answer.
-- No narration. Don't announce what you're about to do or recap what you
-  just did — the diff / tool output already shows it.
-- Result first; explanation only if non-obvious. State the finding, show
-  the fix, stop.
-- Structured output when the data is structured: bullets, tables, JSON.
-  Prose only when the reader is human and the content is narrative.
-- Never invent file paths, function names, or API fields. If unknown,
-  say "UNKNOWN" or return null — guessing costs more tokens than asking.
-- One pass: don't iterate on passing code, don't refactor / polish unless
-  asked.
-
-User instructions always override these rules.
+"#,
+    output_saver_block_literal!(),
+    r#"
 
 ## Keeping this file lean
 
@@ -150,9 +143,11 @@ already have definitions in the source tree — flagging them as "remove and
 link" vs "extract to a new file".
 
 See https://github.com/dPeluChe/trs for details.
-"#;
+"#
+);
 
-pub(crate) const ANTIGRAVITY_RULES: &str = r#"
+pub(crate) const ANTIGRAVITY_RULES: &str = concat!(
+    r#"
 # trs (TARS CLI) — terminal output optimization
 
 Antigravity does not support pre-execution hooks, so this rules file is the
@@ -190,24 +185,9 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
 
 Re-run `trs init antigravity` to pick up future updates to this guidance.
 
-## Output hygiene
-
-Keep responses terse — these rules reduce token spend on every reply:
-
-- No preambles. Don't open with "Sure!", "Great question!", "Absolutely!",
-  "I'll help you...", or "You're absolutely right!". Start with the answer.
-- No narration. Don't announce what you're about to do or recap what you
-  just did — the diff / tool output already shows it.
-- Result first; explanation only if non-obvious. State the finding, show
-  the fix, stop.
-- Structured output when the data is structured: bullets, tables, JSON.
-  Prose only when the reader is human and the content is narrative.
-- Never invent file paths, function names, or API fields. If unknown,
-  say "UNKNOWN" or return null — guessing costs more tokens than asking.
-- One pass: don't iterate on passing code, don't refactor / polish unless
-  asked.
-
-User instructions always override these rules.
+"#,
+    output_saver_block_literal!(),
+    r#"
 
 ## Keeping this file lean
 
@@ -217,9 +197,11 @@ that no longer exist). Every unnecessary token here loads on every agent
 call.
 
 Reference: https://github.com/dPeluChe/trs
-"#;
+"#
+);
 
-pub(crate) const WINDSURF_RULES: &str = r#"
+pub(crate) const WINDSURF_RULES: &str = concat!(
+    r#"
 # trs (TARS CLI) — terminal output optimization
 
 Windsurf Cascade does not expose a pre-execution hook, so this rules file is
@@ -241,24 +223,9 @@ trs pnpm test
 Commands without a dedicated trs parser still get whitespace / ANSI
 compression (~30-40% reduction). Pipes and chains are passed through unchanged.
 
-## Output hygiene
-
-Keep responses terse — these rules reduce token spend on every reply:
-
-- No preambles. Don't open with "Sure!", "Great question!", "Absolutely!",
-  "I'll help you...", or "You're absolutely right!". Start with the answer.
-- No narration. Don't announce what you're about to do or recap what you
-  just did — the diff / tool output already shows it.
-- Result first; explanation only if non-obvious. State the finding, show
-  the fix, stop.
-- Structured output when the data is structured: bullets, tables, JSON.
-  Prose only when the reader is human and the content is narrative.
-- Never invent file paths, function names, or API fields. If unknown,
-  say "UNKNOWN" or return null — guessing costs more tokens than asking.
-- One pass: don't iterate on passing code, don't refactor / polish unless
-  asked.
-
-User instructions always override these rules.
+"#,
+    output_saver_block_literal!(),
+    r#"
 
 ## Keeping this file lean
 
@@ -268,4 +235,5 @@ blocks that belong in their own files, dead references. Every unnecessary
 token here loads on every call.
 
 Reference: https://github.com/dPeluChe/trs
-"#;
+"#
+);

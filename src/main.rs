@@ -37,6 +37,7 @@ mod ingest;
 mod init;
 mod init_collision;
 mod init_templates;
+mod output_saver;
 #[allow(dead_code)]
 mod process;
 #[allow(dead_code)]
@@ -153,6 +154,14 @@ fn main() {
             if has_fail {
                 std::process::exit(1);
             }
+        }
+        Some(Commands::OutputSaver {
+            tool,
+            install,
+            remove,
+            print,
+        }) => {
+            output_saver::run(tool.as_deref(), *install, *remove, *print);
         }
         Some(Commands::AuditDocs { path }) => {
             audit_docs::run_audit_docs(std::path::Path::new(path));
@@ -410,6 +419,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "benchmark"
             | "ingest"
             | "audit-docs"
+            | "output-saver"
             | "stats"
             | "raw"
             | "help"

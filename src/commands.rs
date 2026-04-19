@@ -87,6 +87,30 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Install a compact output-reduction rules block into agent configs
+    /// (Claude, Gemini, Cursor, Codex, Windsurf). trs already compresses
+    /// what agents see — this does the symmetric job for what they emit.
+    OutputSaver {
+        /// Target a specific agent (claude, gemini, cursor, codex, windsurf).
+        /// Omit to act on every supported agent that's detected.
+        #[arg(value_name = "AGENT")]
+        tool: Option<String>,
+
+        /// Write the rules block into the target config(s) (default is a
+        /// read-only check that prints what would change).
+        #[arg(long)]
+        install: bool,
+
+        /// Remove a previously installed output-saver block.
+        #[arg(long)]
+        remove: bool,
+
+        /// Print the rules block to stdout and exit — useful for piping
+        /// into a custom location.
+        #[arg(long)]
+        print: bool,
+    },
+
     /// Benchmark a command showing compression metrics
     #[command(long_about = help::BENCHMARK_HELP)]
     Benchmark {

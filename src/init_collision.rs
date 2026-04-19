@@ -316,7 +316,9 @@ pub(crate) fn format_report(tool: &AiTool, collisions: &[Collision]) -> String {
     out.push_str("Risk: running two shell-compression tools on the same\n");
     out.push_str("command can double-compress and corrupt output.\n\n");
     out.push_str("Recommended: migrate to trs.\n");
-    out.push_str("  trs init <tool> --replace   remove competitor hooks, install trs   [recommended]\n");
+    out.push_str(
+        "  trs init <tool> --replace   remove competitor hooks, install trs   [recommended]\n",
+    );
     out.push_str("  trs init <tool> --force     install alongside                      [risky]\n");
     out.push_str("  abort                       (default) fix the collisions manually\n");
     out
