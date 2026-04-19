@@ -167,7 +167,35 @@ Everything about `trs ingest` — stale detection, dependency graphs, Ollama pos
 trs init --show           # status of all integrations
 trs init --all --global   # install everything it detects
 trs init claude           # or pick one
+trs init claude --replace # migrate away from a competitor (rtk, etc.)
 ```
+
+Before writing, `trs init` runs a pre-install collision check: it scans
+target configs (following `@imports` for Claude/Gemini) for existing
+rtk or token-optimizer hooks and aborts by default. `--replace` scrubs
+competitor hooks cleanly; `--force` installs alongside (risky —
+double-compression).
+
+## Output saver (`trs output-saver`)
+
+trs compresses what agents **see** via `trs rewrite`. `trs output-saver`
+closes the symmetric gap — it installs a compact rules block into each
+agent's global config to compress what agents **emit**: no preambles,
+no narration, result-first, structured output where appropriate, no
+hallucinated paths.
+
+```bash
+trs output-saver            # read-only scan of all detected agents
+trs output-saver --install  # write the block where the scan was clean
+trs output-saver --print    # dump the raw block (pipe-friendly)
+trs output-saver --remove   # clean uninstall
+```
+
+Eight of nine agents are covered (Antigravity is per-project only —
+use `trs init antigravity`). Claude/Gemini get a standalone file plus
+`@import`; Cursor gets an auto-loaded `.mdc`; Codex/Windsurf/OpenCode/
+Kilo/Droid get an inline block wrapped in HTML-comment sentinels so
+re-installs are idempotent.
 
 ## Output formats
 
@@ -221,7 +249,7 @@ json_max_depth = 10
 | Binary | ~6 MB (LTO + strip), no runtime deps |
 | Startup | ~12ms on macOS / Linux (native binary or shell launcher) |
 | CLI | clap 4 (bypassed on hot path) |
-| Tests | 2,127 passing, 0 warnings |
+| Tests | 2,154 passing, 0 warnings |
 | Architecture | 200+ files, all under ~500 LOC — [details](AGENTS.md) |
 
 ## Contributing

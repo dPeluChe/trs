@@ -167,7 +167,35 @@ Detección de staleness, grafos de dependencias, post-procesamiento con Ollama y
 trs init --show           # estado de todas las integraciones
 trs init --all --global   # instala todo lo detectado
 trs init claude           # o elige una
+trs init claude --replace # migra desde un competidor (rtk, etc.)
 ```
+
+Antes de escribir, `trs init` corre un chequeo de colisión: escanea
+los configs target (siguiendo `@imports` en Claude/Gemini) buscando
+hooks existentes de rtk o token-optimizer y aborta por default.
+`--replace` limpia los hooks del competidor; `--force` instala junto
+(riesgoso — doble compresión).
+
+## Ahorro en salida (`trs output-saver`)
+
+trs comprime lo que los agentes **ven** vía `trs rewrite`.
+`trs output-saver` cierra la brecha simétrica: instala un bloque de
+reglas compacto en la config global de cada agente para comprimir lo
+que **emiten** — nada de preámbulos, sin narración, resultado primero,
+output estructurado donde aplique, cero invención de paths.
+
+```bash
+trs output-saver            # scan read-only de los agentes detectados
+trs output-saver --install  # escribe el bloque donde el scan quedó limpio
+trs output-saver --print    # dump del bloque (pipe-friendly)
+trs output-saver --remove   # desinstalación limpia
+```
+
+8 de 9 agentes soportados (Antigravity es per-proyecto nada más — usa
+`trs init antigravity`). Claude/Gemini reciben archivo standalone más
+`@import`; Cursor un `.mdc` auto-cargado; Codex/Windsurf/OpenCode/
+Kilo/Droid bloque inline con sentinels HTML-comment para que reinstalar
+sea idempotente.
 
 ## Formatos de salida
 
@@ -221,7 +249,7 @@ json_max_depth = 10
 | Binario | ~6 MB (LTO + strip), sin deps en runtime |
 | Arranque | ~12ms en macOS / Linux |
 | CLI | clap 4 (bypassed en hot path) |
-| Tests | 2,127 passing, 0 warnings |
+| Tests | 2,154 passing, 0 warnings |
 | Arquitectura | 200+ archivos, todos < ~500 LOC — [detalles](AGENTS.md) |
 
 ## Contribuir

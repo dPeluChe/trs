@@ -44,6 +44,14 @@ trs init claude               # Claude Code
 trs init gemini               # Gemini CLI
 trs init cursor               # Cursor
 trs init codex                # Codex (AGENTS.md)
+
+# Output-side savings (new in 0.5.7)
+trs output-saver              # scan agents, suggest install
+trs output-saver --install    # install rules block into agent configs
+
+# Installation health + docs auditor
+trs doctor                    # check install, PATH, deps
+trs audit-docs                # lint CLAUDE.md / AGENTS.md for bloat
 ```
 
 ## How it works

@@ -51,7 +51,7 @@
     "license": "https://opensource.org/licenses/MIT",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "codeRepository": "https://github.com/dPeluChe/trs",
-    "softwareVersion": "0.5.3",
+    "softwareVersion": "0.5.7",
     "author": { "@type": "Organization", "name": "Iteris", "url": "https://iteris.tech" }
   }
   </script>
@@ -672,7 +672,7 @@
     <div class="hero-meta">
       <span>TARSCLI</span>
       <span class="dot">·</span>
-      <span>v0.5.3</span>
+      <span>v0.5.7</span>
       <span class="dot">·</span>
       <span>Rust</span>
       <span class="dot">·</span>
@@ -928,17 +928,17 @@ unstaged (3):
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
-          <div class="compare-pane">   Compiling tars-cli v0.5.3
+          <div class="compare-pane">   Compiling tars-cli v0.5.7
     Finished test profile in 4.21s
      Running unittests src/main.rs
-running 2127 tests
+running 2154 tests
 test config::tests::test_defaults ... ok
 test config::tests::test_parse ... ok
-... (2125 more lines) ...
-test result: ok. 2127 passed; 0 failed
+... (2152 more lines) ...
+test result: ok. 2154 passed; 0 failed
      Running tests/cli_flags.rs
 ... (70 more suites) ...</div>
-          <div class="compare-pane">cargo test: 2127 passed (71 suites, 4.9s)</div>
+          <div class="compare-pane">cargo test: 2154 passed (71 suites, 4.9s)</div>
         </div>
       </div>
 
@@ -1200,7 +1200,15 @@ ad55480 feat(init): smart JSON merge
       </div>
       <div class="feature">
         <div class="feature-title">AI tool hooks &amp; rules</div>
-        <div class="feature-desc"><code>trs init --all</code> installs hooks for Claude, Gemini, Cursor, OpenCode, Kilo, Droid (programmatic) and rules for Codex, Antigravity, Windsurf. Smart-merge into existing settings.json &mdash; user config preserved.</div>
+        <div class="feature-desc"><code>trs init --all</code> installs hooks for Claude, Gemini, Cursor, OpenCode, Kilo, Droid (programmatic) and rules for Codex, Antigravity, Windsurf. Smart-merge into existing settings.json &mdash; user config preserved. Pre-install collision check flags competing compressor hooks (rtk, token-optimizer) so you migrate cleanly with <code>--replace</code> instead of double-compressing.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Output saver (new in 0.5.7)</div>
+        <div class="feature-desc">trs compresses what agents <em>see</em>; <code>trs output-saver</code> compresses what they <em>emit</em>. Installs a short anti-preamble / result-first / no-narration rules block into each agent's global config (AGENTS.md / CLAUDE.md / Cursor rules). Check-first by default; <code>--install</code> to commit, <code>--remove</code> to undo. 8 of 9 supported agents.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Docs auditor</div>
+        <div class="feature-desc"><code>trs audit-docs</code> inspects CLAUDE.md / AGENTS.md / rules files for cross-file duplicates, embedded code/SQL/JSON blocks that belong elsewhere, dead <code>@imports</code>, and code fences whose declared symbols already live in <code>src/</code>. Paired with <code>trs doctor</code> which warns when agent docs exceed their token budget.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Chain-aware rewrite</div>
@@ -1259,7 +1267,7 @@ ad55480 feat(init): smart JSON merge
         Downloads the right binary for your platform into
         <code class="inline">~/.trs/bin/trs</code>. Zero runtime dependencies,
         no Node overhead, ~12ms startup. Pin a version with
-        <code class="inline">TRS_VERSION=v0.5.3</code>.
+        <code class="inline">TRS_VERSION=v0.5.7</code>.
       </p>
     </div>
 
