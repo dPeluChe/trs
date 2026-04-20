@@ -16,7 +16,7 @@ All three checks must pass before submitting a PR:
 ```bash
 cargo fmt -- --check           # formatting
 cargo clippy -- -D warnings    # no warnings allowed
-cargo test                     # 2,104+ tests, 0 failures
+cargo test                     # 2,154+ tests, 0 failures
 ```
 
 ## Code guidelines

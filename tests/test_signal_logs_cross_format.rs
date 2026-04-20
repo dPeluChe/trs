@@ -181,7 +181,7 @@ fn test_git_status_signal_consistent_across_formats() {
         if let Some(first_staged) = staged.first() {
             if let Some(path) = first_staged["path"].as_str() {
                 // Compact and agent should contain at least part of the path
-                let path_part = path.split('/').last().unwrap_or(path);
+                let path_part = path.split('/').next_back().unwrap_or(path);
                 assert!(
                     compact_stdout.contains(path) || compact_stdout.contains(path_part),
                     "File path should be in compact output"
@@ -229,7 +229,7 @@ fn test_git_diff_signal_consistent_across_formats() {
     if let Some(files) = json["files"].as_array() {
         for file in files {
             if let Some(path) = file["path"].as_str() {
-                let path_part = path.split('/').last().unwrap_or(path);
+                let path_part = path.split('/').next_back().unwrap_or(path);
                 assert!(
                     compact_stdout.contains(path) || compact_stdout.contains(path_part),
                     "File path '{}' should be in compact output",
@@ -326,7 +326,7 @@ fn test_grep_signal_consistent_across_formats() {
     if let Some(files) = json["files"].as_array() {
         for file in files {
             if let Some(path) = file["path"].as_str() {
-                let path_part = path.split('/').last().unwrap_or(path);
+                let path_part = path.split('/').next_back().unwrap_or(path);
                 assert!(
                     compact_stdout.contains(path) || compact_stdout.contains(path_part),
                     "File path '{}' should be in compact output",

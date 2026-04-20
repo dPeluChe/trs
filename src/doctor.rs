@@ -126,7 +126,70 @@ pub(crate) fn run_checks() -> Vec<Check> {
         check_history_writable(),
         check_stdin_pipeline(),
         check_hooks_installed(),
+        check_agent_docs_health(),
     ]
+}
+
+/// Scan cwd for agent instruction files and surface a token budget summary.
+/// Always visible when any file exists — the `trs audit-docs` suggestion
+/// belongs on the happy path too, not only when docs are already bloated.
+fn check_agent_docs_health() -> Check {
+    let Some(root) = std::env::current_dir().ok() else {
+        return Check::pass("agent docs", "no cwd");
+    };
+
+    // Keep in sync with audit_docs::KNOWN_PATHS for the single-file entries.
+    const DOC_PATHS: &[&str] = &["CLAUDE.md", "AGENTS.md", "GEMINI.md", ".windsurfrules"];
+    const BLOAT_TOKENS: usize = 5000;
+
+    let mut found: Vec<(String, usize)> = Vec::new();
+    for rel in DOC_PATHS {
+        let path = root.join(rel);
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            let tokens = crate::audit_docs::estimate_tokens(&content);
+            found.push((rel.to_string(), tokens));
+        }
+    }
+
+    if found.is_empty() {
+        // No agent docs in cwd — don't clutter output.
+        return Check::pass("agent docs", "no agent docs in cwd");
+    }
+
+    let total_tokens: usize = found.iter().map(|(_, t)| t).sum();
+    let bloated: Vec<&(String, usize)> = found.iter().filter(|(_, t)| *t > BLOAT_TOKENS).collect();
+
+    let summary = format!(
+        "{} file{}, {} tokens loaded per agent session",
+        found.len(),
+        if found.len() == 1 { "" } else { "s" },
+        human_k(total_tokens)
+    );
+
+    if bloated.is_empty() {
+        // Healthy — still surface audit-docs so the user knows it exists.
+        Check::pass("agent docs", summary)
+            .with_hint("run `trs audit-docs` to review duplicates / dead refs / embedded bloat")
+    } else {
+        let bloat_detail = bloated
+            .iter()
+            .map(|(name, t)| format!("{} ({})", name, human_k(*t)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        Check::warn(
+            "agent docs",
+            format!("{} — oversized: {}", summary, bloat_detail),
+        )
+        .with_hint("run `trs audit-docs` to find duplicates / dead refs / embedded bloat")
+    }
+}
+
+fn human_k(n: usize) -> String {
+    if n >= 1000 {
+        format!("{:.1}k", n as f64 / 1000.0)
+    } else {
+        n.to_string()
+    }
 }
 
 /// Print doctor results in spark-style format.

@@ -28,7 +28,11 @@
 
 ## Why
 
-trs started as a learning project. AI coding sessions were burning tens of thousands of tokens just rendering `git status`, `cargo test`, and `ls -la` into the agent's context, and there had to be a better signal-to-noise ratio. We studied the prior art, then wrote trs from scratch in Rust to fit our own workflow: a single static binary, zero runtime deps, our own parsers per command, and an ingest story tuned for LLM context windows.
+Token pricing kept climbing. Every `git status`, `cargo test`, and `ls -la` the agent rendered into its context cost real money, and the signal-to-noise ratio on those commands was painfully low. We started writing small tools — first for ourselves, then for the team — to reduce what the agent actually had to read.
+
+Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). By then our tools had been evolving on their own, so we faced the honest choice: migrate to rtk and drop what we'd built, or continue and publish our own take. We chose to continue — more options in this space means a better fit for more workflows. trs kept iterating and expanding as we learned more about where tokens actually burn.
+
+The more we used it, the more we saw the opportunity was bigger than input hooks. `trs output-saver` installs rules into each agent's global config so replies come back shorter too. `trs audit-docs` inspects CLAUDE.md / AGENTS.md for the bloat every session re-loads. `trs ingest` compresses whole repos into a budget-aware, LLM-ready context index. Still a single static binary with zero runtime deps — the story just got bigger than hooks.
 
 The landing page has the full write-up: <https://dpeluche.github.io/trs/>
 
@@ -46,7 +50,7 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reduction)
 
 $ trs cargo test
-cargo test: 2127 passed (71 suites, 4.9s)
+cargo test: 2154 passed (71 suites, 4.9s)
 # 55 KB → 58 B (99% reduction)
 
 $ trs cargo clippy
@@ -167,7 +171,35 @@ Everything about `trs ingest` — stale detection, dependency graphs, Ollama pos
 trs init --show           # status of all integrations
 trs init --all --global   # install everything it detects
 trs init claude           # or pick one
+trs init claude --replace # cut over from an existing compressor hook
 ```
+
+Before writing, `trs init` runs a pre-install collision check: it scans
+target configs (following `@imports` for Claude/Gemini) for existing
+rtk or token-optimizer hooks and aborts by default. `--replace` clears
+the previous compressor's hook cleanly before installing trs; `--force`
+installs alongside (risky — double-compression).
+
+## Output saver (`trs output-saver`)
+
+trs compresses what agents **see** via `trs rewrite`. `trs output-saver`
+closes the symmetric gap — it installs a compact rules block into each
+agent's global config to compress what agents **emit**: no preambles,
+no narration, result-first, structured output where appropriate, no
+hallucinated paths.
+
+```bash
+trs output-saver            # read-only scan of all detected agents
+trs output-saver --install  # write the block where the scan was clean
+trs output-saver --print    # dump the raw block (pipe-friendly)
+trs output-saver --remove   # clean uninstall
+```
+
+Eight of nine agents are covered (Antigravity is per-project only —
+use `trs init antigravity`). Claude/Gemini get a standalone file plus
+`@import`; Cursor gets an auto-loaded `.mdc`; Codex/Windsurf/OpenCode/
+Kilo/Droid get an inline block wrapped in HTML-comment sentinels so
+re-installs are idempotent.
 
 ## Output formats
 
@@ -221,8 +253,8 @@ json_max_depth = 10
 | Binary | ~6 MB (LTO + strip), no runtime deps |
 | Startup | ~12ms on macOS / Linux (native binary or shell launcher) |
 | CLI | clap 4 (bypassed on hot path) |
-| Tests | 2,127 passing, 0 warnings |
-| Architecture | 200+ files, all under ~500 LOC — [details](AGENTS.md) |
+| Tests | 2,154 passing, 0 warnings |
+| Architecture | 200+ modular files across parsers, handlers, and integrations — [details](AGENTS.md) |
 
 ## Contributing
 
@@ -239,3 +271,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for code guidelines, [AGENTS.md](AGENTS.m
 ## License
 
 MIT
+
+---
+
+<p align="center">
+  A product by <a href="https://iteris.tech"><strong>Iteris</strong></a> · Published and maintained by <a href="https://dpeluche.dev"><strong>@dPeluChe</strong></a>
+</p>

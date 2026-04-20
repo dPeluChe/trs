@@ -228,6 +228,8 @@ impl Router {
             | Commands::Rewrite
             | Commands::Discover { .. }
             | Commands::Doctor { .. }
+            | Commands::AuditDocs { .. }
+            | Commands::OutputSaver { .. }
             | Commands::Benchmark { .. }
             | Commands::Ingest { .. } => {
                 // These are handled in main.rs before reaching the router

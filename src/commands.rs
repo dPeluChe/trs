@@ -68,6 +68,16 @@ pub enum Commands {
         /// Install hooks for all detected tools
         #[arg(long)]
         all: bool,
+
+        /// Remove competing compressor hooks (rtk, token-optimizer) before
+        /// installing trs. Required when a collision is detected.
+        #[arg(long)]
+        replace: bool,
+
+        /// Install trs even if a competing compressor is already configured.
+        /// Risk: double-compression can corrupt command output.
+        #[arg(long)]
+        force: bool,
     },
 
     /// Validate trs installation health (binary, PATH, deps, config)
@@ -75,6 +85,30 @@ pub enum Commands {
         /// Output in JSON format
         #[arg(long)]
         json: bool,
+    },
+
+    /// Install a compact output-reduction rules block into agent configs
+    /// (Claude, Gemini, Cursor, Codex, Windsurf). trs already compresses
+    /// what agents see — this does the symmetric job for what they emit.
+    OutputSaver {
+        /// Target a specific agent (claude, gemini, cursor, codex, windsurf).
+        /// Omit to act on every supported agent that's detected.
+        #[arg(value_name = "AGENT")]
+        tool: Option<String>,
+
+        /// Write the rules block into the target config(s) (default is a
+        /// read-only check that prints what would change).
+        #[arg(long)]
+        install: bool,
+
+        /// Remove a previously installed output-saver block.
+        #[arg(long)]
+        remove: bool,
+
+        /// Print the rules block to stdout and exit — useful for piping
+        /// into a custom location.
+        #[arg(long)]
+        print: bool,
     },
 
     /// Benchmark a command showing compression metrics
@@ -414,6 +448,16 @@ pub enum Commands {
         /// Arguments for the command
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
+    },
+
+    /// Audit AI-agent instruction files (CLAUDE.md, AGENTS.md, .windsurfrules,
+    /// .cursor/rules/*, .agent/rules/*) for bloat, cross-file duplicates, dead
+    /// references, and staleness. Surfaces what's silently inflating every
+    /// agent session's context.
+    AuditDocs {
+        /// Project root to audit (default: current directory).
+        #[arg(default_value = ".")]
+        path: String,
     },
 
     /// External command (auto-detected via allow_external_subcommands)

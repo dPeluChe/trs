@@ -284,6 +284,26 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "test" => Some(ParseCommands::GoTest { file: None }),
             _ => None,
         },
+        "swift" => match subcmd {
+            "build" | "test" | "run" => Some(ParseCommands::Build { file: None }),
+            _ => None,
+        },
+        // xcodebuild output is among the chattiest — compile command echoes,
+        // Write auxiliary files, dependency checks — but we only need
+        // warnings/errors/BUILD-SUCCEEDED|FAILED. handle_build does exactly
+        // that via error:/warning: patterns + success sentinel matching.
+        "xcodebuild" => Some(ParseCommands::Build { file: None }),
+
+        // Network diagnostics
+        "ping" => Some(ParseCommands::Ping { file: None }),
+
+        // Homebrew install/upgrade/reinstall/uninstall
+        "brew" => match subcmd {
+            "install" | "upgrade" | "reinstall" | "uninstall" | "remove" => {
+                Some(ParseCommands::Brew { file: None })
+            }
+            _ => None,
+        },
 
         // GitHub CLI
         "gh" => match subcmd {
@@ -367,6 +387,8 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::Tree { .. } => ParseCommands::Tree { file: Some(path) },
         ParseCommands::DockerPs { .. } => ParseCommands::DockerPs { file: Some(path) },
         ParseCommands::DockerLogs { .. } => ParseCommands::DockerLogs { file: Some(path) },
+        ParseCommands::Ping { .. } => ParseCommands::Ping { file: Some(path) },
+        ParseCommands::Brew { .. } => ParseCommands::Brew { file: Some(path) },
         ParseCommands::Deps { .. } => ParseCommands::Deps { file: Some(path) },
         ParseCommands::Install { .. } => ParseCommands::Install { file: Some(path) },
         ParseCommands::Build { .. } => ParseCommands::Build { file: Some(path) },

@@ -141,6 +141,26 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse ping output — collapses per-packet lines into a single summary
+    /// (host, ratio, loss %, avg/range latency).
+    ///
+    /// Example: ping -c 3 8.8.8.8 | trs parse ping
+    Ping {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse `brew install|upgrade|reinstall` output — drops progress bars
+    /// and fetch/pour chatter, keeps the 🍺 install-result lines and errors.
+    ///
+    /// Example: brew install wget | trs parse brew
+    Brew {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse docker logs output
     ///
     /// Example: docker logs container | trs parse docker-logs

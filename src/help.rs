@@ -7,7 +7,7 @@
 pub const LONG_ABOUT: &str = "\
 TARS CLI - Transform noisy terminal output into compact, structured signal
 
-Reduces token consumption by 68-90% for developers, AI agents, and automation.
+Reduces token consumption by 68-99% for developers, AI agents, and automation.
 Just prefix any command with trs:
 
     trs git status               # 80% reduction

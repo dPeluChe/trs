@@ -215,11 +215,13 @@ fn test_truncation_info_summary_none() {
 
 #[test]
 fn test_truncation_info_summary_minimal() {
-    let mut info = TruncationInfo::default();
-    info.is_truncated = true;
-    info.items_shown = Some(10);
-    info.items_hidden = None;
-    info.warning = None;
+    let info = TruncationInfo {
+        is_truncated: true,
+        items_shown: Some(10),
+        items_hidden: None,
+        warning: None,
+        ..Default::default()
+    };
 
     let summary = info.summary();
     assert!(summary.is_some());
@@ -228,11 +230,13 @@ fn test_truncation_info_summary_minimal() {
 
 #[test]
 fn test_truncation_info_summary_with_counts() {
-    let mut info = TruncationInfo::default();
-    info.is_truncated = true;
-    info.items_shown = Some(10);
-    info.items_hidden = Some(5);
-    info.warning = None;
+    let info = TruncationInfo {
+        is_truncated: true,
+        items_shown: Some(10),
+        items_hidden: Some(5),
+        warning: None,
+        ..Default::default()
+    };
 
     let summary = info.summary();
     assert!(summary.is_some());

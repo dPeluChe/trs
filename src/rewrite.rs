@@ -64,6 +64,10 @@ const REWRITE_PREFIXES: &[&str] = &[
     "golangci-lint",
     "ollama ",
     "kubectl ",
+    "swift ",
+    "xcodebuild ",
+    "ping ",
+    "brew ",
 ];
 
 /// Commands that should NEVER be rewritten (internal, cd, pipes, etc.)

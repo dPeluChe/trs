@@ -21,6 +21,7 @@
 )]
 use clap::Parser;
 
+mod audit_docs;
 mod benchmark;
 mod classifier;
 mod classifier_exec;
@@ -34,7 +35,9 @@ mod formatter;
 mod help;
 mod ingest;
 mod init;
+mod init_collision;
 mod init_templates;
+mod output_saver;
 #[allow(dead_code)]
 mod process;
 #[allow(dead_code)]
@@ -114,14 +117,21 @@ fn main() {
             global,
             show,
             all,
+            replace,
+            force,
         }) => {
+            let opts = init::InstallOpts {
+                global: *global,
+                replace: *replace,
+                force: *force,
+            };
             if *show {
                 init::show_status();
             } else if *all {
-                init::install_all(*global);
+                init::install_all(opts);
             } else if let Some(tool_name) = tool {
                 match init::AiTool::from_str(tool_name) {
-                    Some(t) => init::install_hook(&t, *global),
+                    Some(t) => init::install_hook(&t, opts),
                     None => eprintln!(
                         "Unknown tool: '{}'. Supported: {}",
                         tool_name,
@@ -144,6 +154,17 @@ fn main() {
             if has_fail {
                 std::process::exit(1);
             }
+        }
+        Some(Commands::OutputSaver {
+            tool,
+            install,
+            remove,
+            print,
+        }) => {
+            output_saver::run(tool.as_deref(), *install, *remove, *print);
+        }
+        Some(Commands::AuditDocs { path }) => {
+            audit_docs::run_audit_docs(std::path::Path::new(path));
         }
         Some(Commands::Benchmark {
             command,
@@ -397,6 +418,8 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "doctor"
             | "benchmark"
             | "ingest"
+            | "audit-docs"
+            | "output-saver"
             | "stats"
             | "raw"
             | "help"

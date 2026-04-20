@@ -248,8 +248,10 @@ fn test_format_logs_compact() {
 
 #[test]
 fn test_format_logs_compact_empty() {
-    let mut result = LogsOutput::default();
-    result.is_empty = true;
+    let result = LogsOutput {
+        is_empty: true,
+        ..Default::default()
+    };
     let output = ParseHandler::format_logs(&result, OutputFormat::Compact);
 
     assert!(output.contains("logs: empty"));

@@ -28,7 +28,11 @@
 
 ## Por qué
 
-trs nació como un proyecto de aprendizaje. Las sesiones de IA con código quemaban decenas de miles de tokens solo renderizando `git status`, `cargo test` y `ls -la` al contexto del agente — y teníamos la convicción de que existía un mejor ratio señal/ruido. Estudiamos los trabajos previos en el espacio y escribimos trs desde cero en Rust para ajustarlo a nuestro flujo: un binario estático único, sin dependencias en runtime, parsers propios por comando, y una historia de ingest afinada para context windows de LLM.
+El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la` que el agente volcaba a su contexto costaba dinero real, y la relación señal/ruido en esos comandos era pésima. Empezamos a escribir herramientas pequeñas — primero para nosotros, después para el equipo — que redujeran lo que el agente realmente tenía que leer.
+
+En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar — más opciones en este espacio significan mejor fit para más flujos de trabajo. trs lo fuimos iterando y expandiendo conforme aprendíamos más sobre dónde se queman realmente los tokens.
+
+Mientras más lo usábamos, más vimos que la oportunidad era más grande que los hooks de input. `trs output-saver` instala reglas en la config global de cada agente para que las respuestas también regresen más cortas. `trs audit-docs` audita CLAUDE.md / AGENTS.md buscando el bloat que cada sesión vuelve a leer. `trs ingest` comprime repositorios enteros en un índice de contexto listo para el LLM y con control de budget. Sigue siendo un binario estático único, sin deps en runtime — la historia nada más creció más allá de los hooks.
 
 La landing page tiene el write-up completo: <https://dpeluche.github.io/trs/>
 
@@ -46,7 +50,7 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reducción)
 
 $ trs cargo test
-cargo test: 2127 passed (71 suites, 4.9s)
+cargo test: 2154 passed (71 suites, 4.9s)
 # 55 KB → 58 B (99% reducción)
 
 $ trs cargo clippy
@@ -167,7 +171,35 @@ Detección de staleness, grafos de dependencias, post-procesamiento con Ollama y
 trs init --show           # estado de todas las integraciones
 trs init --all --global   # instala todo lo detectado
 trs init claude           # o elige una
+trs init claude --replace # cambia desde un hook de compresor existente
 ```
+
+Antes de escribir, `trs init` corre un chequeo de colisión: escanea
+los configs target (siguiendo `@imports` en Claude/Gemini) buscando
+hooks existentes de rtk o token-optimizer y aborta por default.
+`--replace` limpia el hook del compresor anterior antes de instalar
+trs; `--force` instala junto (riesgoso — doble compresión).
+
+## Ahorro en salida (`trs output-saver`)
+
+trs comprime lo que los agentes **ven** vía `trs rewrite`.
+`trs output-saver` cierra la brecha simétrica: instala un bloque de
+reglas compacto en la config global de cada agente para comprimir lo
+que **emiten** — nada de preámbulos, sin narración, resultado primero,
+output estructurado donde aplique, cero invención de paths.
+
+```bash
+trs output-saver            # scan read-only de los agentes detectados
+trs output-saver --install  # escribe el bloque donde el scan quedó limpio
+trs output-saver --print    # dump del bloque (pipe-friendly)
+trs output-saver --remove   # desinstalación limpia
+```
+
+8 de 9 agentes soportados (Antigravity es per-proyecto nada más — usa
+`trs init antigravity`). Claude/Gemini reciben archivo standalone más
+`@import`; Cursor un `.mdc` auto-cargado; Codex/Windsurf/OpenCode/
+Kilo/Droid bloque inline con sentinels HTML-comment para que reinstalar
+sea idempotente.
 
 ## Formatos de salida
 
@@ -221,8 +253,8 @@ json_max_depth = 10
 | Binario | ~6 MB (LTO + strip), sin deps en runtime |
 | Arranque | ~12ms en macOS / Linux |
 | CLI | clap 4 (bypassed en hot path) |
-| Tests | 2,127 passing, 0 warnings |
-| Arquitectura | 200+ archivos, todos < ~500 LOC — [detalles](AGENTS.md) |
+| Tests | 2,154 passing, 0 warnings |
+| Arquitectura | 200+ archivos modulares entre parsers, handlers e integraciones — [detalles](AGENTS.md) |
 
 ## Contribuir
 
@@ -239,3 +271,9 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md) para guías de código, [AGENTS.md](AGENT
 ## Licencia
 
 MIT
+
+---
+
+<p align="center">
+  Un producto de <a href="https://iteris.tech"><strong>Iteris</strong></a> · Publicado y mantenido por <a href="https://dpeluche.dev"><strong>@dPeluChe</strong></a>
+</p>

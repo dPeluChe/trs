@@ -1,14 +1,24 @@
 {
   "name": "@dpeluche/trs",
-  "version": "0.5.6",
-  "description": "Transform noisy terminal output into compact, structured signal. CLI toolkit for developers, automation pipelines, and AI agents. 68-90% token savings.",
+  "version": "0.5.7",
+  "description": "Transform noisy terminal output into compact, structured signal. CLI toolkit for developers, automation pipelines, and AI agents. 68-99% token savings.",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/dPeluChe/trs"
   },
   "homepage": "https://github.com/dPeluChe/trs",
-  "author": "Iteris <antonio@dpeluche.dev>",
+  "author": {
+    "name": "Iteris",
+    "url": "https://iteris.tech"
+  },
+  "contributors": [
+    {
+      "name": "dPeluChe",
+      "email": "antonio@dpeluche.dev",
+      "url": "https://dpeluche.dev"
+    }
+  ],
   "bin": {
     "trs": "bin/trs"
   },
@@ -37,10 +47,10 @@
     "compact"
   ],
   "optionalDependencies": {
-    "@dpeluche/trs-cli-darwin-x64": "0.5.6",
-    "@dpeluche/trs-cli-darwin-arm64": "0.5.6",
-    "@dpeluche/trs-cli-linux-x64": "0.5.6",
-    "@dpeluche/trs-cli-linux-arm64": "0.5.6",
-    "@dpeluche/trs-cli-win32-x64": "0.5.6"
+    "@dpeluche/trs-cli-darwin-x64": "0.5.7",
+    "@dpeluche/trs-cli-darwin-arm64": "0.5.7",
+    "@dpeluche/trs-cli-linux-x64": "0.5.7",
+    "@dpeluche/trs-cli-linux-arm64": "0.5.7",
+    "@dpeluche/trs-cli-win32-x64": "0.5.7"
   }
 }

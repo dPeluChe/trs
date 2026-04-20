@@ -3,6 +3,13 @@
 //! Kept in a separate module so `init.rs` stays focused on dispatch and
 //! detection logic. Each template is a single string constant used by
 //! `install_from_spec` / `install_rules` / `install_codex`.
+//!
+//! The Output saver block embedded in Codex/Antigravity/Windsurf rules
+//! templates is not duplicated — it expands from
+//! `output_saver_block_literal!()` so a change in one place flows to
+//! every install target.
+
+use crate::output_saver_block_literal;
 
 pub(crate) const CLAUDE_HOOKS: &str = r#"{
   "hooks": {
@@ -101,7 +108,8 @@ export const TrsPlugin = async () => {
 };
 "#;
 
-pub(crate) const CODEX_AGENTS_SECTION: &str = r#"
+pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
+    r#"
 ## Terminal Output Optimization
 
 This project uses `trs` (TARS CLI) for token-optimized terminal output.
@@ -120,10 +128,26 @@ trs cargo clippy
 ```
 
 This reduces token consumption by 68-99% without losing signal.
-See https://github.com/dPeluChe/trs for details.
-"#;
 
-pub(crate) const ANTIGRAVITY_RULES: &str = r#"
+"#,
+    output_saver_block_literal!(),
+    r#"
+
+## Keeping this file lean
+
+Periodically run `trs audit-docs` in this project to surface content that
+bloats every agent session: duplicate sections across rules files, embedded
+code/SQL/JSON that should live in their own files, references to docs that
+no longer exist. The tool also cross-checks whether code snippets here
+already have definitions in the source tree — flagging them as "remove and
+link" vs "extract to a new file".
+
+See https://github.com/dPeluChe/trs for details.
+"#
+);
+
+pub(crate) const ANTIGRAVITY_RULES: &str = concat!(
+    r#"
 # trs (TARS CLI) — terminal output optimization
 
 Antigravity does not support pre-execution hooks, so this rules file is the
@@ -161,10 +185,23 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
 
 Re-run `trs init antigravity` to pick up future updates to this guidance.
 
-Reference: https://github.com/dPeluChe/trs
-"#;
+"#,
+    output_saver_block_literal!(),
+    r#"
 
-pub(crate) const WINDSURF_RULES: &str = r#"
+## Keeping this file lean
+
+Run `trs audit-docs` periodically to spot content that belongs elsewhere
+(duplicate sections, embedded SQL/JSON/code blocks, references to files
+that no longer exist). Every unnecessary token here loads on every agent
+call.
+
+Reference: https://github.com/dPeluChe/trs
+"#
+);
+
+pub(crate) const WINDSURF_RULES: &str = concat!(
+    r#"
 # trs (TARS CLI) — terminal output optimization
 
 Windsurf Cascade does not expose a pre-execution hook, so this rules file is
@@ -186,5 +223,17 @@ trs pnpm test
 Commands without a dedicated trs parser still get whitespace / ANSI
 compression (~30-40% reduction). Pipes and chains are passed through unchanged.
 
+"#,
+    output_saver_block_literal!(),
+    r#"
+
+## Keeping this file lean
+
+Run `trs audit-docs` periodically to surface content that inflates every
+agent session — duplicate sections across rules files, embedded code/SQL
+blocks that belong in their own files, dead references. Every unnecessary
+token here loads on every call.
+
 Reference: https://github.com/dPeluChe/trs
-"#;
+"#
+);

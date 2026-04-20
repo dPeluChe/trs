@@ -3,7 +3,7 @@
 Transform noisy terminal output into compact, structured signal.
 A CLI toolkit for developers, automation pipelines, and AI agents.
 
-**68-90% token savings** on common dev operations.
+**68-99% token savings** on common dev operations.
 
 ## Install
 
@@ -44,6 +44,14 @@ trs init claude               # Claude Code
 trs init gemini               # Gemini CLI
 trs init cursor               # Cursor
 trs init codex                # Codex (AGENTS.md)
+
+# Output-side savings (new in 0.5.7)
+trs output-saver              # scan agents, suggest install
+trs output-saver --install    # install rules block into agent configs
+
+# Installation health + docs auditor
+trs doctor                    # check install, PATH, deps
+trs audit-docs                # lint CLAUDE.md / AGENTS.md for bloat
 ```
 
 ## How it works
@@ -82,6 +90,6 @@ trs git status --raw        # passthrough (tracked)
 - [GitHub](https://github.com/dPeluChe/trs)
 - [Documentation](https://github.com/dPeluChe/trs#readme)
 
-Built by [Iteris](https://dpeluche.dev)
+A product by [Iteris](https://iteris.tech) · Published and maintained by [@dPeluChe](https://dpeluche.dev)
 
 MIT License

@@ -147,7 +147,7 @@ fn test_compact_truncation_large_result() {
 #[test]
 fn test_compact_no_truncation_small_result() {
     let input = " id | val\n----+-----\n  1 | a\n  2 | b\n  3 | c\n(3 rows)\n";
-    let result = ParseHandler::parse_db(&input);
+    let result = ParseHandler::parse_db(input);
 
     let (sample, omitted) = ParseHandler::sample_rows(&result.rows);
     assert_eq!(sample.len(), 3);

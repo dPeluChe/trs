@@ -385,7 +385,7 @@ fn test_parse_logs_syslog_format() {
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
     // Should parse syslog format
-    assert!(json["entries"].as_array().unwrap().len() > 0);
+    assert!(!json["entries"].as_array().unwrap().is_empty());
 }
 
 #[test]
