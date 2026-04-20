@@ -33,8 +33,10 @@ pub(crate) mod npm_format;
 pub(crate) mod npm_parse;
 pub(crate) mod pnpm_format;
 pub(crate) mod pnpm_parse;
+pub(crate) mod ps;
 pub(crate) mod pytest_format;
 pub(crate) mod pytest_parse;
+pub(crate) mod python_traceback;
 pub(crate) mod test;
 pub(crate) mod vitest_format;
 pub(crate) mod vitest_parse;
@@ -119,6 +121,8 @@ impl CommandHandler for ParseHandler {
             ParseCommands::DockerLogs { file } => Self::handle_docker_logs(file, ctx),
             ParseCommands::Ping { file } => Self::handle_ping(file, ctx),
             ParseCommands::Brew { file } => Self::handle_brew(file, ctx),
+            ParseCommands::PythonTraceback { file } => Self::handle_python_traceback(file, ctx),
+            ParseCommands::Ps { file } => Self::handle_ps(file, ctx),
             ParseCommands::Deps { file } => Self::handle_deps(file, ctx),
             ParseCommands::Install { file } => Self::handle_install(file, ctx),
             ParseCommands::Build { file } => Self::handle_build(file, ctx),

@@ -297,6 +297,19 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // Network diagnostics
         "ping" => Some(ParseCommands::Ping { file: None }),
 
+        // Process list — `ps aux` / `ps -ef` are the common forms.
+        // Other ps invocations (e.g. `ps -o pid,cmd`) also route here;
+        // the parser passes through when the header doesn't match.
+        "ps" => Some(ParseCommands::Ps { file: None }),
+
+        // Python scripts — the python-traceback handler passes through
+        // non-traceback output and compresses stack traces when they
+        // appear. Matches the bare interpreter invocations
+        // (`python`, `python3`, `python3.12`, …) rather than specific
+        // tools like pytest which have their own parser.
+        "python" | "python3" => Some(ParseCommands::PythonTraceback { file: None }),
+        s if s.starts_with("python3.") => Some(ParseCommands::PythonTraceback { file: None }),
+
         // Homebrew install/upgrade/reinstall/uninstall
         "brew" => match subcmd {
             "install" | "upgrade" | "reinstall" | "uninstall" | "remove" => {
@@ -338,7 +351,10 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             Some(ParseCommands::Download { file: None })
         }
 
-        // npx with subcommands
+        // npx <tool> — route to the underlying tool's parser so the
+        // agent gets the same compression as when the tool runs
+        // directly. Anything not in this list falls through to the
+        // generic whitespace/ANSI fallback.
         "npx" => match subcmd {
             "jest" => Some(ParseCommands::Test {
                 runner: Some(TestRunner::Jest),
@@ -349,7 +365,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 file: None,
             }),
             "tsc" => Some(ParseCommands::Build { file: None }),
-            "eslint" | "biome" => Some(ParseCommands::Lint { file: None }),
+            "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
             _ => None,
         },
 
@@ -389,6 +405,10 @@ pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCom
         ParseCommands::DockerLogs { .. } => ParseCommands::DockerLogs { file: Some(path) },
         ParseCommands::Ping { .. } => ParseCommands::Ping { file: Some(path) },
         ParseCommands::Brew { .. } => ParseCommands::Brew { file: Some(path) },
+        ParseCommands::PythonTraceback { .. } => {
+            ParseCommands::PythonTraceback { file: Some(path) }
+        }
+        ParseCommands::Ps { .. } => ParseCommands::Ps { file: Some(path) },
         ParseCommands::Deps { .. } => ParseCommands::Deps { file: Some(path) },
         ParseCommands::Install { .. } => ParseCommands::Install { file: Some(path) },
         ParseCommands::Build { .. } => ParseCommands::Build { file: Some(path) },

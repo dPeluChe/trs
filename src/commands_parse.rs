@@ -161,6 +161,33 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse Python traceback output — collapse full paths to basename,
+    /// drop code snippet lines under each File frame, keep the stack
+    /// frame list and the final ErrorType: message. Output passthrough
+    /// when no traceback is detected so normal script output is
+    /// untouched.
+    ///
+    /// Example: python3 script.py 2>&1 | trs parse python-traceback
+    #[command(name = "python-traceback", alias = "python")]
+    PythonTraceback {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse `ps aux` / `ps -ef` output — truncate multi-kilobyte
+    /// COMMAND arguments to the executable basename, sort by CPU
+    /// descending, show the top 30 with a summary footer. Agents
+    /// scanning for a specific process or the top CPU hogs can skim
+    /// the compacted view in 1-2% of the raw bytes.
+    ///
+    /// Example: ps aux | trs parse ps
+    Ps {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse docker logs output
     ///
     /// Example: docker logs container | trs parse docker-logs

@@ -68,6 +68,10 @@ const REWRITE_PREFIXES: &[&str] = &[
     "xcodebuild ",
     "ping ",
     "brew ",
+    "python ",
+    "python3 ",
+    "npx ",
+    "ps ",
 ];
 
 /// Commands that should NEVER be rewritten (internal, cd, pipes, etc.)

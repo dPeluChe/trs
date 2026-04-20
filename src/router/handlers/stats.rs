@@ -19,6 +19,15 @@ fn local_offset() -> time::UtcOffset {
 }
 
 /// Format a Unix timestamp as YYYY-MM-DD in local time.
+/// "Mon Apr 20" style label for today's date in the user's local
+/// timezone. Used in the `--history` header so the agent can see the
+/// current day of week and calendar date without shelling out to
+/// `date`.
+fn today_date_label(offset: time::UtcOffset) -> String {
+    let now = OffsetDateTime::now_utc().to_offset(offset);
+    format!("{:?} {:?} {}", now.weekday(), now.month(), now.day())
+}
+
 fn format_date(ts: u64) -> String {
     let offset = local_offset();
     match OffsetDateTime::from_unix_timestamp(ts as i64) {
@@ -247,8 +256,10 @@ fn print_history(entries: &[HistoryEntry]) {
 
     let offset = local_offset();
     let today_count = today_entries(entries, offset).len();
+    let today_label = today_date_label(offset);
     println!(
-        "Recent Commands (today: {} command{})",
+        "Recent Commands ({}, {} command{} today)",
+        today_label,
         today_count,
         if today_count == 1 { "" } else { "s" }
     );
@@ -277,23 +288,51 @@ fn print_history(entries: &[HistoryEntry]) {
 /// When a logged command's first token is an absolute path, show the
 /// basename instead so users see "trs rewrite" rather than
 /// "/Users/you/.local/bin/trs rewrite" eating the entire column width.
-/// Used only for display — the history file still stores the full path.
+/// Also folds embedded newlines to spaces — `python3 -c "..."` and
+/// `bash -c "..."` often log a multi-line script that would break the
+/// table layout of `--history` otherwise.
+/// Used only for display — the history file still stores the full
+/// command verbatim.
 fn display_cmd(cmd: &str) -> String {
-    let trimmed = cmd.trim_start();
+    // Collapse newlines and tabs to single spaces so multi-line
+    // scripts stay on one row. Carriage returns are dropped outright
+    // (some loggers embed them mid-line).
+    let single_line: String = cmd
+        .chars()
+        .map(|c| match c {
+            '\n' | '\t' => ' ',
+            '\r' => ' ',
+            other => other,
+        })
+        .collect();
+    // Squash runs of whitespace to a single space for readability.
+    let mut squashed = String::with_capacity(single_line.len());
+    let mut prev_space = false;
+    for ch in single_line.chars() {
+        if ch == ' ' {
+            if !prev_space {
+                squashed.push(' ');
+            }
+            prev_space = true;
+        } else {
+            squashed.push(ch);
+            prev_space = false;
+        }
+    }
+    let trimmed = squashed.trim_start();
     let Some(first_end) = trimmed.find(char::is_whitespace) else {
-        // Single token: collapse to basename only if absolute.
         if trimmed.starts_with('/') {
             let base = trimmed.rsplit('/').next().unwrap_or(trimmed);
             return base.to_string();
         }
-        return cmd.to_string();
+        return trimmed.to_string();
     };
     let (first, rest) = trimmed.split_at(first_end);
     if first.starts_with('/') {
         let base = first.rsplit('/').next().unwrap_or(first);
         format!("{}{}", base, rest)
     } else {
-        cmd.to_string()
+        trimmed.to_string()
     }
 }
 
