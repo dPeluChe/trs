@@ -46,6 +46,23 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] **`cargo fmt --check` diff output** — only 32% compression on
       failures. The unified diff block has a lot of repeat whitespace
       we could collapse.
+- [ ] **`gh pr view` / `gh issue view` / `gh run view`** — detail
+      views aren't handled today (only *list* variants). Real-usage
+      audit shows `gh` at 7.4% compression overall; these views
+      return mixed markdown + metadata that a custom parser could
+      reduce ~60%. Design decision needed: parse metadata into
+      structured fields + keep body prose, or go lighter.
+- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). The
+      Build handler catches errors/warnings but the rest of the
+      output — compile-command echoes, swift intermodule dependency
+      checks, "Write auxiliary file" blocks — still bulks up. Worth
+      a closer look at whether we can drop those line families
+      without hiding real failures.
+- [ ] **`awk` / `sed`** — 1.1MB and 79K of traffic respectively,
+      0-3% compression. Decision: these print arbitrary user data.
+      Compressing that data would risk corrupting what the agent
+      actually asked for. Leave as passthrough; document the
+      TRS_SKIP=1 bypass as the escape hatch.
 - [x] Pipe/redirect first-segment rewrite — shipped in v0.5.6
 - [x] Stats header UX overhaul — shipped in v0.5.7
 - [x] Brew install/upgrade handler — shipped in v0.5.7

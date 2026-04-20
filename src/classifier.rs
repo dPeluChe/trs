@@ -329,6 +329,10 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "run" if args.get(1).map(|s| s.as_str()) == Some("list") => {
                 Some(ParseCommands::GhRun { file: None })
             }
+            // `gh api <path>` returns raw GitHub JSON responses — route
+            // to the download handler whose body compressor compacts
+            // JSON and decodes base64-encoded contents payloads.
+            "api" => Some(ParseCommands::Download { file: None }),
             _ => None,
         },
 
@@ -341,15 +345,12 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // Word count
         "wc" => Some(ParseCommands::Wc { file: None }),
 
-        // Download tools
+        // Download tools + HTTP fetches. All curl invocations route
+        // here; the handler distinguishes verbose HTTP protocol
+        // output (headers) from plain response bodies and compresses
+        // each appropriately (JSON → compact JSON, etc.).
         "wget" => Some(ParseCommands::Download { file: None }),
-        "curl"
-            if args
-                .iter()
-                .any(|a| a == "-v" || a == "--verbose" || a == "-I" || a == "--head") =>
-        {
-            Some(ParseCommands::Download { file: None })
-        }
+        "curl" => Some(ParseCommands::Download { file: None }),
 
         // npx <tool> — route to the underlying tool's parser so the
         // agent gets the same compression as when the tool runs
