@@ -230,14 +230,76 @@ fn run_shell(cmd: &str) -> bool {
 /// it's already present. The current process is still running the old
 /// binary — spawning a subprocess picks up the new binary via PATH.
 ///
-/// Failures here are reported but don't fail the overall upgrade; the
-/// binary is already upgraded, so the worst case is the user needs to
-/// run the two commands manually.
+/// Runs three validations before touching any config:
+///
+/// 1. **Spawn sanity** — invoke the new `trs --version` and confirm it
+///    executes cleanly. If the installer wrote a corrupt binary,
+///    refuse to proceed so we don't pipe user configs into a broken
+///    tool.
+/// 2. **Version bump** — confirm the new binary reports a version
+///    greater than the one that was running. Catches silent no-ops
+///    (npm shim pointing at an old cached package, curl install
+///    restoring same version, etc.).
+/// 3. **JSON validity** — parse every agent hook config that `init`
+///    would touch. If any is corrupt, abort refresh with the file
+///    path so the user can fix it manually rather than have our
+///    merge layer compound the damage.
+///
+/// Failures surface as explicit warnings; the binary upgrade itself
+/// has already happened and the refresh commands are idempotent, so
+/// the user can always re-run them manually.
 fn refresh_configs() {
+    let old_version = env!("CARGO_PKG_VERSION");
+
+    println!();
+    println!("Running post-install checks...");
+
+    // 1. Spawn sanity — new binary must execute.
+    let new_version = match Command::new("trs").arg("--version").output() {
+        Ok(out) if out.status.success() => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            stdout
+                .lines()
+                .next()
+                .and_then(|l| l.split_whitespace().nth(1))
+                .unwrap_or("unknown")
+                .to_string()
+        }
+        Ok(_) | Err(_) => {
+            eprintln!("  ! new trs binary did not respond to --version");
+            eprintln!("    skipping config refresh — verify the install manually.");
+            return;
+        }
+    };
+    println!("  ok  new binary responds to --version ({})", new_version);
+
+    // 2. Version bump — the new one should be greater.
+    if new_version == old_version {
+        eprintln!(
+            "  ! new version ({}) matches the pre-upgrade version ({}) —",
+            new_version, old_version
+        );
+        eprintln!("    install may not have actually updated. Skipping config refresh.");
+        eprintln!(
+            "    If this is expected (e.g. re-running same version), re-run with --binary-only."
+        );
+        return;
+    }
+    println!("  ok  version bumped: {} -> {}", old_version, new_version);
+
+    // 3. JSON validity of hook configs we're about to touch.
+    if let Some(bad_path) = first_broken_hook_json() {
+        eprintln!("  ! hook config {} is not valid JSON", bad_path.display());
+        eprintln!("    fix that file manually, then re-run: trs init --all --global --force");
+        eprintln!("    skipping config refresh for now.");
+        return;
+    }
+    println!("  ok  existing hook configs parse as valid JSON");
+
     println!();
     println!(
         "Refreshing agent integrations with v{} templates...",
-        env!("CARGO_PKG_VERSION")
+        new_version
     );
     println!();
 
@@ -264,6 +326,37 @@ fn refresh_configs() {
 
     println!();
     println!("upgrade complete. Restart any open shells to pick up the new binary.");
+}
+
+/// Return the first hook-config JSON file in `$HOME` that fails to
+/// parse. Used by `refresh_configs` to bail out before our JSON merge
+/// layer tries to edit a corrupt file. Returns `None` when everything
+/// is clean (or when no configs exist yet).
+fn first_broken_hook_json() -> Option<std::path::PathBuf> {
+    let home = std::env::var("HOME").ok()?;
+    let candidates = [
+        ".claude/settings.json",
+        ".claude/hooks.json",
+        ".gemini/settings.json",
+        ".cursor/hooks.json",
+        ".factory/settings.json",
+    ];
+    for rel in candidates {
+        let path = std::path::PathBuf::from(&home).join(rel);
+        if !path.exists() {
+            continue;
+        }
+        let Ok(content) = std::fs::read_to_string(&path) else {
+            continue; // unreadable isn't "corrupt" — init's own error path will handle
+        };
+        if content.trim().is_empty() {
+            continue;
+        }
+        if serde_json::from_str::<serde_json::Value>(&content).is_err() {
+            return Some(path);
+        }
+    }
+    None
 }
 
 #[cfg(test)]

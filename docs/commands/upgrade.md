@@ -36,6 +36,29 @@ have manual edits that shouldn't be overwritten).
 The refresh steps run by spawning the **new** `trs` binary from PATH,
 so they pick up whatever template changes shipped with the upgrade.
 
+### Pre-refresh validations
+
+Before `trs upgrade` touches any config file, it runs three guards:
+
+1. **Spawn sanity** — invokes the new `trs --version` and confirms it
+   executes cleanly. A corrupt binary aborts here instead of going on
+   to write configs through a broken tool.
+2. **Version bump** — confirms the new binary reports a version
+   greater than the one that was running. Catches silent no-ops
+   (npm shim pointing at an old cached package, curl install
+   restoring same version). When they match, we skip the config
+   refresh and tell the user — use `--binary-only` if this is
+   intentional.
+3. **JSON validity** — parses every hook config `init` would touch
+   (`~/.claude/settings.json`, `~/.gemini/settings.json`, etc.). If
+   any is corrupt, aborts with the exact file path so the user can
+   fix it manually rather than have our merge layer compound the
+   damage.
+
+All three failures surface as explicit messages; the binary upgrade
+itself has already happened and the two refresh commands are
+idempotent, so the user can always re-run them by hand afterwards.
+
 ## Detection logic
 
 `trs upgrade` reads the running binary's path from

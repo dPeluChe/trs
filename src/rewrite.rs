@@ -194,6 +194,16 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
+    // Explicit per-invocation opt-out: `TRS_SKIP=1 git log ...` tells us
+    // the caller (user or agent) wants this specific command to bypass
+    // trs compression and receive raw output. The env var assignment
+    // stays in the command string — the shell will strip it before
+    // executing git, so the bypass is transparent downstream. Any value
+    // after the `=` works; we only care that the prefix is present.
+    if trimmed.starts_with("TRS_SKIP=") {
+        return None;
+    }
+
     // Hot-path optimization: almost all incoming commands are plain "git X"
     // with no shell operators. A single byte scan rejects that fast case before
     // we do any of the more expensive `contains(" && ")` / shell-op lookups.
@@ -325,6 +335,25 @@ mod tests {
     #[test]
     fn test_skip_cd() {
         assert_eq!(maybe_rewrite("cd /tmp"), None);
+    }
+
+    #[test]
+    fn test_skip_trs_skip_env_var() {
+        // Explicit per-invocation bypass. The agent adds TRS_SKIP=1 when
+        // it genuinely wants raw command output.
+        assert_eq!(maybe_rewrite("TRS_SKIP=1 git status"), None);
+        assert_eq!(maybe_rewrite("TRS_SKIP=true cargo test"), None);
+        assert_eq!(maybe_rewrite("TRS_SKIP= git log"), None); // empty value still signals skip
+    }
+
+    #[test]
+    fn test_trs_skip_does_not_match_other_env_vars() {
+        // Only TRS_SKIP= triggers bypass — other env var prefixes get
+        // the normal rewrite treatment so unrelated command invocations
+        // (e.g. `RUSTFLAGS=... cargo build`) still benefit from trs.
+        // Note: env-var prefix handling beyond skip is not in scope for
+        // this guard — we simply don't match on RUSTFLAGS / PATH / etc.
+        assert!(maybe_rewrite("RUSTFLAGS=-C git status").is_some());
     }
 
     #[test]

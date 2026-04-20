@@ -8,7 +8,19 @@ use crate::help;
 /// A CLI toolkit for developers, automation pipelines, and AI agents.
 #[derive(Parser)]
 #[command(name = "trs", bin_name = "trs")]
-#[command(version, about, long_about = Some(help::LONG_ABOUT))]
+// Custom version string appends an update-check hint. Clap's default
+// version handler exits immediately after printing, so the hint has to
+// live in the version literal itself. Uses concat!() so the compile-
+// time CARGO_PKG_VERSION is preserved and we still ship one source of
+// truth for the version number.
+#[command(
+    version = concat!(
+        env!("CARGO_PKG_VERSION"),
+        "\n\ncheck for updates:  trs upgrade --check\nupgrade now:        trs upgrade"
+    ),
+    about,
+    long_about = Some(help::LONG_ABOUT)
+)]
 #[command(propagate_version = true)]
 #[command(next_display_order = None)]
 #[command(allow_external_subcommands = true)]

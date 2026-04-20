@@ -118,6 +118,26 @@ Most users want `--global` — it works across every project. Project-
 local is useful for repos where you want trs's behavior isolated to
 that checkout, or for CI that needs a pinned local config.
 
+## Bypassing the hook for one command
+
+Sometimes you want the agent to get raw command output — to diff
+exact bytes, pipe into `sha256sum`, or assert on an unmodified shell
+response. Prefix the command with `TRS_SKIP=1` and `trs rewrite`
+will pass it through unchanged:
+
+```bash
+TRS_SKIP=1 git log --pretty=format:'%H %s'
+TRS_SKIP=1 cargo test -- --nocapture
+```
+
+The env-var assignment stays in the command string; the shell strips
+it before executing the downstream program, so the bypass is
+transparent to git / cargo / whatever. Any value after `=` works —
+we only check for the `TRS_SKIP=` prefix.
+
+No global toggle: the bypass is always per-invocation. Removing trs
+entirely is done via uninstall (below), not via an always-skip flag.
+
 ## Uninstalling
 
 There's no dedicated uninstaller yet. Manual steps:
