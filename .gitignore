@@ -53,3 +53,13 @@ coverage/
 # npm platform binaries (added by CI, not committed)
 npm/platforms/*/trs
 npm/platforms/*/trs.exe
+
+# Rules/hook files `trs init` generates into the current project during
+# local testing. We install these for downstream users — they shouldn't
+# live in the trs source tree itself.
+.agent/
+.windsurfrules
+
+# Promo-video working directory (in-progress assets not yet ready to
+# ship with the main repo).
+/docs/promo-video/
