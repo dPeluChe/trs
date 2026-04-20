@@ -138,6 +138,14 @@ per-agent reference. Outstanding items:
       (audit_docs, output_saver, init, rewrite, help, ingest/*) are
       cohesive single features — splitting would fragment them.
       common.rs is the clean win.
+- [ ] **Watch `router/handlers/parse/extra_download.rs`** (463 LOC
+      after v0.5.8). Now mixes two concepts: the original HTTP
+      protocol tracer (`curl -v` / `curl -I`) and the new body-
+      content compressor (plain `curl URL`, `gh api`, base64 decode).
+      Not a hard violation yet, but a clean split would be
+      `extra_download.rs` (protocol) + `http_body.rs` (body /
+      JSON / base64). Revisit if the file crosses 500 or if body
+      logic grows (HTML compression, XML, etc.).
 - [ ] **Proactive `.zshenv` check in install.sh**. If `~/.local/bin` is in
       the user's interactive PATH (installer's $PATH) but NOT referenced
       in `~/.zshenv`, IDE subshells will still fail. Could detect and
