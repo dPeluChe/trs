@@ -217,6 +217,8 @@ fn print_summary(entries: &[HistoryEntry]) {
 
     println!();
     println!("For full history: trs stats --history");
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
 }
 
 /// Entries whose timestamp falls on the same local-date as "now".
@@ -244,7 +246,12 @@ fn print_history(entries: &[HistoryEntry]) {
     let recent = &entries[start..];
 
     let offset = local_offset();
-    println!("Recent Commands");
+    let today_count = today_entries(entries, offset).len();
+    println!(
+        "Recent Commands (today: {} command{})",
+        today_count,
+        if today_count == 1 { "" } else { "s" }
+    );
     println!("{}", "\u{2500}".repeat(64));
     for entry in recent {
         let saved = entry.in_bytes.saturating_sub(entry.out_bytes);
@@ -256,12 +263,37 @@ fn print_history(entries: &[HistoryEntry]) {
         println!(
             "  {}  {:<25} {:>5} -> {:>5}  -{:>2}%  {}ms",
             format_timestamp(entry.ts, offset),
-            truncate_cmd(&entry.cmd, 25),
+            truncate_cmd(&display_cmd(&entry.cmd), 25),
             format_bytes_human(entry.in_bytes),
             format_bytes_human(entry.out_bytes),
             pct,
             entry.ms
         );
+    }
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
+}
+
+/// When a logged command's first token is an absolute path, show the
+/// basename instead so users see "trs rewrite" rather than
+/// "/Users/you/.local/bin/trs rewrite" eating the entire column width.
+/// Used only for display — the history file still stores the full path.
+fn display_cmd(cmd: &str) -> String {
+    let trimmed = cmd.trim_start();
+    let Some(first_end) = trimmed.find(char::is_whitespace) else {
+        // Single token: collapse to basename only if absolute.
+        if trimmed.starts_with('/') {
+            let base = trimmed.rsplit('/').next().unwrap_or(trimmed);
+            return base.to_string();
+        }
+        return cmd.to_string();
+    };
+    let (first, rest) = trimmed.split_at(first_end);
+    if first.starts_with('/') {
+        let base = first.rsplit('/').next().unwrap_or(first);
+        format!("{}{}", base, rest)
+    } else {
+        cmd.to_string()
     }
 }
 

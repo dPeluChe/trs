@@ -230,6 +230,7 @@ impl Router {
             | Commands::Doctor { .. }
             | Commands::AuditDocs { .. }
             | Commands::OutputSaver { .. }
+            | Commands::Upgrade { .. }
             | Commands::Benchmark { .. }
             | Commands::Ingest { .. } => {
                 // These are handled in main.rs before reaching the router

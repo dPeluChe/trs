@@ -308,6 +308,17 @@ pub(crate) fn install_all(opts: InstallOpts) {
     if installed > 0 {
         eprintln!("note: restart any open AI tool sessions for hooks to take effect");
     }
+    // When everything is already wired up, remind the user how to force
+    // a refresh — template content can change between releases even
+    // when the install marker ("trs rewrite") is already present.
+    if installed == 0 && skipped > 0 {
+        println!();
+        println!("All detected agents are already configured. If a new trs release");
+        println!("ships hook template improvements, re-run with --force to overwrite");
+        println!("with the current template (user-added hooks are preserved).");
+        println!();
+        println!("  trs init --all --global --force");
+    }
 }
 
 /// Check if trs binary is available in PATH.
@@ -385,8 +396,22 @@ pub(crate) fn show_status_and_usage() {
     println!("  trs init --show                 show this status");
     println!();
     println!("Collision handling:");
-    println!("  --replace    remove competing compressor hooks (rtk, etc.)");
-    println!("  --force      install alongside anyway (risk: double-compression)");
+    println!("  trs init scans the target config for hooks from another compressor");
+    println!("  tool (rtk, token-optimizer) before writing. Running two compressors");
+    println!("  on the same command risks double-compression — garbled output that");
+    println!("  looks successful to the hook layer. By default trs aborts when it");
+    println!("  finds a collision.");
+    println!();
+    println!("  --replace    clean up the other tool's hook before installing trs");
+    println!("  --force      install trs alongside anyway (risky, keeps both active)");
+    println!();
+    println!("Refreshing hooks:");
+    println!("  Templates may change between releases. When all agents already show");
+    println!("  as configured, re-run with --force to overwrite with the current");
+    println!("  template. The config merge preserves any user-added hooks that");
+    println!("  don't reference trs.");
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/init.md");
 }
 
 /// Check if a tool has trs hooks installed (local or global).

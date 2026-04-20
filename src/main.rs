@@ -47,6 +47,7 @@ mod router;
 #[allow(dead_code)]
 mod schema;
 pub(crate) mod tracker;
+mod upgrade;
 
 #[allow(unused_imports)]
 pub(crate) use cli::format_precedence;
@@ -162,6 +163,9 @@ fn main() {
             print,
         }) => {
             output_saver::run(tool.as_deref(), *install, *remove, *print);
+        }
+        Some(Commands::Upgrade { check, yes }) => {
+            upgrade::run_upgrade(*check, *yes);
         }
         Some(Commands::AuditDocs { path }) => {
             audit_docs::run_audit_docs(std::path::Path::new(path));
@@ -420,6 +424,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "ingest"
             | "audit-docs"
             | "output-saver"
+            | "upgrade"
             | "stats"
             | "raw"
             | "help"

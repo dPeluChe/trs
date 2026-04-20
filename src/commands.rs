@@ -87,6 +87,20 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Detect how trs was installed and re-run the matching install path
+    /// to pick up the latest release. Supports npm and the curl|sh script;
+    /// flags the cargo / Homebrew channels as manual-only for now.
+    Upgrade {
+        /// Detect the install method and show what would run without
+        /// executing anything.
+        #[arg(long)]
+        check: bool,
+
+        /// Skip the interactive confirmation prompt. Useful in scripts.
+        #[arg(short = 'y', long = "yes")]
+        yes: bool,
+    },
+
     /// Install a compact output-reduction rules block into agent configs
     /// (Claude, Gemini, Cursor, Codex, Windsurf). trs already compresses
     /// what agents see — this does the symmetric job for what they emit.

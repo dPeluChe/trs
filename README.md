@@ -50,7 +50,7 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reduction)
 
 $ trs cargo test
-cargo test: 2154 passed (71 suites, 4.9s)
+cargo test: 2161 passed (71 suites, 4.9s)
 # 55 KB → 58 B (99% reduction)
 
 $ trs cargo clippy
@@ -253,7 +253,7 @@ json_max_depth = 10
 | Binary | ~6 MB (LTO + strip), no runtime deps |
 | Startup | ~12ms on macOS / Linux (native binary or shell launcher) |
 | CLI | clap 4 (bypassed on hot path) |
-| Tests | 2,154 passing, 0 warnings |
+| Tests | 2,161 passing, 0 warnings |
 | Architecture | 200+ modular files across parsers, handlers, and integrations — [details](AGENTS.md) |
 
 ## Contributing

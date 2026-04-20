@@ -126,8 +126,43 @@ pub(crate) fn run_checks() -> Vec<Check> {
         check_history_writable(),
         check_stdin_pipeline(),
         check_hooks_installed(),
+        check_output_saver_installed(),
         check_agent_docs_health(),
     ]
+}
+
+/// Count how many of the supported agents have the trs output-saver
+/// block installed. Mirrors `check_hooks_installed` so the doctor
+/// report has symmetric coverage of input hooks vs output-saver.
+fn check_output_saver_installed() -> Check {
+    use crate::output_saver::{scan_agent, Status, AGENTS};
+    let mut installed = 0;
+    let mut supported = 0;
+    for agent in AGENTS {
+        match scan_agent(agent.id) {
+            Status::AlreadyInstalled => {
+                installed += 1;
+                supported += 1;
+            }
+            Status::NotInstalled | Status::NotDetected => {
+                supported += 1;
+            }
+            Status::Unsupported { .. } => {}
+        }
+    }
+    if installed > 0 {
+        Check::pass(
+            "output saver",
+            format!(
+                "output-saver ({}/{} agents configured)",
+                installed, supported
+            ),
+        )
+        .with_hint("run `trs output-saver` to review or extend")
+    } else {
+        Check::warn("output saver", "output-saver not installed")
+            .with_hint("`trs output-saver --install` adds anti-preamble rules to agent configs")
+    }
 }
 
 /// Scan cwd for agent instruction files and surface a token budget summary.
@@ -229,6 +264,9 @@ pub(crate) fn print_report(checks: &[Check]) {
         println!();
         println!("  Run the suggested commands to fix issues.");
     }
+
+    println!();
+    println!("  More: https://github.com/dPeluChe/trs/blob/main/docs/commands/doctor.md");
 }
 
 /// Print doctor results in JSON format.

@@ -1,6 +1,6 @@
 {
   "name": "@dpeluche/trs-cli-darwin-arm64",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "trs binary for darwin arm64",
   "license": "MIT",
   "repository": {
