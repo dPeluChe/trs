@@ -8,7 +8,17 @@
     "url": "https://github.com/dPeluChe/trs"
   },
   "homepage": "https://github.com/dPeluChe/trs",
-  "author": "Iteris <antonio@dpeluche.dev>",
+  "author": {
+    "name": "Iteris",
+    "url": "https://iteris.tech"
+  },
+  "contributors": [
+    {
+      "name": "dPeluChe",
+      "email": "antonio@dpeluche.dev",
+      "url": "https://dpeluche.dev"
+    }
+  ],
   "bin": {
     "trs": "bin/trs"
   },

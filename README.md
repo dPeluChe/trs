@@ -271,3 +271,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for code guidelines, [AGENTS.md](AGENTS.m
 ## License
 
 MIT
+
+---
+
+<p align="center">
+  A product by <a href="https://iteris.tech"><strong>Iteris</strong></a> · Published and maintained by <a href="https://dpeluche.dev"><strong>@dPeluChe</strong></a>
+</p>

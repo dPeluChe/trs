@@ -90,6 +90,6 @@ trs git status --raw        # passthrough (tracked)
 - [GitHub](https://github.com/dPeluChe/trs)
 - [Documentation](https://github.com/dPeluChe/trs#readme)
 
-Built by [Iteris](https://dpeluche.dev)
+A product by [Iteris](https://iteris.tech) · Published and maintained by [@dPeluChe](https://dpeluche.dev)
 
 MIT License
