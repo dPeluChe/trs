@@ -6,7 +6,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ## Phase 1 — Release & Distribution
 
-- [x] Create first GitHub Release — v0.1.0 shipped; at v0.5.6 now
+- [x] Create first GitHub Release — v0.1.0 shipped; at v0.5.7 now
 - [x] npm publish (`@dpeluche/trs`)
 - [ ] Homebrew tap (low priority — npm + curl|sh covers 99% of users)
 - [ ] Publish to crates.io (`cargo install tars-cli` — currently source-only)

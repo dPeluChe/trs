@@ -3,7 +3,7 @@
 ## What is trs
 
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
-Reduces token consumption by 68-90% for developers, AI agents, and automation pipelines.
+Reduces token consumption by 68-99% for developers, AI agents, and automation pipelines.
 
 ## Related commands worth knowing
 
@@ -130,7 +130,7 @@ tests/
 - **Flags anywhere**: `trs git status --json` and `trs --json git status` both work
 - **Pipe support**: `git status | trs parse git-status` also works
 - **No runtime deps**: Single binary, ~7MB, works on macOS/Linux/Windows
-- **Max 500 LOC per file**: 210+ .rs files, all under 506 lines (2 at 503-506)
+- **Modular by design**: 210+ .rs files. Most stay well under 500 LOC; a handful of feature-complete modules (audit_docs, output_saver, init) are larger because splitting them would fragment a single feature across files for no benefit.
 - **Token tracking**: Every execution logged to ~/.trs/history.jsonl
 - **3-tier fallback**: parser OK → degraded → truncated passthrough with `[trs:passthrough]`
 - **Generic fallback**: commands without parser get whitespace/ANSI compression (20-40%)
@@ -144,14 +144,14 @@ tests/
 
 ```bash
 cargo build                    # Build
-cargo test                     # Run 2,123+ tests
+cargo test                     # Run 2,154+ tests
 cargo install --path .         # Install globally
 ./docs/benchmarks/benchmark.sh # Compare vs rtk (see docs/benchmarks/README.md)
 ```
 
 ## Testing
 
-- 675 unit tests (src/) across 30+ test modules
-- 542 CLI integration tests (tests/cli_*.rs, 26 files)
-- 822 additional integration tests (70+ test files)
-- Total: 2,039 tests, 0 failures, 0 warnings
+- 796 unit tests (src/) across 30+ test modules
+- 540+ CLI integration tests (tests/cli_*.rs, 26 files)
+- 800+ additional integration tests (70+ test files)
+- Total: 2,154 tests across 71 suites, 0 failures, 0 warnings

@@ -1,7 +1,7 @@
 {
   "name": "@dpeluche/trs",
   "version": "0.5.7",
-  "description": "Transform noisy terminal output into compact, structured signal. CLI toolkit for developers, automation pipelines, and AI agents. 68-90% token savings.",
+  "description": "Transform noisy terminal output into compact, structured signal. CLI toolkit for developers, automation pipelines, and AI agents. 68-99% token savings.",
   "license": "MIT",
   "repository": {
     "type": "git",

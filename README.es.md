@@ -50,7 +50,7 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reducción)
 
 $ trs cargo test
-cargo test: 2127 passed (71 suites, 4.9s)
+cargo test: 2154 passed (71 suites, 4.9s)
 # 55 KB → 58 B (99% reducción)
 
 $ trs cargo clippy
@@ -171,14 +171,14 @@ Detección de staleness, grafos de dependencias, post-procesamiento con Ollama y
 trs init --show           # estado de todas las integraciones
 trs init --all --global   # instala todo lo detectado
 trs init claude           # o elige una
-trs init claude --replace # migra desde un competidor (rtk, etc.)
+trs init claude --replace # cambia desde un hook de compresor existente
 ```
 
 Antes de escribir, `trs init` corre un chequeo de colisión: escanea
 los configs target (siguiendo `@imports` en Claude/Gemini) buscando
 hooks existentes de rtk o token-optimizer y aborta por default.
-`--replace` limpia los hooks del competidor; `--force` instala junto
-(riesgoso — doble compresión).
+`--replace` limpia el hook del compresor anterior antes de instalar
+trs; `--force` instala junto (riesgoso — doble compresión).
 
 ## Ahorro en salida (`trs output-saver`)
 
@@ -254,7 +254,7 @@ json_max_depth = 10
 | Arranque | ~12ms en macOS / Linux |
 | CLI | clap 4 (bypassed en hot path) |
 | Tests | 2,154 passing, 0 warnings |
-| Arquitectura | 200+ archivos, todos < ~500 LOC — [detalles](AGENTS.md) |
+| Arquitectura | 200+ archivos modulares entre parsers, handlers e integraciones — [detalles](AGENTS.md) |
 
 ## Contribuir
 

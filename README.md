@@ -50,7 +50,7 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reduction)
 
 $ trs cargo test
-cargo test: 2127 passed (71 suites, 4.9s)
+cargo test: 2154 passed (71 suites, 4.9s)
 # 55 KB → 58 B (99% reduction)
 
 $ trs cargo clippy
@@ -171,14 +171,14 @@ Everything about `trs ingest` — stale detection, dependency graphs, Ollama pos
 trs init --show           # status of all integrations
 trs init --all --global   # install everything it detects
 trs init claude           # or pick one
-trs init claude --replace # migrate away from a competitor (rtk, etc.)
+trs init claude --replace # cut over from an existing compressor hook
 ```
 
 Before writing, `trs init` runs a pre-install collision check: it scans
 target configs (following `@imports` for Claude/Gemini) for existing
-rtk or token-optimizer hooks and aborts by default. `--replace` scrubs
-competitor hooks cleanly; `--force` installs alongside (risky —
-double-compression).
+rtk or token-optimizer hooks and aborts by default. `--replace` clears
+the previous compressor's hook cleanly before installing trs; `--force`
+installs alongside (risky — double-compression).
 
 ## Output saver (`trs output-saver`)
 
@@ -254,7 +254,7 @@ json_max_depth = 10
 | Startup | ~12ms on macOS / Linux (native binary or shell launcher) |
 | CLI | clap 4 (bypassed on hot path) |
 | Tests | 2,154 passing, 0 warnings |
-| Architecture | 200+ files, all under ~500 LOC — [details](AGENTS.md) |
+| Architecture | 200+ modular files across parsers, handlers, and integrations — [details](AGENTS.md) |
 
 ## Contributing
 

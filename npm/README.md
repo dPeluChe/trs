@@ -3,7 +3,7 @@
 Transform noisy terminal output into compact, structured signal.
 A CLI toolkit for developers, automation pipelines, and AI agents.
 
-**68-90% token savings** on common dev operations.
+**68-99% token savings** on common dev operations.
 
 ## Install
 
