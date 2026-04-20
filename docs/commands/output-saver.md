@@ -102,6 +102,18 @@ trs output-saver — scan
   1 installable, 2 already installed, 1 not detected, 1 unsupported
 ```
 
+## `--refresh` — pick up template changes without adding new installs
+
+```bash
+trs output-saver --refresh
+```
+
+Re-installs the block **only** where `trs output-saver` already
+reports `AlreadyInstalled`. Agents that never had the block are
+skipped silently. This is the mode `trs upgrade` calls automatically
+to refresh templates without surprising you by adding rules to agents
+you deliberately didn't opt into.
+
 ## `--remove` behavior
 
 For `@import` and `RulesDir` installs, `--remove` deletes the

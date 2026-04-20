@@ -161,11 +161,16 @@ fn main() {
             install,
             remove,
             print,
+            refresh,
         }) => {
-            output_saver::run(tool.as_deref(), *install, *remove, *print);
+            output_saver::run(tool.as_deref(), *install, *remove, *print, *refresh);
         }
-        Some(Commands::Upgrade { check, yes }) => {
-            upgrade::run_upgrade(*check, *yes);
+        Some(Commands::Upgrade {
+            check,
+            yes,
+            binary_only,
+        }) => {
+            upgrade::run_upgrade(*check, *yes, *binary_only);
         }
         Some(Commands::AuditDocs { path }) => {
             audit_docs::run_audit_docs(std::path::Path::new(path));

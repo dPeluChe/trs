@@ -9,10 +9,32 @@ Added in v0.5.8.
 ## Quick reference
 
 ```bash
-trs upgrade           # detect + confirm + run
-trs upgrade -y        # skip confirmation (useful for scripts / cron)
-trs upgrade --check   # show the detection result and planned command, don't run
+trs upgrade                # detect + confirm + binary + refresh configs
+trs upgrade -y             # skip confirmation (useful for scripts / cron)
+trs upgrade --check        # dry-run: show detection + planned commands
+trs upgrade --binary-only  # upgrade only the binary, skip config refresh
 ```
+
+## What gets upgraded
+
+By default `trs upgrade` runs three steps in order:
+
+1. **Binary** — the shell install command for your detected channel
+   (curl|sh or npm). See the detection table below.
+2. **Hooks** — `trs init --all --global --force` refreshes every
+   already-configured agent with the latest hook templates. Existing
+   user-added hooks on the same event are preserved (the JSON merge
+   only replaces trs's own entries).
+3. **Output-saver** — `trs output-saver --refresh` re-installs the
+   rules block **only** where it's already present. Agents that
+   never had output-saver installed are left untouched.
+
+Pass `--binary-only` to skip steps 2 and 3 — useful when you want to
+upgrade the binary without re-touching any config files (e.g. you
+have manual edits that shouldn't be overwritten).
+
+The refresh steps run by spawning the **new** `trs` binary from PATH,
+so they pick up whatever template changes shipped with the upgrade.
 
 ## Detection logic
 

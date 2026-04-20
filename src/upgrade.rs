@@ -57,7 +57,7 @@ impl InstallMethod {
     }
 }
 
-pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool) {
+pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: bool) {
     let exe = std::env::current_exe().ok();
     let method = detect_install_method(exe.as_deref());
 
@@ -76,6 +76,11 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool) {
             let cmd = format!("curl -fsSL {} | sh", INSTALL_SCRIPT_URL);
             println!("Will run:");
             println!("  {}", cmd);
+            if !binary_only {
+                println!("Then refresh (via the new binary):");
+                println!("  trs init --all --global --force");
+                println!("  trs output-saver --refresh");
+            }
             if check_only {
                 return;
             }
@@ -83,12 +88,19 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool) {
                 println!("aborted.");
                 return;
             }
-            run_shell(&cmd);
+            if run_shell(&cmd) && !binary_only {
+                refresh_configs();
+            }
         }
         InstallMethod::Npm => {
             let cmd = format!("npm install -g {}@latest", NPM_PACKAGE);
             println!("Will run:");
             println!("  {}", cmd);
+            if !binary_only {
+                println!("Then refresh (via the new binary):");
+                println!("  trs init --all --global --force");
+                println!("  trs output-saver --refresh");
+            }
             if check_only {
                 return;
             }
@@ -96,7 +108,9 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool) {
                 println!("aborted.");
                 return;
             }
-            run_shell(&cmd);
+            if run_shell(&cmd) && !binary_only {
+                refresh_configs();
+            }
         }
         InstallMethod::Cargo => {
             println!("trs upgrade does not support cargo installs yet");
@@ -185,24 +199,71 @@ fn prompt_yes(question: &str) -> bool {
     matches!(line.trim().to_lowercase().as_str(), "y" | "yes")
 }
 
-fn run_shell(cmd: &str) {
+/// Run a shell command and return whether it succeeded. Stdout/stderr
+/// inherit the current terminal so the user sees the installer's
+/// progress output live.
+fn run_shell(cmd: &str) -> bool {
     println!();
     let status = Command::new("sh").arg("-c").arg(cmd).status();
     match status {
         Ok(s) if s.success() => {
             println!();
-            println!("upgrade complete. Restart any open shells to pick up the new binary.");
+            println!("binary upgrade complete.");
+            true
         }
         Ok(s) => {
             eprintln!(
                 "\nupgrade command exited with code {}",
                 s.code().unwrap_or(-1)
             );
+            false
         }
         Err(e) => {
             eprintln!("\nfailed to spawn upgrade command: {}", e);
+            false
         }
     }
+}
+
+/// After the binary is replaced on disk, spawn the new `trs` to
+/// refresh hook templates and re-install the output-saver block where
+/// it's already present. The current process is still running the old
+/// binary — spawning a subprocess picks up the new binary via PATH.
+///
+/// Failures here are reported but don't fail the overall upgrade; the
+/// binary is already upgraded, so the worst case is the user needs to
+/// run the two commands manually.
+fn refresh_configs() {
+    println!();
+    println!(
+        "Refreshing agent integrations with v{} templates...",
+        env!("CARGO_PKG_VERSION")
+    );
+    println!();
+
+    println!("  trs init --all --global --force");
+    let init_ok = Command::new("trs")
+        .args(["init", "--all", "--global", "--force"])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if !init_ok {
+        eprintln!("  warning: hook refresh failed — run manually if needed");
+    }
+
+    println!();
+    println!("  trs output-saver --refresh");
+    let refresh_ok = Command::new("trs")
+        .args(["output-saver", "--refresh"])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if !refresh_ok {
+        eprintln!("  warning: output-saver refresh failed — run manually if needed");
+    }
+
+    println!();
+    println!("upgrade complete. Restart any open shells to pick up the new binary.");
 }
 
 #[cfg(test)]
