@@ -89,23 +89,22 @@ Ver [`docs/features/upgrade.md`](docs/features/upgrade.md).
 ## Inicio rápido
 
 ```bash
-# 1. Pruébalo — prefija cualquier comando con trs
-trs git status
-trs cargo test
-
-# 2. Deja que tu agente lo haga automáticamente — instala hooks en
-#    todos los agentes soportados (ver Agentes de IA soportados abajo)
+# 1. Instala hooks en cada agente detectado (el camino principal)
 trs init --all --global
 
-# 3. Ve tu ahorro
+# 2. Ve tu ahorro
 trs stats                          # dashboard
 trs stats --by-agent               # desglose por agente de IA
 trs stats -n 30                    # límite de filas personalizado
 ```
 
-Los flags funcionan en cualquier posición y stdin también es soportado:
+### Uso standalone (opcional)
+
+También puedes invocar trs directamente sin hooks — útil para scripts, CI, o probarlo antes de comprometerte al flujo de init:
 
 ```bash
+trs git status
+trs cargo test
 trs git status --json              # JSON estructurado
 trs --json git status              # flags en cualquier lugar
 git status | trs parse git-status  # sintaxis de pipe también
@@ -211,7 +210,7 @@ Referencia completa con ejemplos lado-a-lado: [`docs/features/formats.md`](docs/
 ## Seguridad y detalles finos
 
 - **Collision check** — `trs init` detecta hooks de otras herramientas de compresión de tokens (siguiendo `@imports` también) y aborta por default. `--replace` migra limpio. Ver [`docs/support/other-token-savers.md`](docs/support/other-token-savers.md).
-- **Debug bundle** — `trs debug-info` empaca version + plataforma + doctor checks + historial reciente + tee logs en un reporte listo para pegar al reportar un bug.
+- **Debug bundle** — `trs debug-info` empaca version + plataforma + doctor checks + historial reciente + tee logs en un reporte listo para pegar. Úsalo para reportar un bug, pedir ayuda, o compartir un repro con un colaborador — un comando, sin paths de log olvidados.
 
 ### Cómo se mantiene seguro
 
@@ -222,19 +221,6 @@ Referencia completa con ejemplos lado-a-lado: [`docs/features/formats.md`](docs/
 - En fallo, el output completo se guarda en `~/.trs/tee/` para recuperar.
 - `trs read` nunca remueve contenido de archivos de datos JSON/YAML/TOML/XML.
 
-## Configuración
-
-Opcional — trs funciona sin config. Para tunear:
-
-```toml
-# ~/.trs/config.toml (o .trs/config.toml por proyecto)
-[limits]
-grep_max_results = 200
-status_max_files = 15
-passthrough_max_chars = 2000
-json_max_depth = 10
-```
-
 ## Por qué
 
 <details>
@@ -244,9 +230,12 @@ El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la`
 
 En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar — más opciones en este espacio significan mejor fit para más flujos de trabajo. trs lo fuimos iterando y expandiendo conforme aprendíamos más sobre dónde se queman realmente los tokens.
 
-Mientras más lo usábamos, más vimos que la oportunidad era más grande que los hooks de input. `trs output-saver` instala reglas en la config global de cada agente para que las respuestas también regresen más cortas. `trs audit-docs` audita CLAUDE.md / AGENTS.md buscando el bloat que cada sesión vuelve a leer. `trs ingest` comprime repositorios enteros en un índice de contexto listo para el LLM y con control de budget. Sigue siendo un binario estático único, sin deps en runtime — la historia nada más creció más allá de los hooks.
+Mientras más lo usábamos, más vimos que la oportunidad era más grande que los hooks de input. La historia se convirtió en cuatro herramientas complementarias:
 
-La landing page tiene el write-up completo: <https://usetrs.dev>
+- [`trs rewrite`](docs/features/init.md) — compresión de input en cada tool call del agente.
+- [`trs output-saver`](docs/features/output-saver.md) — bloque de reglas que acorta las respuestas de vuelta.
+- [`trs audit-docs`](docs/features/audit-docs.md) — encuentra bloat, duplicados y `@imports` muertos en los archivos de instrucciones que cada sesión re-carga.
+- [`trs ingest`](docs/features/ingest.md) — digest budget-aware y LLM-ready de todo un repo.
 
 </details>
 
@@ -268,7 +257,28 @@ cargo fmt -- --check
 cargo run -- git status        # correr localmente contra el workspace
 ```
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md) para guidelines, [AGENTS.md](AGENTS.md) para arquitectura, [`docs/development/`](docs/development/) para internals más profundos, y [`docs/roadmap/TASK_TODO.md`](docs/roadmap/TASK_TODO.md) para el roadmap.
+## Referencia
+
+| Área | Link |
+|---|---|
+| Agentes de IA soportados (matriz completa) | [`docs/support/agents.md`](docs/support/agents.md) |
+| Comandos soportados (referencia completa) | [`docs/support/commands.md`](docs/support/commands.md) |
+| Instalación deep-dive | [`docs/support/install.md`](docs/support/install.md) |
+| Otras herramientas en el mismo espacio | [`docs/support/other-token-savers.md`](docs/support/other-token-savers.md) |
+| `trs ingest` — digest del proyecto | [`docs/features/ingest.md`](docs/features/ingest.md) |
+| `trs output-saver` — compresión de respuestas | [`docs/features/output-saver.md`](docs/features/output-saver.md) |
+| `trs init` — hooks de agentes | [`docs/features/init.md`](docs/features/init.md) |
+| `trs audit-docs` — linter de archivos de instrucciones | [`docs/features/audit-docs.md`](docs/features/audit-docs.md) |
+| `trs upgrade` — self-upgrade | [`docs/features/upgrade.md`](docs/features/upgrade.md) |
+| `trs stats` — dashboard de ahorro | [`docs/features/stats.md`](docs/features/stats.md) |
+| `trs doctor` — health check | [`docs/features/doctor.md`](docs/features/doctor.md) |
+| Formatos de salida (6 lado-a-lado) | [`docs/features/formats.md`](docs/features/formats.md) |
+| Configuración (`~/.trs/config.toml`) | [`docs/features/configuration.md`](docs/features/configuration.md) |
+| Guía para contribuir | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Overview de arquitectura | [AGENTS.md](AGENTS.md) |
+| Internals de desarrollo | [`docs/development/`](docs/development/) |
+| Roadmap | [`docs/roadmap/TASK_TODO.md`](docs/roadmap/TASK_TODO.md) |
+| Codebase digest vivo | [`docs/development/codebase-digest.md`](docs/development/codebase-digest.md) |
 
 ## Licencia
 

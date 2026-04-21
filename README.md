@@ -89,23 +89,22 @@ See [`docs/features/upgrade.md`](docs/features/upgrade.md).
 ## Quick start
 
 ```bash
-# 1. Try it — prefix any command with trs
-trs git status
-trs cargo test
-
-# 2. Let your AI agent do it automatically — wires hooks into every
-#    supported agent (see Supported AI agents below)
+# 1. Wire hooks into every detected AI agent (the main path)
 trs init --all --global
 
-# 3. See your savings
+# 2. See your savings
 trs stats                          # dashboard
 trs stats --by-agent               # breakdown per AI agent
 trs stats -n 30                    # custom row limit
 ```
 
-Flags work anywhere and stdin is supported too:
+### Standalone (optional)
+
+You can also call trs directly without the hooks wired — handy for scripts, CI, or trying it out before committing to the init flow:
 
 ```bash
+trs git status
+trs cargo test
 trs git status --json              # structured JSON
 trs --json git status              # flags work anywhere
 git status | trs parse git-status  # pipe syntax too
@@ -211,7 +210,7 @@ Full format reference with side-by-side examples: [`docs/features/formats.md`](d
 ## Safety & quirks
 
 - **Collision check** — `trs init` detects hooks from other token-compression tools (via `@imports` too) and aborts by default. `--replace` migrates cleanly. See [`docs/support/other-token-savers.md`](docs/support/other-token-savers.md).
-- **Debug bundle** — `trs debug-info` packages version + platform + doctor checks + recent history + tee logs into one paste-ready report for bug filings.
+- **Debug bundle** — `trs debug-info` packages version + platform + doctor checks + recent history + tee logs into one paste-ready report. Use it when filing a bug, asking for help, or sharing a repro with a collaborator — one command, no forgotten log path.
 
 ### How it stays safe
 
@@ -222,19 +221,6 @@ Full format reference with side-by-side examples: [`docs/features/formats.md`](d
 - On failure, full output saved to `~/.trs/tee/` for recovery.
 - `trs read` never strips content from JSON/YAML/TOML/XML data files.
 
-## Configuration
-
-Optional — trs works without config. For tuning:
-
-```toml
-# ~/.trs/config.toml (or .trs/config.toml per project)
-[limits]
-grep_max_results = 200
-status_max_files = 15
-passthrough_max_chars = 2000
-json_max_depth = 10
-```
-
 ## Why
 
 <details>
@@ -244,9 +230,12 @@ Token pricing kept climbing. Every `git status`, `cargo test`, and `ls -la` the 
 
 Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). By then our tools had been evolving on their own, so we faced the honest choice: migrate to rtk and drop what we'd built, or continue and publish our own take. We chose to continue — more options in this space means a better fit for more workflows. trs kept iterating and expanding as we learned more about where tokens actually burn.
 
-The more we used it, the more we saw the opportunity was bigger than input hooks. `trs output-saver` installs rules into each agent's global config so replies come back shorter too. `trs audit-docs` inspects CLAUDE.md / AGENTS.md for the bloat every session re-loads. `trs ingest` compresses whole repos into a budget-aware, LLM-ready context index. Still a single static binary with zero runtime deps — the story just got bigger than hooks.
+The more we used it, the more we saw the opportunity was bigger than input hooks. The story grew into four complementary tools:
 
-The landing page has the full write-up: <https://usetrs.dev>
+- [`trs rewrite`](docs/features/init.md) — input compression on every AI-agent tool call.
+- [`trs output-saver`](docs/features/output-saver.md) — rules block that shortens replies coming back from the agent.
+- [`trs audit-docs`](docs/features/audit-docs.md) — finds bloat, duplicates, and dead imports in the instruction files every session re-loads.
+- [`trs ingest`](docs/features/ingest.md) — budget-aware, LLM-ready digest of a whole repo.
 
 </details>
 
@@ -268,7 +257,28 @@ cargo fmt -- --check
 cargo run -- git status        # run locally against the workspace
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for code guidelines, [AGENTS.md](AGENTS.md) for architecture, [`docs/development/`](docs/development/) for deeper internals, and [`docs/roadmap/TASK_TODO.md`](docs/roadmap/TASK_TODO.md) for the roadmap.
+## Reference
+
+| Area | Link |
+|---|---|
+| Supported AI agents (full matrix) | [`docs/support/agents.md`](docs/support/agents.md) |
+| Supported commands (full reference) | [`docs/support/commands.md`](docs/support/commands.md) |
+| Install deep-dive | [`docs/support/install.md`](docs/support/install.md) |
+| Other tools in the same space | [`docs/support/other-token-savers.md`](docs/support/other-token-savers.md) |
+| `trs ingest` — project digest | [`docs/features/ingest.md`](docs/features/ingest.md) |
+| `trs output-saver` — reply compression | [`docs/features/output-saver.md`](docs/features/output-saver.md) |
+| `trs init` — agent hooks | [`docs/features/init.md`](docs/features/init.md) |
+| `trs audit-docs` — instruction-file linter | [`docs/features/audit-docs.md`](docs/features/audit-docs.md) |
+| `trs upgrade` — self-upgrade | [`docs/features/upgrade.md`](docs/features/upgrade.md) |
+| `trs stats` — savings dashboard | [`docs/features/stats.md`](docs/features/stats.md) |
+| `trs doctor` — health check | [`docs/features/doctor.md`](docs/features/doctor.md) |
+| Output formats (6 side by side) | [`docs/features/formats.md`](docs/features/formats.md) |
+| Configuration (`~/.trs/config.toml`) | [`docs/features/configuration.md`](docs/features/configuration.md) |
+| Contributing guidelines | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Architecture overview | [AGENTS.md](AGENTS.md) |
+| Development internals | [`docs/development/`](docs/development/) |
+| Roadmap | [`docs/roadmap/TASK_TODO.md`](docs/roadmap/TASK_TODO.md) |
+| Live codebase digest | [`docs/development/codebase-digest.md`](docs/development/codebase-digest.md) |
 
 ## License
 
