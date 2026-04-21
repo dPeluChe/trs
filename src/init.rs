@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use crate::init_collision;
 use crate::init_templates::{
     ANTIGRAVITY_RULES, CLAUDE_HOOKS, CODEX_AGENTS_SECTION, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS,
-    OPENCODE_PLUGIN, WINDSURF_RULES,
+    KILO_PLUGIN, OPENCODE_PLUGIN, WINDSURF_RULES,
 };
 
 /// Options for an install run. `global` picks home-dir vs project-local;
@@ -179,13 +179,14 @@ impl AiTool {
             }),
             // Kilo mirrors OpenCode's plugin system: auto-discovery from
             // `~/.config/kilo/plugins/` (global) and `.kilo/plugins/` (project).
-            // Shares OPENCODE_PLUGIN — the `tool.execute.before` hook API is
-            // identical.
+            // Uses its own plugin template so the TRS_AGENT env-var
+            // prefix distinguishes Kilo invocations from OpenCode in
+            // history.jsonl attribution.
             Self::Kilo => Some(HookSpec {
                 local_dir: ".kilo/plugins",
                 global_dir: Some(".config/kilo/plugins"),
                 filename: "trs.ts",
-                content: OPENCODE_PLUGIN,
+                content: KILO_PLUGIN,
             }),
             Self::Droid => Some(HookSpec {
                 local_dir: ".factory",

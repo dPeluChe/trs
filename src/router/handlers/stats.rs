@@ -67,6 +67,8 @@ pub struct StatsInput {
     pub project: bool,
     /// Output as JSON.
     pub json: bool,
+    /// Break down totals by AI agent (from `TRS_AGENT` attribution).
+    pub by_agent: bool,
 }
 
 /// Aggregated statistics for a single command name.
@@ -109,11 +111,70 @@ pub fn handle_stats(input: &StatsInput) {
         return;
     }
 
+    if input.by_agent {
+        print_by_agent(&entries);
+        return;
+    }
+
     if input.history {
         print_history(&entries);
     } else {
         print_summary(&entries);
     }
+}
+
+/// Per-agent breakdown. Aggregates count / tokens saved / avg
+/// compression for each distinct `TRS_AGENT` label in the log.
+/// Rules-only agents and direct-shell invocations show up as
+/// "(untagged)" since no programmatic signal is available there.
+fn print_by_agent(entries: &[HistoryEntry]) {
+    use std::collections::BTreeMap;
+
+    let mut agg: BTreeMap<String, CommandAgg> = BTreeMap::new();
+    for entry in entries {
+        let key = entry
+            .agent
+            .clone()
+            .unwrap_or_else(|| "(untagged)".to_string());
+        let e = agg.entry(key).or_default();
+        e.count += 1;
+        e.in_bytes += entry.in_bytes;
+        e.out_bytes += entry.out_bytes;
+    }
+
+    let total_cmds: usize = agg.values().map(|a| a.count).sum();
+    let mut rows: Vec<(String, CommandAgg)> = agg.into_iter().collect();
+    rows.sort_by_key(|(_, a)| std::cmp::Reverse(a.saved()));
+
+    println!("trs Token Savings — by agent");
+    println!("{}", "=".repeat(50));
+    println!(
+        "  {:<14} {:>6} {:>8}  {:>6}  {:>10}",
+        "AGENT", "CALLS", "SHARE", "AVG -%", "SAVED"
+    );
+    println!("{}", "\u{2500}".repeat(50));
+    for (agent, stats) in &rows {
+        let share = if total_cmds > 0 {
+            100.0 * stats.count as f64 / total_cmds as f64
+        } else {
+            0.0
+        };
+        println!(
+            "  {:<14} {:>6} {:>7.1}%  {:>5.0}%  {:>10}",
+            agent,
+            stats.count,
+            share,
+            stats.avg_reduction_pct(),
+            format_bytes_human(stats.saved() / 4)
+        );
+    }
+    println!();
+    println!("Labels come from TRS_AGENT env var injected by trs rewrite");
+    println!("(Claude / Gemini / Cursor / Droid) and the OpenCode / Kilo plugin");
+    println!("templates. Rules-based agents (Codex / Antigravity / Windsurf) and");
+    println!("direct shell invocations land under (untagged).");
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
 }
 
 /// Print the full summary view with efficiency meter and top commands.

@@ -136,6 +136,18 @@ impl HookEvent {
             _ => Self::ClaudePreToolUse,
         }
     }
+
+    /// Short label written into the TRS_AGENT env var of the rewritten
+    /// command so history.jsonl can attribute the execution. Droid
+    /// shares Claude's wire format — both land in `ClaudePreToolUse`
+    /// and we label them "claude" here.
+    fn agent_label(&self) -> &'static str {
+        match self {
+            Self::GeminiBeforeTool => "gemini",
+            Self::CursorPreToolUse => "cursor",
+            Self::ClaudePreToolUse => "claude",
+        }
+    }
 }
 
 /// Build the JSON response for the current hook event, or return `None` to
@@ -159,6 +171,16 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
             .unwrap_or(""),
     );
 
+    // Tag the rewritten command with the agent name so the downstream
+    // `trs <cmd>` invocation can log it to history.jsonl. The shell
+    // strips the env-var assignment before executing, so this is
+    // transparent to git/cargo/etc. Note: Claude Code and Factory
+    // Droid both use PreToolUse — we label as "claude" since the two
+    // are indistinguishable at the wire-format layer. If Droid's
+    // install template ever diverges (e.g. a distinct matcher), we
+    // can add a second detection path.
+    let rewritten = tag_with_agent(&rewritten, event.agent_label());
+
     let response = match event {
         HookEvent::GeminiBeforeTool => serde_json::json!({
             "systemMessage": "trs auto-rewrite",
@@ -181,6 +203,19 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
         }),
     };
     Some(response)
+}
+
+/// Prefix `cmd` with a `TRS_AGENT=<label>` env-var assignment so the
+/// downstream `trs <cmd>` execution picks it up and logs attribution
+/// to history.jsonl. The shell treats leading `VAR=value` as a
+/// per-command env override and removes it before executing the rest
+/// of the command line.
+fn tag_with_agent(cmd: &str, agent: &str) -> String {
+    // Defensive: don't double-tag if the caller already prefixed.
+    if cmd.starts_with("TRS_AGENT=") {
+        return cmd.to_string();
+    }
+    format!("TRS_AGENT={} {}", agent, cmd)
 }
 
 /// Decide if a command should be rewritten to go through trs.
@@ -527,7 +562,7 @@ mod tests {
         );
         assert_eq!(
             out["hookSpecificOutput"]["updatedInput"]["command"],
-            serde_json::json!("trs git status")
+            serde_json::json!("TRS_AGENT=claude trs git status")
         );
         // Claude format must NOT carry Gemini's tool_input field.
         assert!(out["hookSpecificOutput"]["tool_input"].is_null());
@@ -551,7 +586,7 @@ mod tests {
         assert_eq!(out["permission"], serde_json::json!("allow"));
         assert_eq!(
             out["updated_input"]["command"],
-            serde_json::json!("trs git status")
+            serde_json::json!("TRS_AGENT=cursor trs git status")
         );
         // Cursor format must NOT carry Claude's or Gemini's wrapping.
         assert!(out.get("hookSpecificOutput").is_none());
@@ -573,7 +608,7 @@ mod tests {
         assert_eq!(out["decision"], serde_json::json!("allow"));
         assert_eq!(
             out["hookSpecificOutput"]["tool_input"]["command"],
-            serde_json::json!("trs git status")
+            serde_json::json!("TRS_AGENT=gemini trs git status")
         );
         // Gemini format must NOT carry Claude's updatedInput field.
         assert!(out["hookSpecificOutput"]["updatedInput"].is_null());
@@ -587,7 +622,7 @@ mod tests {
         let out = build_hook_response(&input).expect("should rewrite");
         assert_eq!(
             out["hookSpecificOutput"]["updatedInput"]["command"],
-            serde_json::json!("trs git status")
+            serde_json::json!("TRS_AGENT=claude trs git status")
         );
         assert!(out.get("decision").is_none());
     }
@@ -627,14 +662,16 @@ mod tests {
                 "tool_input":{"command":"cd /tmp && git status && cargo test"}
             }"#,
         );
-        let expected = "cd /tmp && trs git status && trs cargo test";
+        // Same chain, different agent tag per envelope — the chain
+        // rewrite runs first and build_hook_response then prefixes the
+        // whole thing with TRS_AGENT= once.
         assert_eq!(
             build_hook_response(&claude).unwrap()["hookSpecificOutput"]["updatedInput"]["command"],
-            serde_json::json!(expected)
+            serde_json::json!("TRS_AGENT=claude cd /tmp && trs git status && trs cargo test")
         );
         assert_eq!(
             build_hook_response(&gemini).unwrap()["hookSpecificOutput"]["tool_input"]["command"],
-            serde_json::json!(expected)
+            serde_json::json!("TRS_AGENT=gemini cd /tmp && trs git status && trs cargo test")
         );
     }
 }

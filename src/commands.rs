@@ -425,6 +425,12 @@ pub enum Commands {
         /// Output format (text or json)
         #[arg(long)]
         json: bool,
+        /// Break down totals by AI agent (claude, gemini, cursor,
+        /// opencode, kilo). Detected via the TRS_AGENT env var
+        /// injected by hook/plugin templates; rules-based agents
+        /// (codex, antigravity, windsurf) show as "(untagged)".
+        #[arg(long = "by-agent")]
+        by_agent: bool,
     },
 
     /// Read a file with optional filtering (strip comments, signatures-only)

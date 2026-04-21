@@ -271,12 +271,14 @@ fn main() {
             history,
             project,
             json,
+            by_agent,
         }) => {
             use router::handlers::stats::{handle_stats, StatsInput};
             let input = StatsInput {
                 history: *history,
                 project: *project,
                 json: *json,
+                by_agent: *by_agent,
             };
             handle_stats(&input);
         }
