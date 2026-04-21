@@ -270,7 +270,8 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
             if !is_trs_in_path() {
                 eprintln!(
                     "warning: 'trs' not found in PATH. The hook may fail silently.\n\
-                     Make sure trs is installed: cargo install --path . or npm install -g tars-cli"
+                     Make sure trs is installed: npm install -g @dpeluche/trs\n\
+                     (or cargo install tars-cli, or curl-sh script — see README)"
                 );
             }
         }
