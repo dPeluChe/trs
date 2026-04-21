@@ -154,7 +154,7 @@ tests/
 
 ```bash
 cargo build                    # Build
-cargo test                     # Run 2,177+ tests
+cargo test                     # Run 2,186+ tests
 cargo install --path .         # Install globally
 ./docs/benchmarks/benchmark.sh # Compare vs rtk (see docs/benchmarks/README.md)
 ```
@@ -164,4 +164,4 @@ cargo install --path .         # Install globally
 - 796 unit tests (src/) across 30+ test modules
 - 540+ CLI integration tests (tests/cli_*.rs, 26 files)
 - 800+ additional integration tests (70+ test files)
-- Total: 2,177 tests across 71 suites, 0 failures, 0 warnings
+- Total: 2,186 tests across 71 suites, 0 failures, 0 warnings

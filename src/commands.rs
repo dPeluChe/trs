@@ -87,6 +87,18 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Bundle version + platform + doctor results + recent history +
+    /// recent tee logs into one paste-ready report. Useful when you
+    /// hit an issue and want to file a bug without manually
+    /// collecting every piece. Review the output before sharing — it
+    /// includes cwd paths and failing-command output from tee logs.
+    #[command(name = "debug-info")]
+    DebugInfo {
+        /// Write the report to PATH instead of stdout.
+        #[arg(short, long)]
+        output: Option<String>,
+    },
+
     /// Detect how trs was installed and re-run the matching install path
     /// to pick up the latest release. Supports npm and the curl|sh script;
     /// flags the cargo / Homebrew channels as manual-only for now. After

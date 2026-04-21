@@ -72,6 +72,7 @@ const REWRITE_PREFIXES: &[&str] = &[
     "python3 ",
     "npx ",
     "ps ",
+    "uv ",
 ];
 
 /// Commands that should NEVER be rewritten (internal, cd, pipes, etc.)
@@ -205,6 +206,64 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
     Some(response)
 }
 
+/// If `cmd` starts with one or more shell-style `NAME=value` tokens
+/// before the actual command, split them off. Returns
+/// `Some((env_prefix, remainder))` where `env_prefix` is the
+/// concatenated assignments (space-separated) and `remainder` is
+/// everything from the actual command onward. Returns `None` when
+/// there's no env prefix so the caller can take the fast path.
+///
+/// Heuristic for what counts as `NAME=value`:
+/// - First character is ASCII letter or underscore.
+/// - Characters before `=` are ASCII alphanumeric or underscore.
+/// - Must contain `=`.
+/// - Doesn't start with `-` (rules out `--foo=bar` flag patterns).
+///
+/// Multi-token env prefixes (`A=1 B=2 cargo build`) are handled by
+/// iterating left-to-right.
+fn split_env_prefix(cmd: &str) -> Option<(String, &str)> {
+    let mut rest = cmd;
+    let mut collected: Vec<&str> = Vec::new();
+    loop {
+        let trimmed = rest.trim_start();
+        if trimmed.is_empty() {
+            break;
+        }
+        let Some(space_at) = trimmed.find(char::is_whitespace) else {
+            break;
+        };
+        let token = &trimmed[..space_at];
+        if !looks_like_env_assignment(token) {
+            break;
+        }
+        collected.push(token);
+        rest = &trimmed[space_at..];
+    }
+    if collected.is_empty() {
+        None
+    } else {
+        Some((collected.join(" "), rest.trim_start()))
+    }
+}
+
+/// True when `token` matches the shell env-var assignment shape
+/// `NAME=value`. Restrictive enough not to match flag patterns like
+/// `--crate-name=foo` or URL-ish strings.
+fn looks_like_env_assignment(token: &str) -> bool {
+    let Some(eq_at) = token.find('=') else {
+        return false;
+    };
+    if eq_at == 0 {
+        return false;
+    }
+    let name = &token[..eq_at];
+    let first = name.chars().next().unwrap();
+    if !(first.is_ascii_alphabetic() || first == '_') {
+        return false;
+    }
+    name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
 /// Prefix `cmd` with a `TRS_AGENT=<label>` env-var assignment so the
 /// downstream `trs <cmd>` execution picks it up and logs attribution
 /// to history.jsonl. The shell treats leading `VAR=value` as a
@@ -241,6 +300,16 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
     // after the `=` works; we only care that the prefix is present.
     if trimmed.starts_with("TRS_SKIP=") {
         return None;
+    }
+
+    // Env-var prefix: `RUSTFLAGS=xyz cargo build` should rewrite to
+    // `RUSTFLAGS=xyz trs cargo build` (env stays attached to the
+    // wrapped command) rather than `trs RUSTFLAGS=xyz cargo build`
+    // (which would leave trs without the env and pass the assignment
+    // as a plain argument). Detects leading `NAME=value` tokens
+    // before the actual command.
+    if let Some((env_prefix, body)) = split_env_prefix(trimmed) {
+        return maybe_rewrite(body).map(|r| format!("{} {}", env_prefix, r));
     }
 
     // Hot-path optimization: almost all incoming commands are plain "git X"
@@ -388,11 +457,70 @@ mod tests {
     #[test]
     fn test_trs_skip_does_not_match_other_env_vars() {
         // Only TRS_SKIP= triggers bypass — other env var prefixes get
-        // the normal rewrite treatment so unrelated command invocations
-        // (e.g. `RUSTFLAGS=... cargo build`) still benefit from trs.
-        // Note: env-var prefix handling beyond skip is not in scope for
-        // this guard — we simply don't match on RUSTFLAGS / PATH / etc.
+        // the normal rewrite treatment with the env preserved in
+        // front of the wrapped command.
         assert!(maybe_rewrite("RUSTFLAGS=-C git status").is_some());
+    }
+
+    #[test]
+    fn test_env_prefix_stays_in_front() {
+        // `RUSTFLAGS=-C cargo build` — env should remain attached to
+        // the wrapped command so the shell still applies it to cargo,
+        // not to trs itself.
+        assert_eq!(
+            maybe_rewrite("RUSTFLAGS=-C cargo build"),
+            Some("RUSTFLAGS=-C trs cargo build".into())
+        );
+    }
+
+    #[test]
+    fn test_multi_env_prefix() {
+        assert_eq!(
+            maybe_rewrite("A=1 B=2 cargo build"),
+            Some("A=1 B=2 trs cargo build".into())
+        );
+    }
+
+    #[test]
+    fn test_env_prefix_before_unknown_command_still_rewrites() {
+        // Unknown command still gets wrapped for generic compression,
+        // with env attached correctly.
+        let out = maybe_rewrite("FOO=bar something-weird arg").unwrap();
+        assert!(out.starts_with("FOO=bar trs "));
+    }
+
+    #[test]
+    fn test_flag_looks_like_assignment_not_matched() {
+        // --crate-name=foo is NOT an env-var assignment.
+        let out = maybe_rewrite("--crate-name=foo cargo build").unwrap();
+        assert!(!out.starts_with("--crate-name=foo trs"));
+    }
+
+    #[test]
+    fn test_split_env_prefix_empty_when_none() {
+        assert!(split_env_prefix("cargo build").is_none());
+        assert!(split_env_prefix("git status").is_none());
+    }
+
+    #[test]
+    fn test_stderr_redirects_survive_rewrite() {
+        // The shell interprets `2>&1`, `2>/dev/null`, `&>file` before
+        // invoking trs, so the classifier never sees them as args.
+        // Rewrite just keeps them attached to the wrapped command and
+        // the shell applies the redirect to the trs process (which is
+        // equivalent to applying it to the underlying command).
+        assert_eq!(
+            maybe_rewrite("cargo test 2>&1"),
+            Some("trs cargo test 2>&1".into())
+        );
+        assert_eq!(
+            maybe_rewrite("git status 2>/dev/null"),
+            Some("trs git status 2>/dev/null".into())
+        );
+        assert_eq!(
+            maybe_rewrite("cargo test 2>&1 | head -5"),
+            Some("trs cargo test 2>&1 | head -5".into())
+        );
     }
 
     #[test]

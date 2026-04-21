@@ -231,6 +231,7 @@ impl Router {
             | Commands::AuditDocs { .. }
             | Commands::OutputSaver { .. }
             | Commands::Upgrade { .. }
+            | Commands::DebugInfo { .. }
             | Commands::Benchmark { .. }
             | Commands::Ingest { .. } => {
                 // These are handled in main.rs before reaching the router

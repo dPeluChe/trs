@@ -50,7 +50,7 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reduction)
 
 $ trs cargo test
-cargo test: 2177 passed (71 suites, 4.9s)
+cargo test: 2186 passed (71 suites, 4.9s)
 # 55 KB → 58 B (99% reduction)
 
 $ trs cargo clippy
@@ -101,7 +101,7 @@ macOS x64/arm64, Windows x64. All methods ship the same native binary (~6 MB).
 ### Pin a specific version
 
 ```bash
-TRS_VERSION=v0.5.8 curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+TRS_VERSION=v0.5.9 curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
 ```
 
 ### Upgrading
@@ -303,7 +303,7 @@ json_max_depth = 10
 | Binary | ~6 MB (LTO + strip), no runtime deps |
 | Startup | ~12ms on macOS / Linux (native binary or shell launcher) |
 | CLI | clap 4 (bypassed on hot path) |
-| Tests | 2,177 passing, 0 warnings |
+| Tests | 2,186 passing, 0 warnings |
 | Architecture | 200+ modular files across parsers, handlers, and integrations — [details](AGENTS.md) |
 
 ## From source (development)
@@ -319,7 +319,7 @@ cd trs
 cargo install --path .
 
 # Dev loop
-cargo test                     # 2,177 tests across 71 suites
+cargo test                     # 2,186 tests across 71 suites
 cargo clippy -- -D warnings    # no warnings allowed
 cargo fmt -- --check           # formatting must match
 cargo run -- git status        # run locally against the workspace

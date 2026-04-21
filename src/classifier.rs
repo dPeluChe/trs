@@ -239,8 +239,30 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 runner: Some(TestRunner::Pnpm),
                 file: None,
             }),
-            "ls" | "list" => Some(ParseCommands::Deps { file: None }),
-            "install" | "i" => Some(ParseCommands::Install { file: None }),
+            "ls" | "list" | "audit" | "outdated" | "why" => {
+                Some(ParseCommands::Deps { file: None })
+            }
+            "install" | "i" | "add" | "update" | "up" => {
+                Some(ParseCommands::Install { file: None })
+            }
+            // pnpm dlx <tool> — runs a one-off package. Route the
+            // inner tool to its parser just like `npx <tool>` does.
+            "dlx" | "exec" => {
+                let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+                match inner {
+                    "tsc" => Some(ParseCommands::Build { file: None }),
+                    "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
+                    "jest" => Some(ParseCommands::Test {
+                        runner: Some(TestRunner::Jest),
+                        file: None,
+                    }),
+                    "vitest" => Some(ParseCommands::Test {
+                        runner: Some(TestRunner::Vitest),
+                        file: None,
+                    }),
+                    _ => None,
+                }
+            }
             _ => None,
         },
         "bun" => match subcmd {
@@ -265,6 +287,34 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         "pip" | "pip3" => match subcmd {
             "list" | "freeze" => Some(ParseCommands::Deps { file: None }),
             "install" => Some(ParseCommands::Install { file: None }),
+            _ => None,
+        },
+        // uv — modern Python package manager (astral-sh/uv). Routes
+        // every subcommand to the closest existing parser so uv
+        // adopters get the same compression pip users have today.
+        "uv" => match subcmd {
+            "pip" => {
+                let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+                match inner {
+                    "install" => Some(ParseCommands::Install { file: None }),
+                    "list" | "freeze" => Some(ParseCommands::Deps { file: None }),
+                    _ => None,
+                }
+            }
+            "sync" | "add" | "remove" | "lock" => Some(ParseCommands::Install { file: None }),
+            "tree" => Some(ParseCommands::Deps { file: None }),
+            // `uv run <tool>` — same dispatch pattern as `npx <tool>`.
+            "run" => {
+                let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+                match inner {
+                    "pytest" => Some(ParseCommands::Test {
+                        runner: Some(TestRunner::Pytest),
+                        file: None,
+                    }),
+                    "ruff" | "mypy" | "pylint" => Some(ParseCommands::Lint { file: None }),
+                    _ => None,
+                }
+            }
             _ => None,
         },
 
@@ -302,6 +352,30 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // the parser passes through when the header doesn't match.
         "ps" => Some(ParseCommands::Ps { file: None }),
 
+        // `python3 -m <module>` — route to the module's dedicated
+        // parser when we have one. `python3 -m pytest` is a very
+        // common way to run pytest without having it on PATH; without
+        // this dispatch it would fall through to the generic
+        // traceback handler and miss the pytest-specific reduction.
+        "python" | "python3" if subcmd == "-m" => {
+            let module = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+            match module {
+                "pytest" => Some(ParseCommands::Test {
+                    runner: Some(TestRunner::Pytest),
+                    file: None,
+                }),
+                "mypy" | "ruff" | "pylint" | "flake8" => Some(ParseCommands::Lint { file: None }),
+                "unittest" => Some(ParseCommands::Test {
+                    runner: Some(TestRunner::Pytest),
+                    file: None,
+                }),
+                "build" | "pip" => Some(ParseCommands::Install { file: None }),
+                // Unknown module — fall back to traceback handler so
+                // Python errors still compress even without a module-
+                // specific parser.
+                _ => Some(ParseCommands::PythonTraceback { file: None }),
+            }
+        }
         // Python scripts — the python-traceback handler passes through
         // non-traceback output and compresses stack traces when they
         // appear. Matches the bare interpreter invocations

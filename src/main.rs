@@ -29,6 +29,7 @@ mod classifier_transfer;
 mod cli;
 mod commands;
 pub(crate) mod config;
+mod debug_info;
 mod discover;
 mod doctor;
 mod formatter;
@@ -171,6 +172,9 @@ fn main() {
             binary_only,
         }) => {
             upgrade::run_upgrade(*check, *yes, *binary_only);
+        }
+        Some(Commands::DebugInfo { output }) => {
+            debug_info::run(output.as_deref());
         }
         Some(Commands::AuditDocs { path }) => {
             audit_docs::run_audit_docs(std::path::Path::new(path));
@@ -432,6 +436,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "audit-docs"
             | "output-saver"
             | "upgrade"
+            | "debug-info"
             | "stats"
             | "raw"
             | "help"
