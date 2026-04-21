@@ -17,11 +17,11 @@
 </p>
 
 <p align="center">
-  <a href="#instalación">Instalación</a> ·
+  <a href="#instalación-recomendado">Instalación</a> ·
+  <a href="#quick-start-tldr">Quick start</a> ·
   <a href="#qué-hace">Qué hace</a> ·
   <a href="#project-digest-trs-ingest">Digest del proyecto</a> ·
-  <a href="#características">Características</a> ·
-  <a href="CONTRIBUTING.md">Contribuir</a>
+  <a href="#para-desarrolladores">Para desarrolladores</a>
 </p>
 
 ---
@@ -64,29 +64,80 @@ src/main.rs (3):
 
 Los comandos sin parser dedicado siguen obteniendo compresión genérica (whitespace, ANSI) — ~30-40% gratis.
 
-## Instalación
+## Instalación (recomendado)
 
-| Método | Plataforma | Notas |
-|--------|------------|-------|
-| **curl \| sh** | macOS / Linux | `curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh \| sh` — binario nativo en `~/.trs/bin/`. **Recomendado.** |
-| **PowerShell** | Windows | `irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 \| iex` |
-| **npm** | cross-plat | `npm install -g @dpeluche/trs` — shell launcher, ~12ms de overhead. |
-| **cargo** | cross-plat | `cargo install tars-cli` — compila desde fuente. Requiere Rust. |
-| **Binarios** | cross-plat | [GitHub Releases](https://github.com/dPeluChe/trs/releases) — precompilados para Linux x64/arm64, macOS x64/arm64, Windows x64. |
+Soporte de plataforma: **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
+Binario estático único, sin deps en runtime, ~12ms de arranque.
 
-Todos los métodos distribuyen el mismo binario nativo.
-
-## Quick start
+### macOS / Linux
 
 ```bash
-trs git status                     # compacto (default)
+curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+```
+
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex
+```
+
+### npm (todas las plataformas)
+
+```bash
+npm install -g @dpeluche/trs
+```
+
+### cargo (compila desde fuente — requiere Rust)
+
+```bash
+cargo install tars-cli
+```
+
+### Binarios precompilados
+
+[GitHub Releases](https://github.com/dPeluChe/trs/releases) — Linux x64/arm64,
+macOS x64/arm64, Windows x64. Todos los métodos distribuyen el mismo binario
+nativo (~6 MB).
+
+### Fijar una versión específica
+
+```bash
+TRS_VERSION=v0.5.8 curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+```
+
+### Actualizar
+
+```bash
+trs upgrade --check    # muestra qué se ejecutaría
+trs upgrade            # autodetecta canal (npm / curl|sh), refresca hooks también
+```
+
+## Quick start (TL;DR)
+
+```bash
+# 1. Pruébalo — prefija cualquier comando con trs
+trs git status
+trs cargo test
+
+# 2. Deja que tu agente de IA lo haga solo — instala hooks en Claude /
+#    Gemini / Cursor / OpenCode / Kilo / Codex / Droid / Windsurf / Antigravity
+trs init --all --global
+
+# 3. Ve tus ahorros
+trs stats                          # dashboard
+trs stats --by-agent               # desglose por agente IA
+```
+
+Los flags funcionan en cualquier posición y stdin también está soportado:
+
+```bash
 trs git status --json              # JSON estructurado
 trs --json git status              # los flags funcionan en cualquier posición
 git status | trs parse git-status  # sintaxis pipe también
-
-trs init --all --global            # instala hooks en todas las herramientas detectadas
-trs stats                          # dashboard de tokens ahorrados
 ```
+
+Referencia completa de comandos más abajo, o ver
+[`docs/commands/`](docs/commands/) para deep-dives por comando.
 
 ## Comandos con parsers dedicados
 
@@ -256,17 +307,29 @@ json_max_depth = 10
 | Tests | 2,177 passing, 0 warnings |
 | Arquitectura | 200+ archivos modulares entre parsers, handlers e integraciones — [detalles](AGENTS.md) |
 
-## Contribuir
+## Para desarrolladores
+
+Esta sección es para quienes quieren contribuir o hackear trs localmente.
+Si solo vas a usarlo, cualquier método de instalación de arriba es suficiente.
+Flujo de checkout y dev-loop:
 
 ```bash
 git clone https://github.com/dPeluChe/trs.git
 cd trs
-cargo test                     # todos los tests deben pasar
+
+# Build + install en ~/.cargo/bin/
+cargo install --path .
+
+# Dev loop
+cargo test                     # 2,177 tests en 71 suites
 cargo clippy -- -D warnings    # sin warnings
 cargo fmt -- --check           # formato alineado
+cargo run -- git status        # corre localmente contra el workspace
 ```
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md) para guías de código, [AGENTS.md](AGENTS.md) para la arquitectura, y [docs/TASK_TODO.md](docs/TASK_TODO.md) para el roadmap.
+Ver [CONTRIBUTING.md](CONTRIBUTING.md) para guías de código,
+[AGENTS.md](AGENTS.md) para la arquitectura, y
+[docs/TASK_TODO.md](docs/TASK_TODO.md) para el roadmap.
 
 ## Licencia
 
