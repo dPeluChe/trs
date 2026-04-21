@@ -9,7 +9,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] Create first GitHub Release — v0.1.0 shipped; at v0.5.7 now
 - [x] npm publish (`@dpeluche/trs`)
 - [ ] Homebrew tap (low priority — npm + curl|sh covers 99% of users)
-- [ ] Publish to crates.io (`cargo install tars-cli` — currently source-only)
+- [ ] Publish to crates.io (`cargo install trs-cli` — currently source-only)
 - [ ] Shell completions (bash, zsh, fish)
 - [ ] Copilot hook — see Phase 3 "VSCode ecosystem" for the full research scope
 - [x] ~~Detect pipe context — skip rewriting find/fd when piped~~ —

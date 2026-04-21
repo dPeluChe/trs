@@ -359,7 +359,7 @@ fn check_path_accessible() -> Check {
                 ));
                 Check::warn("PATH", "multiple trs binaries found")
                     .with_sub(sub)
-                    .with_hint("uninstall the duplicates (npm uninstall -g @dpeluche/trs / cargo uninstall tars-cli / brew uninstall trs) or reorder PATH")
+                    .with_hint("uninstall the duplicates (npm uninstall -g @dpeluche/trs / cargo uninstall trs-cli / brew uninstall trs) or reorder PATH")
             }
         }
         _ => Check::fail("PATH", "trs not found in PATH").with_hint(

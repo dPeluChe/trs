@@ -32,7 +32,7 @@ pub(crate) enum InstallMethod {
     /// Installed via `npm install -g @dpeluche/trs` — lives under
     /// some node prefix's `lib/node_modules/@dpeluche/trs/bin/`.
     Npm,
-    /// Installed via `cargo install tars-cli` — lives under
+    /// Installed via `cargo install trs-cli` — lives under
     /// `$HOME/.cargo/bin/`. Not auto-upgradable yet (needs crates.io
     /// publish first).
     Cargo,
@@ -117,7 +117,7 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: boo
             println!("(requires publishing to crates.io — tracked on the roadmap).");
             println!();
             println!("Run manually:");
-            println!("  cargo install tars-cli --force");
+            println!("  cargo install trs-cli --force");
         }
         InstallMethod::Brew => {
             println!("trs upgrade does not support Homebrew yet");
@@ -132,7 +132,7 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: boo
             println!("Manual options:");
             println!("  curl -fsSL {} | sh", INSTALL_SCRIPT_URL);
             println!("  npm install -g {}@latest", NPM_PACKAGE);
-            println!("  cargo install tars-cli --force");
+            println!("  cargo install trs-cli --force");
             println!();
             println!("More: {}", DOCS_INSTALL_URL);
         }

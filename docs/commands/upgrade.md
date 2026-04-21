@@ -69,7 +69,7 @@ locations:
 |---|---|---|
 | `**/node_modules/@dpeluche/trs/**` | npm | `npm install -g @dpeluche/trs@latest` |
 | `$HOME/.local/bin/trs`, `$HOME/.trs/bin/trs`, `$HOME/bin/trs` | curl\|sh | `curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh \| sh` |
-| `$CARGO_HOME/bin/trs` or `$HOME/.cargo/bin/trs` | cargo | **not auto-upgradable yet** — run `cargo install tars-cli --force` |
+| `$CARGO_HOME/bin/trs` or `$HOME/.cargo/bin/trs` | cargo | **not auto-upgradable yet** — run `cargo install trs-cli --force` |
 | `/opt/homebrew/**`, `/usr/local/Cellar/**` | Homebrew | **not auto-upgradable yet** — tap not published |
 | anything else | unknown | prints all manual options |
 
@@ -111,7 +111,7 @@ would run without executing.
 ## Roadmap for unsupported channels
 
 - **crates.io publish** — currently trs ships to npm and GitHub
-  Releases only. Once `cargo install tars-cli` installs from the
+  Releases only. Once `cargo install trs-cli` installs from the
   registry, upgrade will support cargo.
 - **Homebrew tap** — low priority (npm + curl covers most users),
   tracked in [`docs/TASK_TODO.md`](../TASK_TODO.md).

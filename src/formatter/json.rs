@@ -58,7 +58,7 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
+    /// use trs_cli::formatter::JsonFormatter;
     /// use serde_json::json;
     /// let output = JsonFormatter::format_object(&[
     ///     ("branch", json!("main")),
@@ -83,7 +83,7 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
+    /// use trs_cli::formatter::JsonFormatter;
     /// let output = JsonFormatter::format_counts(&[("passed", 10), ("failed", 2)]);
     /// let json: serde_json::Value = serde_json::from_str(&output).unwrap();
     /// assert_eq!(json["passed"], 10);

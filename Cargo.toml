@@ -1,5 +1,5 @@
 [package]
-name = "tars-cli"
+name = "trs-cli"
 version = "0.5.9"
 edition = "2021"
 description = "Token-reducing shell for AI agents — compact terminal output at 68-99% reduction"

@@ -14,7 +14,7 @@ npm install -g @dpeluche/trs
 Or with other package managers:
 
 ```bash
-cargo install tars-cli    # from source (Rust required)
+cargo install trs-cli    # from source (Rust required)
 ```
 
 ## Usage

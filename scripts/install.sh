@@ -57,7 +57,7 @@ detect_platform() {
     case "$os" in
         Darwin) os_tag=darwin ;;
         Linux)  os_tag=linux ;;
-        *) error "unsupported OS: $os (install via: cargo install tars-cli)" ;;
+        *) error "unsupported OS: $os (install via: cargo install trs-cli)" ;;
     esac
 
     case "$arch" in
@@ -202,7 +202,7 @@ check_existing_install() {
                 source_hint="from Homebrew or system package manager"
             fi
             ;;
-        *"/.cargo/bin/"*) source_hint="from cargo (try: cargo uninstall tars-cli)" ;;
+        *"/.cargo/bin/"*) source_hint="from cargo (try: cargo uninstall trs-cli)" ;;
     esac
     printf '\n'
     warn "Another trs is already installed at:"

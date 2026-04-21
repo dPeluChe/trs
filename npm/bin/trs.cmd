@@ -23,7 +23,7 @@ if not defined BIN (
     echo Searched near:    %DIR% 1>&2
     echo. 1>&2
     echo Alternatives: 1>&2
-    echo   cargo install tars-cli    ^(build from source^) 1>&2
+    echo   cargo install trs-cli    ^(build from source^) 1>&2
     exit /b 1
 )
 

@@ -1129,28 +1129,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tars-cli"
-version = "0.5.9"
-dependencies = [
- "assert_cmd",
- "clap",
- "grep",
- "grep-matcher",
- "grep-regex",
- "grep-searcher",
- "htmd",
- "ignore",
- "predicates",
- "regex",
- "serde",
- "serde_json",
- "tempfile",
- "time",
- "toml",
- "ureq",
-]
-
-[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1250,6 +1228,28 @@ name = "toml_write"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
+
+[[package]]
+name = "trs-cli"
+version = "0.5.9"
+dependencies = [
+ "assert_cmd",
+ "clap",
+ "grep",
+ "grep-matcher",
+ "grep-regex",
+ "grep-searcher",
+ "htmd",
+ "ignore",
+ "predicates",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "time",
+ "toml",
+ "ureq",
+]
 
 [[package]]
 name = "unicode-ident"

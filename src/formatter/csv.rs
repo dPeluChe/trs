@@ -43,7 +43,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_header(&["branch", "is_clean", "count"]);
     /// assert_eq!(output, "branch,is_clean,count\n");
     /// ```
@@ -57,7 +57,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_row(&["main", "true", "5"]);
     /// assert_eq!(output, "main,true,5\n");
     /// ```
@@ -71,7 +71,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_message("key", "value");
     /// assert_eq!(output, "key\nvalue\n");
     /// ```
@@ -88,7 +88,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_key_value("branch", "main");
     /// assert_eq!(output, "branch\nmain\n");
     /// ```
@@ -105,7 +105,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_object(&[("branch", "main"), ("is_clean", "true"), ("count", "5")]);
     /// assert!(output.contains("branch,is_clean,count"));
     /// assert!(output.contains("main,true,5"));
@@ -121,7 +121,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_counts(&[("passed", 10), ("failed", 2)]);
     /// assert!(output.contains("passed,failed"));
     /// assert!(output.contains("10,2"));
@@ -140,7 +140,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_section("status", "path", &[("M", "src/main.rs"), ("A", "src/new.rs")]);
     /// assert!(output.contains("status,path"));
     /// assert!(output.contains("M,src/main.rs"));
@@ -159,7 +159,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_item("M", "src/main.rs");
     /// assert_eq!(output, "M,src/main.rs\n");
     /// ```
@@ -172,7 +172,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_item_renamed("R", "old.rs", "new.rs");
     /// assert_eq!(output, "R,new.rs,old.rs\n");
     /// ```
@@ -188,7 +188,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_test_summary(10, 2, 1, 1500);
     /// assert!(output.contains("passed,failed,skipped,total,duration_ms"));
     /// assert!(output.contains("10,2,1,13,1500"));
@@ -214,7 +214,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_status(true);
     /// assert_eq!(output, "success\ntrue\n");
     /// ```
@@ -227,7 +227,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_failures(&["test_one".to_string(), "test_two".to_string()]);
     /// assert!(output.contains("failure"));
     /// assert!(output.contains("test_one"));
@@ -246,7 +246,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_log_levels(2, 5, 10, 3);
     /// assert!(output.contains("error,warn,info,debug,total"));
     /// assert!(output.contains("2,5,10,3,20"));
@@ -267,7 +267,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_grep_match("src/main.rs", Some(42), "fn main()");
     /// assert!(output.contains("file,line,content"));
     /// assert!(output.contains("src/main.rs,42,fn main()"));
@@ -294,7 +294,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_grep_file("src/main.rs", 5);
     /// assert_eq!(output, "file,match_count\nsrc/main.rs,5\n");
     /// ```
@@ -311,7 +311,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_diff_file("src/main.rs", "M", 10, 5);
     /// assert_eq!(output, "path,change_type,additions,deletions\nsrc/main.rs,M,10,5\n");
     /// ```
@@ -335,7 +335,7 @@ impl CsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CsvFormatter;
+    /// use trs_cli::formatter::CsvFormatter;
     /// let output = CsvFormatter::format_diff_summary(3, 25, 10);
     /// assert_eq!(output, "files_changed,insertions,deletions\n3,25,10\n");
     /// ```

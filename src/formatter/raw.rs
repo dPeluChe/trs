@@ -41,7 +41,7 @@ impl RawFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::RawFormatter;
+    /// use trs_cli::formatter::RawFormatter;
     /// let output = RawFormatter::format_counts(&[("passed", 10), ("failed", 2)]);
     /// assert_eq!(output, "passed=10 failed=2\n");
     /// ```

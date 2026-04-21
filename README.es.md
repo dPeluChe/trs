@@ -90,7 +90,7 @@ npm install -g @dpeluche/trs
 ### cargo (compila desde fuente — requiere Rust)
 
 ```bash
-cargo install tars-cli
+cargo install trs-cli
 ```
 
 ### Binarios precompilados
