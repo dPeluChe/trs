@@ -266,7 +266,7 @@ pub(crate) fn print_report(checks: &[Check]) {
     }
 
     println!();
-    println!("  More: https://github.com/dPeluChe/trs/blob/main/docs/commands/doctor.md");
+    println!("  More: https://github.com/dPeluChe/trs/blob/main/docs/features/doctor.md");
 }
 
 /// Print doctor results in JSON format.

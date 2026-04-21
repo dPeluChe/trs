@@ -123,7 +123,7 @@ Status of each candidate after v0.5.7:
 ## Phase 3 — Agent integration follow-ups
 
 Context: v0.5.6 fixed all 9 supported agents end-to-end. See
-[`docs/agent-integrations.md`](./agent-integrations.md) for the full
+[`docs/development/agent-integrations.md`](../development/agent-integrations.md) for the full
 per-agent reference. Outstanding items:
 
 - [ ] **First-byte dispatch for SKIP_PREFIXES** (`src/rewrite.rs`). Current

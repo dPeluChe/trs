@@ -27,7 +27,7 @@ const KNOWN_PATHS: &[(&str, bool)] = &[
     (".agent/rules", true),
     (".agents/rules", true),
     (".codex/rules", true),
-    ("docs/agent-integrations.md", false),
+    ("docs/development/agent-integrations.md", false),
 ];
 
 /// One audited file with its computed metrics.

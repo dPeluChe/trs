@@ -123,7 +123,7 @@ fn test_parse_tool_edge_case() { ... }
 
 - `README.md` — add the command to the appropriate section
 - `AGENTS.md` — add the file to the architecture diagram
-- `docs/TASK_COMPLETED/YYMM.md` — document what you did and why
+- `docs/roadmap/completed/YYMM.md` — document what you did and why
 
 ## Proposing new commands
 

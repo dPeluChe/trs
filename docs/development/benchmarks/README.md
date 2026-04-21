@@ -24,13 +24,13 @@ should we improve?" — not to publish a leaderboard.
 
 ```bash
 # Quick comparative run (from repo root)
-./docs/benchmarks/benchmark.sh --all
+./docs/development/benchmarks/benchmark.sh --all
 
 # Full workload
-./docs/benchmarks/benchmark-real.sh
+./docs/development/benchmarks/benchmark-real.sh
 
 # Chain rewriter sanity check (runs in <1s)
-./docs/benchmarks/chain-rewrite.sh
+./docs/development/benchmarks/chain-rewrite.sh
 ```
 
 All scripts prefer `./target/release/trs` if present (so you're testing your

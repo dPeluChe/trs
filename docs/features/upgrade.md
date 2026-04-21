@@ -114,7 +114,7 @@ would run without executing.
   Releases only. Once `cargo install trs-cli` installs from the
   registry, upgrade will support cargo.
 - **Homebrew tap** — low priority (npm + curl covers most users),
-  tracked in [`docs/TASK_TODO.md`](../TASK_TODO.md).
+  tracked in [`docs/roadmap/TASK_TODO.md`](../roadmap/TASK_TODO.md).
 
 Both are listed in the roadmap under Phase 1 — Release & Distribution.
 

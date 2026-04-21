@@ -127,5 +127,5 @@ total: 4 findings
 - [`trs output-saver`](output-saver.md) — writes a small rules block
   that `audit-docs` will recognize via its sentinels and skip from
   duplicate-detection noise.
-- [`docs/agent-integrations.md`](../agent-integrations.md) — per-agent
+- [`docs/development/agent-integrations.md`](../development/agent-integrations.md) — per-agent
   reference for which paths get auto-loaded.
