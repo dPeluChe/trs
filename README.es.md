@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://dpeluche.github.io/trs/"><strong>dpeluche.github.io/trs</strong></a> ·
+  <a href="https://usetrs.dev"><strong>usetrs.dev</strong></a> ·
   <a href="https://github.com/dPeluChe/trs">GitHub</a> ·
   <a href="https://www.npmjs.com/package/@dpeluche/trs">npm</a> ·
   <a href="README.md">English</a>
@@ -34,7 +34,7 @@ En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Tok
 
 Mientras más lo usábamos, más vimos que la oportunidad era más grande que los hooks de input. `trs output-saver` instala reglas en la config global de cada agente para que las respuestas también regresen más cortas. `trs audit-docs` audita CLAUDE.md / AGENTS.md buscando el bloat que cada sesión vuelve a leer. `trs ingest` comprime repositorios enteros en un índice de contexto listo para el LLM y con control de budget. Sigue siendo un binario estático único, sin deps en runtime — la historia nada más creció más allá de los hooks.
 
-La landing page tiene el write-up completo: <https://dpeluche.github.io/trs/>
+La landing page tiene el write-up completo: <https://usetrs.dev>
 
 ## Qué hace
 
@@ -72,13 +72,13 @@ Binario estático único, sin deps en runtime, ~12ms de arranque.
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+curl -fsSL https://usetrs.dev/install.sh | sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex
+irm https://usetrs.dev/install.ps1 | iex
 ```
 
 ### npm (todas las plataformas)
@@ -102,7 +102,7 @@ nativo (~6 MB).
 ### Fijar una versión específica
 
 ```bash
-TRS_VERSION=v0.5.9 curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+TRS_VERSION=v0.5.9 curl -fsSL https://usetrs.dev/install.sh | sh
 ```
 
 ### Actualizar
@@ -212,7 +212,7 @@ trs ingest --list              # digests guardados + HEAD sha + indicador stale
 trs ingest --read miproyecto   # lee un digest guardado
 ```
 
-Detección de staleness, grafos de dependencias, post-procesamiento con Ollama y truncado por budget están documentados en la [landing](https://dpeluche.github.io/trs/#digest).
+Detección de staleness, grafos de dependencias, post-procesamiento con Ollama y truncado por budget están documentados en la [landing](https://usetrs.dev/#digest).
 
 ## Hooks para herramientas de IA (`trs init`)
 

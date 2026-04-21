@@ -14,9 +14,10 @@
 use std::path::Path;
 use std::process::Command;
 
-/// Canonical install script URL (curl|sh path).
-const INSTALL_SCRIPT_URL: &str =
-    "https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh";
+/// Canonical install script URL (curl|sh path). Points at the
+/// usetrs.dev custom domain; GitHub Pages auto-redirects from the
+/// legacy `raw.githubusercontent.com` URL for anyone still using it.
+const INSTALL_SCRIPT_URL: &str = "https://usetrs.dev/install.sh";
 
 /// npm package name.
 const NPM_PACKAGE: &str = "@dpeluche/trs";

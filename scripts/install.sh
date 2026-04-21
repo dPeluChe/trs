@@ -2,10 +2,12 @@
 # trs installer — downloads the prebuilt binary for your platform.
 #
 # Usage:
+#   curl -fsSL https://usetrs.dev/install.sh | sh
+#   # or the raw GitHub URL (equivalent, works before DNS propagates):
 #   curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
 #
 # Options (env vars):
-#   TRS_VERSION=v0.5.5  — pin a specific release (default: latest)
+#   TRS_VERSION=v0.5.9  — pin a specific release (default: latest)
 #   TRS_INSTALL_DIR=... — override install location
 #
 # Install dir selection (in priority order):

@@ -68,7 +68,7 @@ locations:
 | Path pattern | Channel | Upgrade command |
 |---|---|---|
 | `**/node_modules/@dpeluche/trs/**` | npm | `npm install -g @dpeluche/trs@latest` |
-| `$HOME/.local/bin/trs`, `$HOME/.trs/bin/trs`, `$HOME/bin/trs` | curl\|sh | `curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh \| sh` |
+| `$HOME/.local/bin/trs`, `$HOME/.trs/bin/trs`, `$HOME/bin/trs` | curl\|sh | `curl -fsSL https://usetrs.dev/install.sh \| sh` |
 | `$CARGO_HOME/bin/trs` or `$HOME/.cargo/bin/trs` | cargo | **not auto-upgradable yet** — run `cargo install trs-cli --force` |
 | `/opt/homebrew/**`, `/usr/local/Cellar/**` | Homebrew | **not auto-upgradable yet** — tap not published |
 | anything else | unknown | prints all manual options |

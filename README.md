@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://dpeluche.github.io/trs/"><strong>dpeluche.github.io/trs</strong></a> ·
+  <a href="https://usetrs.dev"><strong>usetrs.dev</strong></a> ·
   <a href="https://github.com/dPeluChe/trs">GitHub</a> ·
   <a href="https://www.npmjs.com/package/@dpeluche/trs">npm</a> ·
   <a href="README.es.md">Español</a>
@@ -34,7 +34,7 @@ Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Toke
 
 The more we used it, the more we saw the opportunity was bigger than input hooks. `trs output-saver` installs rules into each agent's global config so replies come back shorter too. `trs audit-docs` inspects CLAUDE.md / AGENTS.md for the bloat every session re-loads. `trs ingest` compresses whole repos into a budget-aware, LLM-ready context index. Still a single static binary with zero runtime deps — the story just got bigger than hooks.
 
-The landing page has the full write-up: <https://dpeluche.github.io/trs/>
+The landing page has the full write-up: <https://usetrs.dev>
 
 ## What it does
 
@@ -72,13 +72,13 @@ Single static binary, zero runtime deps, ~12ms startup.
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+curl -fsSL https://usetrs.dev/install.sh | sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex
+irm https://usetrs.dev/install.ps1 | iex
 ```
 
 ### npm (all platforms)
@@ -101,7 +101,7 @@ macOS x64/arm64, Windows x64. All methods ship the same native binary (~6 MB).
 ### Pin a specific version
 
 ```bash
-TRS_VERSION=v0.5.9 curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+TRS_VERSION=v0.5.9 curl -fsSL https://usetrs.dev/install.sh | sh
 ```
 
 ### Upgrading
@@ -211,7 +211,7 @@ trs ingest --list              # saved digests + HEAD sha + stale markers
 trs ingest --read myproject    # read a saved digest
 ```
 
-Everything about `trs ingest` — stale detection, dependency graphs, Ollama post-processing, budget-aware truncation — is documented on the [landing page](https://dpeluche.github.io/trs/#digest).
+Everything about `trs ingest` — stale detection, dependency graphs, Ollama post-processing, budget-aware truncation — is documented on the [landing page](https://usetrs.dev/#digest).
 
 ## AI tool hooks (`trs init`)
 
