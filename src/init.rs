@@ -416,17 +416,20 @@ pub(crate) fn show_status_and_usage() {
 }
 
 /// Check if a tool has trs hooks installed (local or global).
+///
+/// Checks for either the legacy `trs (TARS CLI)` marker (installs from
+/// v0.5.8 and earlier) or the current `trs (Token-Reducing Shell)`
+/// marker. Keeping the legacy string here means users with an existing
+/// install don't get flagged as "not configured" until they re-run
+/// `trs init --force` to update the template.
 pub(crate) fn check_tool(tool: &AiTool) -> bool {
     match tool {
-        AiTool::Codex => return check_file_contains("AGENTS.md", "trs (TARS CLI)"),
+        AiTool::Codex => return has_any_trs_marker_at("AGENTS.md"),
         AiTool::Antigravity => {
-            return check_file_contains_path(
-                Path::new(".agent/rules/antigravity-trs-rules.md"),
-                "trs (TARS CLI)",
-            );
+            return has_any_trs_marker_at_path(Path::new(".agent/rules/antigravity-trs-rules.md"));
         }
         AiTool::Windsurf => {
-            return check_file_contains(".windsurfrules", "trs (TARS CLI)");
+            return has_any_trs_marker_at(".windsurfrules");
         }
         _ => {}
     }
@@ -480,11 +483,10 @@ fn install_from_spec(spec: &HookSpec, opts: InstallOpts) -> Result<String, Strin
 
 fn install_codex() -> Result<String, String> {
     let path = PathBuf::from("AGENTS.md");
-    let marker = "trs (TARS CLI)";
 
     if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        if content.contains(marker) {
+        if file_has_any_trs_marker(&content) {
             // Idempotent: already installed is a success, not a failure.
             return Ok(format!("{} (already configured)", path.display()));
         }
@@ -522,9 +524,34 @@ fn install_rules(path_rel: &str, content: &str) -> Result<String, String> {
     Ok(path.display().to_string())
 }
 
-/// True if the file content already carries one of our sentinel strings.
+/// True if the file content already carries one of our sentinel
+/// strings. Includes the legacy `trs (TARS CLI)` marker (installs
+/// from v0.5.8 and earlier) alongside the current
+/// `trs (Token-Reducing Shell)` marker and the `trs rewrite` hook-
+/// command signature. Keeping all three guarantees re-runs on old
+/// installs don't duplicate the block.
 fn has_trs_marker(content: &str) -> bool {
-    content.contains("trs (TARS CLI)") || content.contains("trs rewrite")
+    file_has_any_trs_marker(content)
+}
+
+/// Same as `has_trs_marker` but named to match the public-ish helpers
+/// used from `check_tool`. Separate name keeps the intent readable
+/// when the call sites are scanning files rather than raw content.
+fn file_has_any_trs_marker(content: &str) -> bool {
+    content.contains("trs (Token-Reducing Shell)")
+        || content.contains("trs (TARS CLI)")
+        || content.contains("trs rewrite")
+}
+
+fn has_any_trs_marker_at(path_str: &str) -> bool {
+    has_any_trs_marker_at_path(Path::new(path_str))
+}
+
+fn has_any_trs_marker_at_path(path: &Path) -> bool {
+    path.exists()
+        && fs::read_to_string(path)
+            .map(|c| file_has_any_trs_marker(&c))
+            .unwrap_or(false)
 }
 
 // ============================================================
@@ -536,10 +563,6 @@ fn home_dir() -> Result<PathBuf, String> {
         .or_else(|_| std::env::var("USERPROFILE"))
         .map(PathBuf::from)
         .map_err(|_| "HOME not set".to_string())
-}
-
-fn check_file_contains(path_str: &str, needle: &str) -> bool {
-    check_file_contains_path(Path::new(path_str), needle)
 }
 
 fn check_file_contains_path(path: &Path, needle: &str) -> bool {

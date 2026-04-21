@@ -1,11 +1,11 @@
-//! Help system module for TARS CLI.
+//! Help system module for trs (Token-Reducing Shell).
 //!
 //! This module contains comprehensive documentation and help text for all CLI commands,
 //! flags, and usage examples.
 
 /// Long about text for the main CLI.
 pub const LONG_ABOUT: &str = "\
-TARS CLI - Transform noisy terminal output into compact, structured signal
+trs (Token-Reducing Shell) - Transform noisy terminal output into compact, structured signal
 
 Reduces token consumption by 68-99% for developers, AI agents, and automation.
 Just prefix any command with trs:
@@ -322,7 +322,7 @@ pub const RUN_HELP: &str = "\
 Execute a command and process its output.
 
 The run command executes a system command and processes its output through
-TARS reducers for cleaner, more structured output.
+trs reducers for cleaner, more structured output.
 
 USAGE:
     trs run <COMMAND> [ARGS]...

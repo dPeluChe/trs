@@ -11,7 +11,7 @@ fn test_help() {
     cmd.arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("TARS CLI"))
+        .stdout(predicate::str::contains("Token-Reducing Shell"))
         .stdout(predicate::str::contains("Transform noisy terminal output"));
 }
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>trs</strong> — terminal compression for AI agents
+  <strong>trs</strong> — Token-Reducing Shell · terminal compression for AI agents
 </p>
 
 <p align="center">
