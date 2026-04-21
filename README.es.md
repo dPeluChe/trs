@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>trs</strong> — Token-Reducing Shell · compresión de terminal para agentes IA
+  <strong>trs</strong> — <strong>T</strong>oken-<strong>R</strong>educing <strong>S</strong>hell · compresión de terminal para agentes IA
 </p>
 
 <p align="center">
