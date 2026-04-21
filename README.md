@@ -59,20 +59,20 @@ Commands without a dedicated parser still get generic compression (whitespace co
 
 ## Install
 
-Single static binary, zero runtime deps, ~12 ms startup. Platforms: **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
+Single native binary — **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
 
 ```bash
 # macOS / Linux
 curl -fsSL https://usetrs.dev/install.sh | sh
-
-# Windows (PowerShell)
-irm https://usetrs.dev/install.ps1 | iex
 
 # npm (all platforms)
 npm install -g @dpeluche/trs
 
 # cargo (builds from source)
 cargo install trs-cli
+
+# Windows (PowerShell)
+irm https://usetrs.dev/install.ps1 | iex
 ```
 
 Full install options — prebuilt binaries, version pinning, custom install dirs, troubleshooting: [`docs/support/install.md`](docs/support/install.md).
@@ -93,8 +93,8 @@ See [`docs/features/upgrade.md`](docs/features/upgrade.md).
 trs git status
 trs cargo test
 
-# 2. Let your AI agent do it automatically — wires hooks into Claude /
-#    Gemini / Cursor / OpenCode / Kilo / Codex / Droid / Windsurf / Antigravity
+# 2. Let your AI agent do it automatically — wires hooks into every
+#    supported agent (see Supported AI agents below)
 trs init --all --global
 
 # 3. See your savings
@@ -147,7 +147,7 @@ Full command reference with subcommands and examples: [`docs/support/commands.md
 
 ## Built-in trs tools
 
-Native trs commands — no external binary behind them, all shipped in the single binary.
+Native commands — no external binary behind them.
 
 ```bash
 trs json              # jq-lite query engine (-q '.users[].name')
@@ -208,16 +208,10 @@ trs git status --raw           # unprocessed passthrough
 
 Full format reference with side-by-side examples: [`docs/features/formats.md`](docs/features/formats.md).
 
-## Features
+## Safety & quirks
 
-- **30+ dedicated parsers** — see [`docs/support/commands.md`](docs/support/commands.md) for the full list.
-- **Chain-aware rewrite** — `cd X && git status` or `cargo fmt && cargo clippy` wrap each rewritable segment with trs; pipes and semicolons pass through untouched.
-- **Env-var prefix preservation** — `RUSTFLAGS=x cargo build` stays functional after rewrite.
-- **Generic compression fallback** — commands without a parser still get ANSI stripping, whitespace collapse, repeated-line dedup (~30–40% free).
-- **Token savings dashboard** — `trs stats` shows cumulative compression and tokens saved per day. `trs stats --by-agent` breaks totals down by which AI agent fired each rewrite. `-n <N>` customizes row limits.
-- **Collision check** — `trs init` detects hooks from other token-compression tools (via `@imports` too) and aborts by default; `--replace` migrates cleanly. See [`docs/support/other-token-savers.md`](docs/support/other-token-savers.md).
-- **Self-upgrade** — `trs upgrade` auto-detects your install channel (npm / curl|sh) and runs it, then refreshes hook templates and the output-saver block.
-- **Bug-report bundle** — `trs debug-info` packages version + platform + doctor checks + recent history + tee logs into one paste-ready report.
+- **Collision check** — `trs init` detects hooks from other token-compression tools (via `@imports` too) and aborts by default. `--replace` migrates cleanly. See [`docs/support/other-token-savers.md`](docs/support/other-token-savers.md).
+- **Debug bundle** — `trs debug-info` packages version + platform + doctor checks + recent history + tee logs into one paste-ready report for bug filings.
 
 ### How it stays safe
 
@@ -240,17 +234,6 @@ status_max_files = 15
 passthrough_max_chars = 2000
 json_max_depth = 10
 ```
-
-## Tech stack
-
-| | |
-|---|---|
-| Language | Rust |
-| Binary | ~6 MB (LTO + strip), no runtime deps |
-| Startup | ~12 ms on macOS / Linux |
-| CLI | clap 4 (bypassed on hot path) |
-| Tests | 2,186+ passing, 0 warnings |
-| Architecture | 200+ modular files — see [AGENTS.md](AGENTS.md) |
 
 ## Why
 
@@ -279,9 +262,9 @@ cd trs
 cargo install --path .
 
 # Dev loop
-cargo test                     # 2,186+ tests across 71 suites
-cargo clippy -- -D warnings    # no warnings allowed
-cargo fmt -- --check           # formatting must match
+cargo test
+cargo clippy -- -D warnings
+cargo fmt -- --check
 cargo run -- git status        # run locally against the workspace
 ```
 
