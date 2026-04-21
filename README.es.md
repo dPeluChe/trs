@@ -50,7 +50,7 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reducción)
 
 $ trs cargo test
-cargo test: 2161 passed (71 suites, 4.9s)
+cargo test: 2177 passed (71 suites, 4.9s)
 # 55 KB → 58 B (99% reducción)
 
 $ trs cargo clippy
@@ -220,7 +220,7 @@ trs git status --raw          # passthrough sin procesar
 - **Chain-aware rewrite** — `cd X && git status` o `cargo fmt && cargo clippy` reescriben cada segmento; pipes y punto-y-comas pasan sin tocar.
 - **9 integraciones de IA** — Claude, Gemini, Cursor, OpenCode, Kilo, Droid (programáticas) + Codex, Antigravity, Windsurf (rules).
 - **Motor JSON query** — jq-lite incorporado, sin depender de `jq`.
-- **Dashboard de ahorros** — `trs stats` muestra compresión acumulada y tokens por día.
+- **Dashboard de ahorros** — `trs stats` muestra compresión acumulada y tokens por día. `trs stats --by-agent` desglosa totales por agente IA que disparó el rewrite (Claude / Gemini / Cursor / OpenCode / Kilo).
 - **Compresión genérica de fallback** — comandos sin parser igual reciben ANSI strip, whitespace collapse y dedup de líneas.
 
 ## Configuración
@@ -253,7 +253,7 @@ json_max_depth = 10
 | Binario | ~6 MB (LTO + strip), sin deps en runtime |
 | Arranque | ~12ms en macOS / Linux |
 | CLI | clap 4 (bypassed en hot path) |
-| Tests | 2,161 passing, 0 warnings |
+| Tests | 2,177 passing, 0 warnings |
 | Arquitectura | 200+ archivos modulares entre parsers, handlers e integraciones — [detalles](AGENTS.md) |
 
 ## Contribuir

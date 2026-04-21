@@ -7,9 +7,10 @@ reads that log and produces a dashboard of cumulative savings.
 ## Quick reference
 
 ```bash
-trs stats             # summary dashboard
-trs stats --history   # per-command log (most recent 20)
-trs stats --json      # machine-readable summary
+trs stats              # summary dashboard
+trs stats --history    # per-command log (most recent 20)
+trs stats --by-agent   # breakdown by which AI agent triggered the run
+trs stats --json       # machine-readable summary
 ```
 
 ## Summary (default)
@@ -58,6 +59,58 @@ If a logged command's first token is an absolute path (e.g. a hook
 invoking `/Users/you/.local/bin/trs …`), the display collapses it to
 the basename so you still see what was run. The full path is preserved
 in `~/.trs/history.jsonl` if you need it.
+
+## `--by-agent` — attribution breakdown
+
+```bash
+trs stats --by-agent
+```
+
+Shows which AI agent triggered each execution. Added in v0.5.8.
+
+```
+trs Token Savings — by agent
+==================================================
+  AGENT           CALLS    SHARE  AVG -%       SAVED
+──────────────────────────────────────────────────
+  claude            1247    58.2%     71%       720K
+  cursor             403    18.8%     68%       190K
+  opencode           210     9.8%     77%       145K
+  gemini              89     4.2%     65%        48K
+  kilo                12     0.6%     72%         8K
+  (untagged)         182     8.5%     44%        31K
+```
+
+Labels come from the `TRS_AGENT` env var that `trs rewrite` and the
+OpenCode / Kilo plugin templates inject into the rewritten command
+before the shell runs it. The shell strips the env-var assignment,
+so it's transparent to git/cargo/etc downstream, and trs's tracker
+picks it up when the rewritten invocation eventually logs.
+
+### Which agents get attributed
+
+| Agent | Signal | Label |
+|---|---|---|
+| Claude Code | `hook_event_name: PreToolUse` | `claude` |
+| Gemini CLI | `hook_event_name: BeforeTool` | `gemini` |
+| Cursor | `hook_event_name: preToolUse` | `cursor` |
+| OpenCode | plugin template | `opencode` |
+| Kilo Code | plugin template | `kilo` |
+| Factory Droid | same wire format as Claude | `claude` (limitation) |
+| Codex / Antigravity / Windsurf | no programmatic signal (rules-only) | `(untagged)` |
+
+Direct-shell invocations (`trs git status` typed manually) also land
+under `(untagged)`. We don't invent a label where we don't have
+honest data.
+
+### Droid attribution caveat
+
+Factory Droid uses Claude's hook wire format verbatim (same
+`hook_event_name: PreToolUse` envelope), so our dispatcher can't
+distinguish the two at rewrite time. Both show up as `claude`. If
+you need separation, you currently need to eyeball `cwd` paths or
+look at the hour of the day. A future release could disambiguate
+via a install-time flag or a second detection path.
 
 ## JSON mode
 

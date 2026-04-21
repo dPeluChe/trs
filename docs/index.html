@@ -939,14 +939,14 @@ unstaged (3):
           <div class="compare-pane">   Compiling tars-cli v0.5.8
     Finished test profile in 4.21s
      Running unittests src/main.rs
-running 2161 tests
+running 2177 tests
 test config::tests::test_defaults ... ok
 test config::tests::test_parse ... ok
-... (2159 more lines) ...
-test result: ok. 2161 passed; 0 failed
+... (2175 more lines) ...
+test result: ok. 2177 passed; 0 failed
      Running tests/cli_flags.rs
 ... (70 more suites) ...</div>
-          <div class="compare-pane">cargo test: 2161 passed (71 suites, 4.9s)</div>
+          <div class="compare-pane">cargo test: 2177 passed (71 suites, 4.9s)</div>
         </div>
       </div>
 
@@ -1224,7 +1224,15 @@ ad55480 feat(init): smart JSON merge
       </div>
       <div class="feature">
         <div class="feature-title">Token savings dashboard</div>
-        <div class="feature-desc"><code>trs stats</code> shows cumulative compression, tokens saved per day, top commands. JSON output for dashboards.</div>
+        <div class="feature-desc"><code>trs stats</code> shows cumulative compression, tokens saved per day, top commands. <code>trs stats --by-agent</code> breaks totals down by which AI agent fired each rewrite. JSON output for dashboards.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Agent attribution (0.5.8+)</div>
+        <div class="feature-desc"><code>trs rewrite</code> and plugin templates inject <code>TRS_AGENT=&lt;label&gt;</code> into the rewritten command so history logs who fired the run &mdash; Claude, Gemini, Cursor, OpenCode, Kilo. Rules-only agents show as <em>(untagged)</em>; we don't invent labels we can't verify.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Self-upgrade (0.5.8+)</div>
+        <div class="feature-desc"><code>trs upgrade</code> detects your install channel (npm / curl|sh) and re-runs it. After a successful binary upgrade it also refreshes hook templates and re-installs the output-saver block where it was already present.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Fast find</div>

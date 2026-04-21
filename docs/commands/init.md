@@ -138,6 +138,40 @@ we only check for the `TRS_SKIP=` prefix.
 No global toggle: the bypass is always per-invocation. Removing trs
 entirely is done via uninstall (below), not via an always-skip flag.
 
+## Agent attribution (`TRS_AGENT`)
+
+When `trs rewrite` or a plugin template rewrites a command, it
+prefixes the result with `TRS_AGENT=<label>` so the downstream
+`trs <cmd>` execution can record which agent triggered the run.
+
+The shell strips the env-var assignment before executing git / cargo
+/ etc. — so the tagging is transparent to downstream programs — and
+trs's tracker picks up the label and writes it into
+`~/.trs/history.jsonl`. Run `trs stats --by-agent` to see the
+breakdown.
+
+Labels per agent:
+
+- `claude` — Claude Code (and Factory Droid, which shares the same
+  wire format)
+- `gemini` — Gemini CLI
+- `cursor` — Cursor
+- `opencode` — OpenCode (baked into the plugin template)
+- `kilo` — Kilo Code (baked into its plugin template)
+- `(untagged)` — rules-only agents (Codex / Antigravity / Windsurf)
+  and direct-shell invocations, where no programmatic signal is
+  available
+
+If you want to spoof attribution for a specific command (e.g.
+testing), prefix manually:
+
+```bash
+TRS_AGENT=claude trs git status
+```
+
+`TRS_AGENT` is only read by trs — it has no other effect on the
+environment.
+
 ## Uninstalling
 
 There's no dedicated uninstaller yet. Manual steps:
