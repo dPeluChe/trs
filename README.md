@@ -17,11 +17,11 @@
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> ·
+  <a href="#install-recommended">Install</a> ·
+  <a href="#quick-start-tldr">Quick start</a> ·
   <a href="#what-it-does">What it does</a> ·
   <a href="#project-digest">Project digest</a> ·
-  <a href="#features">Features</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a>
+  <a href="#from-source-development">From source</a>
 </p>
 
 ---
@@ -64,29 +64,79 @@ src/main.rs (3):
 
 Commands without a dedicated parser still get generic compression (whitespace collapse, ANSI stripping) — ~30-40% for free.
 
-## Install
+## Install (recommended)
 
-| Method | Platform | Notes |
-|--------|----------|-------|
-| **curl \| sh** | macOS / Linux | `curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh \| sh` — native binary into `~/.trs/bin/`. **Recommended.** |
-| **PowerShell** | Windows | `irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 \| iex` |
-| **npm** | all | `npm install -g @dpeluche/trs` — shell launcher, ~12ms overhead. |
-| **cargo** | all | `cargo install tars-cli` — builds from source. Requires Rust. |
-| **Binary** | all | [GitHub Releases](https://github.com/dPeluChe/trs/releases) — prebuilt for Linux x64/arm64, macOS x64/arm64, Windows x64. |
+Platform support: **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
+Single static binary, zero runtime deps, ~12ms startup.
 
-All methods ship the same native binary.
-
-## Quick start
+### macOS / Linux
 
 ```bash
-trs git status                     # compact (default)
+curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+```
+
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex
+```
+
+### npm (all platforms)
+
+```bash
+npm install -g @dpeluche/trs
+```
+
+### cargo (builds from source — requires Rust)
+
+```bash
+cargo install tars-cli
+```
+
+### Prebuilt binaries
+
+[GitHub Releases](https://github.com/dPeluChe/trs/releases) — Linux x64/arm64,
+macOS x64/arm64, Windows x64. All methods ship the same native binary (~6 MB).
+
+### Pin a specific version
+
+```bash
+TRS_VERSION=v0.5.8 curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+```
+
+### Upgrading
+
+```bash
+trs upgrade --check    # show what would run
+trs upgrade            # auto-detects channel (npm / curl|sh), refreshes hooks too
+```
+
+## Quick start (TL;DR)
+
+```bash
+# 1. Try it — prefix any command with trs
+trs git status
+trs cargo test
+
+# 2. Let your AI agent do it automatically — wires hooks into Claude /
+#    Gemini / Cursor / OpenCode / Kilo / Codex / Droid / Windsurf / Antigravity
+trs init --all --global
+
+# 3. See your savings
+trs stats                          # dashboard
+trs stats --by-agent               # breakdown per AI agent
+```
+
+Flags work anywhere and stdin is supported too:
+
+```bash
 trs git status --json              # structured JSON
 trs --json git status              # flags work anywhere
 git status | trs parse git-status  # pipe syntax too
-
-trs init --all --global            # install hooks for all detected AI tools
-trs stats                          # your token savings dashboard
 ```
+
+Full command reference below, or see [`docs/commands/`](docs/commands/) for
+per-command deep-dives.
 
 ## Commands with dedicated parsers
 
@@ -256,17 +306,28 @@ json_max_depth = 10
 | Tests | 2,177 passing, 0 warnings |
 | Architecture | 200+ modular files across parsers, handlers, and integrations — [details](AGENTS.md) |
 
-## Contributing
+## From source (development)
+
+Prefer the prebuilt install paths above unless you're contributing. For a
+source checkout:
 
 ```bash
 git clone https://github.com/dPeluChe/trs.git
 cd trs
-cargo test                     # all tests must pass
+
+# Build + install into ~/.cargo/bin/
+cargo install --path .
+
+# Dev loop
+cargo test                     # 2,177 tests across 71 suites
 cargo clippy -- -D warnings    # no warnings allowed
 cargo fmt -- --check           # formatting must match
+cargo run -- git status        # run locally against the workspace
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for code guidelines, [AGENTS.md](AGENTS.md) for the architecture, and [docs/TASK_TODO.md](docs/TASK_TODO.md) for the roadmap.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for code guidelines,
+[AGENTS.md](AGENTS.md) for architecture, and
+[docs/TASK_TODO.md](docs/TASK_TODO.md) for the roadmap.
 
 ## License
 
