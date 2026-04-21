@@ -133,7 +133,7 @@ pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
     r#"
 ## Terminal Output Optimization
 
-This project uses `trs` (TARS CLI) for token-optimized terminal output.
+This project uses `trs` (Token-Reducing Shell) for token-optimized terminal output.
 When running shell commands, prefer prefixing with `trs` for compact output:
 
 ```bash

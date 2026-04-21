@@ -1,4 +1,4 @@
-# AGENTS.md — trs (TARS CLI)
+# AGENTS.md — trs (Token-Reducing Shell)
 
 ## What is trs
 

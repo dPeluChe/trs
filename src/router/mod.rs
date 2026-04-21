@@ -1,4 +1,4 @@
-//! Command routing system for TARS CLI.
+//! Command routing system for trs (Token-Reducing Shell).
 //!
 //! This module provides the Router that dispatches CLI commands to their
 //! respective handlers. Handler implementations are in the `handlers` submodule.

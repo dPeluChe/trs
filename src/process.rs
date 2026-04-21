@@ -1,4 +1,4 @@
-//! Process execution module for TARS CLI.
+//! Process execution module for trs (Token-Reducing Shell).
 //!
 //! This module provides a robust interface for executing external commands
 //! and capturing their output, exit codes, and execution duration.
