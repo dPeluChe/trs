@@ -1,4 +1,4 @@
-//! Stable JSON schemas for TARS CLI reducers.
+//! Stable JSON schemas for trs (Token-Reducing Shell) reducers.
 //!
 //! This module provides stable, versioned JSON schemas for all reducer outputs.
 //! These schemas are designed to be:

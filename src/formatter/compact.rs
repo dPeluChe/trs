@@ -55,7 +55,7 @@ impl CompactFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CompactFormatter;
+    /// use trs_cli::formatter::CompactFormatter;
     /// let output = CompactFormatter::format_counts("counts", &[("passed", 10), ("failed", 2)]);
     /// assert_eq!(output, "counts: passed=10 failed=2\n");
     /// ```

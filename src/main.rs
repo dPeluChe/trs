@@ -29,6 +29,7 @@ mod classifier_transfer;
 mod cli;
 mod commands;
 pub(crate) mod config;
+mod debug_info;
 mod discover;
 mod doctor;
 mod formatter;
@@ -172,6 +173,9 @@ fn main() {
         }) => {
             upgrade::run_upgrade(*check, *yes, *binary_only);
         }
+        Some(Commands::DebugInfo { output }) => {
+            debug_info::run(output.as_deref());
+        }
         Some(Commands::AuditDocs { path }) => {
             audit_docs::run_audit_docs(std::path::Path::new(path));
         }
@@ -272,6 +276,7 @@ fn main() {
             project,
             json,
             by_agent,
+            limit,
         }) => {
             use router::handlers::stats::{handle_stats, StatsInput};
             let input = StatsInput {
@@ -279,6 +284,7 @@ fn main() {
                 project: *project,
                 json: *json,
                 by_agent: *by_agent,
+                limit: *limit,
             };
             handle_stats(&input);
         }
@@ -432,6 +438,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "audit-docs"
             | "output-saver"
             | "upgrade"
+            | "debug-info"
             | "stats"
             | "raw"
             | "help"

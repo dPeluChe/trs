@@ -7,8 +7,9 @@ reads that log and produces a dashboard of cumulative savings.
 ## Quick reference
 
 ```bash
-trs stats              # summary dashboard
+trs stats              # summary dashboard (top 15 commands)
 trs stats --history    # per-command log (most recent 20)
+trs stats -n 30        # override row cap (top 30 in summary, last 30 in --history)
 trs stats --by-agent   # breakdown by which AI agent triggered the run
 trs stats --json       # machine-readable summary
 ```
@@ -41,10 +42,11 @@ below average" read.
 ## History view
 
 ```bash
-trs stats --history
+trs stats --history         # last 20 (default)
+trs stats --history -n 50   # last 50
 ```
 
-Shows the 20 most recent commands:
+Shows the most recent commands (default 20, override with `-n`):
 
 ```
 Recent Commands (today: 23 commands)

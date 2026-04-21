@@ -64,7 +64,7 @@ if [ -z "$BIN" ]; then
   echo "Searched near:    $DIR" >&2
   echo "" >&2
   echo "Alternatives:" >&2
-  echo "  cargo install tars-cli    # build from source" >&2
+  echo "  cargo install trs-cli    # build from source" >&2
   echo "  curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh" >&2
   exit 1
 fi

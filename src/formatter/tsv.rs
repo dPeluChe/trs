@@ -43,7 +43,7 @@ impl TsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::TsvFormatter;
+    /// use trs_cli::formatter::TsvFormatter;
     /// let output = TsvFormatter::format_header(&["branch", "is_clean", "count"]);
     /// assert_eq!(output, "branch\tis_clean\tcount\n");
     /// ```
@@ -57,7 +57,7 @@ impl TsvFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::TsvFormatter;
+    /// use trs_cli::formatter::TsvFormatter;
     /// let output = TsvFormatter::format_row(&["main", "true", "5"]);
     /// assert_eq!(output, "main\ttrue\t5\n");
     /// ```

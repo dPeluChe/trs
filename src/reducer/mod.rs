@@ -1,4 +1,4 @@
-//! Reducer system for TARS CLI.
+//! Reducer system for trs (Token-Reducing Shell).
 //!
 //! This module provides a reducer interface for transforming and aggregating command outputs.
 //! Reducers can process input data and produce output in various formats.

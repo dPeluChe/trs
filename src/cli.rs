@@ -3,7 +3,7 @@ use clap::{Parser, ValueEnum};
 use crate::commands::Commands;
 use crate::help;
 
-/// TARS CLI - Transform noisy terminal output into compact, structured signal
+/// trs (Token-Reducing Shell) — Transform noisy terminal output into compact, structured signal
 ///
 /// A CLI toolkit for developers, automation pipelines, and AI agents.
 #[derive(Parser)]

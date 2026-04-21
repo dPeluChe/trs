@@ -9,8 +9,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::{GitStatusSchema, GitFileEntry};
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::{GitStatusSchema, GitFileEntry};
     /// let mut status = GitStatusSchema::new("main");
     /// status.is_clean = true;
     /// let output = JsonFormatter::format_git_status(&status);
@@ -27,8 +27,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::GitDiffSchema;
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::GitDiffSchema;
     /// let diff = GitDiffSchema::new();
     /// let output = JsonFormatter::format_git_diff(&diff);
     /// let json: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -43,8 +43,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::{LsOutputSchema, LsEntry, LsEntryType};
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::{LsOutputSchema, LsEntry, LsEntryType};
     /// let mut ls = LsOutputSchema::new();
     /// ls.is_empty = false;
     /// ls.directories.push("src".to_string());
@@ -63,8 +63,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::{GrepOutputSchema, GrepFile, GrepMatch};
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::{GrepOutputSchema, GrepFile, GrepMatch};
     /// let mut grep = GrepOutputSchema::new();
     /// grep.is_empty = false;
     /// let mut file = GrepFile::new("src/main.rs");
@@ -85,8 +85,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::{FindOutputSchema, FindEntry};
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::{FindOutputSchema, FindEntry};
     /// let mut find = FindOutputSchema::new();
     /// find.is_empty = false;
     /// find.files.push("./src/main.rs".to_string());
@@ -105,8 +105,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::{TestOutputSchema, TestRunnerType};
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::{TestOutputSchema, TestRunnerType};
     /// let mut test = TestOutputSchema::new(TestRunnerType::Pytest);
     /// test.is_empty = false;
     /// test.summary.passed = 10;
@@ -125,8 +125,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::{LogsOutputSchema, LogEntry, LogLevel};
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::{LogsOutputSchema, LogEntry, LogLevel};
     /// let mut logs = LogsOutputSchema::new();
     /// logs.is_empty = false;
     /// logs.counts.total_lines = 10;
@@ -145,8 +145,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::RepositoryStateSchema;
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::RepositoryStateSchema;
     /// let mut state = RepositoryStateSchema::new();
     /// state.branch = Some("main".to_string());
     /// let output = JsonFormatter::format_repository_state(&state);
@@ -162,8 +162,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::ProcessOutputSchema;
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::ProcessOutputSchema;
     /// let mut proc = ProcessOutputSchema::new("echo");
     /// proc.stdout = "hello\n".to_string();
     /// proc.success = true;
@@ -180,8 +180,8 @@ impl JsonFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::JsonFormatter;
-    /// use tars_cli::schema::ErrorSchema;
+    /// use trs_cli::formatter::JsonFormatter;
+    /// use trs_cli::schema::ErrorSchema;
     /// let error = ErrorSchema::new("Something went wrong");
     /// let output = JsonFormatter::format_error_schema(&error);
     /// let json: serde_json::Value = serde_json::from_str(&output).unwrap();

@@ -1,4 +1,4 @@
-//! Formatter system for TARS CLI.
+//! Formatter system for trs (Token-Reducing Shell).
 //!
 //! This module provides a centralized formatter interface for producing output
 //! in different formats (Compact, JSON, CSV, TSV, Agent, Raw).

@@ -2,10 +2,12 @@
 # trs installer — downloads the prebuilt binary for your platform.
 #
 # Usage:
+#   curl -fsSL https://usetrs.dev/install.sh | sh
+#   # or the raw GitHub URL (equivalent, works before DNS propagates):
 #   curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
 #
 # Options (env vars):
-#   TRS_VERSION=v0.5.5  — pin a specific release (default: latest)
+#   TRS_VERSION=v0.5.9  — pin a specific release (default: latest)
 #   TRS_INSTALL_DIR=... — override install location
 #
 # Install dir selection (in priority order):
@@ -57,7 +59,7 @@ detect_platform() {
     case "$os" in
         Darwin) os_tag=darwin ;;
         Linux)  os_tag=linux ;;
-        *) error "unsupported OS: $os (install via: cargo install tars-cli)" ;;
+        *) error "unsupported OS: $os (install via: cargo install trs-cli)" ;;
     esac
 
     case "$arch" in
@@ -202,7 +204,7 @@ check_existing_install() {
                 source_hint="from Homebrew or system package manager"
             fi
             ;;
-        *"/.cargo/bin/"*) source_hint="from cargo (try: cargo uninstall tars-cli)" ;;
+        *"/.cargo/bin/"*) source_hint="from cargo (try: cargo uninstall trs-cli)" ;;
     esac
     printf '\n'
     warn "Another trs is already installed at:"

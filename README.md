@@ -1,9 +1,9 @@
 <p align="center">
-  <strong>trs</strong> — terminal compression for AI agents
+  <strong>trs</strong> — <strong>T</strong>oken-<strong>R</strong>educing <strong>S</strong>hell · terminal compression for AI agents
 </p>
 
 <p align="center">
-  <a href="https://dpeluche.github.io/trs/"><strong>dpeluche.github.io/trs</strong></a> ·
+  <a href="https://usetrs.dev"><strong>usetrs.dev</strong></a> ·
   <a href="https://github.com/dPeluChe/trs">GitHub</a> ·
   <a href="https://www.npmjs.com/package/@dpeluche/trs">npm</a> ·
   <a href="README.es.md">Español</a>
@@ -34,7 +34,7 @@ Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Toke
 
 The more we used it, the more we saw the opportunity was bigger than input hooks. `trs output-saver` installs rules into each agent's global config so replies come back shorter too. `trs audit-docs` inspects CLAUDE.md / AGENTS.md for the bloat every session re-loads. `trs ingest` compresses whole repos into a budget-aware, LLM-ready context index. Still a single static binary with zero runtime deps — the story just got bigger than hooks.
 
-The landing page has the full write-up: <https://dpeluche.github.io/trs/>
+The landing page has the full write-up: <https://usetrs.dev>
 
 ## What it does
 
@@ -50,7 +50,7 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reduction)
 
 $ trs cargo test
-cargo test: 2177 passed (71 suites, 4.9s)
+cargo test: 2186 passed (71 suites, 4.9s)
 # 55 KB → 58 B (99% reduction)
 
 $ trs cargo clippy
@@ -72,13 +72,13 @@ Single static binary, zero runtime deps, ~12ms startup.
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+curl -fsSL https://usetrs.dev/install.sh | sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex
+irm https://usetrs.dev/install.ps1 | iex
 ```
 
 ### npm (all platforms)
@@ -90,7 +90,7 @@ npm install -g @dpeluche/trs
 ### cargo (builds from source — requires Rust)
 
 ```bash
-cargo install tars-cli
+cargo install trs-cli
 ```
 
 ### Prebuilt binaries
@@ -101,7 +101,7 @@ macOS x64/arm64, Windows x64. All methods ship the same native binary (~6 MB).
 ### Pin a specific version
 
 ```bash
-TRS_VERSION=v0.5.8 curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+TRS_VERSION=v0.5.9 curl -fsSL https://usetrs.dev/install.sh | sh
 ```
 
 ### Upgrading
@@ -211,7 +211,7 @@ trs ingest --list              # saved digests + HEAD sha + stale markers
 trs ingest --read myproject    # read a saved digest
 ```
 
-Everything about `trs ingest` — stale detection, dependency graphs, Ollama post-processing, budget-aware truncation — is documented on the [landing page](https://dpeluche.github.io/trs/#digest).
+Everything about `trs ingest` — stale detection, dependency graphs, Ollama post-processing, budget-aware truncation — is documented on the [landing page](https://usetrs.dev/#digest).
 
 ## AI tool hooks (`trs init`)
 
@@ -303,7 +303,7 @@ json_max_depth = 10
 | Binary | ~6 MB (LTO + strip), no runtime deps |
 | Startup | ~12ms on macOS / Linux (native binary or shell launcher) |
 | CLI | clap 4 (bypassed on hot path) |
-| Tests | 2,177 passing, 0 warnings |
+| Tests | 2,186 passing, 0 warnings |
 | Architecture | 200+ modular files across parsers, handlers, and integrations — [details](AGENTS.md) |
 
 ## From source (development)
@@ -319,7 +319,7 @@ cd trs
 cargo install --path .
 
 # Dev loop
-cargo test                     # 2,177 tests across 71 suites
+cargo test                     # 2,186 tests across 71 suites
 cargo clippy -- -D warnings    # no warnings allowed
 cargo fmt -- --check           # formatting must match
 cargo run -- git status        # run locally against the workspace

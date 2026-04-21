@@ -7,11 +7,11 @@
   <meta name="color-scheme" content="dark light">
 
   <!-- Primary -->
-  <title>trs (TarsCLI) — Terminal compression for AI agents</title>
+  <title>trs (Token-Reducing Shell) — Terminal compression for AI agents</title>
   <meta name="description" content="Rust CLI that compresses noisy terminal output 68–99% for AI agents and humans. ~12ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
-  <meta name="keywords" content="trs, tarscli, terminal, CLI, token reduction, AI agents, Claude Code, Gemini, LLM, compression, ingest, digest, Rust">
+  <meta name="keywords" content="trs, token-reducing shell, terminal, CLI, token reduction, AI agents, Claude Code, Gemini, LLM, compression, ingest, digest, Rust">
   <meta name="author" content="Iteris">
-  <link rel="canonical" href="https://dpeluche.github.io/trs/">
+  <link rel="canonical" href="https://usetrs.dev/">
 
   <!-- Favicon (inline SVG, no extra request) -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23f0a030'/%3E%3Ctext x='50%25' y='54%25' font-family='SF Mono,Consolas,monospace' font-size='32' font-weight='800' fill='%23111' text-anchor='middle' dominant-baseline='middle'%3Etrs%3C/text%3E%3C/svg%3E">
@@ -21,8 +21,8 @@
   <meta property="og:site_name" content="trs (TarsCLI)">
   <meta property="og:title" content="trs — Terminal compression for AI agents">
   <meta property="og:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12ms startup, zero Node overhead.">
-  <meta property="og:url" content="https://dpeluche.github.io/trs/">
-  <meta property="og:image" content="https://dpeluche.github.io/trs/og-image.png">
+  <meta property="og:url" content="https://usetrs.dev/">
+  <meta property="og:image" content="https://usetrs.dev/og-image.png">
   <meta property="og:image:alt" content="trs — Terminal compression for AI agents">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -32,7 +32,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="trs — Terminal compression for AI agents">
   <meta name="twitter:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12ms startup.">
-  <meta name="twitter:image" content="https://dpeluche.github.io/trs/og-image.png">
+  <meta name="twitter:image" content="https://usetrs.dev/og-image.png">
 
   <!-- Robots -->
   <meta name="robots" content="index, follow">
@@ -44,14 +44,14 @@
     "@type": "SoftwareApplication",
     "name": "trs (TarsCLI)",
     "description": "Rust CLI that compresses noisy terminal output 68–99% for AI agents and humans. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
-    "url": "https://dpeluche.github.io/trs/",
+    "url": "https://usetrs.dev/",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "macOS, Linux, Windows",
     "programmingLanguage": "Rust",
     "license": "https://opensource.org/licenses/MIT",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "codeRepository": "https://github.com/dPeluChe/trs",
-    "softwareVersion": "0.5.8",
+    "softwareVersion": "0.5.9",
     "author": { "@type": "Organization", "name": "Iteris", "url": "https://iteris.tech" }
   }
   </script>
@@ -670,9 +670,9 @@
   <div class="container">
     <div class="hero-name"><span>trs</span></div>
     <div class="hero-meta">
-      <span>TARSCLI</span>
+      <span>Token-Reducing Shell</span>
       <span class="dot">·</span>
-      <span>v0.5.8</span>
+      <span>v0.5.9</span>
       <span class="dot">·</span>
       <span>Rust</span>
       <span class="dot">·</span>
@@ -734,7 +734,7 @@
 
       <div class="install-pane active" data-pane="unix">
         <div class="install-row">
-          <code>curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh</code>
+          <code>curl -fsSL https://usetrs.dev/install.sh | sh</code>
           <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
         </div>
         <p class="install-note">
@@ -744,7 +744,7 @@
       </div>
       <div class="install-pane" data-pane="windows">
         <div class="install-row">
-          <code>irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex</code>
+          <code>irm https://usetrs.dev/install.ps1 | iex</code>
           <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
         </div>
         <p class="install-note">PowerShell installer. Drops the binary into <code class="inline">%USERPROFILE%\.trs\bin\trs.exe</code>.</p>
@@ -758,7 +758,7 @@
       </div>
       <div class="install-pane" data-pane="cargo">
         <div class="install-row">
-          <code>cargo install tars-cli</code>
+          <code>cargo install trs-cli</code>
           <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
         </div>
         <p class="install-note">From source via crates.io. Good if you already have the Rust toolchain.</p>
@@ -936,17 +936,17 @@ unstaged (3):
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
-          <div class="compare-pane">   Compiling tars-cli v0.5.8
+          <div class="compare-pane">   Compiling trs-cli v0.5.9
     Finished test profile in 4.21s
      Running unittests src/main.rs
-running 2177 tests
+running 2186 tests
 test config::tests::test_defaults ... ok
 test config::tests::test_parse ... ok
 ... (2175 more lines) ...
-test result: ok. 2177 passed; 0 failed
+test result: ok. 2186 passed; 0 failed
      Running tests/cli_flags.rs
 ... (70 more suites) ...</div>
-          <div class="compare-pane">cargo test: 2177 passed (71 suites, 4.9s)</div>
+          <div class="compare-pane">cargo test: 2186 passed (71 suites, 4.9s)</div>
         </div>
       </div>
 
@@ -1130,7 +1130,7 @@ ad55480 feat(init): smart JSON merge
         <strong>Curious about the numbers?</strong> Install trs in 10 seconds and see the compression on your own repo.
       </div>
       <div class="cta-cmd">
-        <code id="cta-cmd-text">curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh</code>
+        <code id="cta-cmd-text">curl -fsSL https://usetrs.dev/install.sh | sh</code>
         <button class="copy-btn" onclick="copyText('cta-cmd-text', this)">Copy</button>
       </div>
     </div>
@@ -1227,11 +1227,11 @@ ad55480 feat(init): smart JSON merge
         <div class="feature-desc"><code>trs stats</code> shows cumulative compression, tokens saved per day, top commands. <code>trs stats --by-agent</code> breaks totals down by which AI agent fired each rewrite. JSON output for dashboards.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">Agent attribution (0.5.8+)</div>
+        <div class="feature-title">Agent attribution (0.5.9+)</div>
         <div class="feature-desc"><code>trs rewrite</code> and plugin templates inject <code>TRS_AGENT=&lt;label&gt;</code> into the rewritten command so history logs who fired the run &mdash; Claude, Gemini, Cursor, OpenCode, Kilo. Rules-only agents show as <em>(untagged)</em>; we don't invent labels we can't verify.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">Self-upgrade (0.5.8+)</div>
+        <div class="feature-title">Self-upgrade (0.5.9+)</div>
         <div class="feature-desc"><code>trs upgrade</code> detects your install channel (npm / curl|sh) and re-runs it. After a successful binary upgrade it also refreshes hook templates and re-installs the output-saver block where it was already present.</div>
       </div>
       <div class="feature">
@@ -1276,20 +1276,20 @@ ad55480 feat(init): smart JSON merge
 
     <div class="install-pane active" data-pane="unix">
       <div class="install-row">
-        <code>curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh</code>
+        <code>curl -fsSL https://usetrs.dev/install.sh | sh</code>
         <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
       </div>
       <p class="install-note">
         Downloads the right binary for your platform into
         <code class="inline">~/.trs/bin/trs</code>. Zero runtime dependencies,
         no Node overhead, ~12ms startup. Pin a version with
-        <code class="inline">TRS_VERSION=v0.5.8</code>.
+        <code class="inline">TRS_VERSION=v0.5.9</code>.
       </p>
     </div>
 
     <div class="install-pane" data-pane="windows">
       <div class="install-row">
-        <code>irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex</code>
+        <code>irm https://usetrs.dev/install.ps1 | iex</code>
         <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
       </div>
       <p class="install-note">
@@ -1313,7 +1313,7 @@ ad55480 feat(init): smart JSON merge
 
     <div class="install-pane" data-pane="cargo">
       <div class="install-row">
-        <code>cargo install tars-cli</code>
+        <code>cargo install trs-cli</code>
         <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
       </div>
       <p class="install-note">
@@ -1344,6 +1344,7 @@ ad55480 feat(init): smart JSON merge
       <a href="https://github.com/dPeluChe/trs/blob/main/LICENSE"><img style="height: 18px;" src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
     </div>
     <p>Built with Rust &amp; caffeine by <a href="https://iteris.tech">Iteris</a> &middot; <a href="https://github.com/dPeluChe/trs">GitHub</a> &middot; <a href="https://github.com/dPeluChe/trs/tree/main/docs/benchmarks">benchmarks lab</a> &middot; MIT License</p>
+    <p class="muted" style="margin-top: 8px; font-size: 13px;">trs &mdash; Token-Reducing Shell &middot; a wink to TARS, the only companion that speaks compactly.</p>
   </div>
 </footer>
 

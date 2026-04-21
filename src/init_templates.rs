@@ -133,7 +133,7 @@ pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
     r#"
 ## Terminal Output Optimization
 
-This project uses `trs` (TARS CLI) for token-optimized terminal output.
+This project uses `trs` (Token-Reducing Shell) for token-optimized terminal output.
 When running shell commands, prefer prefixing with `trs` for compact output:
 
 ```bash
@@ -169,7 +169,7 @@ See https://github.com/dPeluChe/trs for details.
 
 pub(crate) const ANTIGRAVITY_RULES: &str = concat!(
     r#"
-# trs (TARS CLI) — terminal output optimization
+# trs (Token-Reducing Shell) — terminal output optimization
 
 Antigravity does not support pre-execution hooks, so this rules file is the
 only mechanism to opt into trs for this project. When you run shell commands,
@@ -223,7 +223,7 @@ Reference: https://github.com/dPeluChe/trs
 
 pub(crate) const WINDSURF_RULES: &str = concat!(
     r#"
-# trs (TARS CLI) — terminal output optimization
+# trs (Token-Reducing Shell) — terminal output optimization
 
 Windsurf Cascade does not expose a pre-execution hook, so this rules file is
 the way to opt into trs for this project. When running shell commands, prefix

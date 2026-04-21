@@ -2,6 +2,8 @@
 # trs installer for Windows — downloads the prebuilt binary.
 #
 # Usage:
+#   irm https://usetrs.dev/install.ps1 | iex
+#   # or the raw GitHub URL (equivalent, works before DNS propagates):
 #   irm https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.ps1 | iex
 #
 # Options (env vars):

@@ -9,8 +9,8 @@ impl CompactFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CompactFormatter;
-    /// use tars_cli::schema::{GitStatusSchema, GitFileEntry};
+    /// use trs_cli::formatter::CompactFormatter;
+    /// use trs_cli::schema::{GitStatusSchema, GitFileEntry};
     /// let mut status = GitStatusSchema::new("main");
     /// status.is_clean = true;
     /// let output = CompactFormatter::format_git_status(&status);
@@ -122,8 +122,8 @@ impl CompactFormatter {
     /// # Example
     ///
     /// ```
-    /// use tars_cli::formatter::CompactFormatter;
-    /// use tars_cli::schema::GitDiffSchema;
+    /// use trs_cli::formatter::CompactFormatter;
+    /// use trs_cli::schema::GitDiffSchema;
     /// let diff = GitDiffSchema::new();
     /// let output = CompactFormatter::format_git_diff(&diff);
     /// assert!(output.contains("diff: empty"));

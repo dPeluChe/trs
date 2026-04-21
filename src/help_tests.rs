@@ -83,5 +83,5 @@ fn test_format_precedence_help() {
 #[test]
 fn test_long_about_not_empty() {
     assert!(!LONG_ABOUT.is_empty());
-    assert!(LONG_ABOUT.contains("TARS CLI"));
+    assert!(LONG_ABOUT.contains("Token-Reducing Shell"));
 }

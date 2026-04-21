@@ -364,7 +364,7 @@ warning: redundant closure
    |                   ^^^^^^^^^^^^ help: replace
    = help: for further information visit https://rust-lang.github.io/rust-clippy/index.html#redundant_closure
 
-warning: `tars-cli` (bin "trs") generated 2 warnings
+warning: `trs-cli` (bin "trs") generated 2 warnings
 "#;
         let issues = parse_lint_issues(input);
         assert!(
