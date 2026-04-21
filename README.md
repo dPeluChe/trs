@@ -75,16 +75,17 @@ cargo install trs-cli
 irm https://usetrs.dev/install.ps1 | iex
 ```
 
-Full install options — prebuilt binaries, version pinning, custom install dirs, troubleshooting: [`docs/support/install.md`](docs/support/install.md).
+[Full install options — prebuilt binaries, version pinning, custom install dirs, troubleshooting →](docs/support/install.md)
 
 ### Upgrading
 
 ```bash
 trs upgrade --check    # show what would run (auto-detects channel)
 trs upgrade            # upgrade binary + refresh hooks
+trs doctor             # verify the install is healthy
 ```
 
-See [`docs/features/upgrade.md`](docs/features/upgrade.md).
+See [`docs/features/upgrade.md`](docs/features/upgrade.md) and [`docs/features/doctor.md`](docs/features/doctor.md).
 
 ## Quick start
 
@@ -96,18 +97,6 @@ trs init --all --global
 trs stats                          # dashboard
 trs stats --by-agent               # breakdown per AI agent
 trs stats -n 30                    # custom row limit
-```
-
-### Standalone (optional)
-
-You can also call trs directly without the hooks wired — handy for scripts, CI, or trying it out before committing to the init flow:
-
-```bash
-trs git status
-trs cargo test
-trs git status --json              # structured JSON
-trs --json git status              # flags work anywhere
-git status | trs parse git-status  # pipe syntax too
 ```
 
 ## Supported AI agents
@@ -122,7 +111,19 @@ Nine agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI,
 | Codex CLI · Windsurf | rules file only | — | ✓ | `(untagged)` |
 | Google Antigravity | rules file only | — | — | `(untagged)` |
 
-Full compatibility matrix + caveats + per-agent config paths: [`docs/support/agents.md`](docs/support/agents.md).
+[Full compatibility matrix, caveats, and per-agent config paths →](docs/support/agents.md)
+
+### Standalone (optional)
+
+You can also call trs directly without the hooks wired — handy for scripts, CI, or trying it out before committing to the init flow:
+
+```bash
+trs git status
+trs cargo test
+trs git status --json              # structured JSON
+trs --json git status              # flags work anywhere
+git status | trs parse git-status  # pipe syntax too
+```
 
 ## Supported commands
 
@@ -142,7 +143,7 @@ Full compatibility matrix + caveats + per-agent config paths: [`docs/support/age
 
 Plus **chain-aware rewrite** (`cd X && cargo test`), **env-prefix preservation** (`RUSTFLAGS=x cargo build`), **pipe syntax** (`cmd | trs parse …`), and `TRS_SKIP=1` to bypass any wrapping.
 
-Full command reference with subcommands and examples: [`docs/support/commands.md`](docs/support/commands.md).
+[Full command reference with subcommands and examples →](docs/support/commands.md)
 
 ## Built-in trs tools
 
@@ -178,7 +179,7 @@ trs ingest --fresh             # reuse cached digest if HEAD unchanged
 trs ingest --list              # saved digests + HEAD sha + stale markers
 ```
 
-Full reference: [`docs/features/ingest.md`](docs/features/ingest.md). A live example — `trs ingest` run against this repo — ships at [`docs/development/codebase-digest.md`](docs/development/codebase-digest.md).
+[Full `trs ingest` reference →](docs/features/ingest.md) · [Live example — trs ingesting itself →](docs/development/codebase-digest.md)
 
 ## Output saver
 
@@ -190,7 +191,7 @@ trs output-saver --install     # install on detected agents
 trs output-saver --remove      # clean uninstall
 ```
 
-Eight of nine agents supported (Antigravity is per-project only). Full reference: [`docs/features/output-saver.md`](docs/features/output-saver.md).
+Eight of nine agents supported (Antigravity is per-project only). [Full `trs output-saver` reference →](docs/features/output-saver.md)
 
 ## Output formats
 
@@ -205,21 +206,7 @@ trs git status --agent         # AI-optimized markdown
 trs git status --raw           # unprocessed passthrough
 ```
 
-Full format reference with side-by-side examples: [`docs/features/formats.md`](docs/features/formats.md).
-
-## Safety & quirks
-
-- **Collision check** — `trs init` detects hooks from other token-compression tools (via `@imports` too) and aborts by default. `--replace` migrates cleanly. See [`docs/support/other-token-savers.md`](docs/support/other-token-savers.md).
-- **Debug bundle** — `trs debug-info` packages version + platform + doctor checks + recent history + tee logs into one paste-ready report. Use it when filing a bug, asking for help, or sharing a repro with a collaborator — one command, no forgotten log path.
-
-### How it stays safe
-
-- `--no-verify` blocked on `git commit` / `git push` (protects pre-commit hooks from agents).
-- Commands with `--json` / `--porcelain` flags pass through untouched.
-- If a parser fails, output falls back to truncated passthrough — never silent failure.
-- Exit codes always propagated from the wrapped command.
-- On failure, full output saved to `~/.trs/tee/` for recovery.
-- `trs read` never strips content from JSON/YAML/TOML/XML data files.
+[Full format reference with side-by-side examples →](docs/features/formats.md)
 
 ## Why
 
@@ -257,28 +244,15 @@ cargo fmt -- --check
 cargo run -- git status        # run locally against the workspace
 ```
 
-## Reference
+## For contributors
 
-| Area | Link |
+| | |
 |---|---|
-| Supported AI agents (full matrix) | [`docs/support/agents.md`](docs/support/agents.md) |
-| Supported commands (full reference) | [`docs/support/commands.md`](docs/support/commands.md) |
-| Install deep-dive | [`docs/support/install.md`](docs/support/install.md) |
-| Other tools in the same space | [`docs/support/other-token-savers.md`](docs/support/other-token-savers.md) |
-| `trs ingest` — project digest | [`docs/features/ingest.md`](docs/features/ingest.md) |
-| `trs output-saver` — reply compression | [`docs/features/output-saver.md`](docs/features/output-saver.md) |
-| `trs init` — agent hooks | [`docs/features/init.md`](docs/features/init.md) |
-| `trs audit-docs` — instruction-file linter | [`docs/features/audit-docs.md`](docs/features/audit-docs.md) |
-| `trs upgrade` — self-upgrade | [`docs/features/upgrade.md`](docs/features/upgrade.md) |
-| `trs stats` — savings dashboard | [`docs/features/stats.md`](docs/features/stats.md) |
-| `trs doctor` — health check | [`docs/features/doctor.md`](docs/features/doctor.md) |
-| Output formats (6 side by side) | [`docs/features/formats.md`](docs/features/formats.md) |
-| Configuration (`~/.trs/config.toml`) | [`docs/features/configuration.md`](docs/features/configuration.md) |
-| Contributing guidelines | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Architecture overview | [AGENTS.md](AGENTS.md) |
-| Development internals | [`docs/development/`](docs/development/) |
-| Roadmap | [`docs/roadmap/TASK_TODO.md`](docs/roadmap/TASK_TODO.md) |
-| Live codebase digest | [`docs/development/codebase-digest.md`](docs/development/codebase-digest.md) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Code guidelines, review process, PR checklist |
+| [AGENTS.md](AGENTS.md) | Architecture overview + file map |
+| [`docs/development/`](docs/development/) | Deeper internals, agent wire formats, benchmarks |
+| [`docs/roadmap/TASK_TODO.md`](docs/roadmap/TASK_TODO.md) | Active roadmap and open items |
+| [`docs/development/codebase-digest.md`](docs/development/codebase-digest.md) | Auto-generated project map for agents |
 
 ## License
 
