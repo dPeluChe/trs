@@ -839,13 +839,74 @@
   </div>
 </section>
 
+<!-- Supported AI agents -->
+<section id="agents">
+  <div class="container">
+    <h2>Supported AI agents</h2>
+    <p class="section-intro">Nine agents, three install mechanisms. <code class="inline">trs init --all --global</code> wires every detected agent in one shot.</p>
+
+    <div style="overflow-x: auto; margin-top: 24px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <th style="text-align: left; padding: 8px;">Agent</th>
+            <th style="text-align: left; padding: 8px;">Install method</th>
+            <th style="text-align: center; padding: 8px;">Input hook</th>
+            <th style="text-align: center; padding: 8px;">Output-saver</th>
+            <th style="text-align: left; padding: 8px;">Attribution</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Claude Code · Gemini · Cursor</td><td style="padding: 8px;">programmatic hook</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">claude</code> / <code class="inline">gemini</code> / <code class="inline">cursor</code></td></tr>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">OpenCode · Kilo Code</td><td style="padding: 8px;">plugin template</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">opencode</code> / <code class="inline">kilo</code></td></tr>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Factory Droid</td><td style="padding: 8px;">programmatic hook</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">claude</code> (shared envelope)</td></tr>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Codex CLI · Windsurf</td><td style="padding: 8px;">rules file only</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
+          <tr><td style="padding: 8px;">Google Antigravity</td><td style="padding: 8px;">rules file only</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top: 16px; color: var(--text-muted); font-size: 14px;">
+      Full matrix + caveats + per-agent config paths:
+      <a href="https://github.com/dPeluChe/trs/blob/main/docs/support/agents.md" style="color: var(--accent);">docs/support/agents.md</a>.
+    </p>
+  </div>
+</section>
+
+<!-- Supported commands -->
+<section id="commands">
+  <div class="container">
+    <h2>Supported commands</h2>
+    <p class="section-intro">Thirty-plus dedicated parsers. Anything else falls to generic compression (~30&ndash;40% free) and still tracks in stats.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 24px;">
+      <div class="feature"><div class="feature-title">VCS</div><div class="feature-desc"><code class="inline">git</code> &mdash; status, diff, log, branch, push, pull, fetch.</div></div>
+      <div class="feature"><div class="feature-title">Rust</div><div class="feature-desc"><code class="inline">cargo</code> &mdash; build, check, test, clippy, fmt, install.</div></div>
+      <div class="feature"><div class="feature-title">JavaScript / TypeScript</div><div class="feature-desc"><code class="inline">npm</code>, <code class="inline">pnpm</code>, <code class="inline">yarn</code>, <code class="inline">bun</code>, <code class="inline">npx</code>, <code class="inline">pnpm dlx</code> &mdash; install, test, ls, audit, run.</div></div>
+      <div class="feature"><div class="feature-title">Python</div><div class="feature-desc"><code class="inline">pytest</code>, <code class="inline">pip</code>, <code class="inline">uv</code>, plus <code class="inline">python3 -m &lt;mod&gt;</code> routing for pytest / mypy / ruff / pylint / flake8.</div></div>
+      <div class="feature"><div class="feature-title">Go</div><div class="feature-desc"><code class="inline">go</code> &mdash; test, build, mod.</div></div>
+      <div class="feature"><div class="feature-title">Test runners</div><div class="feature-desc"><code class="inline">pytest</code>, <code class="inline">jest</code>, <code class="inline">vitest</code> &mdash; full parse of suite summary, failures, tracebacks.</div></div>
+      <div class="feature"><div class="feature-title">Linters</div><div class="feature-desc"><code class="inline">eslint</code>, <code class="inline">biome</code>, <code class="inline">ruff</code>, <code class="inline">pylint</code>, <code class="inline">golangci-lint</code>, <code class="inline">cargo clippy</code> &mdash; issues grouped by file + rule.</div></div>
+      <div class="feature"><div class="feature-title">Files &amp; search</div><div class="feature-desc"><code class="inline">ls</code> (+ <code class="inline">eza</code>, <code class="inline">lsd</code>, <code class="inline">exa</code>), <code class="inline">find</code> (+ <code class="inline">fd</code>), <code class="inline">grep</code> (+ <code class="inline">rg</code>, <code class="inline">ag</code>, <code class="inline">ack</code>), <code class="inline">tree</code>, <code class="inline">tail</code>.</div></div>
+      <div class="feature"><div class="feature-title">Containers &amp; GitHub</div><div class="feature-desc"><code class="inline">docker</code> (ps, logs, build) and <code class="inline">gh</code> (pr / issue / run list + <code class="inline">gh api</code>).</div></div>
+      <div class="feature"><div class="feature-title">System &amp; network</div><div class="feature-desc"><code class="inline">ps</code>, <code class="inline">env</code>, <code class="inline">wc</code>, <code class="inline">brew</code>, <code class="inline">curl</code>, <code class="inline">wget</code>.</div></div>
+      <div class="feature"><div class="feature-title">Chain-aware</div><div class="feature-desc"><code class="inline">cd X &amp;&amp; cargo test</code> wraps each rewritable segment. Pipes and semicolons pass through untouched.</div></div>
+      <div class="feature"><div class="feature-title">Env-prefix preservation</div><div class="feature-desc"><code class="inline">RUSTFLAGS=x cargo build</code> keeps the leading assignment &mdash; still reaches cargo after the rewrite.</div></div>
+    </div>
+    <p style="margin-top: 16px; color: var(--text-muted); font-size: 14px;">
+      Full command reference with subcommands and examples:
+      <a href="https://github.com/dPeluChe/trs/blob/main/docs/support/commands.md" style="color: var(--accent);">docs/support/commands.md</a>.
+    </p>
+  </div>
+</section>
+
 <!-- Why we built this -->
 <section>
   <div class="container">
     <h2>Why we built trs</h2>
-    <p class="section-intro">Short origin note, for the curious.</p>
+    <p class="section-intro">Short origin note, for the curious &mdash; click to expand.</p>
 
-    <div class="origin-block">
+    <details class="origin-block" style="cursor: pointer;">
+      <summary style="font-weight: 600; padding: 8px 0; list-style: none;">Read the backstory &rarr;</summary>
       <p>
         Token pricing kept climbing. AI coding sessions were burning tens
         of thousands of tokens just rendering
@@ -875,7 +936,7 @@
         into an LLM-ready context index. Still a single static binary,
         zero runtime deps &mdash; the story just got bigger than hooks.
       </p>
-    </div>
+    </details>
   </div>
 </section>
 
@@ -1116,6 +1177,10 @@ ad55480 feat(init): smart JSON merge
         <div class="digest-feature">
           <div class="digest-feature-title">Ollama post-process</div>
           <div class="digest-feature-desc"><code class="inline">--ollama &lt;model&gt;</code> runs the digest through a local LLM for an executive summary.</div>
+        </div>
+        <div class="digest-feature">
+          <div class="digest-feature-title">Live example</div>
+          <div class="digest-feature-desc">trs ingests itself at <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/codebase-digest.md" style="color: var(--accent);">docs/development/codebase-digest.md</a> &mdash; ~26k tokens covering the whole repo, refreshed on every release.</div>
         </div>
       </div>
     </div>

@@ -69,7 +69,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] Ping handler — shipped in v0.5.7
 - [x] Swift / xcodebuild routing — shipped in v0.5.7
 - [x] **Collision check in `trs init`** — shipped in v0.5.7. Detects
-      competing compressor hooks (rtk / token-optimizer) in JSON hook
+      competing hooks from other token-compression tools in JSON hook
       files AND rules files (with `@import` following for Claude /
       Gemini). Scans home + project symmetrically. `--replace` scrubs
       competitor hook entries, `--force` installs alongside, default

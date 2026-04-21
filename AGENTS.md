@@ -5,6 +5,18 @@
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
 Reduces token consumption by 68-99% for developers, AI agents, and automation pipelines.
 
+## Pre-generated codebase digest
+
+[`docs/development/codebase-digest.md`](./docs/development/codebase-digest.md)
+is a snapshot of the entire trs codebase produced by `trs ingest`.
+Drop it into any agent's context for an instant map of the project
+without having to run `trs ingest` yourself. Refreshed on each
+release — regenerate locally with:
+
+```bash
+trs ingest --budget 128k -o docs/development/codebase-digest.md
+```
+
 ## Related commands worth knowing
 
 - `trs stats` — cumulative savings across commands (shows date range, today
@@ -29,10 +41,12 @@ Reduces token consumption by 68-99% for developers, AI agents, and automation pi
 - `trs upgrade` — detects the install channel (npm / curl) and re-runs
   it for the latest release. `--check` dry-runs, `-y` skips the
   confirmation prompt. See [`docs/features/upgrade.md`](./docs/features/upgrade.md).
-- `trs init <tool>` — now runs a collision pre-check: detects existing
-  rtk / token-optimizer hooks (via `@imports` too) and aborts by default.
-  `--replace` removes competitor hooks cleanly, `--force` installs
-  alongside (risky — double-compression can corrupt output).
+- `trs init <tool>` — now runs a collision pre-check: detects hooks
+  from other token-compression tools (via `@imports` too) and aborts
+  by default. `--replace` removes competitor hooks cleanly, `--force`
+  installs alongside (risky — double-compression can corrupt output).
+  See [`docs/support/other-token-savers.md`](./docs/support/other-token-savers.md)
+  for the list of tools we coexist with.
 - `trs stats --by-agent` — breakdown by which AI agent fired each
   rewrite. Reads the `TRS_AGENT` env var that `trs rewrite` and
   plugin templates inject into the command line. Rules-only agents
