@@ -213,7 +213,7 @@ trs git status --raw           # passthrough sin procesar
 <details>
 <summary>La historia honesta detrás de trs.</summary>
 
-El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la` que el agente volcaba a su contexto costaba dinero real, y la relación señal/ruido en esos comandos era pésima. Empezamos a escribir herramientas pequeñas — primero para nosotros, después para el equipo — que redujeran lo que el agente realmente tenía que leer.
+El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la` que el agente volcaba a su contexto costaba dinero real, y la relación señal/ruido en esos comandos era pésima. Empezamos a escribir herramientas pequeñas dentro del equipo de Iteris para reducir lo que el agente realmente tenía que leer.
 
 En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar — más opciones en este espacio significan un mejor encaje con más flujos de trabajo. Seguimos iterando y expandiendo `trs` conforme aprendíamos dónde se queman realmente los tokens.
 
