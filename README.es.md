@@ -75,17 +75,17 @@ cargo install trs-cli
 irm https://usetrs.dev/install.ps1 | iex
 ```
 
-[Opciones completas — binarios prebuilt, pinning de versión, directorios personalizados, troubleshooting →](docs/support/install.md)
+[Guía completa de instalación — binarios prebuilt, fijar versión, directorios personalizados, solución de problemas →](docs/support/install.md)
 
 ### Actualizar
 
 ```bash
-trs upgrade --check    # muestra qué correría (auto-detecta canal)
-trs upgrade            # actualiza binario + refresca hooks
+trs upgrade --check    # muestra qué correría (auto-detecta el canal)
+trs upgrade            # actualiza el binario + refresca hooks
 trs doctor             # verifica que la instalación esté sana
 ```
 
-Ver [`docs/features/upgrade.md`](docs/features/upgrade.md) y [`docs/features/doctor.md`](docs/features/doctor.md).
+Referencias: [actualizar](docs/features/upgrade.md) · [doctor](docs/features/doctor.md).
 
 ## Inicio rápido
 
@@ -101,28 +101,28 @@ trs stats -n 30                    # límite de filas personalizado
 
 ## Agentes de IA soportados
 
-Nueve agentes soportados end-to-end. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Factory Droid. Solo archivo de reglas para Codex CLI, Google Antigravity, Windsurf.
+Nueve agentes cubiertos de extremo a extremo. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code y Factory Droid. Solo archivo de reglas para Codex CLI, Google Antigravity y Windsurf.
 
-| Agente | Método de install | Hook de input | Output-saver | Atribución |
+| Agente | Método de instalación | Hook de entrada | Output-saver | Etiqueta en stats |
 |---|---|---|---|---|
 | Claude Code · Gemini · Cursor | hook programático | ✓ | ✓ | `claude` / `gemini` / `cursor` |
 | OpenCode · Kilo Code | plantilla de plugin | ✓ | ✓ | `opencode` / `kilo` |
-| Factory Droid | hook programático | ✓ | ✓ | `claude` (comparte envelope) |
-| Codex CLI · Windsurf | solo rules file | — | ✓ | `(untagged)` |
-| Google Antigravity | solo rules file | — | — | `(untagged)` |
+| Factory Droid | hook programático | ✓ | ✓ | `claude` (mismo envelope) |
+| Codex CLI · Windsurf | solo archivo de reglas | — | ✓ | `(untagged)` |
+| Google Antigravity | solo archivo de reglas | — | — | `(untagged)` |
 
-[Matriz completa, caveats y rutas de config por agente →](docs/support/agents.md)
+[Matriz completa, detalles y rutas de configuración por agente →](docs/support/agents.md)
 
 ### Uso standalone (opcional)
 
-También puedes invocar trs directamente sin hooks — útil para scripts, CI, o probarlo antes de comprometerte al flujo de init:
+También puedes invocar `trs` directamente sin hooks — útil para scripts, CI, o para probarlo antes de usar `trs init`:
 
 ```bash
 trs git status
 trs cargo test
 trs git status --json              # JSON estructurado
-trs --json git status              # flags en cualquier lugar
-git status | trs parse git-status  # sintaxis de pipe también
+trs --json git status              # los flags funcionan en cualquier posición
+git status | trs parse git-status  # también soporta pipe
 ```
 
 ## Comandos soportados
@@ -132,25 +132,25 @@ git status | trs parse git-status  # sintaxis de pipe también
 | VCS | `git` (status, diff, log, branch, push, pull, fetch) |
 | Rust | `cargo` (build, check, test, clippy, fmt, install) |
 | JS/TS | `npm`, `pnpm`, `yarn`, `bun`, `npx`, `pnpm dlx` |
-| Python | `pytest`, `pip`, `uv`, routing de `python3 -m <mod>` |
+| Python | `pytest`, `pip`, `uv`, dispatch de `python3 -m <mod>` |
 | Go | `go` (test, build, mod) |
-| Tests | `pytest`, `jest`, `vitest` (parsing completo de runner) |
+| Tests | `pytest`, `jest`, `vitest` (parseo completo del runner) |
 | Linters | `eslint`, `biome`, `ruff`, `pylint`, `golangci-lint`, `cargo clippy` |
-| Files | `ls` (+ `eza`, `lsd`, `exa`), `find` (+ `fd`), `grep` (+ `rg`, `ag`, `ack`), `tree`, `tail` |
+| Archivos | `ls` (+ `eza`, `lsd`, `exa`), `find` (+ `fd`), `grep` (+ `rg`, `ag`, `ack`), `tree`, `tail` |
 | Containers | `docker` (ps, logs, build) |
 | GitHub | `gh` (pr/issue/run list + `gh api`) |
 | Sistema | `ps`, `env`, `wc`, `brew`, `curl`, `wget` |
 
-Además **chain-aware rewrite** (`cd X && cargo test`), **env-prefix preservado** (`RUSTFLAGS=x cargo build`), **sintaxis de pipe** (`cmd | trs parse …`) y `TRS_SKIP=1` para saltarse cualquier wrapping.
+También incluye **chain-aware rewrite** (`cd X && cargo test`), **preservación de env-prefix** (`RUSTFLAGS=x cargo build`), **sintaxis de pipe** (`cmd | trs parse …`) y `TRS_SKIP=1` para omitir el wrapping.
 
-[Referencia completa de comandos con subcommands y ejemplos →](docs/support/commands.md)
+[Referencia completa de comandos con subcomandos y ejemplos →](docs/support/commands.md)
 
 ## Herramientas built-in
 
 Comandos nativos — sin binario externo detrás.
 
 ```bash
-trs json              # motor de queries jq-lite (-q '.users[].name')
+trs json              # motor de queries tipo jq-lite (-q '.users[].name')
 trs read              # lector de archivos (-l minimal / -l aggressive)
 trs search            # búsqueda de contenido basada en ripgrep
 trs replace           # replace basado en ripgrep (--dry-run)
@@ -158,51 +158,51 @@ trs err               # filtro de errores (solo errores/warnings)
 trs tail              # tail de logs con --errors
 trs clean             # limpieza de ANSI / whitespace / dedup
 trs html2md           # HTML → Markdown
-trs find              # walker gitignore-aware
-trs is-clean          # check de repo limpio (por exit code)
-trs raw               # passthrough, sigue tracked en stats
+trs find              # walker que respeta .gitignore
+trs is-clean          # verifica si el repo está limpio (por exit code)
+trs raw               # passthrough, pero sigue registrándose en stats
 trs stats             # dashboard de ahorro
-trs debug-info        # bundle version + doctor + logs para reportar bugs
+trs debug-info        # empaqueta version + doctor + logs para reportar bugs
 ```
 
 ## Digest del proyecto
 
-`trs ingest` recorre un repo y emite un digest Markdown compacto — estructura + archivos clave + signatures — listo para pegar al contexto de cualquier agente. Budget-aware, staleness-aware, incremental.
+`trs ingest` recorre un repo y emite un digest Markdown compacto — estructura + archivos clave + firmas de funciones — listo para pegar en el contexto de cualquier agente. Respeta un budget de tokens, detecta digests obsoletos (stale) y soporta generación incremental.
 
 ```bash
-trs ingest                     # escribe digest, imprime path
-trs ingest --budget 128k       # cabe en budget de tokens (signatures primero)
-trs ingest --changed           # solo archivos no commiteados
-trs ingest --since-last        # incremental desde último ingest
-trs ingest --deps              # solo dependency graph
-trs ingest --fresh             # reusa digest cacheado si HEAD no cambió
-trs ingest --list              # digests guardados + HEAD sha + marcadores stale
+trs ingest                     # escribe el digest, imprime el path
+trs ingest --budget 128k       # ajusta al budget de tokens (firmas primero)
+trs ingest --changed           # solo archivos con cambios sin commitear
+trs ingest --since-last        # incremental desde el último ingest
+trs ingest --deps              # solo el grafo de dependencias
+trs ingest --fresh             # reusa el digest en caché si HEAD no cambió
+trs ingest --list              # digests guardados + HEAD sha + si están stale
 ```
 
-[Referencia completa de `trs ingest` →](docs/features/ingest.md) · [Ejemplo vivo — trs ingesting itself →](docs/development/codebase-digest.md)
+[Referencia completa de `trs ingest` →](docs/features/ingest.md) · [Ejemplo vivo — trs aplicado a sí mismo →](docs/development/codebase-digest.md)
 
 ## Output saver
 
-trs comprime lo que los agentes **ven** via `trs rewrite`. `trs output-saver` cierra el gap simétrico — instala un bloque de reglas compacto en la config global de cada agente para comprimir lo que los agentes **emiten**: sin preámbulos, sin narración, resultado-primero, output estructurado cuando aplica, sin paths inventados.
+`trs` comprime lo que los agentes **ven** (via `trs rewrite`). `trs output-saver` cierra el otro lado del bucle — instala un bloque de reglas compacto en la configuración global de cada agente para comprimir lo que los agentes **emiten**: sin preámbulos, sin narración, resultado primero, output estructurado cuando aplica, y sin paths inventados.
 
 ```bash
-trs output-saver               # scan read-only
-trs output-saver --install     # instala en agentes detectados
-trs output-saver --remove      # uninstall limpio
+trs output-saver               # escaneo de solo lectura
+trs output-saver --install     # instala en los agentes detectados
+trs output-saver --remove      # desinstala limpio
 ```
 
-Ocho de nueve agentes soportados (Antigravity es solo por-proyecto). [Referencia completa de `trs output-saver` →](docs/features/output-saver.md)
+Ocho de nueve agentes soportados (Antigravity solo funciona a nivel de proyecto). [Referencia completa de `trs output-saver` →](docs/features/output-saver.md)
 
 ## Formatos de salida
 
 Cada comando soporta seis formatos:
 
 ```bash
-trs git status                 # compact (default, humanos + agentes)
+trs git status                 # compact (por defecto, humanos + agentes)
 trs git status --json          # JSON estructurado
 trs git status --csv           # CSV con headers
-trs git status --tsv           # tab-separated
-trs git status --agent         # markdown optimizado para IA
+trs git status --tsv           # separado por tabs
+trs git status --agent         # Markdown optimizado para IA
 trs git status --raw           # passthrough sin procesar
 ```
 
@@ -215,20 +215,20 @@ trs git status --raw           # passthrough sin procesar
 
 El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la` que el agente volcaba a su contexto costaba dinero real, y la relación señal/ruido en esos comandos era pésima. Empezamos a escribir herramientas pequeñas — primero para nosotros, después para el equipo — que redujeran lo que el agente realmente tenía que leer.
 
-En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar — más opciones en este espacio significan mejor fit para más flujos de trabajo. trs lo fuimos iterando y expandiendo conforme aprendíamos más sobre dónde se queman realmente los tokens.
+En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar — más opciones en este espacio significan un mejor encaje con más flujos de trabajo. Seguimos iterando y expandiendo `trs` conforme aprendíamos dónde se queman realmente los tokens.
 
-Mientras más lo usábamos, más vimos que la oportunidad era más grande que los hooks de input. La historia se convirtió en cuatro herramientas complementarias:
+Mientras más lo usábamos, más vimos que la oportunidad era más grande que solo los hooks de entrada. La historia se convirtió en cuatro herramientas complementarias:
 
-- [`trs rewrite`](docs/features/init.md) — compresión de input en cada tool call del agente.
+- [`trs rewrite`](docs/features/init.md) — compresión de la entrada en cada tool-call del agente.
 - [`trs output-saver`](docs/features/output-saver.md) — bloque de reglas que acorta las respuestas de vuelta.
-- [`trs audit-docs`](docs/features/audit-docs.md) — encuentra bloat, duplicados y `@imports` muertos en los archivos de instrucciones que cada sesión re-carga.
-- [`trs ingest`](docs/features/ingest.md) — digest budget-aware y LLM-ready de todo un repo.
+- [`trs audit-docs`](docs/features/audit-docs.md) — encuentra contenido redundante, duplicados y `@imports` muertos en los archivos de instrucciones que cada sesión re-carga.
+- [`trs ingest`](docs/features/ingest.md) — digest de todo un repo, listo para LLM y con control de budget.
 
 </details>
 
-## Para desarrolladores
+## Desde código fuente
 
-Prefiere las rutas de install prebuilt arriba a menos que estés contribuyendo. Para un checkout de fuente:
+Prefiere las rutas de instalación prebuilt de arriba a menos que estés contribuyendo. Para un checkout desde fuente:
 
 ```bash
 git clone https://github.com/dPeluChe/trs.git
@@ -237,22 +237,24 @@ cd trs
 # Build + install en ~/.cargo/bin/
 cargo install --path .
 
-# Loop de dev
+# Loop de desarrollo
 cargo test
 cargo clippy -- -D warnings
 cargo fmt -- --check
-cargo run -- git status        # correr localmente contra el workspace
+cargo run -- git status        # corre localmente contra el workspace
 ```
 
-## Para contribuir
+## For contributors
 
-| Link | Tema |
+Mantenemos la referencia de contribución en inglés — los términos técnicos (wire formats, benchmarks, PR checklist, etc.) no tienen equivalente limpio en español.
+
+| Link | Topic |
 |---|---|
-| **[Guía para contribuir →](CONTRIBUTING.md)** | Estilo de código, proceso de review, checklist de PRs |
-| **[Overview de arquitectura →](AGENTS.md)** | Mapa de archivos y responsabilidades por módulo |
-| **[Internals de desarrollo →](docs/development/)** | Wire formats de agentes, benchmarks, garantías de seguridad |
-| **[Roadmap →](docs/roadmap/TASK_TODO.md)** | Items activos y trabajo planeado |
-| **[Codebase digest →](docs/development/codebase-digest.md)** | Mapa del proyecto auto-generado para agentes |
+| **[Contributing guide →](CONTRIBUTING.md)** | Code style, review process, PR checklist |
+| **[Architecture overview →](AGENTS.md)** | File map and module responsibilities |
+| **[Development internals →](docs/development/)** | Agent wire formats, benchmarks, safety guarantees |
+| **[Roadmap →](docs/roadmap/TASK_TODO.md)** | Active items and planned work |
+| **[Codebase digest →](docs/development/codebase-digest.md)** | Auto-generated project map for agents |
 
 ## Licencia
 
