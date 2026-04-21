@@ -246,13 +246,13 @@ cargo run -- git status        # run locally against the workspace
 
 ## For contributors
 
-| | |
+| Link | Topic |
 |---|---|
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Code guidelines, review process, PR checklist |
-| [AGENTS.md](AGENTS.md) | Architecture overview + file map |
-| [`docs/development/`](docs/development/) | Deeper internals, agent wire formats, benchmarks |
-| [`docs/roadmap/TASK_TODO.md`](docs/roadmap/TASK_TODO.md) | Active roadmap and open items |
-| [`docs/development/codebase-digest.md`](docs/development/codebase-digest.md) | Auto-generated project map for agents |
+| **[Contributing guide →](CONTRIBUTING.md)** | Code style, review process, PR checklist |
+| **[Architecture overview →](AGENTS.md)** | File map and module responsibilities |
+| **[Development internals →](docs/development/)** | Agent wire formats, benchmarks, safety guarantees |
+| **[Roadmap →](docs/roadmap/TASK_TODO.md)** | Active items and planned work |
+| **[Codebase digest →](docs/development/codebase-digest.md)** | Auto-generated project map for agents |
 
 ## License
 
