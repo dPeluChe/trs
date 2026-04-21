@@ -276,6 +276,7 @@ fn main() {
             project,
             json,
             by_agent,
+            limit,
         }) => {
             use router::handlers::stats::{handle_stats, StatsInput};
             let input = StatsInput {
@@ -283,6 +284,7 @@ fn main() {
                 project: *project,
                 json: *json,
                 by_agent: *by_agent,
+                limit: *limit,
             };
             handle_stats(&input);
         }

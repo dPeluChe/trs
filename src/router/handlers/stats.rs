@@ -69,7 +69,15 @@ pub struct StatsInput {
     pub json: bool,
     /// Break down totals by AI agent (from `TRS_AGENT` attribution).
     pub by_agent: bool,
+    /// Row cap. Overrides the default for either `--history` (20) or
+    /// the summary's Top Commands table (15).
+    pub limit: Option<usize>,
 }
+
+/// Default row cap for `--history`.
+const DEFAULT_HISTORY_LIMIT: usize = 20;
+/// Default row cap for the summary's Top Commands table.
+const DEFAULT_TOP_LIMIT: usize = 15;
 
 /// Aggregated statistics for a single command name.
 #[derive(Debug, Default)]
@@ -102,7 +110,9 @@ pub fn handle_stats(input: &StatsInput) {
     };
 
     if input.json {
-        print_json(&entries, input.history);
+        let history_limit = input.limit.unwrap_or(DEFAULT_HISTORY_LIMIT);
+        let top_limit = input.limit.unwrap_or(DEFAULT_TOP_LIMIT);
+        print_json(&entries, input.history, history_limit, top_limit);
         return;
     }
 
@@ -117,9 +127,11 @@ pub fn handle_stats(input: &StatsInput) {
     }
 
     if input.history {
-        print_history(&entries);
+        let limit = input.limit.unwrap_or(DEFAULT_HISTORY_LIMIT);
+        print_history(&entries, limit);
     } else {
-        print_summary(&entries);
+        let top_limit = input.limit.unwrap_or(DEFAULT_TOP_LIMIT);
+        print_summary(&entries, top_limit);
     }
 }
 
@@ -178,7 +190,7 @@ fn print_by_agent(entries: &[HistoryEntry]) {
 }
 
 /// Print the full summary view with efficiency meter and top commands.
-fn print_summary(entries: &[HistoryEntry]) {
+fn print_summary(entries: &[HistoryEntry], top_limit: usize) {
     let total_cmds = entries.len();
     let total_in: usize = entries.iter().map(|e| e.in_bytes).sum();
     let total_out: usize = entries.iter().map(|e| e.out_bytes).sum();
@@ -268,7 +280,7 @@ fn print_summary(entries: &[HistoryEntry]) {
 
     let mut sorted: Vec<(String, CommandAgg)> = agg.into_iter().collect();
     sorted.sort_by_key(|b| std::cmp::Reverse(b.1.saved()));
-    sorted.truncate(10);
+    sorted.truncate(top_limit);
 
     if !sorted.is_empty() {
         println!();
@@ -306,13 +318,9 @@ fn today_entries(entries: &[HistoryEntry], offset: time::UtcOffset) -> Vec<&Hist
         .collect()
 }
 
-/// Print recent command history (last 20 entries).
-fn print_history(entries: &[HistoryEntry]) {
-    let start = if entries.len() > 20 {
-        entries.len() - 20
-    } else {
-        0
-    };
+/// Print the last `limit` history entries (oldest first within the window).
+fn print_history(entries: &[HistoryEntry], limit: usize) {
+    let start = entries.len().saturating_sub(limit);
     let recent = &entries[start..];
 
     let offset = local_offset();
@@ -398,7 +406,12 @@ fn display_cmd(cmd: &str) -> String {
 }
 
 /// Print stats as JSON.
-fn print_json(entries: &[HistoryEntry], include_history: bool) {
+fn print_json(
+    entries: &[HistoryEntry],
+    include_history: bool,
+    history_limit: usize,
+    top_limit: usize,
+) {
     let total_in: usize = entries.iter().map(|e| e.in_bytes).sum();
     let total_out: usize = entries.iter().map(|e| e.out_bytes).sum();
     let total_saved = total_in.saturating_sub(total_out);
@@ -431,11 +444,7 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
 
     if include_history {
         let offset = local_offset();
-        let start = if entries.len() > 20 {
-            entries.len() - 20
-        } else {
-            0
-        };
+        let start = entries.len().saturating_sub(history_limit);
         let recent: Vec<serde_json::Value> = entries[start..]
             .iter()
             .map(|e| {
@@ -464,7 +473,7 @@ fn print_json(entries: &[HistoryEntry], include_history: bool) {
     }
     let mut sorted: Vec<(String, CommandAgg)> = agg.into_iter().collect();
     sorted.sort_by_key(|b| std::cmp::Reverse(b.1.saved()));
-    sorted.truncate(10);
+    sorted.truncate(top_limit);
 
     let top: Vec<serde_json::Value> = sorted
         .iter()

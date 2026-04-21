@@ -443,6 +443,10 @@ pub enum Commands {
         /// (codex, antigravity, windsurf) show as "(untagged)".
         #[arg(long = "by-agent")]
         by_agent: bool,
+        /// Number of rows to show. Applies to `--history` (default 20)
+        /// and to the summary's Top Commands table (default 15).
+        #[arg(long, short = 'n')]
+        limit: Option<usize>,
     },
 
     /// Read a file with optional filtering (strip comments, signatures-only)
