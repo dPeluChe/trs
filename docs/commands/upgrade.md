@@ -100,7 +100,7 @@ trs upgrade
   detected method: curl|sh installer
 
 Will run:
-  curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh
+  curl -fsSL https://usetrs.dev/install.sh | sh
 
 Proceed? [y/N]
 ```

@@ -341,9 +341,8 @@ fn check_path_accessible() -> Check {
                 .filter(|l| !l.is_empty())
                 .collect();
             if paths.is_empty() {
-                return Check::fail("PATH", "trs not found in PATH").with_hint(
-                    "curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh",
-                );
+                return Check::fail("PATH", "trs not found in PATH")
+                    .with_hint("curl -fsSL https://usetrs.dev/install.sh | sh");
             }
             let primary = paths[0].clone();
             if paths.len() == 1 {
@@ -362,9 +361,8 @@ fn check_path_accessible() -> Check {
                     .with_hint("uninstall the duplicates (npm uninstall -g @dpeluche/trs / cargo uninstall trs-cli / brew uninstall trs) or reorder PATH")
             }
         }
-        _ => Check::fail("PATH", "trs not found in PATH").with_hint(
-            "curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/scripts/install.sh | sh",
-        ),
+        _ => Check::fail("PATH", "trs not found in PATH")
+            .with_hint("curl -fsSL https://usetrs.dev/install.sh | sh"),
     }
 }
 
