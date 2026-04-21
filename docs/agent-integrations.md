@@ -75,6 +75,33 @@ one of them silently.
 
 Factory Droid uses Claude's Shape verbatim — `hook_event_name: "PreToolUse"`.
 
+## Agent attribution (`TRS_AGENT`)
+
+Added in v0.5.8. When the rewriter or a plugin template emits a
+rewritten command, it prefixes it with `TRS_AGENT=<label>` so the
+downstream `trs <cmd>` execution can attribute the run.
+
+| Agent | Detection | Label |
+|---|---|---|
+| Claude Code | `hook_event_name: PreToolUse` | `claude` |
+| Gemini CLI | `hook_event_name: BeforeTool` | `gemini` |
+| Cursor | `hook_event_name: preToolUse` | `cursor` |
+| OpenCode | plugin template bakes the label | `opencode` |
+| Kilo Code | separate plugin template bakes the label | `kilo` |
+| Factory Droid | same wire format as Claude | `claude` (indistinguishable from Claude) |
+| Codex / Antigravity / Windsurf | rules-only, no programmatic signal | `(untagged)` |
+
+The shell treats leading `VAR=value` as a per-command env override
+and strips it before executing the downstream program — so the tag
+is transparent to git/cargo/etc. Read via `std::env::var("TRS_AGENT")`
+at log time in `tracker::log_execution`. View results with
+`trs stats --by-agent`.
+
+**Droid limitation:** Droid's envelope is identical to Claude's at
+the wire-format layer. We can't distinguish them without a separate
+signal (install-time flag, marker in the hook content, etc.). Both
+show up as `claude` in attribution today.
+
 ## Per-agent reference
 
 ### Claude Code

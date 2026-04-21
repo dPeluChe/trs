@@ -27,6 +27,16 @@ pub struct HistoryEntry {
     pub ms: u64,
     /// Working directory where the command was run.
     pub cwd: String,
+    /// Which AI agent triggered this execution, when detectable.
+    /// Populated from the `TRS_AGENT` env var that `trs rewrite` and
+    /// the OpenCode/Kilo plugin templates inject into the rewritten
+    /// command. Stays `None` for direct-shell runs and for rules-
+    /// based agents that type `trs <cmd>` voluntarily (Codex,
+    /// Antigravity, Windsurf) since we have no programmatic signal
+    /// to capture there. Optional field — old history lines without
+    /// it still deserialize.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
 }
 
 /// Returns the path to the history file: `~/.trs/history.jsonl`.
@@ -75,6 +85,11 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
         .map(|d| d.as_secs())
         .unwrap_or(0);
 
+    // Agent attribution: when trs rewrite or a plugin template
+    // injected TRS_AGENT=<name>, the env var is live in this process.
+    // An empty value is treated as absent so we don't record "".
+    let agent = std::env::var("TRS_AGENT").ok().filter(|v| !v.is_empty());
+
     let entry = HistoryEntry {
         ts,
         cmd: cmd.to_string(),
@@ -83,6 +98,7 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
         saved_pct,
         ms: duration_ms,
         cwd,
+        agent,
     };
 
     let Ok(mut line) = serde_json::to_string(&entry) else {
@@ -185,6 +201,7 @@ mod tests {
             saved_pct: 83,
             ms: 12,
             cwd: "/path/to/project".to_string(),
+            agent: None,
         };
 
         let json = serde_json::to_string(&entry).unwrap();

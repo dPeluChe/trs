@@ -47,6 +47,7 @@ mod router;
 #[allow(dead_code)]
 mod schema;
 pub(crate) mod tracker;
+mod upgrade;
 
 #[allow(unused_imports)]
 pub(crate) use cli::format_precedence;
@@ -160,8 +161,16 @@ fn main() {
             install,
             remove,
             print,
+            refresh,
         }) => {
-            output_saver::run(tool.as_deref(), *install, *remove, *print);
+            output_saver::run(tool.as_deref(), *install, *remove, *print, *refresh);
+        }
+        Some(Commands::Upgrade {
+            check,
+            yes,
+            binary_only,
+        }) => {
+            upgrade::run_upgrade(*check, *yes, *binary_only);
         }
         Some(Commands::AuditDocs { path }) => {
             audit_docs::run_audit_docs(std::path::Path::new(path));
@@ -262,12 +271,14 @@ fn main() {
             history,
             project,
             json,
+            by_agent,
         }) => {
             use router::handlers::stats::{handle_stats, StatsInput};
             let input = StatsInput {
                 history: *history,
                 project: *project,
                 json: *json,
+                by_agent: *by_agent,
             };
             handle_stats(&input);
         }
@@ -420,6 +431,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "ingest"
             | "audit-docs"
             | "output-saver"
+            | "upgrade"
             | "stats"
             | "raw"
             | "help"

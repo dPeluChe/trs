@@ -87,6 +87,28 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Detect how trs was installed and re-run the matching install path
+    /// to pick up the latest release. Supports npm and the curl|sh script;
+    /// flags the cargo / Homebrew channels as manual-only for now. After
+    /// a successful binary upgrade, also refreshes hook templates and any
+    /// already-installed output-saver blocks — pass --binary-only to
+    /// skip that step.
+    Upgrade {
+        /// Detect the install method and show what would run without
+        /// executing anything.
+        #[arg(long)]
+        check: bool,
+
+        /// Skip the interactive confirmation prompt. Useful in scripts.
+        #[arg(short = 'y', long = "yes")]
+        yes: bool,
+
+        /// Upgrade only the binary — skip the hook-template refresh
+        /// and output-saver refresh that normally follow.
+        #[arg(long)]
+        binary_only: bool,
+    },
+
     /// Install a compact output-reduction rules block into agent configs
     /// (Claude, Gemini, Cursor, Codex, Windsurf). trs already compresses
     /// what agents see — this does the symmetric job for what they emit.
@@ -109,6 +131,13 @@ pub enum Commands {
         /// into a custom location.
         #[arg(long)]
         print: bool,
+
+        /// Re-install the block only where it's already present. Skips
+        /// agents that don't have it yet (no new installs). Intended
+        /// for version bumps: picks up template changes without
+        /// surprising users who haven't opted in.
+        #[arg(long)]
+        refresh: bool,
     },
 
     /// Benchmark a command showing compression metrics
@@ -396,6 +425,12 @@ pub enum Commands {
         /// Output format (text or json)
         #[arg(long)]
         json: bool,
+        /// Break down totals by AI agent (claude, gemini, cursor,
+        /// opencode, kilo). Detected via the TRS_AGENT env var
+        /// injected by hook/plugin templates; rules-based agents
+        /// (codex, antigravity, windsurf) show as "(untagged)".
+        #[arg(long = "by-agent")]
+        by_agent: bool,
     },
 
     /// Read a file with optional filtering (strip comments, signatures-only)

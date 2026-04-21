@@ -35,6 +35,34 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 ### Improvements to existing parsers
 - [ ] Log timestamp normalization (first = t0, rest = relative delta)
 - [ ] `git diff` full (not just --stat) — reformat unified diff headers
+- [ ] **`git push` compression** — history audit (v0.5.8) shows only
+      34-41% reduction on typical `git push origin branch` output.
+      Most of the remaining text is the `remote:` progress lines —
+      easy to collapse or drop once the push succeeds.
+- [ ] **`find` with long paths** — audit shows ~48% reduction where
+      the first path arg eats the display width. Parser could
+      basename-collapse logged paths the way stats --history now
+      does (see `router/handlers/stats.rs::display_cmd`).
+- [ ] **`cargo fmt --check` diff output** — only 32% compression on
+      failures. The unified diff block has a lot of repeat whitespace
+      we could collapse.
+- [ ] **`gh pr view` / `gh issue view` / `gh run view`** — detail
+      views aren't handled today (only *list* variants). Real-usage
+      audit shows `gh` at 7.4% compression overall; these views
+      return mixed markdown + metadata that a custom parser could
+      reduce ~60%. Design decision needed: parse metadata into
+      structured fields + keep body prose, or go lighter.
+- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). The
+      Build handler catches errors/warnings but the rest of the
+      output — compile-command echoes, swift intermodule dependency
+      checks, "Write auxiliary file" blocks — still bulks up. Worth
+      a closer look at whether we can drop those line families
+      without hiding real failures.
+- [ ] **`awk` / `sed`** — 1.1MB and 79K of traffic respectively,
+      0-3% compression. Decision: these print arbitrary user data.
+      Compressing that data would risk corrupting what the agent
+      actually asked for. Leave as passthrough; document the
+      TRS_SKIP=1 bypass as the escape hatch.
 - [x] Pipe/redirect first-segment rewrite — shipped in v0.5.6
 - [x] Stats header UX overhaul — shipped in v0.5.7
 - [x] Brew install/upgrade handler — shipped in v0.5.7
@@ -102,6 +130,22 @@ per-agent reference. Outstanding items:
       linear scan of ~20 `starts_with` checks. A first-char dispatch table
       would shave more than the `has_shell_op` byte-scan did on the
       non-operator path. Hot path — measurable.
+- [ ] **Split `router/handlers/common.rs`** (671 LOC as of v0.5.8). Two
+      concerns tangled: ANSI stripping utilities (~50 LOC self-contained)
+      and CommandContext / CommandError / CommandStats types. Extract
+      ANSI to `router/handlers/util/ansi.rs`; keep the types in common.
+      Rest of the large-file audit: most >500 files
+      (audit_docs, output_saver, init, rewrite, help, ingest/*) are
+      cohesive single features — splitting would fragment them.
+      common.rs is the clean win.
+- [ ] **Watch `router/handlers/parse/extra_download.rs`** (463 LOC
+      after v0.5.8). Now mixes two concepts: the original HTTP
+      protocol tracer (`curl -v` / `curl -I`) and the new body-
+      content compressor (plain `curl URL`, `gh api`, base64 decode).
+      Not a hard violation yet, but a clean split would be
+      `extra_download.rs` (protocol) + `http_body.rs` (body /
+      JSON / base64). Revisit if the file crosses 500 or if body
+      logic grows (HTML compression, XML, etc.).
 - [ ] **Proactive `.zshenv` check in install.sh**. If `~/.local/bin` is in
       the user's interactive PATH (installer's $PATH) but NOT referenced
       in `~/.zshenv`, IDE subshells will still fail. Could detect and

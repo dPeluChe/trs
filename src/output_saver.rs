@@ -439,10 +439,10 @@ fn replace_between(content: &str, start: &str, end: &str, new_block: &str) -> St
     format!("{}\n", combined.trim_end_matches('\n'))
 }
 
-/// Entry point called from main.rs. The four modes are mutually
-/// exclusive — `--print` wins, then `--remove`, then `--install`,
-/// default is a read-only scan.
-pub(crate) fn run(agent: Option<&str>, install: bool, remove: bool, print: bool) {
+/// Entry point called from main.rs. Modes are mutually exclusive —
+/// `--print` wins, then `--remove`, then `--refresh`, then
+/// `--install`; default is a read-only scan.
+pub(crate) fn run(agent: Option<&str>, install: bool, remove: bool, print: bool, refresh: bool) {
     if print {
         println!("{}", BLOCK);
         return;
@@ -455,6 +455,11 @@ pub(crate) fn run(agent: Option<&str>, install: bool, remove: bool, print: bool)
 
     if remove {
         run_remove(&targets);
+        return;
+    }
+
+    if refresh {
+        run_refresh(&targets);
         return;
     }
 
@@ -527,6 +532,8 @@ fn run_scan(targets: &[&str]) {
     println!();
     println!("To see the block before installing:  trs output-saver --print");
     println!("To remove a previous install:         trs output-saver --remove");
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/output-saver.md");
 }
 
 fn run_install(targets: &[&str]) {
@@ -564,6 +571,51 @@ fn run_install(targets: &[&str]) {
         eprintln!(
             "note: restart any open agent sessions so the updated rules are \
              re-read from disk."
+        );
+    }
+}
+
+/// Re-install the block only where `scan_agent` already reports
+/// `AlreadyInstalled`. Agents that don't have it yet are skipped —
+/// this is the path `trs upgrade` calls to pick up template changes
+/// without adding the block to agents the user never opted in for.
+fn run_refresh(targets: &[&str]) {
+    println!("trs output-saver — refresh\n");
+    let mut refreshed = 0;
+    let mut skipped_not_present = 0;
+    let mut skipped_unsupported = 0;
+
+    for id in targets {
+        let display = agent_display(id);
+        match scan_agent(id) {
+            Status::AlreadyInstalled => match install_agent(id) {
+                Ok(msg) => {
+                    println!("  + {}  {}", display, msg);
+                    refreshed += 1;
+                }
+                Err(e) => {
+                    eprintln!("  ! {}  refresh failed: {}", display, e);
+                }
+            },
+            Status::Unsupported { .. } => {
+                skipped_unsupported += 1;
+            }
+            Status::NotInstalled | Status::NotDetected => {
+                // Don't touch: user hasn't opted in for this agent.
+                skipped_not_present += 1;
+            }
+        }
+    }
+    println!();
+    println!(
+        "  {} refreshed, {} skipped (not installed), {} skipped (unsupported)",
+        refreshed, skipped_not_present, skipped_unsupported
+    );
+    if refreshed == 0 && skipped_not_present > 0 {
+        println!();
+        println!(
+            "No output-saver blocks were installed to refresh. Run \
+             `trs output-saver --install` to add the block."
         );
     }
 }

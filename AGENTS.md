@@ -26,10 +26,20 @@ Reduces token consumption by 68-99% for developers, AI agents, and automation pi
 - `trs ingest` — project digest for LLM consumption. Use symbol index,
   compression levels, or `owner/repo` URL shorthand.
 - `trs init --show` — see which AI agents have trs hooks installed.
+- `trs upgrade` — detects the install channel (npm / curl) and re-runs
+  it for the latest release. `--check` dry-runs, `-y` skips the
+  confirmation prompt. See [`docs/commands/upgrade.md`](./docs/commands/upgrade.md).
 - `trs init <tool>` — now runs a collision pre-check: detects existing
   rtk / token-optimizer hooks (via `@imports` too) and aborts by default.
   `--replace` removes competitor hooks cleanly, `--force` installs
   alongside (risky — double-compression can corrupt output).
+- `trs stats --by-agent` — breakdown by which AI agent fired each
+  rewrite. Reads the `TRS_AGENT` env var that `trs rewrite` and
+  plugin templates inject into the command line. Rules-only agents
+  and direct shell runs show as `(untagged)`.
+- **TRS_SKIP=1 prefix** — per-invocation bypass. Agents (or users)
+  that need raw output for a specific command can prefix
+  `TRS_SKIP=1 <cmd>`; `trs rewrite` passes it through unchanged.
 
 ## Architecture
 
@@ -144,7 +154,7 @@ tests/
 
 ```bash
 cargo build                    # Build
-cargo test                     # Run 2,154+ tests
+cargo test                     # Run 2,177+ tests
 cargo install --path .         # Install globally
 ./docs/benchmarks/benchmark.sh # Compare vs rtk (see docs/benchmarks/README.md)
 ```
@@ -154,4 +164,4 @@ cargo install --path .         # Install globally
 - 796 unit tests (src/) across 30+ test modules
 - 540+ CLI integration tests (tests/cli_*.rs, 26 files)
 - 800+ additional integration tests (70+ test files)
-- Total: 2,154 tests across 71 suites, 0 failures, 0 warnings
+- Total: 2,177 tests across 71 suites, 0 failures, 0 warnings

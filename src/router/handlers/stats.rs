@@ -19,6 +19,15 @@ fn local_offset() -> time::UtcOffset {
 }
 
 /// Format a Unix timestamp as YYYY-MM-DD in local time.
+/// "Mon Apr 20" style label for today's date in the user's local
+/// timezone. Used in the `--history` header so the agent can see the
+/// current day of week and calendar date without shelling out to
+/// `date`.
+fn today_date_label(offset: time::UtcOffset) -> String {
+    let now = OffsetDateTime::now_utc().to_offset(offset);
+    format!("{:?} {:?} {}", now.weekday(), now.month(), now.day())
+}
+
 fn format_date(ts: u64) -> String {
     let offset = local_offset();
     match OffsetDateTime::from_unix_timestamp(ts as i64) {
@@ -58,6 +67,8 @@ pub struct StatsInput {
     pub project: bool,
     /// Output as JSON.
     pub json: bool,
+    /// Break down totals by AI agent (from `TRS_AGENT` attribution).
+    pub by_agent: bool,
 }
 
 /// Aggregated statistics for a single command name.
@@ -100,11 +111,70 @@ pub fn handle_stats(input: &StatsInput) {
         return;
     }
 
+    if input.by_agent {
+        print_by_agent(&entries);
+        return;
+    }
+
     if input.history {
         print_history(&entries);
     } else {
         print_summary(&entries);
     }
+}
+
+/// Per-agent breakdown. Aggregates count / tokens saved / avg
+/// compression for each distinct `TRS_AGENT` label in the log.
+/// Rules-only agents and direct-shell invocations show up as
+/// "(untagged)" since no programmatic signal is available there.
+fn print_by_agent(entries: &[HistoryEntry]) {
+    use std::collections::BTreeMap;
+
+    let mut agg: BTreeMap<String, CommandAgg> = BTreeMap::new();
+    for entry in entries {
+        let key = entry
+            .agent
+            .clone()
+            .unwrap_or_else(|| "(untagged)".to_string());
+        let e = agg.entry(key).or_default();
+        e.count += 1;
+        e.in_bytes += entry.in_bytes;
+        e.out_bytes += entry.out_bytes;
+    }
+
+    let total_cmds: usize = agg.values().map(|a| a.count).sum();
+    let mut rows: Vec<(String, CommandAgg)> = agg.into_iter().collect();
+    rows.sort_by_key(|(_, a)| std::cmp::Reverse(a.saved()));
+
+    println!("trs Token Savings — by agent");
+    println!("{}", "=".repeat(50));
+    println!(
+        "  {:<14} {:>6} {:>8}  {:>6}  {:>10}",
+        "AGENT", "CALLS", "SHARE", "AVG -%", "SAVED"
+    );
+    println!("{}", "\u{2500}".repeat(50));
+    for (agent, stats) in &rows {
+        let share = if total_cmds > 0 {
+            100.0 * stats.count as f64 / total_cmds as f64
+        } else {
+            0.0
+        };
+        println!(
+            "  {:<14} {:>6} {:>7.1}%  {:>5.0}%  {:>10}",
+            agent,
+            stats.count,
+            share,
+            stats.avg_reduction_pct(),
+            format_bytes_human(stats.saved() / 4)
+        );
+    }
+    println!();
+    println!("Labels come from TRS_AGENT env var injected by trs rewrite");
+    println!("(Claude / Gemini / Cursor / Droid) and the OpenCode / Kilo plugin");
+    println!("templates. Rules-based agents (Codex / Antigravity / Windsurf) and");
+    println!("direct shell invocations land under (untagged).");
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
 }
 
 /// Print the full summary view with efficiency meter and top commands.
@@ -217,6 +287,8 @@ fn print_summary(entries: &[HistoryEntry]) {
 
     println!();
     println!("For full history: trs stats --history");
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
 }
 
 /// Entries whose timestamp falls on the same local-date as "now".
@@ -244,7 +316,14 @@ fn print_history(entries: &[HistoryEntry]) {
     let recent = &entries[start..];
 
     let offset = local_offset();
-    println!("Recent Commands");
+    let today_count = today_entries(entries, offset).len();
+    let today_label = today_date_label(offset);
+    println!(
+        "Recent Commands ({}, {} command{} today)",
+        today_label,
+        today_count,
+        if today_count == 1 { "" } else { "s" }
+    );
     println!("{}", "\u{2500}".repeat(64));
     for entry in recent {
         let saved = entry.in_bytes.saturating_sub(entry.out_bytes);
@@ -256,12 +335,65 @@ fn print_history(entries: &[HistoryEntry]) {
         println!(
             "  {}  {:<25} {:>5} -> {:>5}  -{:>2}%  {}ms",
             format_timestamp(entry.ts, offset),
-            truncate_cmd(&entry.cmd, 25),
+            truncate_cmd(&display_cmd(&entry.cmd), 25),
             format_bytes_human(entry.in_bytes),
             format_bytes_human(entry.out_bytes),
             pct,
             entry.ms
         );
+    }
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
+}
+
+/// When a logged command's first token is an absolute path, show the
+/// basename instead so users see "trs rewrite" rather than
+/// "/Users/you/.local/bin/trs rewrite" eating the entire column width.
+/// Also folds embedded newlines to spaces — `python3 -c "..."` and
+/// `bash -c "..."` often log a multi-line script that would break the
+/// table layout of `--history` otherwise.
+/// Used only for display — the history file still stores the full
+/// command verbatim.
+fn display_cmd(cmd: &str) -> String {
+    // Collapse newlines and tabs to single spaces so multi-line
+    // scripts stay on one row. Carriage returns are dropped outright
+    // (some loggers embed them mid-line).
+    let single_line: String = cmd
+        .chars()
+        .map(|c| match c {
+            '\n' | '\t' => ' ',
+            '\r' => ' ',
+            other => other,
+        })
+        .collect();
+    // Squash runs of whitespace to a single space for readability.
+    let mut squashed = String::with_capacity(single_line.len());
+    let mut prev_space = false;
+    for ch in single_line.chars() {
+        if ch == ' ' {
+            if !prev_space {
+                squashed.push(' ');
+            }
+            prev_space = true;
+        } else {
+            squashed.push(ch);
+            prev_space = false;
+        }
+    }
+    let trimmed = squashed.trim_start();
+    let Some(first_end) = trimmed.find(char::is_whitespace) else {
+        if trimmed.starts_with('/') {
+            let base = trimmed.rsplit('/').next().unwrap_or(trimmed);
+            return base.to_string();
+        }
+        return trimmed.to_string();
+    };
+    let (first, rest) = trimmed.split_at(first_end);
+    if first.starts_with('/') {
+        let base = first.rsplit('/').next().unwrap_or(first);
+        format!("{}{}", base, rest)
+    } else {
+        trimmed.to_string()
     }
 }
 

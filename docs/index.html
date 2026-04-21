@@ -51,7 +51,7 @@
     "license": "https://opensource.org/licenses/MIT",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "codeRepository": "https://github.com/dPeluChe/trs",
-    "softwareVersion": "0.5.7",
+    "softwareVersion": "0.5.8",
     "author": { "@type": "Organization", "name": "Iteris", "url": "https://iteris.tech" }
   }
   </script>
@@ -672,7 +672,7 @@
     <div class="hero-meta">
       <span>TARSCLI</span>
       <span class="dot">·</span>
-      <span>v0.5.7</span>
+      <span>v0.5.8</span>
       <span class="dot">·</span>
       <span>Rust</span>
       <span class="dot">·</span>
@@ -936,17 +936,17 @@ unstaged (3):
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
-          <div class="compare-pane">   Compiling tars-cli v0.5.7
+          <div class="compare-pane">   Compiling tars-cli v0.5.8
     Finished test profile in 4.21s
      Running unittests src/main.rs
-running 2154 tests
+running 2177 tests
 test config::tests::test_defaults ... ok
 test config::tests::test_parse ... ok
-... (2152 more lines) ...
-test result: ok. 2154 passed; 0 failed
+... (2175 more lines) ...
+test result: ok. 2177 passed; 0 failed
      Running tests/cli_flags.rs
 ... (70 more suites) ...</div>
-          <div class="compare-pane">cargo test: 2154 passed (71 suites, 4.9s)</div>
+          <div class="compare-pane">cargo test: 2177 passed (71 suites, 4.9s)</div>
         </div>
       </div>
 
@@ -1211,7 +1211,7 @@ ad55480 feat(init): smart JSON merge
         <div class="feature-desc"><code>trs init --all</code> installs hooks for Claude, Gemini, Cursor, OpenCode, Kilo, Droid (programmatic) and rules for Codex, Antigravity, Windsurf. Smart-merge into existing settings.json &mdash; user config preserved. Pre-install collision check flags competing compressor hooks (rtk, token-optimizer) so you migrate cleanly with <code>--replace</code> instead of double-compressing.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">Output saver (new in 0.5.7)</div>
+        <div class="feature-title">Output saver (0.5.7+)</div>
         <div class="feature-desc">trs compresses what agents <em>see</em>; <code>trs output-saver</code> compresses what they <em>emit</em>. Installs a short anti-preamble / result-first / no-narration rules block into each agent's global config (AGENTS.md / CLAUDE.md / Cursor rules). Check-first by default; <code>--install</code> to commit, <code>--remove</code> to undo. 8 of 9 supported agents.</div>
       </div>
       <div class="feature">
@@ -1224,7 +1224,15 @@ ad55480 feat(init): smart JSON merge
       </div>
       <div class="feature">
         <div class="feature-title">Token savings dashboard</div>
-        <div class="feature-desc"><code>trs stats</code> shows cumulative compression, tokens saved per day, top commands. JSON output for dashboards.</div>
+        <div class="feature-desc"><code>trs stats</code> shows cumulative compression, tokens saved per day, top commands. <code>trs stats --by-agent</code> breaks totals down by which AI agent fired each rewrite. JSON output for dashboards.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Agent attribution (0.5.8+)</div>
+        <div class="feature-desc"><code>trs rewrite</code> and plugin templates inject <code>TRS_AGENT=&lt;label&gt;</code> into the rewritten command so history logs who fired the run &mdash; Claude, Gemini, Cursor, OpenCode, Kilo. Rules-only agents show as <em>(untagged)</em>; we don't invent labels we can't verify.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Self-upgrade (0.5.8+)</div>
+        <div class="feature-desc"><code>trs upgrade</code> detects your install channel (npm / curl|sh) and re-runs it. After a successful binary upgrade it also refreshes hook templates and re-installs the output-saver block where it was already present.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Fast find</div>
@@ -1275,7 +1283,7 @@ ad55480 feat(init): smart JSON merge
         Downloads the right binary for your platform into
         <code class="inline">~/.trs/bin/trs</code>. Zero runtime dependencies,
         no Node overhead, ~12ms startup. Pin a version with
-        <code class="inline">TRS_VERSION=v0.5.7</code>.
+        <code class="inline">TRS_VERSION=v0.5.8</code>.
       </p>
     </div>
 

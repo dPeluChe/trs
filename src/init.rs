@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use crate::init_collision;
 use crate::init_templates::{
     ANTIGRAVITY_RULES, CLAUDE_HOOKS, CODEX_AGENTS_SECTION, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS,
-    OPENCODE_PLUGIN, WINDSURF_RULES,
+    KILO_PLUGIN, OPENCODE_PLUGIN, WINDSURF_RULES,
 };
 
 /// Options for an install run. `global` picks home-dir vs project-local;
@@ -179,13 +179,14 @@ impl AiTool {
             }),
             // Kilo mirrors OpenCode's plugin system: auto-discovery from
             // `~/.config/kilo/plugins/` (global) and `.kilo/plugins/` (project).
-            // Shares OPENCODE_PLUGIN — the `tool.execute.before` hook API is
-            // identical.
+            // Uses its own plugin template so the TRS_AGENT env-var
+            // prefix distinguishes Kilo invocations from OpenCode in
+            // history.jsonl attribution.
             Self::Kilo => Some(HookSpec {
                 local_dir: ".kilo/plugins",
                 global_dir: Some(".config/kilo/plugins"),
                 filename: "trs.ts",
-                content: OPENCODE_PLUGIN,
+                content: KILO_PLUGIN,
             }),
             Self::Droid => Some(HookSpec {
                 local_dir: ".factory",
@@ -308,6 +309,17 @@ pub(crate) fn install_all(opts: InstallOpts) {
     if installed > 0 {
         eprintln!("note: restart any open AI tool sessions for hooks to take effect");
     }
+    // When everything is already wired up, remind the user how to force
+    // a refresh — template content can change between releases even
+    // when the install marker ("trs rewrite") is already present.
+    if installed == 0 && skipped > 0 {
+        println!();
+        println!("All detected agents are already configured. If a new trs release");
+        println!("ships hook template improvements, re-run with --force to overwrite");
+        println!("with the current template (user-added hooks are preserved).");
+        println!();
+        println!("  trs init --all --global --force");
+    }
 }
 
 /// Check if trs binary is available in PATH.
@@ -385,8 +397,22 @@ pub(crate) fn show_status_and_usage() {
     println!("  trs init --show                 show this status");
     println!();
     println!("Collision handling:");
-    println!("  --replace    remove competing compressor hooks (rtk, etc.)");
-    println!("  --force      install alongside anyway (risk: double-compression)");
+    println!("  trs init scans the target config for hooks from another compressor");
+    println!("  tool (rtk, token-optimizer) before writing. Running two compressors");
+    println!("  on the same command risks double-compression — garbled output that");
+    println!("  looks successful to the hook layer. By default trs aborts when it");
+    println!("  finds a collision.");
+    println!();
+    println!("  --replace    clean up the other tool's hook before installing trs");
+    println!("  --force      install trs alongside anyway (risky, keeps both active)");
+    println!();
+    println!("Refreshing hooks:");
+    println!("  Templates may change between releases. When all agents already show");
+    println!("  as configured, re-run with --force to overwrite with the current");
+    println!("  template. The config merge preserves any user-added hooks that");
+    println!("  don't reference trs.");
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/init.md");
 }
 
 /// Check if a tool has trs hooks installed (local or global).

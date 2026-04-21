@@ -102,7 +102,28 @@ export const TrsPlugin = async () => {
       if (typeof cmd !== "string") return;
       // Skip if already routed through trs or if it's a cd (dir change).
       if (cmd.startsWith("trs ") || cmd.startsWith("cd ")) return;
-      output.args.command = `trs ${cmd}`;
+      // TRS_AGENT=opencode tells trs history.jsonl who triggered the run.
+      // The shell strips the env-var assignment before executing.
+      output.args.command = `TRS_AGENT=opencode trs ${cmd}`;
+    },
+  };
+};
+"#;
+
+/// Kilo plugin — identical mechanism to OpenCode but tags the
+/// downstream trs call as `TRS_AGENT=kilo` so history attribution
+/// is accurate across forks.
+pub(crate) const KILO_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
+
+export const TrsPlugin = async () => {
+  return {
+    "tool.execute.before": async (input, output) => {
+      if (input.tool !== "bash") return;
+      const cmd = output.args?.command;
+      if (typeof cmd !== "string") return;
+      if (cmd.startsWith("trs ") || cmd.startsWith("cd ")) return;
+      // TRS_AGENT=kilo tells trs history.jsonl who triggered the run.
+      output.args.command = `TRS_AGENT=kilo trs ${cmd}`;
     },
   };
 };
