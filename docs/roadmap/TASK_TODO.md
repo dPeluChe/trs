@@ -216,6 +216,32 @@ dynamic-rules feature (e.g. per-session rule swapping, A/B testing):
 
 ---
 
+## Documentation drift (carry-over from v0.5.9 restructure)
+
+- [ ] **Designate a source of truth for the agents matrix.** Today the
+      same table lives in `README.md`, `README.es.md`,
+      `docs/index.html`, and `docs/support/agents.md`. Without a
+      canonical source, adding a tenth agent requires editing all four
+      and they'll drift silently when someone forgets one. Proposed
+      solution (lightest-touch first):
+      1. Add an HTML comment above each inline table pointing at
+         `docs/support/agents.md` as the source of truth.
+      2. Call it out in `CONTRIBUTING.md` under a "When adding an
+         agent" checklist.
+      3. (Optional, later) A small script that diffs the 4 tables
+         and fails CI if they disagree.
+- [ ] Same drift risk applies to: supported-commands table (README,
+      README.es, landing, `docs/support/commands.md`), built-in tools
+      list (README, README.es, `docs/support/commands.md`), and the
+      "8 of 9 agents supported (Antigravity is…)" claim (README,
+      landing, `docs/features/output-saver.md`, `docs/support/agents.md`).
+- [ ] Decide whether `docs/development/codebase-digest.md` should stay
+      committed or move to a release artifact. `scripts/sync-codebase-digest.sh`
+      is a workaround; the real choice is "live file in git that drifts"
+      vs. "CI-generated artifact per release that doesn't clutter diffs".
+
+---
+
 ## Phase 4 — Analytics & Configuration
 
 - [ ] `trs stats --graph` — ASCII bar chart (30-day view)
