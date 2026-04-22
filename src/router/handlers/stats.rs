@@ -186,7 +186,7 @@ fn print_by_agent(entries: &[HistoryEntry]) {
     println!("templates. Rules-based agents (Codex / Antigravity / Windsurf) and");
     println!("direct shell invocations land under (untagged).");
     println!();
-    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/features/stats.md");
 }
 
 /// Print the full summary view with efficiency meter and top commands.
@@ -300,7 +300,7 @@ fn print_summary(entries: &[HistoryEntry], top_limit: usize) {
     println!();
     println!("For full history: trs stats --history");
     println!();
-    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/features/stats.md");
 }
 
 /// Entries whose timestamp falls on the same local-date as "now".
@@ -351,7 +351,7 @@ fn print_history(entries: &[HistoryEntry], limit: usize) {
         );
     }
     println!();
-    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/stats.md");
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/features/stats.md");
 }
 
 /// When a logged command's first token is an absolute path, show the

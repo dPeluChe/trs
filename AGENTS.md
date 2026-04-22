@@ -5,6 +5,23 @@
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
 Reduces token consumption by 68-99% for developers, AI agents, and automation pipelines.
 
+## Pre-generated codebase digest
+
+[`docs/development/codebase-digest.md`](./docs/development/codebase-digest.md)
+is a snapshot of the entire trs codebase produced by `trs ingest`.
+Drop it into any agent's context for an instant map of the project
+without having to run `trs ingest` yourself.
+
+The digest can drift from HEAD between releases. Regenerate before
+tagging a release, or whenever `src/` has moved meaningfully:
+
+```bash
+./scripts/sync-codebase-digest.sh
+```
+
+The script uses `trs` from `PATH` and falls back to
+`./target/release/trs` if one isn't installed.
+
 ## Related commands worth knowing
 
 - `trs stats` — cumulative savings across commands (shows date range, today
@@ -28,11 +45,13 @@ Reduces token consumption by 68-99% for developers, AI agents, and automation pi
 - `trs init --show` — see which AI agents have trs hooks installed.
 - `trs upgrade` — detects the install channel (npm / curl) and re-runs
   it for the latest release. `--check` dry-runs, `-y` skips the
-  confirmation prompt. See [`docs/commands/upgrade.md`](./docs/commands/upgrade.md).
-- `trs init <tool>` — now runs a collision pre-check: detects existing
-  rtk / token-optimizer hooks (via `@imports` too) and aborts by default.
-  `--replace` removes competitor hooks cleanly, `--force` installs
-  alongside (risky — double-compression can corrupt output).
+  confirmation prompt. See [`docs/features/upgrade.md`](./docs/features/upgrade.md).
+- `trs init <tool>` — now runs a collision pre-check: detects hooks
+  from other token-compression tools (via `@imports` too) and aborts
+  by default. `--replace` removes competitor hooks cleanly, `--force`
+  installs alongside (risky — double-compression can corrupt output).
+  See [`docs/support/other-token-savers.md`](./docs/support/other-token-savers.md)
+  for the list of tools we coexist with.
 - `trs stats --by-agent` — breakdown by which AI agent fired each
   rewrite. Reads the `TRS_AGENT` env var that `trs rewrite` and
   plugin templates inject into the command line. Rules-only agents
@@ -61,7 +80,7 @@ src/
 │   ├── ollama.rs              # Ollama post-processing (ollama_format)
 │   └── store.rs               # ~/.trs/ingest/ persistence (save, list, read)
 ├── discover.rs                # trs discover — scan history for missed savings
-├── init.rs                    # trs init — hook installer for 9 AI agents (see docs/agent-integrations.md)
+├── init.rs                    # trs init — hook installer for 9 AI agents (see docs/development/agent-integrations.md)
 ├── rewrite.rs                 # trs rewrite — hook command rewriter engine
 ├── help.rs                    # Help text for all commands
 ├── process.rs                 # Process execution (spawn, capture, timeout)
@@ -147,7 +166,7 @@ tests/
 - **Config system**: `~/.trs/config.toml` for tunable limits
 - **Agent integrations**: 9 agents supported across 3 integration types
   (hook / plugin / rules). Wire-format differs per hook agent
-  (Claude/Gemini/Cursor) — see [`docs/agent-integrations.md`](./docs/agent-integrations.md)
+  (Claude/Gemini/Cursor) — see [`docs/development/agent-integrations.md`](./docs/development/agent-integrations.md)
   for per-agent mechanism, quirks, and test prompts.
 
 ## Development
@@ -156,7 +175,7 @@ tests/
 cargo build                    # Build
 cargo test                     # Run 2,186+ tests
 cargo install --path .         # Install globally
-./docs/benchmarks/benchmark.sh # Compare vs rtk (see docs/benchmarks/README.md)
+./docs/development/benchmarks/benchmark.sh  # Compare vs other token-savers (see docs/development/benchmarks/README.md)
 ```
 
 ## Testing

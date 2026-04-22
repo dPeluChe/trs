@@ -366,4 +366,4 @@ The log tells you:
   `install_rules` (for rules-file tools)
 - `src/init_templates.rs` — all templates
 - `src/rewrite.rs` — hook command rewriter, `HookEvent` dispatch
-- `scripts/install.sh` — `.zshenv` targeting for zsh subshells
+- `docs/install.sh` — `.zshenv` targeting for zsh subshells

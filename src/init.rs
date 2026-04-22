@@ -413,7 +413,7 @@ pub(crate) fn show_status_and_usage() {
     println!("  template. The config merge preserves any user-added hooks that");
     println!("  don't reference trs.");
     println!();
-    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/init.md");
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/features/init.md");
 }
 
 /// Check if a tool has trs hooks installed (local or global).

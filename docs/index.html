@@ -18,31 +18,41 @@
 
   <!-- Open Graph / LinkedIn / Facebook -->
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="trs (TarsCLI)">
+  <meta property="og:site_name" content="trs (Token-Reducing Shell)">
   <meta property="og:title" content="trs — Terminal compression for AI agents">
-  <meta property="og:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12ms startup, zero Node overhead.">
+  <meta property="og:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, Windsurf, Antigravity.">
   <meta property="og:url" content="https://usetrs.dev/">
   <meta property="og:image" content="https://usetrs.dev/og-image.png">
   <meta property="og:image:alt" content="trs — Terminal compression for AI agents">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="es_ES">
 
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@dPeluChe">
+  <meta name="twitter:creator" content="@dPeluChe">
   <meta name="twitter:title" content="trs — Terminal compression for AI agents">
-  <meta name="twitter:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12ms startup.">
+  <meta name="twitter:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12 ms startup.">
   <meta name="twitter:image" content="https://usetrs.dev/og-image.png">
+  <meta name="twitter:image:alt" content="trs — Terminal compression for AI agents">
 
   <!-- Robots -->
-  <meta name="robots" content="index, follow">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+
+  <!-- Alternate language -->
+  <link rel="alternate" hreflang="en" href="https://usetrs.dev/">
+  <link rel="alternate" hreflang="es" href="https://github.com/dPeluChe/trs/blob/main/README.es.md">
+  <link rel="alternate" hreflang="x-default" href="https://usetrs.dev/">
 
   <!-- JSON-LD structured data (SoftwareApplication) -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "trs (TarsCLI)",
+    "name": "trs (Token-Reducing Shell)",
+    "alternateName": "trs",
     "description": "Rust CLI that compresses noisy terminal output 68–99% for AI agents and humans. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
     "url": "https://usetrs.dev/",
     "applicationCategory": "DeveloperApplication",
@@ -51,8 +61,9 @@
     "license": "https://opensource.org/licenses/MIT",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "codeRepository": "https://github.com/dPeluChe/trs",
-    "softwareVersion": "0.5.9",
-    "author": { "@type": "Organization", "name": "Iteris", "url": "https://iteris.tech" }
+    "downloadUrl": "https://usetrs.dev/install.sh",
+    "author": { "@type": "Organization", "name": "Iteris", "url": "https://iteris.tech" },
+    "maintainer": { "@type": "Person", "name": "dPeluChe", "url": "https://dpeluche.dev" }
   }
   </script>
 
@@ -139,8 +150,20 @@
       letter-spacing: -2px;
       color: var(--text);
       line-height: 1;
+      margin: 0;
     }
-    .hero-name span { color: var(--accent); }
+    .hero-name > span:first-child { color: var(--accent); }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
     .hero-meta {
       margin-top: 10px;
       display: inline-flex;
@@ -668,7 +691,7 @@
 <!-- Hero -->
 <div class="hero">
   <div class="container">
-    <div class="hero-name"><span>trs</span></div>
+    <h1 class="hero-name"><span>trs</span> <span class="visually-hidden">— Token-Reducing Shell, terminal compression for AI agents</span></h1>
     <div class="hero-meta">
       <span>Token-Reducing Shell</span>
       <span class="dot">·</span>
@@ -839,13 +862,74 @@
   </div>
 </section>
 
+<!-- Supported AI agents -->
+<section id="agents">
+  <div class="container">
+    <h2>Supported AI agents</h2>
+    <p class="section-intro">Nine agents, three install mechanisms. <code class="inline">trs init --all --global</code> wires every detected agent in one shot.</p>
+
+    <div style="overflow-x: auto; margin-top: 24px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <th style="text-align: left; padding: 8px;">Agent</th>
+            <th style="text-align: left; padding: 8px;">Install method</th>
+            <th style="text-align: center; padding: 8px;">Input hook</th>
+            <th style="text-align: center; padding: 8px;">Output-saver</th>
+            <th style="text-align: left; padding: 8px;">Attribution</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Claude Code · Gemini · Cursor</td><td style="padding: 8px;">programmatic hook</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">claude</code> / <code class="inline">gemini</code> / <code class="inline">cursor</code></td></tr>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">OpenCode · Kilo Code</td><td style="padding: 8px;">plugin template</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">opencode</code> / <code class="inline">kilo</code></td></tr>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Factory Droid</td><td style="padding: 8px;">programmatic hook</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">claude</code> (shared envelope)</td></tr>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Codex CLI · Windsurf</td><td style="padding: 8px;">rules file only</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
+          <tr><td style="padding: 8px;">Google Antigravity</td><td style="padding: 8px;">rules file only</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top: 16px; color: var(--text-muted); font-size: 14px;">
+      Full matrix + caveats + per-agent config paths:
+      <a href="https://github.com/dPeluChe/trs/blob/main/docs/support/agents.md" style="color: var(--accent);">docs/support/agents.md</a>.
+    </p>
+  </div>
+</section>
+
+<!-- Supported commands -->
+<section id="commands">
+  <div class="container">
+    <h2>Supported commands</h2>
+    <p class="section-intro">Thirty-plus dedicated parsers. Anything else falls to generic compression (~30&ndash;40% free) and still tracks in stats.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 24px;">
+      <div class="feature"><div class="feature-title">VCS</div><div class="feature-desc"><code class="inline">git</code> &mdash; status, diff, log, branch, push, pull, fetch.</div></div>
+      <div class="feature"><div class="feature-title">Rust</div><div class="feature-desc"><code class="inline">cargo</code> &mdash; build, check, test, clippy, fmt, install.</div></div>
+      <div class="feature"><div class="feature-title">JavaScript / TypeScript</div><div class="feature-desc"><code class="inline">npm</code>, <code class="inline">pnpm</code>, <code class="inline">yarn</code>, <code class="inline">bun</code>, <code class="inline">npx</code>, <code class="inline">pnpm dlx</code> &mdash; install, test, ls, audit, run.</div></div>
+      <div class="feature"><div class="feature-title">Python</div><div class="feature-desc"><code class="inline">pytest</code>, <code class="inline">pip</code>, <code class="inline">uv</code>, plus <code class="inline">python3 -m &lt;mod&gt;</code> routing for pytest / mypy / ruff / pylint / flake8.</div></div>
+      <div class="feature"><div class="feature-title">Go</div><div class="feature-desc"><code class="inline">go</code> &mdash; test, build, mod.</div></div>
+      <div class="feature"><div class="feature-title">Test runners</div><div class="feature-desc"><code class="inline">pytest</code>, <code class="inline">jest</code>, <code class="inline">vitest</code> &mdash; full parse of suite summary, failures, tracebacks.</div></div>
+      <div class="feature"><div class="feature-title">Linters</div><div class="feature-desc"><code class="inline">eslint</code>, <code class="inline">biome</code>, <code class="inline">ruff</code>, <code class="inline">pylint</code>, <code class="inline">golangci-lint</code>, <code class="inline">cargo clippy</code> &mdash; issues grouped by file + rule.</div></div>
+      <div class="feature"><div class="feature-title">Files &amp; search</div><div class="feature-desc"><code class="inline">ls</code> (+ <code class="inline">eza</code>, <code class="inline">lsd</code>, <code class="inline">exa</code>), <code class="inline">find</code> (+ <code class="inline">fd</code>), <code class="inline">grep</code> (+ <code class="inline">rg</code>, <code class="inline">ag</code>, <code class="inline">ack</code>), <code class="inline">tree</code>, <code class="inline">tail</code>.</div></div>
+      <div class="feature"><div class="feature-title">Containers &amp; GitHub</div><div class="feature-desc"><code class="inline">docker</code> (ps, logs, build) and <code class="inline">gh</code> (pr / issue / run list + <code class="inline">gh api</code>).</div></div>
+      <div class="feature"><div class="feature-title">System &amp; network</div><div class="feature-desc"><code class="inline">ps</code>, <code class="inline">env</code>, <code class="inline">wc</code>, <code class="inline">brew</code>, <code class="inline">curl</code>, <code class="inline">wget</code>.</div></div>
+      <div class="feature"><div class="feature-title">Chain-aware</div><div class="feature-desc"><code class="inline">cd X &amp;&amp; cargo test</code> wraps each rewritable segment. Pipes and semicolons pass through untouched.</div></div>
+      <div class="feature"><div class="feature-title">Env-prefix preservation</div><div class="feature-desc"><code class="inline">RUSTFLAGS=x cargo build</code> keeps the leading assignment &mdash; still reaches cargo after the rewrite.</div></div>
+    </div>
+    <p style="margin-top: 16px; color: var(--text-muted); font-size: 14px;">
+      Full command reference with subcommands and examples:
+      <a href="https://github.com/dPeluChe/trs/blob/main/docs/support/commands.md" style="color: var(--accent);">docs/support/commands.md</a>.
+    </p>
+  </div>
+</section>
+
 <!-- Why we built this -->
 <section>
   <div class="container">
     <h2>Why we built trs</h2>
-    <p class="section-intro">Short origin note, for the curious.</p>
+    <p class="section-intro">Short origin note, for the curious &mdash; click to expand.</p>
 
-    <div class="origin-block">
+    <details class="origin-block" style="cursor: pointer;">
+      <summary style="font-weight: 600; padding: 8px 0; list-style: none;">Read the backstory &rarr;</summary>
       <p>
         Token pricing kept climbing. AI coding sessions were burning tens
         of thousands of tokens just rendering
@@ -875,7 +959,7 @@
         into an LLM-ready context index. Still a single static binary,
         zero runtime deps &mdash; the story just got bigger than hooks.
       </p>
-    </div>
+    </details>
   </div>
 </section>
 
@@ -1013,7 +1097,7 @@ ad55480 feat(init): smart JSON merge
       Numbers are representative; your repo and commands will vary.
       Want to reproduce or compare with other tools? See the internal
       calibration lab in
-      <a href="https://github.com/dPeluChe/trs/tree/main/docs/benchmarks">docs/benchmarks/</a>.
+      <a href="https://github.com/dPeluChe/trs/tree/main/docs/development/benchmarks">docs/development/benchmarks/</a>.
     </p>
   </div>
 </section>
@@ -1117,6 +1201,10 @@ ad55480 feat(init): smart JSON merge
           <div class="digest-feature-title">Ollama post-process</div>
           <div class="digest-feature-desc"><code class="inline">--ollama &lt;model&gt;</code> runs the digest through a local LLM for an executive summary.</div>
         </div>
+        <div class="digest-feature">
+          <div class="digest-feature-title">Live example</div>
+          <div class="digest-feature-desc">trs ingests itself at <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/codebase-digest.md" style="color: var(--accent);">docs/development/codebase-digest.md</a> &mdash; ~26k tokens covering the whole repo, refreshed on every release.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1185,15 +1273,44 @@ ad55480 feat(init): smart JSON merge
   </div>
 </section>
 
+<!-- Output saver — symmetric to the input hook -->
+<section id="output-saver">
+  <div class="container">
+    <h2>Output saver <span style="color: var(--text-muted); font-weight: 400; font-size: 18px;">&mdash; <code class="inline">trs output-saver</code></span></h2>
+    <p class="section-intro">
+      <code class="inline">trs rewrite</code> compresses what agents
+      <em>see</em>. <code class="inline">trs output-saver</code> closes
+      the other side of the loop by installing a compact rules block
+      that compresses what agents <em>emit</em>: no preambles, no
+      narration, result-first, no hallucinated paths.
+    </p>
+
+    <div class="features-grid" style="margin-top: 24px;">
+      <div class="feature">
+        <div class="feature-title">Eight of nine agents covered</div>
+        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, Windsurf. Antigravity is the only holdout (project-only rules files).</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Check-first by default</div>
+        <div class="feature-desc">Dry-run scan shows exactly what would change. <code>--install</code> to write, <code>--remove</code> to uninstall cleanly.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Idempotent merge</div>
+        <div class="feature-desc">Sentinel-wrapped block. Re-running <code>--install</code> updates in place; your other rules stay untouched.</div>
+      </div>
+    </div>
+    <p style="margin-top: 16px; color: var(--text-muted); font-size: 14px;">
+      Full reference:
+      <a href="https://github.com/dPeluChe/trs/blob/main/docs/features/output-saver.md" style="color: var(--accent);">docs/features/output-saver.md</a>.
+    </p>
+  </div>
+</section>
+
 <!-- Features -->
 <section>
   <div class="container">
-    <h2>Features</h2>
+    <h2>More features</h2>
     <div class="features-grid">
-      <div class="feature">
-        <div class="feature-title">30+ dedicated parsers</div>
-        <div class="feature-desc">git, cargo, go, npm, pnpm, docker, gh, pytest, jest, vitest, eslint, ruff, biome, golangci-lint, and more. Each parser understands the output format.</div>
-      </div>
       <div class="feature">
         <div class="feature-title">6 output formats</div>
         <div class="feature-desc">Compact, JSON, CSV, TSV, Agent, Raw. Every command supports all formats via <code>--json</code>, <code>--csv</code>, etc.</div>
@@ -1207,40 +1324,28 @@ ad55480 feat(init): smart JSON merge
         <div class="feature-desc"><code>trs read -l aggressive</code> extracts only function signatures. Minimal mode strips comments.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">AI tool hooks &amp; rules</div>
-        <div class="feature-desc"><code>trs init --all</code> installs hooks for Claude, Gemini, Cursor, OpenCode, Kilo, Droid (programmatic) and rules for Codex, Antigravity, Windsurf. Smart-merge into existing settings.json &mdash; user config preserved. Pre-install collision check flags competing compressor hooks (rtk, token-optimizer) so you migrate cleanly with <code>--replace</code> instead of double-compressing.</div>
-      </div>
-      <div class="feature">
-        <div class="feature-title">Output saver (0.5.7+)</div>
-        <div class="feature-desc">trs compresses what agents <em>see</em>; <code>trs output-saver</code> compresses what they <em>emit</em>. Installs a short anti-preamble / result-first / no-narration rules block into each agent's global config (AGENTS.md / CLAUDE.md / Cursor rules). Check-first by default; <code>--install</code> to commit, <code>--remove</code> to undo. 8 of 9 supported agents.</div>
-      </div>
-      <div class="feature">
         <div class="feature-title">Docs auditor</div>
-        <div class="feature-desc"><code>trs audit-docs</code> inspects CLAUDE.md / AGENTS.md / rules files for cross-file duplicates, embedded code/SQL/JSON blocks that belong elsewhere, dead <code>@imports</code>, and code fences whose declared symbols already live in <code>src/</code>. Paired with <code>trs doctor</code> which warns when agent docs exceed their token budget.</div>
-      </div>
-      <div class="feature">
-        <div class="feature-title">Chain-aware rewrite</div>
-        <div class="feature-desc"><code>cd X && git status</code> or <code>cargo fmt && cargo clippy</code> get each rewritable segment wrapped with trs. Pipes and semicolons pass through untouched.</div>
+        <div class="feature-desc"><code>trs audit-docs</code> inspects CLAUDE.md / AGENTS.md / rules files for cross-file duplicates, embedded code/SQL/JSON blocks, dead <code>@imports</code>, and code fences whose symbols already live in <code>src/</code>. Paired with <code>trs doctor</code> warnings when agent docs exceed their token budget.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Token savings dashboard</div>
-        <div class="feature-desc"><code>trs stats</code> shows cumulative compression, tokens saved per day, top commands. <code>trs stats --by-agent</code> breaks totals down by which AI agent fired each rewrite. JSON output for dashboards.</div>
+        <div class="feature-desc"><code>trs stats</code> shows cumulative compression, tokens saved per day, top commands. <code>trs stats --by-agent</code> breaks totals down by agent. <code>-n N</code> adjusts row counts. JSON output for dashboards.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">Agent attribution (0.5.9+)</div>
+        <div class="feature-title">Agent attribution</div>
         <div class="feature-desc"><code>trs rewrite</code> and plugin templates inject <code>TRS_AGENT=&lt;label&gt;</code> into the rewritten command so history logs who fired the run &mdash; Claude, Gemini, Cursor, OpenCode, Kilo. Rules-only agents show as <em>(untagged)</em>; we don't invent labels we can't verify.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">Self-upgrade (0.5.9+)</div>
-        <div class="feature-desc"><code>trs upgrade</code> detects your install channel (npm / curl|sh) and re-runs it. After a successful binary upgrade it also refreshes hook templates and re-installs the output-saver block where it was already present.</div>
+        <div class="feature-title">Self-upgrade</div>
+        <div class="feature-desc"><code>trs upgrade</code> detects your install channel (npm / curl|sh) and re-runs it. After a successful binary upgrade it also refreshes hook templates and re-installs the output-saver block where present.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">Fast find</div>
-        <div class="feature-desc"><code>trs find --gitignore</code> uses a built-in walker respecting .gitignore. Fast on large repos.</div>
+        <div class="feature-title">Bug-report bundle</div>
+        <div class="feature-desc"><code>trs debug-info</code> packages version, platform, doctor checks, recent history, and tee logs into one paste-ready report. Use it when filing an issue or sharing a repro.</div>
       </div>
       <div class="feature">
-        <div class="feature-title">Generic compression</div>
-        <div class="feature-desc">Commands without a parser still get ANSI stripping, whitespace collapse, and repeated-line dedup. ~30-40% free.</div>
+        <div class="feature-title">Collision check</div>
+        <div class="feature-desc"><code>trs init</code> scans target configs for hooks from other token-compression tools (following <code>@imports</code> too) and aborts by default. <code>--replace</code> migrates cleanly; <code>--force</code> stacks at your own risk.</div>
       </div>
     </div>
   </div>
@@ -1343,7 +1448,7 @@ ad55480 feat(init): smart JSON merge
       <a href="https://www.npmjs.com/package/@dpeluche/trs"><img style="height: 18px;" src="https://img.shields.io/npm/v/@dpeluche/trs" alt="npm"></a>
       <a href="https://github.com/dPeluChe/trs/blob/main/LICENSE"><img style="height: 18px;" src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
     </div>
-    <p>Built with Rust &amp; caffeine by <a href="https://iteris.tech">Iteris</a> &middot; <a href="https://github.com/dPeluChe/trs">GitHub</a> &middot; <a href="https://github.com/dPeluChe/trs/tree/main/docs/benchmarks">benchmarks lab</a> &middot; MIT License</p>
+    <p>Built with Rust &amp; caffeine by <a href="https://iteris.tech">Iteris</a> &middot; <a href="https://github.com/dPeluChe/trs">GitHub</a> &middot; <a href="https://github.com/dPeluChe/trs/tree/main/docs/development/benchmarks">benchmarks lab</a> &middot; MIT License</p>
     <p class="muted" style="margin-top: 8px; font-size: 13px;">trs &mdash; Token-Reducing Shell &middot; a wink to TARS, the only companion that speaks compactly.</p>
   </div>
 </footer>

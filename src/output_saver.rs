@@ -533,7 +533,7 @@ fn run_scan(targets: &[&str]) {
     println!("To see the block before installing:  trs output-saver --print");
     println!("To remove a previous install:         trs output-saver --remove");
     println!();
-    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/commands/output-saver.md");
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/features/output-saver.md");
 }
 
 fn run_install(targets: &[&str]) {

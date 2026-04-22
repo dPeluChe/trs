@@ -8,7 +8,7 @@
 # Claude Code PreToolUse hook. Output shows whether each segment was rewritten.
 #
 # Usage:
-#   ./docs/benchmarks/chain-rewrite.sh
+#   ./docs/development/benchmarks/chain-rewrite.sh
 # =============================================================================
 
 set -e

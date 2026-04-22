@@ -2,7 +2,7 @@
 
 `trs init` wires your AI coding agent's shell-execution pipeline through
 `trs rewrite` so every command gets compressed automatically. Nine
-agents are supported end-to-end. See [`docs/agent-integrations.md`](../agent-integrations.md)
+agents are supported end-to-end. See [`docs/development/agent-integrations.md`](../development/agent-integrations.md)
 for the full per-agent reference.
 
 ## Quick reference
@@ -189,5 +189,5 @@ There's no dedicated uninstaller yet. Manual steps:
   LLM-generated output.
 - [`trs doctor`](doctor.md) — health check that reports install
   coverage.
-- [`docs/agent-integrations.md`](../agent-integrations.md) — deep per-
+- [`docs/development/agent-integrations.md`](../development/agent-integrations.md) — deep per-
   agent reference (wire formats, protocol quirks, test prompts).

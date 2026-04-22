@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>trs</strong> — <strong>T</strong>oken-<strong>R</strong>educing <strong>S</strong>hell · compresión de terminal para agentes IA
+  <strong>trs</strong> — <strong>T</strong>oken-<strong>R</strong>educing <strong>S</strong>hell · compresión de salida terminal para agentes de IA
 </p>
 
 <p align="center">
@@ -17,26 +17,19 @@
 </p>
 
 <p align="center">
-  <a href="#instalación-recomendado">Instalación</a> ·
-  <a href="#quick-start-tldr">Quick start</a> ·
-  <a href="#qué-hace">Qué hace</a> ·
-  <a href="#project-digest-trs-ingest">Digest del proyecto</a> ·
-  <a href="#para-desarrolladores">Para desarrolladores</a>
+  <a href="#qué-es-trs">Qué</a> ·
+  <a href="#instalación">Instalar</a> ·
+  <a href="#inicio-rápido">Inicio rápido</a> ·
+  <a href="#agentes-de-ia-soportados">Agentes</a> ·
+  <a href="#comandos-soportados">Comandos</a> ·
+  <a href="#herramientas-built-in">Built-in</a> ·
+  <a href="#digest-del-proyecto">Digest</a> ·
+  <a href="#por-qué">Por qué</a>
 </p>
 
 ---
 
-## Por qué
-
-El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la` que el agente volcaba a su contexto costaba dinero real, y la relación señal/ruido en esos comandos era pésima. Empezamos a escribir herramientas pequeñas — primero para nosotros, después para el equipo — que redujeran lo que el agente realmente tenía que leer.
-
-En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar — más opciones en este espacio significan mejor fit para más flujos de trabajo. trs lo fuimos iterando y expandiendo conforme aprendíamos más sobre dónde se queman realmente los tokens.
-
-Mientras más lo usábamos, más vimos que la oportunidad era más grande que los hooks de input. `trs output-saver` instala reglas en la config global de cada agente para que las respuestas también regresen más cortas. `trs audit-docs` audita CLAUDE.md / AGENTS.md buscando el bloat que cada sesión vuelve a leer. `trs ingest` comprime repositorios enteros en un índice de contexto listo para el LLM y con control de budget. Sigue siendo un binario estático único, sin deps en runtime — la historia nada más creció más allá de los hooks.
-
-La landing page tiene el write-up completo: <https://usetrs.dev>
-
-## Qué hace
+## Qué es trs
 
 Prefija cualquier comando con `trs` (o deja que `trs init` lo conecte a tu herramienta de IA). El binario ejecuta tu comando, parsea la salida, y emite una versión compacta pensada para humanos y LLMs.
 
@@ -62,256 +55,180 @@ src/main.rs (3):
 # 55 KB → 5.5 KB (90% reducción)
 ```
 
-Los comandos sin parser dedicado siguen obteniendo compresión genérica (whitespace, ANSI) — ~30-40% gratis.
+Los comandos sin parser dedicado siguen obteniendo compresión genérica (whitespace, ANSI) — ~30–40% gratis.
 
-## Instalación (recomendado)
+## Instalación
 
-Soporte de plataforma: **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
-Binario estático único, sin deps en runtime, ~12ms de arranque.
-
-### macOS / Linux
+Binario nativo único — **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
 
 ```bash
+# macOS / Linux
 curl -fsSL https://usetrs.dev/install.sh | sh
-```
 
-### Windows (PowerShell)
+# npm (todas las plataformas)
+npm install -g @dpeluche/trs
 
-```powershell
+# cargo (compila desde fuente)
+cargo install trs-cli
+
+# Windows (PowerShell)
 irm https://usetrs.dev/install.ps1 | iex
 ```
 
-### npm (todas las plataformas)
-
-```bash
-npm install -g @dpeluche/trs
-```
-
-### cargo (compila desde fuente — requiere Rust)
-
-```bash
-cargo install trs-cli
-```
-
-### Binarios precompilados
-
-[GitHub Releases](https://github.com/dPeluChe/trs/releases) — Linux x64/arm64,
-macOS x64/arm64, Windows x64. Todos los métodos distribuyen el mismo binario
-nativo (~6 MB).
-
-### Fijar una versión específica
-
-```bash
-TRS_VERSION=v0.5.9 curl -fsSL https://usetrs.dev/install.sh | sh
-```
+[Guía completa de instalación — binarios prebuilt, fijar versión, directorios personalizados, solución de problemas →](docs/support/install.md)
 
 ### Actualizar
 
 ```bash
-trs upgrade --check    # muestra qué se ejecutaría
-trs upgrade            # autodetecta canal (npm / curl|sh), refresca hooks también
+trs upgrade --check    # muestra qué correría (auto-detecta el canal)
+trs upgrade            # actualiza el binario + refresca hooks
+trs doctor             # verifica que la instalación esté sana
 ```
 
-## Quick start (TL;DR)
+Referencias: [actualizar](docs/features/upgrade.md) · [doctor](docs/features/doctor.md).
+
+## Inicio rápido
 
 ```bash
-# 1. Pruébalo — prefija cualquier comando con trs
-trs git status
-trs cargo test
-
-# 2. Deja que tu agente de IA lo haga solo — instala hooks en Claude /
-#    Gemini / Cursor / OpenCode / Kilo / Codex / Droid / Windsurf / Antigravity
+# 1. Instala hooks en cada agente detectado (el camino principal)
 trs init --all --global
 
-# 3. Ve tus ahorros
+# 2. Ve tu ahorro
 trs stats                          # dashboard
-trs stats --by-agent               # desglose por agente IA
+trs stats --by-agent               # desglose por agente de IA
+trs stats -n 30                    # límite de filas personalizado
 ```
 
-Los flags funcionan en cualquier posición y stdin también está soportado:
+## Agentes de IA soportados
+
+Nueve agentes cubiertos de extremo a extremo. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code y Factory Droid. Solo archivo de reglas para Codex CLI, Google Antigravity y Windsurf.
+
+| Agente | Método de instalación | Hook de entrada | Output-saver | Etiqueta en stats |
+|---|---|---|---|---|
+| Claude Code · Gemini · Cursor | hook programático | ✓ | ✓ | `claude` / `gemini` / `cursor` |
+| OpenCode · Kilo Code | plantilla de plugin | ✓ | ✓ | `opencode` / `kilo` |
+| Factory Droid | hook programático | ✓ | ✓ | `claude` (mismo envelope) |
+| Codex CLI · Windsurf | solo archivo de reglas | — | ✓ | `(untagged)` |
+| Google Antigravity | solo archivo de reglas | — | — | `(untagged)` |
+
+[Matriz completa, detalles y rutas de configuración por agente →](docs/support/agents.md)
+
+### Uso standalone (opcional)
+
+También puedes invocar `trs` directamente sin hooks — útil para scripts, CI, o para probarlo antes de usar `trs init`:
 
 ```bash
+trs git status
+trs cargo test
 trs git status --json              # JSON estructurado
 trs --json git status              # los flags funcionan en cualquier posición
-git status | trs parse git-status  # sintaxis pipe también
+git status | trs parse git-status  # también soporta pipe
 ```
 
-Referencia completa de comandos más abajo, o ver
-[`docs/commands/`](docs/commands/) para deep-dives por comando.
+## Comandos soportados
 
-## Comandos con parsers dedicados
+| Categoría | Herramientas con parser dedicado |
+|---|---|
+| VCS | `git` (status, diff, log, branch, push, pull, fetch) |
+| Rust | `cargo` (build, check, test, clippy, fmt, install) |
+| JS/TS | `npm`, `pnpm`, `yarn`, `bun`, `npx`, `pnpm dlx` |
+| Python | `pytest`, `pip`, `uv`, dispatch de `python3 -m <mod>` |
+| Go | `go` (test, build, mod) |
+| Tests | `pytest`, `jest`, `vitest` (parseo completo del runner) |
+| Linters | `eslint`, `biome`, `ruff`, `pylint`, `golangci-lint`, `cargo clippy` |
+| Archivos | `ls` (+ `eza`, `lsd`, `exa`), `find` (+ `fd`), `grep` (+ `rg`, `ag`, `ack`), `tree`, `tail` |
+| Containers | `docker` (ps, logs, build) |
+| GitHub | `gh` (pr/issue/run list + `gh api`) |
+| Sistema | `ps`, `env`, `wc`, `brew`, `curl`, `wget` |
+
+También incluye **chain-aware rewrite** (`cd X && cargo test`), **preservación de env-prefix** (`RUSTFLAGS=x cargo build`), **sintaxis de pipe** (`cmd | trs parse …`) y `TRS_SKIP=1` para omitir el wrapping.
+
+[Referencia completa de comandos con subcomandos y ejemplos →](docs/support/commands.md)
+
+## Herramientas built-in
+
+Comandos nativos — sin binario externo detrás.
 
 ```bash
-# Git
-trs git status / diff / log / branch / push / pull / fetch
-
-# Linters (agrupados por archivo + regla)
-trs cargo clippy / eslint / ruff / biome / golangci-lint
-
-# Test runners
-trs cargo test / go test / pytest / jest / vitest / npm test / pnpm test / bun test
-
-# Archivos y búsqueda
-trs ls -la / find / grep / tree
-
-# Build y paquetes
-trs cargo build / npm install / pip list
-
-# Contenedores y GitHub CLI
-trs docker ps / logs   ·   trs gh pr/issue/run list
-
-# Sistema
-trs env / wc / curl -I / wget
+trs json              # motor de queries tipo jq-lite (-q '.users[].name')
+trs read              # lector de archivos (-l minimal / -l aggressive)
+trs search            # búsqueda de contenido basada en ripgrep
+trs replace           # replace basado en ripgrep (--dry-run)
+trs err               # filtro de errores (solo errores/warnings)
+trs tail              # tail de logs con --errors
+trs clean             # limpieza de ANSI / whitespace / dedup
+trs html2md           # HTML → Markdown
+trs find              # walker que respeta .gitignore
+trs is-clean          # verifica si el repo está limpio (por exit code)
+trs raw               # passthrough, pero sigue registrándose en stats
+trs stats             # dashboard de ahorro
+trs debug-info        # empaqueta version + doctor + logs para reportar bugs
 ```
 
-## Herramientas integradas (más que wrappers)
+## Digest del proyecto
+
+`trs ingest` recorre un repo y emite un digest Markdown compacto — estructura + archivos clave + firmas de funciones — listo para pegar en el contexto de cualquier agente. Respeta un budget de tokens, detecta digests obsoletos (stale) y soporta generación incremental.
 
 ```bash
-# Query JSON (jq-lite, sin dependencia)
-curl -s api.com/users | trs json                    # estructura
-curl -s api.com/users | trs json -q '.users[].name' # extrae
-
-# Lector de archivos inteligente
-trs read src/main.rs -l aggressive    # sólo signatures
-trs read src/main.rs -l minimal       # sin comentarios
-
-# Search & replace (ripgrep)
-trs search src "TODO" --extension rs
-trs replace src "old_fn" "new_fn" --dry-run
-
-# Filtro de errores
-trs err cargo build
-
-# Texto
-trs tail app.log --errors
-trs clean --no-ansi --collapse-blanks
-trs html2md https://example.com
-
-# Fast find (walker respeta .gitignore)
-trs find --gitignore . -name "*.rs"
-
-# Utilidades
-trs is-clean
-trs raw gh api /repos/user/repo       # passthrough, tracked en stats
-trs stats --history                   # dashboard de ahorros
+trs ingest                     # escribe el digest, imprime el path
+trs ingest --budget 128k       # ajusta al budget de tokens (firmas primero)
+trs ingest --changed           # solo archivos con cambios sin commitear
+trs ingest --since-last        # incremental desde el último ingest
+trs ingest --deps              # solo el grafo de dependencias
+trs ingest --fresh             # reusa el digest en caché si HEAD no cambió
+trs ingest --list              # digests guardados + HEAD sha + si están stale
 ```
 
-## Project digest (`trs ingest`)
+[Referencia completa de `trs ingest` →](docs/features/ingest.md) · [Ejemplo vivo — trs aplicado a sí mismo →](docs/development/codebase-digest.md)
+
+## Output saver
+
+`trs` comprime lo que los agentes **ven** (via `trs rewrite`). `trs output-saver` cierra el otro lado del bucle — instala un bloque de reglas compacto en la configuración global de cada agente para comprimir lo que los agentes **emiten**: sin preámbulos, sin narración, resultado primero, output estructurado cuando aplica, y sin paths inventados.
 
 ```bash
-trs ingest                     # genera digest, stdout = path
-trs ingest --budget 128k       # ajuste a budget de tokens (firmas primero)
-trs ingest --deps              # sólo grafo de dependencias, sin contenido
-trs ingest --changed           # sólo archivos con cambios sin commit
-trs ingest --since-last        # diff desde el último ingest
-trs ingest --fresh             # reusa digest cacheado si HEAD no cambió
-trs ingest -o ~/ctx.md         # escribe a una ruta custom, sin shadow save
-trs ingest --print             # contenido a stdout (default: path)
-trs ingest --warn-at 40k       # warning en stderr si el digest excede N tokens
-trs ingest --list              # digests guardados + HEAD sha + indicador stale
-trs ingest --read miproyecto   # lee un digest guardado
+trs output-saver               # escaneo de solo lectura
+trs output-saver --install     # instala en los agentes detectados
+trs output-saver --remove      # desinstala limpio
 ```
 
-Detección de staleness, grafos de dependencias, post-procesamiento con Ollama y truncado por budget están documentados en la [landing](https://usetrs.dev/#digest).
-
-## Hooks para herramientas de IA (`trs init`)
-
-`trs init --all` instala hooks en todas las herramientas detectadas. Hooks programáticos para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo, Factory Droid; archivos de rules para Codex, Google Antigravity y Windsurf. El instalador hace smart-merge en settings.json existentes — tu configuración previa se preserva.
-
-```bash
-trs init --show           # estado de todas las integraciones
-trs init --all --global   # instala todo lo detectado
-trs init claude           # o elige una
-trs init claude --replace # cambia desde un hook de compresor existente
-```
-
-Antes de escribir, `trs init` corre un chequeo de colisión: escanea
-los configs target (siguiendo `@imports` en Claude/Gemini) buscando
-hooks existentes de rtk o token-optimizer y aborta por default.
-`--replace` limpia el hook del compresor anterior antes de instalar
-trs; `--force` instala junto (riesgoso — doble compresión).
-
-## Ahorro en salida (`trs output-saver`)
-
-trs comprime lo que los agentes **ven** vía `trs rewrite`.
-`trs output-saver` cierra la brecha simétrica: instala un bloque de
-reglas compacto en la config global de cada agente para comprimir lo
-que **emiten** — nada de preámbulos, sin narración, resultado primero,
-output estructurado donde aplique, cero invención de paths.
-
-```bash
-trs output-saver            # scan read-only de los agentes detectados
-trs output-saver --install  # escribe el bloque donde el scan quedó limpio
-trs output-saver --print    # dump del bloque (pipe-friendly)
-trs output-saver --remove   # desinstalación limpia
-```
-
-8 de 9 agentes soportados (Antigravity es per-proyecto nada más — usa
-`trs init antigravity`). Claude/Gemini reciben archivo standalone más
-`@import`; Cursor un `.mdc` auto-cargado; Codex/Windsurf/OpenCode/
-Kilo/Droid bloque inline con sentinels HTML-comment para que reinstalar
-sea idempotente.
+Ocho de nueve agentes soportados (Antigravity solo funciona a nivel de proyecto). [Referencia completa de `trs output-saver` →](docs/features/output-saver.md)
 
 ## Formatos de salida
 
-Cada comando soporta 6 formatos:
+Cada comando soporta seis formatos:
 
 ```bash
-trs git status                # compacto (default)
-trs git status --json         # JSON estructurado
-trs git status --csv          # CSV con headers
-trs git status --tsv          # separado por tabs
-trs git status --agent        # markdown para IA
-trs git status --raw          # passthrough sin procesar
+trs git status                 # compact (por defecto, humanos + agentes)
+trs git status --json          # JSON estructurado
+trs git status --csv           # CSV con headers
+trs git status --tsv           # separado por tabs
+trs git status --agent         # Markdown optimizado para IA
+trs git status --raw           # passthrough sin procesar
 ```
 
-## Características
+[Referencia completa de formatos con ejemplos lado-a-lado →](docs/features/formats.md)
 
-- **30+ parsers dedicados** — git, cargo, go, npm, pnpm, docker, gh, pytest, jest, vitest, eslint, ruff, biome, golangci-lint, y más.
-- **Chain-aware rewrite** — `cd X && git status` o `cargo fmt && cargo clippy` reescriben cada segmento; pipes y punto-y-comas pasan sin tocar.
-- **9 integraciones de IA** — Claude, Gemini, Cursor, OpenCode, Kilo, Droid (programáticas) + Codex, Antigravity, Windsurf (rules).
-- **Motor JSON query** — jq-lite incorporado, sin depender de `jq`.
-- **Dashboard de ahorros** — `trs stats` muestra compresión acumulada y tokens por día. `trs stats --by-agent` desglosa totales por agente IA que disparó el rewrite (Claude / Gemini / Cursor / OpenCode / Kilo).
-- **Compresión genérica de fallback** — comandos sin parser igual reciben ANSI strip, whitespace collapse y dedup de líneas.
+## Por qué
 
-## Configuración
+<details>
+<summary>La historia honesta detrás de trs.</summary>
 
-Opcional — trs funciona sin config. Para tunear:
+El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la` que el agente volcaba a su contexto costaba dinero real, y la relación señal/ruido en esos comandos era pésima. Empezamos a escribir herramientas pequeñas dentro del equipo de Iteris para reducir lo que el agente realmente tenía que leer.
 
-```toml
-# ~/.trs/config.toml (o .trs/config.toml por proyecto)
-[limits]
-grep_max_results = 200
-status_max_files = 15
-passthrough_max_chars = 2000
-json_max_depth = 10
-```
+En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar — más opciones en este espacio significan un mejor encaje con más flujos de trabajo. Seguimos iterando y expandiendo `trs` conforme aprendíamos dónde se queman realmente los tokens.
 
-## Cómo se mantiene seguro
+Mientras más lo usábamos, más vimos que la oportunidad era más grande que solo los hooks de entrada. La historia se convirtió en cuatro herramientas complementarias:
 
-- `--no-verify` bloqueado en `git commit`/`git push` (protege pre-commit hooks de agentes).
-- Comandos con `--json` / `--porcelain` pasan sin tocar.
-- Si un parser falla, cae a truncated passthrough — nunca falla silencioso.
-- Exit codes siempre se propagan del comando envuelto.
-- En caso de error, la salida completa se guarda en `~/.trs/tee/` para recovery.
-- `trs read` nunca filtra contenido de JSON/YAML/TOML/XML.
+- [`trs rewrite`](docs/features/init.md) — compresión de la entrada en cada tool-call del agente.
+- [`trs output-saver`](docs/features/output-saver.md) — bloque de reglas que acorta las respuestas de vuelta.
+- [`trs audit-docs`](docs/features/audit-docs.md) — encuentra contenido redundante, duplicados y `@imports` muertos en los archivos de instrucciones que cada sesión re-carga.
+- [`trs ingest`](docs/features/ingest.md) — digest de todo un repo, listo para LLM y con control de budget.
 
-## Stack técnico
+</details>
 
-| | |
-|---|---|
-| Lenguaje | Rust |
-| Binario | ~6 MB (LTO + strip), sin deps en runtime |
-| Arranque | ~12ms en macOS / Linux |
-| CLI | clap 4 (bypassed en hot path) |
-| Tests | 2,186 passing, 0 warnings |
-| Arquitectura | 200+ archivos modulares entre parsers, handlers e integraciones — [detalles](AGENTS.md) |
+## Desde código fuente
 
-## Para desarrolladores
-
-Esta sección es para quienes quieren contribuir o hackear trs localmente.
-Si solo vas a usarlo, cualquier método de instalación de arriba es suficiente.
-Flujo de checkout y dev-loop:
+Prefiere las rutas de instalación prebuilt de arriba a menos que estés contribuyendo. Para un checkout desde fuente:
 
 ```bash
 git clone https://github.com/dPeluChe/trs.git
@@ -320,16 +237,24 @@ cd trs
 # Build + install en ~/.cargo/bin/
 cargo install --path .
 
-# Dev loop
-cargo test                     # 2,186 tests en 71 suites
-cargo clippy -- -D warnings    # sin warnings
-cargo fmt -- --check           # formato alineado
+# Loop de desarrollo
+cargo test
+cargo clippy -- -D warnings
+cargo fmt -- --check
 cargo run -- git status        # corre localmente contra el workspace
 ```
 
-Ver [CONTRIBUTING.md](CONTRIBUTING.md) para guías de código,
-[AGENTS.md](AGENTS.md) para la arquitectura, y
-[docs/TASK_TODO.md](docs/TASK_TODO.md) para el roadmap.
+## For contributors
+
+Mantenemos la referencia de contribución en inglés — los términos técnicos (wire formats, benchmarks, PR checklist, etc.) no tienen equivalente limpio en español.
+
+| Link | Topic |
+|---|---|
+| **[Contributing guide →](CONTRIBUTING.md)** | Code style, review process, PR checklist |
+| **[Architecture overview →](AGENTS.md)** | File map and module responsibilities |
+| **[Development internals →](docs/development/)** | Agent wire formats, benchmarks, safety guarantees |
+| **[Roadmap →](docs/roadmap/TASK_TODO.md)** | Active items and planned work |
+| **[Codebase digest →](docs/development/codebase-digest.md)** | Auto-generated project map for agents |
 
 ## Licencia
 

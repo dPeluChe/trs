@@ -69,7 +69,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] Ping handler — shipped in v0.5.7
 - [x] Swift / xcodebuild routing — shipped in v0.5.7
 - [x] **Collision check in `trs init`** — shipped in v0.5.7. Detects
-      competing compressor hooks (rtk / token-optimizer) in JSON hook
+      competing hooks from other token-compression tools in JSON hook
       files AND rules files (with `@import` following for Claude /
       Gemini). Scans home + project symmetrically. `--replace` scrubs
       competitor hook entries, `--force` installs alongside, default
@@ -123,7 +123,7 @@ Status of each candidate after v0.5.7:
 ## Phase 3 — Agent integration follow-ups
 
 Context: v0.5.6 fixed all 9 supported agents end-to-end. See
-[`docs/agent-integrations.md`](./agent-integrations.md) for the full
+[`docs/development/agent-integrations.md`](../development/agent-integrations.md) for the full
 per-agent reference. Outstanding items:
 
 - [ ] **First-byte dispatch for SKIP_PREFIXES** (`src/rewrite.rs`). Current
@@ -213,6 +213,32 @@ dynamic-rules feature (e.g. per-session rule swapping, A/B testing):
       auto-loads every file in that directory. Confirm whether Cursor
       also exposes a programmatic API (would allow feature detection
       before install instead of blind write).
+
+---
+
+## Documentation drift (carry-over from v0.5.9 restructure)
+
+- [ ] **Designate a source of truth for the agents matrix.** Today the
+      same table lives in `README.md`, `README.es.md`,
+      `docs/index.html`, and `docs/support/agents.md`. Without a
+      canonical source, adding a tenth agent requires editing all four
+      and they'll drift silently when someone forgets one. Proposed
+      solution (lightest-touch first):
+      1. Add an HTML comment above each inline table pointing at
+         `docs/support/agents.md` as the source of truth.
+      2. Call it out in `CONTRIBUTING.md` under a "When adding an
+         agent" checklist.
+      3. (Optional, later) A small script that diffs the 4 tables
+         and fails CI if they disagree.
+- [ ] Same drift risk applies to: supported-commands table (README,
+      README.es, landing, `docs/support/commands.md`), built-in tools
+      list (README, README.es, `docs/support/commands.md`), and the
+      "8 of 9 agents supported (Antigravity is…)" claim (README,
+      landing, `docs/features/output-saver.md`, `docs/support/agents.md`).
+- [ ] Decide whether `docs/development/codebase-digest.md` should stay
+      committed or move to a release artifact. `scripts/sync-codebase-digest.sh`
+      is a workaround; the real choice is "live file in git that drifts"
+      vs. "CI-generated artifact per release that doesn't clutter diffs".
 
 ---
 
