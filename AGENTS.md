@@ -10,12 +10,17 @@ Reduces token consumption by 68-99% for developers, AI agents, and automation pi
 [`docs/development/codebase-digest.md`](./docs/development/codebase-digest.md)
 is a snapshot of the entire trs codebase produced by `trs ingest`.
 Drop it into any agent's context for an instant map of the project
-without having to run `trs ingest` yourself. Refreshed on each
-release — regenerate locally with:
+without having to run `trs ingest` yourself.
+
+The digest can drift from HEAD between releases. Regenerate before
+tagging a release, or whenever `src/` has moved meaningfully:
 
 ```bash
-trs ingest --budget 128k -o docs/development/codebase-digest.md
+./scripts/sync-codebase-digest.sh
 ```
+
+The script uses `trs` from `PATH` and falls back to
+`./target/release/trs` if one isn't installed.
 
 ## Related commands worth knowing
 
