@@ -58,6 +58,7 @@ pub use commands::{Commands, ParseCommands, TestRunner};
 use classifier::preprocess_tail_args;
 use classifier_exec::execute_and_parse;
 mod fast_find;
+mod read_intercept;
 use router::{CommandContext, Router};
 
 fn main() {
@@ -89,6 +90,17 @@ fn main() {
                     .map(|a| a.as_str())
                     .collect();
                 fast_find::run(&find_args, &ctx);
+                return;
+            }
+            // File-read intercepts: cat/head/sed -n X,Yp apply filter_minimal
+            // instead of spawning a subprocess and getting 0% compression.
+            if cmd == "cat" && read_intercept::try_cat(rest, &ctx) {
+                return;
+            }
+            if cmd == "head" && read_intercept::try_head(rest, &ctx) {
+                return;
+            }
+            if cmd == "sed" && read_intercept::try_sed(rest, &ctx) {
                 return;
             }
             execute_and_parse(cmd, rest, &ctx);
