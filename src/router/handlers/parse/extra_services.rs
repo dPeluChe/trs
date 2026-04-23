@@ -314,8 +314,7 @@ impl ParseHandler {
         let input = Self::read_input(file)?;
         let input_bytes = input.len();
 
-        let mut fields: std::collections::HashMap<&str, String> =
-            std::collections::HashMap::new();
+        let mut fields: std::collections::HashMap<&str, String> = std::collections::HashMap::new();
         let mut body_lines: Vec<String> = Vec::new();
         let mut in_body = false;
 
@@ -332,13 +331,27 @@ impl ParseHandler {
                 let k = key.trim().to_lowercase();
                 let v = val.trim().to_string();
                 match k.as_str() {
-                    "title" => { fields.insert("title", v); }
-                    "state" => { fields.insert("state", v); }
-                    "author" => { fields.insert("author", v); }
-                    "url" => { fields.insert("url", v); }
-                    "labels" if !v.is_empty() => { fields.insert("labels", v); }
-                    "number" => { fields.insert("number", v); }
-                    "body" => { in_body = true; }
+                    "title" => {
+                        fields.insert("title", v);
+                    }
+                    "state" => {
+                        fields.insert("state", v);
+                    }
+                    "author" => {
+                        fields.insert("author", v);
+                    }
+                    "url" => {
+                        fields.insert("url", v);
+                    }
+                    "labels" if !v.is_empty() => {
+                        fields.insert("labels", v);
+                    }
+                    "number" => {
+                        fields.insert("number", v);
+                    }
+                    "body" => {
+                        in_body = true;
+                    }
                     _ => {}
                 }
             }

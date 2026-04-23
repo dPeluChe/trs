@@ -4,8 +4,8 @@
 //! subprocess spawn applies filter_minimal for 30–50% token reduction on
 //! code files vs the 0% from plain passthrough.
 
-use crate::router::CommandContext;
 use crate::router::handlers::read::{detect_language, filter_minimal, Language};
+use crate::router::CommandContext;
 use std::path::Path;
 use std::time::Instant;
 
@@ -238,7 +238,11 @@ fn filtered_or_raw(filtered: String, raw: String, lang: Language) -> String {
     if lang == Language::Data {
         return raw;
     }
-    if filtered.trim().is_empty() { raw } else { filtered }
+    if filtered.trim().is_empty() {
+        raw
+    } else {
+        filtered
+    }
 }
 
 /// Parse "X,Yp" → (X, Y).
