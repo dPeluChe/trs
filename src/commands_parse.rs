@@ -332,14 +332,23 @@ impl ParseCommands {
     /// Return a copy of this variant with `file` set to `path`.
     pub(crate) fn with_file(self, path: PathBuf) -> Self {
         match self {
-            Self::GitStatus { count, .. } => Self::GitStatus { file: Some(path), count },
+            Self::GitStatus { count, .. } => Self::GitStatus {
+                file: Some(path),
+                count,
+            },
             Self::GitDiff { .. } => Self::GitDiff { file: Some(path) },
-            Self::GitLog { truncate, .. } => Self::GitLog { file: Some(path), truncate },
+            Self::GitLog { truncate, .. } => Self::GitLog {
+                file: Some(path),
+                truncate,
+            },
             Self::GitBranch { .. } => Self::GitBranch { file: Some(path) },
             Self::Ls { .. } => Self::Ls { file: Some(path) },
             Self::Grep { .. } => Self::Grep { file: Some(path) },
             Self::Find { .. } => Self::Find { file: Some(path) },
-            Self::Test { runner, .. } => Self::Test { runner, file: Some(path) },
+            Self::Test { runner, .. } => Self::Test {
+                runner,
+                file: Some(path),
+            },
             Self::Logs { .. } => Self::Logs { file: Some(path) },
             Self::Tree { .. } => Self::Tree { file: Some(path) },
             Self::DockerPs { .. } => Self::DockerPs { file: Some(path) },

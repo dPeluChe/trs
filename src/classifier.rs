@@ -265,7 +265,9 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "dlx" | "exec" => {
                 let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
                 match inner {
-                    "tsc" | "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
+                    "tsc" | "eslint" | "biome" | "prettier" => {
+                        Some(ParseCommands::Lint { file: None })
+                    }
                     "jest" => Some(ParseCommands::Test {
                         runner: Some(TestRunner::Jest),
                         file: None,
@@ -468,4 +470,3 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         _ => None,
     }
 }
-
