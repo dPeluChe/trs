@@ -27,7 +27,8 @@ pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
         ("cargo", "build" | "check") => 0.10,
         ("cargo", "test") => 0.05,
         ("go", "test") => 0.08,
-        ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
+        ("make" | "gcc" | "g++", _) => 0.15,
+        ("tsc", _) => 0.15,
         ("pytest" | "jest" | "vitest", _) => 0.10,
         ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
         ("wc", _) => 0.50,
@@ -264,8 +265,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "dlx" | "exec" => {
                 let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
                 match inner {
-                    "tsc" => Some(ParseCommands::Build { file: None }),
-                    "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
+                    "tsc" | "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
                     "jest" => Some(ParseCommands::Test {
                         runner: Some(TestRunner::Jest),
                         file: None,
@@ -342,7 +342,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             _ => None,
         },
         "make" | "cmake" => Some(ParseCommands::Build { file: None }),
-        "tsc" | "gcc" | "g++" | "clang" | "javac" => Some(ParseCommands::Build { file: None }),
+        "tsc" => Some(ParseCommands::Lint { file: None }),
+        "gcc" | "g++" | "clang" | "javac" => Some(ParseCommands::Build { file: None }),
         "go" => match subcmd {
             "build" => Some(ParseCommands::Build { file: None }),
             "test" => Some(ParseCommands::GoTest { file: None }),
@@ -455,8 +456,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 runner: Some(TestRunner::Vitest),
                 file: None,
             }),
-            "tsc" => Some(ParseCommands::Build { file: None }),
-            "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
+            "tsc" | "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
             _ => None,
         },
 

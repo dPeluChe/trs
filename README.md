@@ -135,7 +135,7 @@ git status | trs parse git-status  # pipe syntax too
 | Python | `pytest`, `pip`, `uv`, `python3 -m <mod>` routing |
 | Go | `go` (test, build, mod) |
 | Tests | `pytest`, `jest`, `vitest` (full runner parsing) |
-| Linters | `eslint`, `biome`, `ruff`, `pylint`, `golangci-lint`, `cargo clippy` |
+| Linters | `eslint`, `biome`, `ruff`, `pylint`, `golangci-lint`, `cargo clippy`, `tsc` |
 | Files | `ls` (+ `eza`, `lsd`, `exa`), `find` (+ `fd`), `grep` (+ `rg`, `ag`, `ack`), `tree`, `tail`, `cat`, `head`, `sed -n X,Yp` |
 | Containers | `docker` (ps, logs, build) |
 | GitHub | `gh` (pr list, pr view, issue list, run list + `gh api`) |

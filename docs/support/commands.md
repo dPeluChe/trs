@@ -28,6 +28,8 @@ protect pre-commit hooks from AI agents that default to bypassing
 them. `git status --porcelain` passes through untouched.
 `git show` and `git stash show -p` are routed to the diff parser
 (~90% reduction on commits with modifications).
+`git push / pull / fetch` strips `remote:` progress lines (Counting,
+Compressing, Total) — ~85% reduction vs ~35% without this filter.
 
 ### Build — Rust
 
@@ -79,11 +81,15 @@ cargo.
 | Command | What gets parsed |
 |---|---|
 | `cargo clippy` | grouped by file + rule |
-| `eslint` | issues grouped |
-| `biome` | issues grouped |
-| `ruff` | issues grouped |
-| `pylint` | issues grouped |
-| `golangci-lint` | issues grouped |
+| `eslint` | issues grouped by file |
+| `biome` | issues grouped by file |
+| `ruff` | issues grouped by file |
+| `pylint` | issues grouped by file |
+| `golangci-lint` | issues grouped by file |
+| `tsc` | `file(line,col): error TS6133: …` — grouped by file, ~80% reduction |
+
+`tsc` is also reached via `npx tsc`, `pnpm dlx tsc`, and `uv run tsc`.
+Dispatched the same as any other linter (compact by default, `--json` for structured output).
 
 ### Files & search
 

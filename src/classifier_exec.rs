@@ -100,6 +100,25 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         // Estimate output size based on benchmarked reduction ratios per command
         let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
         let ratio = keep_ratio(cmd, subcmd);
+
+        // Ratio gate: if parser is estimated to save < 10%, skip it and use generic
+        // compression instead (avoids CPU cost for negligible gain).
+        if ratio > 0.90 {
+            let compressed = generic_compress(stdout_ref);
+            print!("{}", compressed);
+            out_bytes = compressed.len();
+            let duration_ms = start.elapsed().as_millis() as u64;
+            let fcmd = full_cmd(cmd, args);
+            crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
+            if !output.status.success() {
+                if let Some(tee_path) = save_tee_output(&fcmd, &stdout, &stderr) {
+                    eprintln!("[full output: {}]", tee_path);
+                }
+                std::process::exit(output.status.code().unwrap_or(1));
+            }
+            return;
+        }
+
         out_bytes = (in_bytes as f64 * ratio).max(1.0) as usize;
 
         // Tier 1: Try parser
