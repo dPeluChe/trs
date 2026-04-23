@@ -274,8 +274,25 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
                      (or cargo install trs-cli, or curl-sh script — see README)"
                 );
             }
+            // For Imported agents (Claude, Gemini): also write trs.md so the
+            // agent config gets both the hook and the output-saver/input-rewrite rules.
+            install_trs_md_for(tool);
         }
         Err(e) => eprintln!("Failed to install hook for {}: {}", tool.name(), e),
+    }
+}
+
+/// Write `trs.md` (output-saver + input-rewrite rules) for agents that load
+/// it via an `@import` line (Claude Code, Gemini CLI). No-op for other agents.
+fn install_trs_md_for(tool: &AiTool) {
+    let agent_id = match tool {
+        AiTool::Claude => "claude",
+        AiTool::Gemini => "gemini",
+        _ => return,
+    };
+    match crate::output_saver::install_agent(agent_id) {
+        Ok(msg) => println!("  trs.md: {}", msg),
+        Err(e) => eprintln!("  note: trs.md install failed: {}", e),
     }
 }
 
@@ -291,6 +308,8 @@ pub(crate) fn install_all(opts: InstallOpts) {
         if check_tool(tool) {
             println!("  + {} (already configured)", tool.name());
             skipped += 1;
+            // Ensure trs.md is present even when hooks are already wired up.
+            install_trs_md_for(tool);
         } else if !tool.detect_installed() {
             println!("  - {} (not detected on system, skipping)", tool.name());
             undetected += 1;
