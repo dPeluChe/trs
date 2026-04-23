@@ -132,6 +132,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::GhPr { file } => Self::handle_gh_pr(file, ctx),
             ParseCommands::GhIssue { file } => Self::handle_gh_issue(file, ctx),
             ParseCommands::GhRun { file } => Self::handle_gh_run(file, ctx),
+            ParseCommands::GhPrView { file } => Self::handle_gh_pr_view(file, ctx),
             ParseCommands::CargoTest { file } => Self::handle_cargo_test(file, ctx),
             ParseCommands::GoTest { file } => Self::handle_go_test(file, ctx),
             ParseCommands::Lint { file } => Self::handle_lint(file, ctx),

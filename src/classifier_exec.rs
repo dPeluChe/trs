@@ -3,7 +3,7 @@
 //! Handles the execute -> parse -> format pipeline for external commands
 //! and saves full output on failure for recovery.
 
-use crate::classifier::{classify_command, full_cmd, inject_file_path, keep_ratio};
+use crate::classifier::{classify_command, full_cmd, keep_ratio};
 use crate::router::{CommandContext, Router};
 use crate::Commands;
 
@@ -107,7 +107,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let tmpdir = std::env::temp_dir();
         let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
         let parse_ok = if std::fs::write(&tmpfile, stdout_ref.as_bytes()).is_ok() {
-            let parser_with_file = inject_file_path(parser, tmpfile.clone());
+            let parser_with_file = parser.with_file(tmpfile.clone());
             let parse_cmd = Commands::Parse {
                 parser: parser_with_file,
             };
