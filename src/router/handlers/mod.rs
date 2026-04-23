@@ -1,3 +1,4 @@
+pub mod ansi;
 pub mod clean;
 pub mod common;
 pub mod err;

@@ -13,7 +13,7 @@ struct LintIssue {
     message: String,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum LintLevel {
     Error,
     Warning,
@@ -159,6 +159,17 @@ fn parse_lint_issues(input: &str) -> Vec<LintIssue> {
             }
         }
 
+        // tsc format: "file.tsx(line,col): error TS6133: message"
+        if (line.contains(".tsx(") || line.contains(".ts(") || line.contains(".js("))
+            && line.contains("): ")
+        {
+            if let Some(issue) = parse_tsc_format(line) {
+                issues.push(issue);
+                i += 1;
+                continue;
+            }
+        }
+
         // ruff/pylint format: "file.py:line:col: RULE message"
         if line.contains(".py:")
             || line.contains(".ts:")
@@ -200,6 +211,54 @@ fn extract_clippy_rule(lines: &[&str], start: usize) -> String {
         }
     }
     String::new()
+}
+
+/// Parse TypeScript compiler format: "file.tsx(line,col): error TS6133: message".
+fn parse_tsc_format(line: &str) -> Option<LintIssue> {
+    // Split at the first `(` to get file and the rest
+    let paren_pos = line.find('(')?;
+    let file = line[..paren_pos].trim().to_string();
+
+    // Rest is "(line,col): error TS6133: message"
+    let rest = &line[paren_pos + 1..];
+    let close = rest.find(')')?;
+    let loc = &rest[..close];
+    let (ln_str, col_str) = loc.split_once(',')?;
+    let ln: usize = ln_str.trim().parse().ok()?;
+    let col: usize = col_str.trim().parse().ok()?;
+
+    // After "): " comes "error TS6133: message" or "warning TS1234: message"
+    let after_paren = rest[close + 1..].trim_start_matches(": ").trim();
+    let (level, after_level) = if after_paren.starts_with("error ") {
+        (LintLevel::Error, &after_paren["error ".len()..])
+    } else if after_paren.starts_with("warning ") {
+        (LintLevel::Warning, &after_paren["warning ".len()..])
+    } else {
+        return None;
+    };
+
+    // "TS6133: message" — extract code and message
+    let (rule, message) = if let Some(colon_pos) = after_level.find(": ") {
+        (
+            after_level[..colon_pos].to_string(),
+            after_level[colon_pos + 2..].to_string(),
+        )
+    } else {
+        (String::new(), after_level.to_string())
+    };
+
+    if ln == 0 {
+        return None;
+    }
+
+    Some(LintIssue {
+        file,
+        line: ln,
+        col,
+        level,
+        rule,
+        message,
+    })
 }
 
 /// Parse "file:line:col: RULE message" format (ruff, pylint, golangci-lint).
@@ -426,6 +485,39 @@ warning: `trs-cli` (bin "trs") generated 2 warnings
         assert!(output.contains("src/b.rs (1):"));
         assert!(output.contains("E E001 10:5"));
         assert!(output.contains("W W001 20:1"));
+    }
+
+    #[test]
+    fn test_parse_tsc_format() {
+        let input = "src/components/EmailList.tsx(1,8): error TS6133: 'React' is declared but its value is never read.\n\
+src/components/EmailList.tsx(1,38): error TS6133: 'useCallback' is declared but its value is never read.\n\
+src/components/EmailListParts.tsx(89,24): error TS2304: Cannot find name 'useCallback'.\n\
+src/components/EmailListParts.tsx(7,1): warning TS6133: 'Tooltip' is declared but its value is never read.\n\
+Found 3 errors in 2 files.\n";
+        let issues = parse_lint_issues(input);
+        assert_eq!(issues.len(), 4, "expected 4 issues, got {}", issues.len());
+        assert_eq!(issues[0].file, "src/components/EmailList.tsx");
+        assert_eq!(issues[0].line, 1);
+        assert_eq!(issues[0].col, 8);
+        assert_eq!(issues[0].rule, "TS6133");
+        assert_eq!(issues[0].level, LintLevel::Error);
+        assert_eq!(issues[2].file, "src/components/EmailListParts.tsx");
+        assert_eq!(issues[2].rule, "TS2304");
+        assert_eq!(issues[3].level, LintLevel::Warning);
+    }
+
+    #[test]
+    fn test_tsc_compact_output() {
+        let input = "src/components/Foo.tsx(1,8): error TS6133: 'React' is declared but its value is never read.\n\
+src/components/Foo.tsx(2,1): error TS6133: 'useEffect' is declared but its value is never read.\n\
+src/components/Bar.tsx(5,3): warning TS6133: 'X' is declared but its value is never read.\n";
+        let issues = parse_lint_issues(input);
+        let output = format_lint_compact(&issues, 2, 1);
+        assert!(output.contains("lint: 3 (2 errors, 1 warnings) in 2 files"));
+        assert!(output.contains("src/components/Foo.tsx (2):"));
+        assert!(output.contains("src/components/Bar.tsx (1):"));
+        assert!(output.contains("E TS6133"));
+        assert!(output.contains("W TS6133"));
     }
 
     #[test]

@@ -304,4 +304,90 @@ impl ParseHandler {
         }
         Ok(())
     }
+
+    /// Parse `gh pr view N` output.
+    /// Keeps title, state, author, url, labels, and first 3 lines of body.
+    pub(crate) fn handle_gh_pr_view(
+        file: &Option<std::path::PathBuf>,
+        ctx: &CommandContext,
+    ) -> CommandResult {
+        let input = Self::read_input(file)?;
+        let input_bytes = input.len();
+
+        let mut fields: std::collections::HashMap<&str, String> =
+            std::collections::HashMap::new();
+        let mut body_lines: Vec<String> = Vec::new();
+        let mut in_body = false;
+
+        for line in input.lines() {
+            if in_body {
+                let trimmed = line.trim();
+                if !trimmed.is_empty() && body_lines.len() < 3 {
+                    body_lines.push(trimmed.to_string());
+                }
+                continue;
+            }
+            // Key:  value lines
+            if let Some((key, val)) = line.split_once(':') {
+                let k = key.trim().to_lowercase();
+                let v = val.trim().to_string();
+                match k.as_str() {
+                    "title" => { fields.insert("title", v); }
+                    "state" => { fields.insert("state", v); }
+                    "author" => { fields.insert("author", v); }
+                    "url" => { fields.insert("url", v); }
+                    "labels" if !v.is_empty() => { fields.insert("labels", v); }
+                    "number" => { fields.insert("number", v); }
+                    "body" => { in_body = true; }
+                    _ => {}
+                }
+            }
+        }
+
+        let output = match ctx.format {
+            OutputFormat::Json => {
+                let mut obj = serde_json::Map::new();
+                for (k, v) in &fields {
+                    obj.insert(k.to_string(), serde_json::Value::String(v.clone()));
+                }
+                if !body_lines.is_empty() {
+                    obj.insert(
+                        "body_preview".to_string(),
+                        serde_json::Value::String(body_lines.join(" ")),
+                    );
+                }
+                serde_json::Value::Object(obj).to_string()
+            }
+            _ => {
+                let title = fields.get("title").map(|s| s.as_str()).unwrap_or("?");
+                let state = fields.get("state").map(|s| s.as_str()).unwrap_or("?");
+                let author = fields.get("author").map(|s| s.as_str()).unwrap_or("?");
+                let number = fields.get("number").map(|s| s.as_str()).unwrap_or("");
+                let url = fields.get("url").map(|s| s.as_str()).unwrap_or("");
+                let labels = fields.get("labels").map(|s| s.as_str()).unwrap_or("");
+
+                let mut out = format!("PR #{}: {} [{}] by {}\n", number, title, state, author);
+                if !labels.is_empty() {
+                    out.push_str(&format!("labels: {}\n", labels));
+                }
+                if !url.is_empty() {
+                    out.push_str(&format!("url: {}\n", url));
+                }
+                if !body_lines.is_empty() {
+                    out.push_str(&format!("body: {}\n", body_lines.join(" | ")));
+                }
+                out
+            }
+        };
+
+        print!("{}", output);
+        if ctx.stats {
+            CommandStats::new()
+                .with_reducer("gh-pr-view")
+                .with_input_bytes(input_bytes)
+                .with_output_bytes(output.len())
+                .print();
+        }
+        Ok(())
+    }
 }

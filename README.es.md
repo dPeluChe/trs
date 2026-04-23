@@ -129,16 +129,16 @@ git status | trs parse git-status  # también soporta pipe
 
 | Categoría | Herramientas con parser dedicado |
 |---|---|
-| VCS | `git` (status, diff, log, branch, push, pull, fetch) |
+| VCS | `git` (status, diff, log, branch, push, pull, fetch, show, stash) |
 | Rust | `cargo` (build, check, test, clippy, fmt, install) |
 | JS/TS | `npm`, `pnpm`, `yarn`, `bun`, `npx`, `pnpm dlx` |
 | Python | `pytest`, `pip`, `uv`, dispatch de `python3 -m <mod>` |
 | Go | `go` (test, build, mod) |
 | Tests | `pytest`, `jest`, `vitest` (parseo completo del runner) |
-| Linters | `eslint`, `biome`, `ruff`, `pylint`, `golangci-lint`, `cargo clippy` |
-| Archivos | `ls` (+ `eza`, `lsd`, `exa`), `find` (+ `fd`), `grep` (+ `rg`, `ag`, `ack`), `tree`, `tail` |
+| Linters | `eslint`, `biome`, `ruff`, `pylint`, `golangci-lint`, `cargo clippy`, `tsc` |
+| Archivos | `ls` (+ `eza`, `lsd`, `exa`), `find` (+ `fd`), `grep` (+ `rg`, `ag`, `ack`), `tree`, `tail`, `cat`, `head`, `sed -n X,Yp` |
 | Containers | `docker` (ps, logs, build) |
-| GitHub | `gh` (pr/issue/run list + `gh api`) |
+| GitHub | `gh` (pr list, pr view, issue list, run list + `gh api`) |
 | Sistema | `ps`, `env`, `wc`, `brew`, `curl`, `wget` |
 
 También incluye **chain-aware rewrite** (`cd X && cargo test`), **preservación de env-prefix** (`RUSTFLAGS=x cargo build`), **sintaxis de pipe** (`cmd | trs parse …`) y `TRS_SKIP=1` para omitir el wrapping.

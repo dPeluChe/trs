@@ -4,7 +4,6 @@
 //! the execute → parse → format pipeline.
 
 use crate::{ParseCommands, TestRunner};
-use std::path::PathBuf;
 
 /// Benchmarked keep-ratio for estimating compressed output size per command.
 /// Returns the fraction of input that typically remains after trs compression.
@@ -14,6 +13,7 @@ pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
         ("git", "diff") => 0.10,
         ("git", "log") => 0.10,
         ("git", "branch") => 0.11,
+        ("git", "show" | "stash") => 0.10,
         ("ls" | "lsd" | "exa" | "eza", _) => 0.18,
         ("tree", _) => 0.30,
         ("find" | "fd", _) => 0.52,
@@ -27,7 +27,8 @@ pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
         ("cargo", "build" | "check") => 0.10,
         ("cargo", "test") => 0.05,
         ("go", "test") => 0.08,
-        ("make" | "tsc" | "gcc" | "g++", _) => 0.15,
+        ("make" | "gcc" | "g++", _) => 0.15,
+        ("tsc", _) => 0.15,
         ("pytest" | "jest" | "vitest", _) => 0.10,
         ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
         ("wc", _) => 0.50,
@@ -187,6 +188,20 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 truncate: None,
             }),
             "branch" => Some(ParseCommands::GitBranch { file: None }),
+            // git show → commit header + diff; diff parser handles both
+            "show" => Some(ParseCommands::GitDiff { file: None }),
+            // git stash show -p → standard diff output
+            // git stash pop/apply → diff + status after applying
+            "stash" => {
+                let stash_sub = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+                match stash_sub {
+                    "show" if args_ref.iter().any(|a| a == "-p" || a == "--patch") => {
+                        Some(ParseCommands::GitDiff { file: None })
+                    }
+                    "pop" | "apply" => Some(ParseCommands::GitDiff { file: None }),
+                    _ => None,
+                }
+            }
             _ => None,
         },
 
@@ -250,8 +265,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "dlx" | "exec" => {
                 let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
                 match inner {
-                    "tsc" => Some(ParseCommands::Build { file: None }),
-                    "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
+                    "tsc" | "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
                     "jest" => Some(ParseCommands::Test {
                         runner: Some(TestRunner::Jest),
                         file: None,
@@ -328,7 +342,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             _ => None,
         },
         "make" | "cmake" => Some(ParseCommands::Build { file: None }),
-        "tsc" | "gcc" | "g++" | "clang" | "javac" => Some(ParseCommands::Build { file: None }),
+        "tsc" => Some(ParseCommands::Lint { file: None }),
+        "gcc" | "g++" | "clang" | "javac" => Some(ParseCommands::Build { file: None }),
         "go" => match subcmd {
             "build" => Some(ParseCommands::Build { file: None }),
             "test" => Some(ParseCommands::GoTest { file: None }),
@@ -394,9 +409,11 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
 
         // GitHub CLI
         "gh" => match subcmd {
-            "pr" if args.get(1).map(|s| s.as_str()) == Some("list") => {
-                Some(ParseCommands::GhPr { file: None })
-            }
+            "pr" => match args.get(1).map(|s| s.as_str()) {
+                Some("list") => Some(ParseCommands::GhPr { file: None }),
+                Some("view") => Some(ParseCommands::GhPrView { file: None }),
+                _ => None,
+            },
             "issue" if args.get(1).map(|s| s.as_str()) == Some("list") => {
                 Some(ParseCommands::GhIssue { file: None })
             }
@@ -439,8 +456,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 runner: Some(TestRunner::Vitest),
                 file: None,
             }),
-            "tsc" => Some(ParseCommands::Build { file: None }),
-            "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
+            "tsc" | "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
             _ => None,
         },
 
@@ -453,49 +469,3 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
     }
 }
 
-/// Inject a file path into a ParseCommands variant.
-/// This replaces the `file: None` with `file: Some(path)` for all variants.
-pub(crate) fn inject_file_path(parser: ParseCommands, path: PathBuf) -> ParseCommands {
-    match parser {
-        ParseCommands::GitStatus { count, .. } => ParseCommands::GitStatus {
-            file: Some(path),
-            count,
-        },
-        ParseCommands::GitDiff { .. } => ParseCommands::GitDiff { file: Some(path) },
-        ParseCommands::GitLog { truncate, .. } => ParseCommands::GitLog {
-            file: Some(path),
-            truncate,
-        },
-        ParseCommands::GitBranch { .. } => ParseCommands::GitBranch { file: Some(path) },
-        ParseCommands::Ls { .. } => ParseCommands::Ls { file: Some(path) },
-        ParseCommands::Grep { .. } => ParseCommands::Grep { file: Some(path) },
-        ParseCommands::Find { .. } => ParseCommands::Find { file: Some(path) },
-        ParseCommands::Test { runner, .. } => ParseCommands::Test {
-            runner,
-            file: Some(path),
-        },
-        ParseCommands::Logs { .. } => ParseCommands::Logs { file: Some(path) },
-        ParseCommands::Tree { .. } => ParseCommands::Tree { file: Some(path) },
-        ParseCommands::DockerPs { .. } => ParseCommands::DockerPs { file: Some(path) },
-        ParseCommands::DockerLogs { .. } => ParseCommands::DockerLogs { file: Some(path) },
-        ParseCommands::Ping { .. } => ParseCommands::Ping { file: Some(path) },
-        ParseCommands::Brew { .. } => ParseCommands::Brew { file: Some(path) },
-        ParseCommands::PythonTraceback { .. } => {
-            ParseCommands::PythonTraceback { file: Some(path) }
-        }
-        ParseCommands::Ps { .. } => ParseCommands::Ps { file: Some(path) },
-        ParseCommands::Deps { .. } => ParseCommands::Deps { file: Some(path) },
-        ParseCommands::Install { .. } => ParseCommands::Install { file: Some(path) },
-        ParseCommands::Build { .. } => ParseCommands::Build { file: Some(path) },
-        ParseCommands::Env { .. } => ParseCommands::Env { file: Some(path) },
-        ParseCommands::Wc { .. } => ParseCommands::Wc { file: Some(path) },
-        ParseCommands::Download { .. } => ParseCommands::Download { file: Some(path) },
-        ParseCommands::GhPr { .. } => ParseCommands::GhPr { file: Some(path) },
-        ParseCommands::GhIssue { .. } => ParseCommands::GhIssue { file: Some(path) },
-        ParseCommands::GhRun { .. } => ParseCommands::GhRun { file: Some(path) },
-        ParseCommands::CargoTest { .. } => ParseCommands::CargoTest { file: Some(path) },
-        ParseCommands::GoTest { .. } => ParseCommands::GoTest { file: Some(path) },
-        ParseCommands::Lint { .. } => ParseCommands::Lint { file: Some(path) },
-        ParseCommands::Db { .. } => ParseCommands::Db { file: Some(path) },
-    }
-}

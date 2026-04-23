@@ -3,7 +3,7 @@
 //! Handles the execute -> parse -> format pipeline for external commands
 //! and saves full output on failure for recovery.
 
-use crate::classifier::{classify_command, full_cmd, inject_file_path, keep_ratio};
+use crate::classifier::{classify_command, full_cmd, keep_ratio};
 use crate::router::{CommandContext, Router};
 use crate::Commands;
 
@@ -100,6 +100,25 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         // Estimate output size based on benchmarked reduction ratios per command
         let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
         let ratio = keep_ratio(cmd, subcmd);
+
+        // Ratio gate: if parser is estimated to save < 10%, skip it and use generic
+        // compression instead (avoids CPU cost for negligible gain).
+        if ratio > 0.90 {
+            let compressed = generic_compress(stdout_ref);
+            print!("{}", compressed);
+            out_bytes = compressed.len();
+            let duration_ms = start.elapsed().as_millis() as u64;
+            let fcmd = full_cmd(cmd, args);
+            crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
+            if !output.status.success() {
+                if let Some(tee_path) = save_tee_output(&fcmd, &stdout, &stderr) {
+                    eprintln!("[full output: {}]", tee_path);
+                }
+                std::process::exit(output.status.code().unwrap_or(1));
+            }
+            return;
+        }
+
         out_bytes = (in_bytes as f64 * ratio).max(1.0) as usize;
 
         // Tier 1: Try parser
@@ -107,7 +126,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let tmpdir = std::env::temp_dir();
         let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
         let parse_ok = if std::fs::write(&tmpfile, stdout_ref.as_bytes()).is_ok() {
-            let parser_with_file = inject_file_path(parser, tmpfile.clone());
+            let parser_with_file = parser.with_file(tmpfile.clone());
             let parse_cmd = Commands::Parse {
                 parser: parser_with_file,
             };

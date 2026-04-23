@@ -44,6 +44,16 @@ pub(crate) fn compact_git_transfer(combined: &str, subcmd: &str) -> String {
         if line.contains("up-to-date") || line.contains("up to date") {
             return format!("{} (up to date)\n", verb);
         }
+        // remote: progress lines — keep only errors, drop counting/compressing/writing
+        if line.starts_with("remote:") {
+            let after = line["remote:".len()..].trim();
+            let is_error = after.starts_with("error:") || after.starts_with("fatal:");
+            if !is_error {
+                continue;
+            }
+            parts.push(line.to_string());
+            continue;
+        }
         // Ref range lines: "ae7dfe3..d6fd77d  main -> main"
         if line.contains("..") && line.contains("->") {
             parts.push(line.to_string());
@@ -130,5 +140,26 @@ mod tests {
     fn test_push_empty_output() {
         let result = compact_git_transfer("", "push");
         assert_eq!(result, "push (no output)\n");
+    }
+
+    #[test]
+    fn test_push_remote_progress_stripped() {
+        let input = "To https://github.com/user/repo.git\n\
+            remote: Enumerating objects: 5, done.\n\
+            remote: Counting objects: 100% (5/5), done.\n\
+            remote: Compressing objects: 100% (3/3), done.\n\
+            remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0\n\
+               ae7dfe3..d6fd77d  main -> main\n";
+        let result = compact_git_transfer(input, "push");
+        assert!(result.starts_with("pushed "));
+        assert!(!result.contains("remote:"));
+        assert!(result.contains("ae7dfe3..d6fd77d"));
+    }
+
+    #[test]
+    fn test_push_remote_error_preserved() {
+        let input = "To https://github.com/user/repo.git\nremote: error: refusing to update checked out branch\n";
+        let result = compact_git_transfer(input, "push");
+        assert!(result.contains("remote:"));
     }
 }

@@ -6,20 +6,15 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ## Phase 1 — Release & Distribution
 
-- [x] Create first GitHub Release — v0.1.0 shipped; at v0.5.7 now
+- [x] Create first GitHub Release — v0.1.0 shipped
 - [x] npm publish (`@dpeluche/trs`)
+- [x] Rewrite hook: detect `cd X && git Y` chains — done in v0.5.5
+- [x] Pipe/redirect first-segment rewrite — shipped in v0.5.6
 - [ ] Homebrew tap (low priority — npm + curl|sh covers 99% of users)
 - [ ] Publish to crates.io (`cargo install trs-cli` — currently source-only)
 - [ ] Shell completions (bash, zsh, fish)
-- [ ] Copilot hook — see Phase 3 "VSCode ecosystem" for the full research scope
-- [x] ~~Detect pipe context — skip rewriting find/fd when piped~~ —
-      replaced in v0.5.6: rewrite the producer segment and pass the pipe
-      through unchanged. `git status | head -3` now becomes
-      `trs git status | head -3` instead of being skipped entirely.
-- [x] Rewrite hook: detect `cd X && git Y` chains — done in v0.5.5
-      (chain-aware per-segment rewrite)
-- [ ] `trs self-update` command — re-download latest binary from GitHub
-      Releases to avoid re-running `curl | sh`. ~30 LOC.
+- [ ] Copilot hook — see Phase 3 "VSCode ecosystem"
+- [ ] `trs self-update` command — re-download latest binary from GitHub Releases
 
 ---
 
@@ -27,218 +22,72 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 - [ ] kubectl (pods, services, deployments, logs)
 - [ ] AWS CLI (s3 ls, ec2 describe-instances, cloudwatch)
-- [ ] gh pr view / gh issue view (detail view, not just list)
 - [ ] next build / prisma generate
 - [ ] playwright test (E2E summaries)
 - [ ] Gradle / Maven build output
+- [ ] `gh issue view` / `gh run view` — follow-on from gh pr view (v0.5.10)
 
 ### Improvements to existing parsers
+
 - [ ] Log timestamp normalization (first = t0, rest = relative delta)
 - [ ] `git diff` full (not just --stat) — reformat unified diff headers
-- [ ] **`git push` compression** — history audit (v0.5.8) shows only
-      34-41% reduction on typical `git push origin branch` output.
-      Most of the remaining text is the `remote:` progress lines —
-      easy to collapse or drop once the push succeeds.
-- [ ] **`find` with long paths** — audit shows ~48% reduction where
-      the first path arg eats the display width. Parser could
-      basename-collapse logged paths the way stats --history now
-      does (see `router/handlers/stats.rs::display_cmd`).
-- [ ] **`cargo fmt --check` diff output** — only 32% compression on
-      failures. The unified diff block has a lot of repeat whitespace
-      we could collapse.
-- [ ] **`gh pr view` / `gh issue view` / `gh run view`** — detail
-      views aren't handled today (only *list* variants). Real-usage
-      audit shows `gh` at 7.4% compression overall; these views
-      return mixed markdown + metadata that a custom parser could
-      reduce ~60%. Design decision needed: parse metadata into
-      structured fields + keep body prose, or go lighter.
-- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). The
-      Build handler catches errors/warnings but the rest of the
-      output — compile-command echoes, swift intermodule dependency
-      checks, "Write auxiliary file" blocks — still bulks up. Worth
-      a closer look at whether we can drop those line families
-      without hiding real failures.
-- [ ] **`awk` / `sed`** — 1.1MB and 79K of traffic respectively,
-      0-3% compression. Decision: these print arbitrary user data.
-      Compressing that data would risk corrupting what the agent
-      actually asked for. Leave as passthrough; document the
-      TRS_SKIP=1 bypass as the escape hatch.
-- [x] Pipe/redirect first-segment rewrite — shipped in v0.5.6
-- [x] Stats header UX overhaul — shipped in v0.5.7
-- [x] Brew install/upgrade handler — shipped in v0.5.7
-- [x] Ping handler — shipped in v0.5.7
-- [x] Swift / xcodebuild routing — shipped in v0.5.7
-- [x] **Collision check in `trs init`** — shipped in v0.5.7. Detects
-      competing hooks from other token-compression tools in JSON hook
-      files AND rules files (with `@import` following for Claude /
-      Gemini). Scans home + project symmetrically. `--replace` scrubs
-      competitor hook entries, `--force` installs alongside, default
-      aborts with explicit recommendation.
-- [x] **`trs output-saver`** — shipped in v0.5.7. Closes the output-side
-      gap: installs a compact anti-preamble / anti-narration /
-      result-first rules block into each agent's global config.
-      Check-first UX, sentinel-wrapped idempotent re-install,
-      `--remove` for clean uninstall. 8/9 agents covered
-      (Antigravity is per-project only by design).
+- [ ] **`find` with long paths** — audit shows ~48% reduction where the first path arg eats the display width. Parser could basename-collapse logged paths the way `stats --history` now does.
+- [ ] **`cargo fmt --check` diff output** — only 32% compression on failures. The unified diff block has a lot of repeat whitespace we could collapse.
+- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). Build handler catches errors/warnings but compile-command echoes, swift intermodule dependency checks, and "Write auxiliary file" blocks still bulk up the output.
+- [ ] **`awk` / `sed`** — 0-3% compression. Decision: these print arbitrary user data; compressing would risk corrupting what the agent asked for. Leave as passthrough; `TRS_SKIP=1` is the escape hatch.
 
 ---
 
-## Phase 2.5 — Ideas from competitor analysis (token-optimizer)
+## Phase 2.5 — Ideas from competitor analysis
 
-Researched https://github.com/alexgreensh/token-optimizer for ideas.
-Status of each candidate after v0.5.7:
+- [x] **Credential preservation scan** — shipped in v0.5.7
+- [x] **Multilingual error keywords** — shipped in v0.5.7 (10 locales)
+- [x] **Fail-open on errors** — shipped in v0.5.7
+- [x] **10% ratio gate** — shipped in v0.5.10
+- [x] **Lint rule grouping** — shipped in v0.5.8+, extended with `tsc` in v0.5.10
+- [ ] **Read caching** — if the agent reads the same file twice in a session, return the first-read cache. Saves real tokens on multi-turn sessions. Opt-in flag to start (`trs --cache-reads`).
+- [ ] **Docs auditor extensions**: recommend section-level split points; detect CLAUDE.md content duplicating README.md; SQL detection in language-less fences.
+- [ ] **SQLite metrics** (consider): replace JSONL tracker with SQLite WAL for trending queries.
 
-- [x] **Credential preservation scan** — shipped in v0.5.7.
-      `common::contains_credential` + new "preserved" bucket in
-      handle_build. Covers AWS/GitHub/Stripe/JWT/URL basic-auth/PEM.
-- [x] **Multilingual error keywords** — shipped in v0.5.7. 10 locales
-      (en/de/fr/es/pt/it/ru/zh-simp/zh-trad/ja/ko) in
-      `common::is_error_line` + `is_warning_line`.
-- [x] **Fail-open on errors** — shipped in v0.5.7.
-      `common::output_has_failure_signal` guards handle_build and
-      handle_brew (can extend to more handlers as feedback arrives).
-- [ ] **10% ratio gate**: if `compressed_bytes / input_bytes > 0.90`, skip
-      the compression and emit raw. Guards against handlers that succeed
-      but barely improve things. Apply once in `classifier_exec` after
-      the handler returns.
-- [ ] **Lint rule grouping**: for eslint/ruff/pylint/golangci-lint output,
-      group `file:line:col - rule (source)` entries by file and rule.
-      Reduces N file-repeated lines to "src/foo.rs (3): W unused_import
-      8:23, 12:5, 45:7".
-- [ ] **Read caching** (newly-identified from fleet-auditor deep-dive).
-      If the agent reads the same file twice in a session, return the
-      first-read cache instead of re-reading. Saves real tokens on
-      multi-turn sessions where the agent inspects the same file
-      repeatedly. Opt-in flag to start (`trs --cache-reads`).
-- [ ] **Docs auditor extensions** (from v0.5.7 dog-fooding):
-      - recommend section-level split points (largest H2/H3 by tokens)
-      - detect CLAUDE.md content that duplicates README.md
-      - SQL / query detection in language-less fences (pure text that
-        reads like SQL)
-- [ ] **SQLite metrics** (consider): token-optimizer uses a SQLite
-      `compression_events` table instead of JSONL. Enables trending
-      queries (`WHERE feature='git-status' AND quality_preserved=0`).
-      Medium effort, good-to-have.
+---
 
 ## Phase 3 — Agent integration follow-ups
 
-Context: v0.5.6 fixed all 9 supported agents end-to-end. See
-[`docs/development/agent-integrations.md`](../development/agent-integrations.md) for the full
-per-agent reference. Outstanding items:
+Context: v0.5.6 fixed all 9 supported agents end-to-end.
+See [`docs/development/agent-integrations.md`](../development/agent-integrations.md) for the per-agent reference.
 
-- [ ] **First-byte dispatch for SKIP_PREFIXES** (`src/rewrite.rs`). Current
-      linear scan of ~20 `starts_with` checks. A first-char dispatch table
-      would shave more than the `has_shell_op` byte-scan did on the
-      non-operator path. Hot path — measurable.
-- [ ] **Split `router/handlers/common.rs`** (671 LOC as of v0.5.8). Two
-      concerns tangled: ANSI stripping utilities (~50 LOC self-contained)
-      and CommandContext / CommandError / CommandStats types. Extract
-      ANSI to `router/handlers/util/ansi.rs`; keep the types in common.
-      Rest of the large-file audit: most >500 files
-      (audit_docs, output_saver, init, rewrite, help, ingest/*) are
-      cohesive single features — splitting would fragment them.
-      common.rs is the clean win.
-- [ ] **Watch `router/handlers/parse/extra_download.rs`** (463 LOC
-      after v0.5.8). Now mixes two concepts: the original HTTP
-      protocol tracer (`curl -v` / `curl -I`) and the new body-
-      content compressor (plain `curl URL`, `gh api`, base64 decode).
-      Not a hard violation yet, but a clean split would be
-      `extra_download.rs` (protocol) + `http_body.rs` (body /
-      JSON / base64). Revisit if the file crosses 500 or if body
-      logic grows (HTML compression, XML, etc.).
-- [ ] **Proactive `.zshenv` check in install.sh**. If `~/.local/bin` is in
-      the user's interactive PATH (installer's $PATH) but NOT referenced
-      in `~/.zshenv`, IDE subshells will still fail. Could detect and
-      warn, or offer to add the line.
-- [ ] **OpenCode TUI DrizzleError root cause**. Installing our plugin
-      crashed OpenCode's TUI on startup once with a SQLite WAL init
-      error. Couldn't reproduce on subsequent runs. If users report it,
-      the plugin file is the likely cause — delete to recover.
-- [ ] **`HookEvent::Unknown` variant**. Today unknown `hook_event_name`
-      values default to Claude format. Silent misroute if a 4th client
-      ever ships with its own envelope. Explicit `Unknown` variant logged
-      to stderr would make the failure obvious.
-- [ ] **Research: plain-text hook protocols**. Some clients may pipe the
-      command directly (no JSON envelope). `run_rewrite` already handles
-      this via the fallback plain-text path, but no real client uses it
-      yet. Worth confirming no agent silently supports it and we're not
-      emitting JSON into their stdin chain.
+- [x] **Split `router/handlers/common.rs`** — shipped in v0.5.10. Extracted ANSI/emoji/control-char utilities to `router/handlers/ansi.rs` (168 LOC). `common.rs` down to 466 LOC.
+- [ ] **First-byte dispatch for SKIP_PREFIXES** (`src/rewrite.rs`). Current linear scan of ~20 `starts_with` checks. A first-char dispatch table would shave more than the `has_shell_op` byte-scan did on the non-operator path. Hot path — measurable.
+- [ ] **Watch `router/handlers/parse/extra_download.rs`** (463 LOC). Mixes two concepts: HTTP protocol tracer (`curl -v` / `curl -I`) and body-content compressor. Not a hard violation yet, but a clean split would be `extra_download.rs` (protocol) + `http_body.rs` (body / JSON / base64). Revisit if file crosses 500 LOC.
+- [ ] **Proactive `.zshenv` check in install.sh**. If `~/.local/bin` is in the user's interactive PATH but NOT in `~/.zshenv`, IDE subshells will still fail.
+- [ ] **OpenCode TUI DrizzleError root cause**. Installing our plugin crashed OpenCode's TUI on startup once with a SQLite WAL init error. Couldn't reproduce. If users report it, the plugin file is the likely cause.
+- [ ] **`HookEvent::Unknown` variant**. Today unknown `hook_event_name` values default to Claude format. Silent misroute if a 4th client ships its own envelope.
+- [ ] **Research: plain-text hook protocols**. Some clients may pipe the command directly (no JSON envelope). `run_rewrite` handles this via fallback, but no real client uses it yet.
 
 ### VSCode ecosystem (vanilla, not the forks)
 
-Cursor and Windsurf are VSCode forks and already covered. Vanilla
-VSCode with its AI extensions is a real gap — it's the most installed
-editor on the planet and every major AI-coding integration ships there.
+- [ ] **GitHub Copilot / Copilot Chat (VSCode)** — check current public API for pre-execution hooks. Fallback: rules block in `.github/copilot-instructions.md`.
+- [ ] **Continue.dev** — has a plugin API (`config.ts`, `slashCommands`, `contextProviders`). Worth a focused research pass like we did for Kilo/OpenCode/Droid.
+- [ ] **Cody (Sourcegraph)** — VSCode extension with context-fetcher and custom commands. Check whether commands can prefix shell execution.
+- [ ] **Research pass**: decide whether VSCode-base agents warrant `trs init vscode-copilot` / `trs init continue` entries or a single `trs init vscode`.
 
-- [ ] **GitHub Copilot / Copilot Chat (VSCode)**. Copilot added Agent
-      Mode in late 2025. Check current public API for pre-execution
-      hooks: https://code.visualstudio.com/api/extension-guides/ai and
-      the copilot-chat extension's announced hook surface. If no hook,
-      the fallback is a rules block in `.github/copilot-instructions.md`
-      (project-local, no global equivalent we know of).
-- [ ] **Continue.dev**. Has a plugin API (`config.ts`, `slashCommands`,
-      `contextProviders`). Confirmed in earlier reading to expose
-      `streamChat` / `getContextItems` — potentially a prompt-level
-      integration. Worth a focused research pass like we did for
-      Kilo/OpenCode/Droid.
-- [ ] **Cody (Sourcegraph)**. VSCode extension with a context-fetcher
-      and custom commands. Check whether commands can prefix shell
-      execution or inject system prompts.
-- [ ] **Research pass**: decide whether VSCode-base agents warrant
-      `trs init vscode-copilot` / `trs init continue` entries or a
-      single `trs init vscode` that detects which extension is active.
+### Dynamic prompt injection (deferred)
 
-### Dynamic prompt injection (deferred from output-saver research)
-
-The output-saver file route covers the static case. Two agents expose
-prompt-layer hooks we chose not to use — still open for a future
-dynamic-rules feature (e.g. per-session rule swapping, A/B testing):
-
-- [ ] **Kilo — `experimental.chat.system.transform`**. Plugin hook that
-      mutates the assembled system prompt before the LLM call. The
-      `experimental.` prefix means API churn risk; not worth it for a
-      static block but useful for dynamic injection.
-- [ ] **Droid — `SessionStart` / `UserPromptSubmit`**. Per-session and
-      per-turn context injection points. Could power a future feature
-      where trs adds just-in-time rules (e.g. "this session is a
-      debugging session, prefer terse diffs").
+- [ ] **Kilo — `experimental.chat.system.transform`** — plugin hook that mutates the assembled system prompt. `experimental.` prefix means API churn risk; useful for dynamic injection in a future feature.
+- [ ] **Droid — `SessionStart` / `UserPromptSubmit`** — per-session and per-turn context injection points.
 
 ### Output-saver coverage gaps
 
-- [ ] **Windsurf Cascade plugin API research**. We write to
-      `~/.codeium/windsurf/memories/global_rules.md` which works, but
-      whether Cascade has a programmatic hook equivalent is unconfirmed.
-- [ ] **Cursor user-rules programmatic path**. Today we drop an `.mdc`
-      file into `~/.cursor/rules/`, which works because Cursor
-      auto-loads every file in that directory. Confirm whether Cursor
-      also exposes a programmatic API (would allow feature detection
-      before install instead of blind write).
+- [ ] **Windsurf Cascade plugin API research** — confirm whether Cascade has a programmatic hook equivalent.
+- [ ] **Cursor user-rules programmatic path** — confirm whether Cursor exposes a programmatic API beyond the `.mdc` file drop.
 
 ---
 
-## Documentation drift (carry-over from v0.5.9 restructure)
+## Documentation drift (carry-over from v0.5.9)
 
-- [ ] **Designate a source of truth for the agents matrix.** Today the
-      same table lives in `README.md`, `README.es.md`,
-      `docs/index.html`, and `docs/support/agents.md`. Without a
-      canonical source, adding a tenth agent requires editing all four
-      and they'll drift silently when someone forgets one. Proposed
-      solution (lightest-touch first):
-      1. Add an HTML comment above each inline table pointing at
-         `docs/support/agents.md` as the source of truth.
-      2. Call it out in `CONTRIBUTING.md` under a "When adding an
-         agent" checklist.
-      3. (Optional, later) A small script that diffs the 4 tables
-         and fails CI if they disagree.
-- [ ] Same drift risk applies to: supported-commands table (README,
-      README.es, landing, `docs/support/commands.md`), built-in tools
-      list (README, README.es, `docs/support/commands.md`), and the
-      "8 of 9 agents supported (Antigravity is…)" claim (README,
-      landing, `docs/features/output-saver.md`, `docs/support/agents.md`).
-- [ ] Decide whether `docs/development/codebase-digest.md` should stay
-      committed or move to a release artifact. `scripts/sync-codebase-digest.sh`
-      is a workaround; the real choice is "live file in git that drifts"
-      vs. "CI-generated artifact per release that doesn't clutter diffs".
+- [ ] **Designate a source of truth for the agents matrix.** Today the same table lives in `README.md`, `README.es.md`, `docs/index.html`, and `docs/support/agents.md`. Proposed fix: HTML comments pointing at `docs/support/agents.md` as canonical; checklist in `CONTRIBUTING.md`; optional CI diff check.
+- [ ] Same drift risk applies to: supported-commands table, built-in tools list, and "8 of 9 agents supported" claim.
+- [ ] Decide whether `docs/development/codebase-digest.md` should stay committed or move to a CI-generated release artifact.
 
 ---
 
@@ -258,3 +107,39 @@ dynamic-rules feature (e.g. per-session rule swapping, A/B testing):
 - [ ] Eject system (copy built-in filter to local for customization)
 - [ ] Embedded stdlib of filters (compiled into the binary)
 - [ ] SemanticDedup (shingle-based cross-block deduplication)
+
+---
+
+## Completed
+
+### v0.5.10
+
+- Fast-path intercepts for `cat`, `head`, `sed -n X,Yp` — `filter_minimal` applied before subprocess spawn (10–35% savings)
+- `git show`, `git stash show -p`, `stash pop`, `stash apply` — routed to GitDiff parser (~90% reduction)
+- `gh pr view` — new GhPrView parser: title, state, author, url, labels, 3-line body preview (~45% reduction)
+- `tsc` linter parser — `file(line,col): error TS6133: message` format, grouped by file (~80% reduction); dispatched via `npx tsc`, `pnpm dlx tsc`
+- `git push/pull/fetch` — `remote:` progress lines stripped on success (~85% vs previous 34–41%)
+- 10% ratio gate in `classifier_exec` — skips parser if `keep_ratio > 0.90`, falls through to generic compression
+- Split `common.rs` (671 LOC) → `ansi.rs` (168 LOC) + `common.rs` (466 LOC); all callers unchanged via re-export
+- Dropped unused crates: `grep-matcher`, `grep-regex`, `grep-searcher`
+- `inject_file_path` free function refactored → `ParseCommands::with_file()` method; `classifier.rs` from 519 → 471 LOC
+
+### v0.5.9
+
+- `trs output-saver` — installs compact anti-preamble / result-first rules block into each agent's global config (8/9 agents)
+- Stats header UX overhaul
+- Brew install/upgrade handler
+- Ping handler
+- Swift / xcodebuild routing
+- Collision check in `trs init` — detects competing hooks, `--replace` / `--force` / default-abort flow
+- Credential preservation scan (`contains_credential`)
+- Multilingual error keywords (10 locales)
+- Fail-open on errors (`output_has_failure_signal`)
+- Lint rule grouping — eslint/ruff/pylint/golangci-lint/cargo clippy grouped by file + rule
+
+### v0.5.8 and earlier
+
+- Pipe/redirect first-segment rewrite (v0.5.6)
+- Chain-aware rewrite for `cd X && git Y` (v0.5.5)
+- npm publish (`@dpeluche/trs`)
+- First GitHub Release (v0.1.0)
