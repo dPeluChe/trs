@@ -21,11 +21,13 @@ Every command supported by trs falls into one of four levels.
 
 | Command | Subcommands parsed |
 |---|---|
-| `git` | `status`, `diff`, `log`, `branch`, `push`, `pull`, `fetch` |
+| `git` | `status`, `diff`, `log`, `branch`, `push`, `pull`, `fetch`, `show`, `stash show -p`, `stash pop`, `stash apply` |
 
 Notes: `--no-verify` is blocked on `git commit` / `git push` to
 protect pre-commit hooks from AI agents that default to bypassing
 them. `git status --porcelain` passes through untouched.
+`git show` and `git stash show -p` are routed to the diff parser
+(~90% reduction on commits with modifications).
 
 ### Build — Rust
 
@@ -93,12 +95,31 @@ cargo.
 | `tree` | — | directory tree compressed |
 | `tail` | `journalctl` | log-tail with error filter |
 
+### File reading intercepts
+
+These commands are intercepted before subprocess spawn: trs reads the
+file directly and applies `filter_minimal` (strip comment-only lines,
+normalize blank lines). Falls back to raw content when filtering would
+return empty output (e.g. an all-comment slice).
+
+| Command | Pattern | Typical reduction |
+|---|---|---|
+| `cat` | `cat FILE [FILE2…]` — no flags | 10–35% on code files |
+| `head` | `head [-n N \| -N] FILE` | 5–20% |
+| `sed` | `sed -n X,Yp FILE` (line-range only) | 10–25% vs 0% passthrough |
+
+Any other `sed` form (substitutions, in-place `-i`, multiple files)
+falls through to the subprocess path unchanged.
+
 ### Containers & GitHub CLI
 
 | Command | Subcommands parsed |
 |---|---|
 | `docker` | `ps`, `logs`, `build` |
-| `gh` | `pr list`, `issue list`, `run list`, plus `gh api <endpoint>` passthrough tracked in stats |
+| `gh` | `pr list`, `pr view`, `issue list`, `run list`, plus `gh api <endpoint>` passthrough tracked in stats |
+
+`gh pr view` extracts title, state, author, url, labels, and a
+3-line body preview — reducing typical PR view output by ~45%.
 
 ### System & network
 
