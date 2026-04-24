@@ -1,0 +1,16 @@
+#!/bin/sh
+# Pre-push hook — mirrors CI checks exactly so nothing reaches GitHub red.
+# Install once: git config core.hooksPath .githooks
+
+set -e
+
+echo "  [pre-push] cargo fmt -- --check"
+cargo fmt -- --check
+
+echo "  [pre-push] cargo clippy -- -D warnings"
+cargo clippy -- -D warnings
+
+echo "  [pre-push] cargo test"
+cargo test --quiet
+
+echo "  [pre-push] all checks passed"

@@ -19,6 +19,12 @@ cargo clippy -- -D warnings    # no warnings allowed
 cargo test                     # 2,186+ tests, 0 failures
 ```
 
+The repo ships a pre-push hook that runs these automatically. Activate it once after cloning:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Code guidelines
 
 ### File size
