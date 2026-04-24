@@ -112,6 +112,15 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ## Completed
 
+### v0.5.11
+
+- `git grep` → Grep parser (was falling through to generic compression)
+- `npm run` / `pnpm run` / `bun run` — route by script name: `build*` → Build, `test*` → Test, `lint`/`type-check` → Lint
+- `npx @biomejs/biome` — package-name form now routes to Lint (short name `biome` already worked)
+- Unified `trs.md` — replaces `trs-output-saver.md`; includes input-rewrite section + output-saver rules; migration removes legacy file on next install
+- `trs init --global` writes `trs.md` alongside `hooks.json` for Claude Code and Gemini CLI
+- Removed `@RTK.md` from `~/.claude/CLAUDE.md` (no longer needed — trs covers everything)
+
 ### v0.5.10
 
 - Fast-path intercepts for `cat`, `head`, `sed -n X,Yp` — `filter_minimal` applied before subprocess spawn (10–35% savings)
