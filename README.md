@@ -129,7 +129,7 @@ git status | trs parse git-status  # pipe syntax too
 
 | Category | Tools with dedicated parsers |
 |---|---|
-| VCS | `git` (status, diff, log, branch, push, pull, fetch, show, stash) |
+| VCS | `git` (status, diff, log, branch, push, pull, fetch, show, stash, grep) |
 | Rust | `cargo` (build, check, test, clippy, fmt, install) |
 | JS/TS | `npm`, `pnpm`, `yarn`, `bun`, `npx`, `pnpm dlx` |
 | Python | `pytest`, `pip`, `uv`, `python3 -m <mod>` routing |

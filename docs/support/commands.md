@@ -21,7 +21,7 @@ Every command supported by trs falls into one of four levels.
 
 | Command | Subcommands parsed |
 |---|---|
-| `git` | `status`, `diff`, `log`, `branch`, `push`, `pull`, `fetch`, `show`, `stash show -p`, `stash pop`, `stash apply` |
+| `git` | `status`, `diff`, `log`, `branch`, `push`, `pull`, `fetch`, `show`, `stash show -p`, `stash pop`, `stash apply`, `grep` |
 
 Notes: `--no-verify` is blocked on `git commit` / `git push` to
 protect pre-commit hooks from AI agents that default to bypassing
@@ -46,10 +46,12 @@ cargo.
 | Command | Subcommands parsed |
 |---|---|
 | `npm` | `install` (+`i`, `ci`), `test`, `ls` / `list`, `audit`, `outdated`, `run` |
-| `pnpm` | `install` (+`i`), `test`, `ls`, `audit`, `outdated`, `why`, `add`, `update`, `up`, `dlx`, `exec` |
+| `pnpm` | `install` (+`i`), `test`, `ls`, `audit`, `outdated`, `why`, `add`, `update`, `up`, `run`, `dlx`, `exec` |
 | `yarn` | `install`, `test` |
 | `bun` | `install`, `test`, `run` |
 | `npx` / `pnpm dlx` | routed to whichever inner command is invoked |
+
+`run` subcommand routing: `build*` → Build parser, `test*` → Test parser, `lint` / `type-check` / `typecheck` / `check` → Lint parser. Other script names fall through to generic compression.
 
 ### Build — Go
 
@@ -89,6 +91,7 @@ cargo.
 | `tsc` | `file(line,col): error TS6133: …` — grouped by file, ~80% reduction |
 
 `tsc` is also reached via `npx tsc`, `pnpm dlx tsc`, and `uv run tsc`.
+`biome` is also reached via `npx @biomejs/biome` (full package-name form).
 Dispatched the same as any other linter (compact by default, `--json` for structured output).
 
 ### Files & search
@@ -97,7 +100,7 @@ Dispatched the same as any other linter (compact by default, `--json` for struct
 |---|---|---|
 | `ls` | `lsd`, `exa`, `eza` | long format parsed; `--json` passthrough |
 | `find` | `fd` | result list compacted |
-| `grep` | `rg`, `ag`, `ack` | line/match format |
+| `grep` | `rg`, `ag`, `ack` | line/match format; also `git grep` |
 | `tree` | — | directory tree compressed |
 | `tail` | `journalctl` | log-tail with error filter |
 

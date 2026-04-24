@@ -47,8 +47,8 @@ installing.
 
 | Agent | Mechanism | Path |
 |---|---|---|
-| Claude Code | Standalone file + `@import` | `~/.claude/trs-output-saver.md` + line in `~/.claude/CLAUDE.md` |
-| Gemini CLI | Standalone file + `@import` | `~/.gemini/trs-output-saver.md` + line in `~/.gemini/GEMINI.md` |
+| Claude Code | Standalone file + `@import` | `~/.claude/trs.md` + line in `~/.claude/CLAUDE.md` |
+| Gemini CLI | Standalone file + `@import` | `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
 | Cursor | Auto-loaded rules file | `~/.cursor/rules/trs-output-saver.mdc` |
 | Codex | Inline with sentinels | `~/.codex/AGENTS.md` |
 | Windsurf | Inline with sentinels | `~/.codeium/windsurf/memories/global_rules.md` |
@@ -78,8 +78,9 @@ loss. The sentinel carries a version tag (`v1`) so we can migrate
 block content in future releases without breaking detection.
 
 The `@import` mechanism for Claude/Gemini is naturally idempotent:
-re-install overwrites `trs-output-saver.md` and re-adds the import
-line only if missing.
+re-install overwrites `trs.md` and re-adds the import line only if
+missing. If the legacy `trs-output-saver.md` file exists it is deleted
+and its import line replaced with `@trs.md` automatically.
 
 ## Check-first semantics
 
@@ -137,9 +138,11 @@ token-usage numbers in your agent's own dashboard.
 
 ## Interaction with `trs init`
 
-They're independent. You can have the input-side hooks installed
-(`trs init`) without the output-saver, and vice versa. Both are
-additive — no conflicts between them.
+For Claude Code and Gemini CLI, `trs init --global` now writes `trs.md`
+automatically alongside the hook config — you get both input compression
+and output-saver rules in one command. For all other agents the two
+installs remain independent: you can have hooks without output-saver
+rules, and vice versa.
 
 ## See also
 
