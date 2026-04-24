@@ -112,6 +112,10 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ## Completed
 
+### v0.5.12
+
+- Fix npm platform packages publishing at wrong version (0.5.9 since v0.5.10) — artifact assembly now runs before version sync in release workflow
+
 ### v0.5.11
 
 - `git grep` → Grep parser (was falling through to generic compression)
