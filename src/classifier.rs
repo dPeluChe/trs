@@ -14,6 +14,7 @@ pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
         ("git", "log") => 0.10,
         ("git", "branch") => 0.11,
         ("git", "show" | "stash") => 0.10,
+        ("git", "grep") => 0.40,
         ("ls" | "lsd" | "exa" | "eza", _) => 0.18,
         ("tree", _) => 0.30,
         ("find" | "fd", _) => 0.52,
@@ -31,6 +32,7 @@ pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
         ("tsc", _) => 0.15,
         ("pytest" | "jest" | "vitest", _) => 0.10,
         ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
+        ("npm" | "pnpm" | "bun" | "yarn", "run") => 0.15,
         ("wc", _) => 0.50,
         ("wget", _) => 0.15,
         ("curl", _) => 0.15,
@@ -202,6 +204,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                     _ => None,
                 }
             }
+            "grep" => Some(ParseCommands::Grep { file: None }),
             _ => None,
         },
 
@@ -247,6 +250,20 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "ls" | "list" => Some(ParseCommands::Deps { file: None }),
             "install" | "i" | "ci" => Some(ParseCommands::Install { file: None }),
             "audit" | "outdated" => Some(ParseCommands::Deps { file: None }),
+            "run" => {
+                let script = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+                match script {
+                    s if s.starts_with("build") => Some(ParseCommands::Build { file: None }),
+                    s if s.starts_with("test") => Some(ParseCommands::Test {
+                        runner: Some(TestRunner::Npm),
+                        file: None,
+                    }),
+                    "lint" | "type-check" | "typecheck" | "check" => {
+                        Some(ParseCommands::Lint { file: None })
+                    }
+                    _ => None,
+                }
+            }
             _ => None,
         },
         "pnpm" => match subcmd {
@@ -259,6 +276,20 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             }
             "install" | "i" | "add" | "update" | "up" => {
                 Some(ParseCommands::Install { file: None })
+            }
+            "run" => {
+                let script = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+                match script {
+                    s if s.starts_with("build") => Some(ParseCommands::Build { file: None }),
+                    s if s.starts_with("test") => Some(ParseCommands::Test {
+                        runner: Some(TestRunner::Pnpm),
+                        file: None,
+                    }),
+                    "lint" | "type-check" | "typecheck" | "check" => {
+                        Some(ParseCommands::Lint { file: None })
+                    }
+                    _ => None,
+                }
             }
             // pnpm dlx <tool> — runs a one-off package. Route the
             // inner tool to its parser just like `npx <tool>` does.
@@ -287,6 +318,20 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 file: None,
             }),
             "install" | "i" => Some(ParseCommands::Install { file: None }),
+            "run" => {
+                let script = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+                match script {
+                    s if s.starts_with("build") => Some(ParseCommands::Build { file: None }),
+                    s if s.starts_with("test") => Some(ParseCommands::Test {
+                        runner: Some(TestRunner::Bun),
+                        file: None,
+                    }),
+                    "lint" | "type-check" | "typecheck" | "check" => {
+                        Some(ParseCommands::Lint { file: None })
+                    }
+                    _ => None,
+                }
+            }
             _ => None,
         },
         "yarn" => match subcmd {
@@ -458,7 +503,9 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 runner: Some(TestRunner::Vitest),
                 file: None,
             }),
-            "tsc" | "eslint" | "biome" | "prettier" => Some(ParseCommands::Lint { file: None }),
+            "tsc" | "eslint" | "biome" | "@biomejs/biome" | "prettier" => {
+                Some(ParseCommands::Lint { file: None })
+            }
             _ => None,
         },
 

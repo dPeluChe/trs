@@ -61,16 +61,30 @@ const SENTINEL_END: &str = "<!-- trs:output-saver:end -->";
 
 /// Import filename used by Claude Code and Gemini CLI when we install
 /// as a standalone file + `@import` line.
-const IMPORT_FILENAME: &str = "trs-output-saver.md";
+const IMPORT_FILENAME: &str = "trs.md";
+
+/// Previous filename — migrated to IMPORT_FILENAME on install/refresh.
+const IMPORT_FILENAME_LEGACY: &str = "trs-output-saver.md";
 
 /// Wrap the block with a banner suitable for a standalone file (used
 /// when the agent supports `@imports`).
 fn standalone_file() -> String {
     format!(
-        "# trs — output saver\n\n\
+        "# trs — token-reducing shell\n\n\
          Installed by `trs output-saver --install`. Remove with\n\
          `trs output-saver --remove` or delete this file plus the\n\
-         `@{}` import line in the parent config.\n\n{}\n",
+         `@{}` import line in the parent config.\n\n\
+         ## Input rewrite\n\n\
+         All shell commands are intercepted by trs automatically via the\n\
+         PreToolUse hook. No prefix needed — trs compresses command output\n\
+         transparently.\n\n\
+         To bypass compression when raw output is needed:\n\
+         - `trs raw <cmd>` — passthrough, still tracked in stats\n\
+         - `TRS_SKIP=1 <cmd>` — full bypass, not tracked\n\n\
+         Meta commands (invoke directly, not through the hook):\n\
+         - `trs stats` — token savings dashboard\n\
+         - `trs stats --by-agent` — breakdown per agent\n\n\
+         {}\n",
         IMPORT_FILENAME, BLOCK
     )
 }
@@ -248,15 +262,24 @@ fn scan_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> Statu
                 return Status::NotDetected;
             }
             let root = dir.join(&root_file);
+            // Check current filename.
             let saver = dir.join(IMPORT_FILENAME);
             let has_import = fs::read_to_string(&root)
                 .map(|c| c.contains(&format!("@{}", IMPORT_FILENAME)))
                 .unwrap_or(false);
             if has_import && saver.exists() {
-                Status::AlreadyInstalled
-            } else {
-                Status::NotInstalled
+                return Status::AlreadyInstalled;
             }
+            // Check legacy filename — still counts as installed (migration
+            // happens on the next `install_agent` call).
+            let legacy_saver = dir.join(IMPORT_FILENAME_LEGACY);
+            let has_legacy_import = fs::read_to_string(&root)
+                .map(|c| c.contains(&format!("@{}", IMPORT_FILENAME_LEGACY)))
+                .unwrap_or(false);
+            if has_legacy_import && legacy_saver.exists() {
+                return Status::AlreadyInstalled;
+            }
+            Status::NotInstalled
         }
         Target::RulesDir { path } => {
             let parent = path.parent();
@@ -305,6 +328,30 @@ fn install_agent_with_home(
         Target::NotSupported { reason } => Err(reason.to_string()),
         Target::Imported { dir, root_file } => {
             fs::create_dir_all(&dir).map_err(|e| format!("{}: {}", dir.display(), e))?;
+
+            // Migrate legacy file: delete it and strip the old @import line.
+            let legacy_path = dir.join(IMPORT_FILENAME_LEGACY);
+            if legacy_path.exists() {
+                let _ = fs::remove_file(&legacy_path);
+                let root_path_tmp = dir.join(&root_file);
+                if let Ok(existing) = fs::read_to_string(&root_path_tmp) {
+                    let legacy_import = format!("@{}", IMPORT_FILENAME_LEGACY);
+                    if existing.contains(&legacy_import) {
+                        let stripped: String = existing
+                            .lines()
+                            .filter(|l| l.trim() != legacy_import.as_str())
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        let final_content = if existing.ends_with('\n') && !stripped.is_empty() {
+                            format!("{}\n", stripped)
+                        } else {
+                            stripped
+                        };
+                        let _ = fs::write(&root_path_tmp, final_content);
+                    }
+                }
+            }
+
             let saver_path = dir.join(IMPORT_FILENAME);
             fs::write(&saver_path, standalone_file())
                 .map_err(|e| format!("{}: {}", saver_path.display(), e))?;
@@ -697,18 +744,49 @@ mod tests {
         let res = install_agent_with_home("claude", Some(&home)).unwrap();
         assert!(res.contains("CLAUDE.md"));
         let claude_md = home.join(".claude/CLAUDE.md");
-        let saver = home.join(".claude/trs-output-saver.md");
+        let saver = home.join(".claude/trs.md");
         assert!(claude_md.exists());
         assert!(saver.exists());
-        assert!(fs::read_to_string(&claude_md)
-            .unwrap()
-            .contains("@trs-output-saver.md"));
+        assert!(fs::read_to_string(&claude_md).unwrap().contains("@trs.md"));
 
         remove_agent_with_home("claude", Some(&home)).unwrap();
         assert!(!saver.exists());
-        assert!(!fs::read_to_string(&claude_md)
-            .unwrap()
-            .contains("@trs-output-saver.md"));
+        assert!(!fs::read_to_string(&claude_md).unwrap().contains("@trs.md"));
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn install_migrates_legacy_file() {
+        let dir = std::env::temp_dir().join("trs_os_migration");
+        let _ = fs::remove_dir_all(&dir);
+        let home = dir.join("home");
+        let claude_dir = home.join(".claude");
+        fs::create_dir_all(&claude_dir).unwrap();
+
+        // Simulate a legacy install: old file + old @import line
+        let legacy = claude_dir.join(IMPORT_FILENAME_LEGACY);
+        let claude_md = claude_dir.join("CLAUDE.md");
+        fs::write(&legacy, "old content").unwrap();
+        fs::write(&claude_md, "@trs-output-saver.md\n").unwrap();
+
+        // Confirm scan sees it as installed
+        let status = scan_agent_with_home("claude", Some(&home));
+        assert!(matches!(status, Status::AlreadyInstalled));
+
+        // Install migrates: old file gone, new file present, import updated
+        install_agent_with_home("claude", Some(&home)).unwrap();
+        assert!(!legacy.exists(), "legacy file should be deleted");
+        assert!(
+            claude_dir.join(IMPORT_FILENAME).exists(),
+            "new trs.md missing"
+        );
+        let root = fs::read_to_string(&claude_md).unwrap();
+        assert!(
+            !root.contains("@trs-output-saver.md"),
+            "legacy import not removed"
+        );
+        assert!(root.contains("@trs.md"), "new import not added");
 
         fs::remove_dir_all(&dir).ok();
     }
