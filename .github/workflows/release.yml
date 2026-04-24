@@ -140,6 +140,17 @@ jobs:
         with:
           path: artifacts/
 
+      - name: Assemble platform packages
+        run: |
+          # Copy binaries from artifacts into platform package dirs.
+          # Must run BEFORE Sync version — the artifact contains package.json
+          # at the old version; syncing after assembly ensures the version
+          # update is not overwritten by the cp.
+          for dir in darwin-x64 darwin-arm64 linux-x64 linux-arm64 win32-x64; do
+            cp -r artifacts/npm-${dir}/* npm/platforms/${dir}/
+            chmod +x npm/platforms/${dir}/trs* 2>/dev/null || true
+          done
+
       - name: Sync version from tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -157,21 +168,14 @@ jobs:
           "
           cd ..
 
-          # Update platform package versions
+          # Update platform package versions (after assembly so the cp
+          # from artifacts doesn't overwrite the bumped package.json).
           for dir in npm/platforms/*/; do
             node -e "
               const pkg = require('./${dir}package.json');
               pkg.version = '$VERSION';
               require('fs').writeFileSync('./${dir}package.json', JSON.stringify(pkg, null, 2) + '\n');
             "
-          done
-
-      - name: Assemble platform packages
-        run: |
-          # Copy binaries from artifacts into platform package dirs
-          for dir in darwin-x64 darwin-arm64 linux-x64 linux-arm64 win32-x64; do
-            cp -r artifacts/npm-${dir}/* npm/platforms/${dir}/
-            chmod +x npm/platforms/${dir}/trs* 2>/dev/null || true
           done
 
       - name: Publish platform packages
