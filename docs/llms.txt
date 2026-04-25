@@ -1,11 +1,8 @@
 # trs — Token-Reducing Shell
 
-> trs is a transparent CLI proxy that compresses terminal output for AI coding agents.
-> It sits between the agent and the shell: the agent runs `git status`, trs intercepts it,
-> spawns the real command, and returns a compact summary instead of raw output —
-> typically 60–99% fewer tokens with no loss of actionable signal.
-> Works with Claude Code, Gemini CLI, Cursor, Kilo Code, OpenCode, Codex CLI, Windsurf, and more.
-> Single native binary (~6 MB), zero runtime deps, ~12 ms startup, Rust-powered.
+> trs is a CLI proxy that compresses terminal output for AI coding agents — 60–99% fewer tokens, no loss of signal.
+> Install once, run `trs init` to wire it to your agent, and every shell command gets automatically summarized.
+> Supports Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Codex CLI, Windsurf, and more. Single native binary, zero runtime deps.
 
 ## Getting started
 
