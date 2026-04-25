@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 
 Sitemap: https://usetrs.dev/sitemap.xml
+
+LLMs: https://usetrs.dev/llms.txt

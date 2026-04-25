@@ -1,0 +1,27 @@
+# trs — Token-Reducing Shell
+
+> trs is a CLI proxy that compresses terminal output for AI coding agents — 60–99% fewer tokens, no loss of signal.
+> Install once, run `trs init` to wire it to your agent, and every shell command gets automatically summarized.
+> Supports Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Codex CLI, Windsurf, and more. Single native binary, zero runtime deps.
+
+## Getting started
+
+- [Install trs](https://usetrs.dev/support/install.md): curl|sh, PowerShell, npm, cargo, or prebuilt binary
+- [Supported agents](https://usetrs.dev/support/agents.md): Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Factory Droid, Codex CLI, Windsurf, Google Antigravity
+- [Supported commands](https://usetrs.dev/support/commands.md): git, cargo, npm/pnpm/bun/yarn, Python tools, curl, docker, gh CLI, and more
+
+## Features
+
+- [trs init](https://usetrs.dev/features/init.md): agent hook installer with collision detection, `--global` and `--project` scopes
+- [trs stats](https://usetrs.dev/features/stats.md): token savings analytics, per-command and per-agent breakdowns
+- [trs ingest](https://usetrs.dev/features/ingest.md): compress local files or URLs before reading them into context
+- [trs output-saver](https://usetrs.dev/features/output-saver.md): installs Markdown rules blocks that keep agent replies concise
+- [trs doctor](https://usetrs.dev/features/doctor.md): diagnose hook and PATH issues
+- [trs upgrade](https://usetrs.dev/features/upgrade.md): self-update the binary in place
+- [trs audit-docs](https://usetrs.dev/features/audit-docs.md): scan documentation files for bloat and redundancy
+
+## Safety and configuration
+
+- [Safety guarantees](https://usetrs.dev/support/safety.md): credential preservation scan, fail-open on errors, 10% ratio gate
+- [Configuration](https://usetrs.dev/features/configuration.md): TRS_SKIP, TRS_DEBUG, per-command passthrough options
+- [Output formats](https://usetrs.dev/features/formats.md): plain text, JSON, structured compression rules
