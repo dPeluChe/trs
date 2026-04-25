@@ -7,16 +7,8 @@
 ## Getting started
 
 - [Install trs](https://usetrs.dev/support/install.md): curl|sh, PowerShell, npm, cargo, or prebuilt binary
-- [Wire up your agent](https://usetrs.dev/features/init.md): `trs init` — one command to install the hook for any supported agent
-- [Output saver](https://usetrs.dev/features/output-saver.md): installs anti-preamble / result-first rules into each agent's global config
-
-## Supported agents
-
-- [Agent compatibility matrix](https://usetrs.dev/support/agents.md): Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Factory Droid, Codex CLI, Windsurf, Google Antigravity
-
-## Supported commands
-
-- [Full command reference](https://usetrs.dev/support/commands.md): git, cargo, npm/pnpm/bun/yarn, Python tools, curl, docker, gh CLI, and more
+- [Supported agents](https://usetrs.dev/support/agents.md): Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Factory Droid, Codex CLI, Windsurf, Google Antigravity
+- [Supported commands](https://usetrs.dev/support/commands.md): git, cargo, npm/pnpm/bun/yarn, Python tools, curl, docker, gh CLI, and more
 
 ## Features
 
