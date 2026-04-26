@@ -278,6 +278,15 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse gh run view output
+    ///
+    /// Example: gh run view 12345 | trs parse gh-run-view
+    GhRunView {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse gh pr view output
     ///
     /// Example: gh pr view 123 | trs parse gh-pr-view
@@ -366,6 +375,7 @@ impl ParseCommands {
             Self::GhPr { .. } => Self::GhPr { file: Some(path) },
             Self::GhIssue { .. } => Self::GhIssue { file: Some(path) },
             Self::GhRun { .. } => Self::GhRun { file: Some(path) },
+            Self::GhRunView { .. } => Self::GhRunView { file: Some(path) },
             Self::GhPrView { .. } => Self::GhPrView { file: Some(path) },
             Self::CargoTest { .. } => Self::CargoTest { file: Some(path) },
             Self::GoTest { .. } => Self::GoTest { file: Some(path) },

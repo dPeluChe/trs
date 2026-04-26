@@ -258,9 +258,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Npm),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" => {
-                        Some(ParseCommands::Lint { file: None })
-                    }
+                    "lint" | "type-check" | "typecheck" | "check" | "format"
+                    | "format:check" => Some(ParseCommands::Lint { file: None }),
                     _ => None,
                 }
             }
@@ -285,9 +284,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Pnpm),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" => {
-                        Some(ParseCommands::Lint { file: None })
-                    }
+                    "lint" | "type-check" | "typecheck" | "check" | "format"
+                    | "format:check" => Some(ParseCommands::Lint { file: None }),
                     _ => None,
                 }
             }
@@ -326,9 +324,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Bun),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" => {
-                        Some(ParseCommands::Lint { file: None })
-                    }
+                    "lint" | "type-check" | "typecheck" | "check" | "format"
+                    | "format:check" => Some(ParseCommands::Lint { file: None }),
                     _ => None,
                 }
             }
@@ -464,9 +461,11 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "issue" if args.get(1).map(|s| s.as_str()) == Some("list") => {
                 Some(ParseCommands::GhIssue { file: None })
             }
-            "run" if args.get(1).map(|s| s.as_str()) == Some("list") => {
-                Some(ParseCommands::GhRun { file: None })
-            }
+            "run" => match args.get(1).map(|s| s.as_str()) {
+                Some("list") => Some(ParseCommands::GhRun { file: None }),
+                Some("view") => Some(ParseCommands::GhRunView { file: None }),
+                _ => None,
+            },
             // `gh api <path>` returns raw GitHub JSON responses — route
             // to the download handler whose body compressor compacts
             // JSON and decodes base64-encoded contents payloads.
