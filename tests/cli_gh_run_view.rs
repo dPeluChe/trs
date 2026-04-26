@@ -5,7 +5,8 @@ use predicates::prelude::*;
 
 #[test]
 fn test_gh_run_view_success() {
-    let input = "\u{2705} main: chore: release v0.5.12 workflow run Release / Build aarch64-apple-darwin\n\
+    let input =
+        "\u{2705} main: chore: release v0.5.12 workflow run Release / Build aarch64-apple-darwin\n\
 Triggered via push about 2 hours ago\n\
 \n\
 JOBS\n\

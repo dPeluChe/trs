@@ -258,8 +258,9 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Npm),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" | "format"
-                    | "format:check" => Some(ParseCommands::Lint { file: None }),
+                    "lint" | "type-check" | "typecheck" | "check" | "format" | "format:check" => {
+                        Some(ParseCommands::Lint { file: None })
+                    }
                     _ => None,
                 }
             }
@@ -284,8 +285,9 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Pnpm),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" | "format"
-                    | "format:check" => Some(ParseCommands::Lint { file: None }),
+                    "lint" | "type-check" | "typecheck" | "check" | "format" | "format:check" => {
+                        Some(ParseCommands::Lint { file: None })
+                    }
                     _ => None,
                 }
             }
@@ -324,8 +326,9 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Bun),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" | "format"
-                    | "format:check" => Some(ParseCommands::Lint { file: None }),
+                    "lint" | "type-check" | "typecheck" | "check" | "format" | "format:check" => {
+                        Some(ParseCommands::Lint { file: None })
+                    }
                     _ => None,
                 }
             }

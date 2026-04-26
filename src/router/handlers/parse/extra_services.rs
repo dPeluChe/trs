@@ -418,15 +418,8 @@ impl ParseHandler {
             })
             .to_string(),
             _ => {
-                let mut out = format!(
-                    "run: {} ({})\n",
-                    Self::truncate_str(&title, 60),
-                    conclusion
-                );
-                out.push_str(&format!(
-                    "jobs: {} ok, {} fail\n",
-                    jobs_ok, jobs_fail
-                ));
+                let mut out = format!("run: {} ({})\n", Self::truncate_str(&title, 60), conclusion);
+                out.push_str(&format!("jobs: {} ok, {} fail\n", jobs_ok, jobs_fail));
                 for ann in &annotations {
                     out.push_str(&format!("  ! {}\n", Self::truncate_str(ann, 80)));
                 }
