@@ -19,6 +19,7 @@ fn test_stats_by_command_shows_header() {
         .stdout(
             predicate::str::contains("by command")
                 .or(predicate::str::contains("COMMAND"))
+                .or(predicate::str::contains("No history"))
                 .or(predicate::str::contains("no history")),
         );
 }
@@ -59,7 +60,9 @@ fn test_stats_default_does_not_show_by_command_table() {
     let text = String::from_utf8_lossy(&output);
     // Default stats shows period/totals, not per-command table
     assert!(
-        text.contains("Total commands") || text.contains("no history"),
+        text.contains("Total commands")
+            || text.contains("No history")
+            || text.contains("no history"),
         "expected default stats output: {text}"
     );
 }
