@@ -305,6 +305,136 @@ impl ParseHandler {
         Ok(())
     }
 
+    /// Parse `gh pr checks <pr>` output (TTY emoji or TSV).
+    /// Keeps check name, status, and duration; summarises pass/fail counts.
+    pub(crate) fn handle_gh_pr_checks(
+        file: &Option<std::path::PathBuf>,
+        ctx: &CommandContext,
+    ) -> CommandResult {
+        let raw_input = Self::read_input_raw(file)?;
+        let input = super::super::common::strip_emojis(&raw_input);
+        let input_bytes = raw_input.len();
+
+        #[derive(serde::Serialize)]
+        struct Check {
+            name: String,
+            status: String,
+            duration: String,
+        }
+
+        let mut checks: Vec<Check> = Vec::new();
+
+        for (raw_line, clean_line) in raw_input.lines().zip(input.lines()) {
+            let trimmed = clean_line.trim();
+            if trimmed.is_empty()
+                || trimmed.starts_with("All checks")
+                || trimmed.starts_with("Some checks")
+                || trimmed.starts_with("No checks")
+            {
+                continue;
+            }
+
+            if trimmed.contains('\t') {
+                // TSV: name\tstatus\tduration\turl
+                let f: Vec<&str> = trimmed.splitn(4, '\t').collect();
+                if f.len() >= 2 {
+                    checks.push(Check {
+                        name: f[0].trim().to_string(),
+                        status: f[1].trim().to_string(),
+                        duration: f.get(2).map(|s| s.trim()).unwrap_or("").to_string(),
+                    });
+                }
+            } else {
+                // TTY: [icon] name  duration  url
+                // Detect status from raw emoji on the same line
+                let status = if raw_line.contains('\u{2705}') || raw_line.contains("pass") {
+                    "pass"
+                } else if raw_line.contains('\u{274C}')
+                    || raw_line.contains("fail")
+                    || raw_line.contains("error")
+                {
+                    "fail"
+                } else if raw_line.contains('\u{1F7E1}')
+                    || raw_line.contains("pending")
+                    || raw_line.contains("queued")
+                {
+                    "pending"
+                } else {
+                    continue; // header / summary line
+                };
+
+                // Name is everything before the first multi-space gap
+                let name = trimmed
+                    .trim_start_matches(|c: char| !c.is_alphanumeric())
+                    .split("  ")
+                    .next()
+                    .unwrap_or(trimmed)
+                    .trim()
+                    .to_string();
+
+                // Duration is a token that looks like "1m5s" or "23s"
+                let duration = trimmed
+                    .split_whitespace()
+                    .find(|t| t.ends_with('s') && t.chars().any(|c| c.is_ascii_digit()))
+                    .unwrap_or("")
+                    .to_string();
+
+                if !name.is_empty() {
+                    checks.push(Check {
+                        name,
+                        status: status.to_string(),
+                        duration,
+                    });
+                }
+            }
+        }
+
+        let pass = checks.iter().filter(|c| c.status == "pass").count();
+        let fail = checks.iter().filter(|c| c.status == "fail").count();
+        let pending = checks.iter().filter(|c| c.status == "pending").count();
+
+        let output = match ctx.format {
+            OutputFormat::Json => serde_json::json!({
+                "checks": checks,
+                "summary": {"pass": pass, "fail": fail, "pending": pending},
+            })
+            .to_string(),
+            _ => {
+                let mut out = format!("checks: {} pass, {} fail", pass, fail);
+                if pending > 0 {
+                    out.push_str(&format!(", {} pending", pending));
+                }
+                out.push('\n');
+                for c in checks.iter().filter(|c| c.status != "pass") {
+                    let dur = if c.duration.is_empty() {
+                        String::new()
+                    } else {
+                        format!(", {}", c.duration)
+                    };
+                    out.push_str(&format!(
+                        "  {} {} ({}{})\n",
+                        if c.status == "fail" { "✗" } else { "~" },
+                        Self::truncate_str(&c.name, 60),
+                        c.status,
+                        dur
+                    ));
+                }
+                out
+            }
+        };
+
+        print!("{}", output);
+        if ctx.stats {
+            CommandStats::new()
+                .with_reducer("gh-pr-checks")
+                .with_input_bytes(input_bytes)
+                .with_output_bytes(output.len())
+                .with_items_processed(checks.len())
+                .print();
+        }
+        Ok(())
+    }
+
     /// Parse `gh run view <id>` output.
     /// Keeps run name, conclusion, job summary, annotations, and URL.
     pub(crate) fn handle_gh_run_view(

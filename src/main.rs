@@ -288,6 +288,7 @@ fn main() {
             project,
             json,
             by_agent,
+            by_command,
             limit,
         }) => {
             use router::handlers::stats::{handle_stats, StatsInput};
@@ -296,6 +297,7 @@ fn main() {
                 project: *project,
                 json: *json,
                 by_agent: *by_agent,
+                by_command: *by_command,
                 limit: *limit,
             };
             handle_stats(&input);
