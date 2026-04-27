@@ -11,6 +11,7 @@ trs stats              # summary dashboard (top 15 commands)
 trs stats --history    # per-command log (most recent 20)
 trs stats -n 30        # override row cap (top 30 in summary, last 30 in --history)
 trs stats --by-agent   # breakdown by which AI agent triggered the run
+trs stats --by-command # breakdown by normalized command family (e.g. "git diff", "npm run lint")
 trs stats --json       # machine-readable summary
 ```
 
@@ -113,6 +114,32 @@ distinguish the two at rewrite time. Both show up as `claude`. If
 you need separation, you currently need to eyeball `cwd` paths or
 look at the hour of the day. A future release could disambiguate
 via a install-time flag or a second detection path.
+
+## `--by-command` — command family breakdown
+
+```bash
+trs stats --by-command
+```
+
+Groups history entries by normalized command family (binary + up to 2
+meaningful subcommands) and ranks by total tokens saved. Useful for
+spotting which commands run most and which give the best reduction.
+
+```
+trs Token Savings — by command
+==================================================
+  COMMAND                CALLS   SHARE  AVG -%       SAVED
+──────────────────────────────────────────────────
+  find                     555   42.1%     48%        3.3M
+  git diff                 102    7.7%     91%        1.2M
+  npm run lint              48    3.6%     82%         420K
+  gh pr checks              31    2.4%     78%         310K
+  …
+```
+
+Normalization strips paths, flags, and IDs — `git diff HEAD~1` and
+`git diff main..feature` both count as `git diff`. `npm run lint`
+and `pnpm run lint` are separate entries (binary is kept).
 
 ## JSON mode
 

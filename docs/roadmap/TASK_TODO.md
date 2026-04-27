@@ -25,7 +25,8 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] next build / prisma generate
 - [ ] playwright test (E2E summaries)
 - [ ] Gradle / Maven build output
-- [ ] `gh issue view` / `gh run view` — follow-on from gh pr view (v0.5.10)
+- [x] `gh run view` — done (v0.5.13): extracts title, conclusion, job counts, annotations, URL
+- [ ] `gh issue view` — follow-on from gh pr view
 
 ### Improvements to existing parsers
 

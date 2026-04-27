@@ -51,7 +51,7 @@ cargo.
 | `bun` | `install`, `test`, `run` |
 | `npx` / `pnpm dlx` | routed to whichever inner command is invoked |
 
-`run` subcommand routing: `build*` → Build parser, `test*` → Test parser, `lint` / `type-check` / `typecheck` / `check` → Lint parser. Other script names fall through to generic compression.
+`run` subcommand routing: `build*` → Build parser, `test*` → Test parser, `lint` / `type-check` / `typecheck` / `check` / `format` / `format:check` → Lint parser. Other script names fall through to generic compression.
 
 ### Build — Go
 
@@ -125,10 +125,14 @@ falls through to the subprocess path unchanged.
 | Command | Subcommands parsed |
 |---|---|
 | `docker` | `ps`, `logs`, `build` |
-| `gh` | `pr list`, `pr view`, `issue list`, `run list`, plus `gh api <endpoint>` passthrough tracked in stats |
+| `gh` | `pr list`, `pr view`, `pr diff`, `pr checks`, `issue list`, `run list`, `run view`, plus `gh api <endpoint>` passthrough tracked in stats |
 
 `gh pr view` extracts title, state, author, url, labels, and a
-3-line body preview — reducing typical PR view output by ~45%.
+3-line body preview. `gh pr diff` routes to the git-diff parser
+(~90% reduction). `gh pr checks` summarises pass/fail/pending
+counts and lists only non-passing checks with duration. `gh run view`
+extracts title, conclusion, job counts, up to 3 annotations, and
+the run URL.
 
 ### System & network
 
