@@ -10,9 +10,10 @@ pub(crate) mod extra_db;
 pub(crate) mod extra_download;
 pub(crate) mod extra_env;
 pub(crate) mod extra_network;
-pub(crate) mod extra_services;
 pub(crate) mod extra_system;
 pub(crate) mod find;
+pub(crate) mod gh_pr;
+pub(crate) mod gh_run;
 pub(crate) mod git_branch;
 pub(crate) mod git_diff;
 pub(crate) mod git_diff_format;
@@ -86,6 +87,11 @@ impl ParseHandler {
     /// Convert serde_json::Value to pretty-printed JSON string.
     pub(crate) fn json_to_string(value: serde_json::Value) -> String {
         serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
+    }
+
+    /// Truncate a string to max_len chars, appending "..." if truncated.
+    pub(crate) fn truncate_str(s: &str, max_len: usize) -> String {
+        crate::formatter::helpers::truncate(s, max_len)
     }
 
     /// Format a byte size into a human-readable string (e.g. 1.2K, 3.5M).
