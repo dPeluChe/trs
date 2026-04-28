@@ -113,6 +113,20 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ## Completed
 
+### v0.5.13
+
+- `gh pr diff` → GitDiff parser (~90% reduction)
+- `gh pr checks` — new parser: pass/fail/pending summary, only non-passing checks with duration
+- `gh run view` — new parser: title, conclusion, job counts, up to 3 annotations, URL
+- `npm/pnpm/bun run format` / `format:check` → Lint parser
+- `npm/pnpm/bun run lint:strict`, `lint:fix`, etc. → Lint parser (`starts_with("lint")`)
+- `poetry run pytest` → Test parser; `poetry run ruff/mypy/pylint/black/flake8/isort` → Lint parser
+- `git pull` / `git fetch` — new GitPull parser: strips remote progress noise, keeps branch updates and diff-stat (~85% reduction)
+- `trs stats --by-command` — aggregates history by normalized command family, ranked by tokens saved
+- `docs/llms.txt` — LLM agent discovery file following llms.txt spec
+- `init_collision`: detects `rtk hook` format (rtk v0.37.2+ Windows binary hook)
+- Refactor: split `extra_services.rs` (672 LOC) → `gh_pr.rs` + `gh_run.rs`
+
 ### v0.5.12
 
 - Fix npm platform packages publishing at wrong version (0.5.9 since v0.5.10) — artifact assembly now runs before version sync in release workflow
