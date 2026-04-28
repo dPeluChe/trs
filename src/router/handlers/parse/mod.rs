@@ -18,6 +18,7 @@ pub(crate) mod git_branch;
 pub(crate) mod git_diff;
 pub(crate) mod git_diff_format;
 pub(crate) mod git_log;
+pub(crate) mod git_pull;
 pub(crate) mod git_status;
 pub(crate) mod git_status_format;
 pub(crate) mod go_test;
@@ -145,6 +146,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::GoTest { file } => Self::handle_go_test(file, ctx),
             ParseCommands::Lint { file } => Self::handle_lint(file, ctx),
             ParseCommands::Db { file } => Self::handle_db(file, ctx),
+            ParseCommands::GitPull { file } => Self::handle_git_pull(file, ctx),
         }
     }
 }

@@ -14,6 +14,7 @@ pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
         ("git", "log") => 0.10,
         ("git", "branch") => 0.11,
         ("git", "show" | "stash") => 0.10,
+        ("git", "pull" | "fetch") => 0.15,
         ("git", "grep") => 0.40,
         ("ls" | "lsd" | "exa" | "eza", _) => 0.18,
         ("tree", _) => 0.30,
@@ -24,6 +25,8 @@ pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
         ("docker", "logs") => 0.50,
         ("npm" | "pnpm" | "yarn" | "pip" | "pip3" | "cargo", "install" | "i") => 0.20,
         ("npm" | "pip" | "pip3" | "cargo", "ls" | "list" | "tree" | "freeze") => 0.40,
+        ("poetry", "install" | "add" | "update") => 0.20,
+        ("poetry", "run") => 0.15,
         ("cargo", "clippy") => 0.15,
         ("cargo", "build" | "check") => 0.10,
         ("cargo", "test") => 0.05,
@@ -204,6 +207,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                     _ => None,
                 }
             }
+            "pull" | "fetch" => Some(ParseCommands::GitPull { file: None }),
             "grep" => Some(ParseCommands::Grep { file: None }),
             _ => None,
         },
@@ -258,7 +262,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Npm),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" | "format" | "format:check" => {
+                    s if s.starts_with("lint") => Some(ParseCommands::Lint { file: None }),
+                    "type-check" | "typecheck" | "check" | "format" | "format:check" => {
                         Some(ParseCommands::Lint { file: None })
                     }
                     _ => None,
@@ -285,7 +290,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Pnpm),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" | "format" | "format:check" => {
+                    s if s.starts_with("lint") => Some(ParseCommands::Lint { file: None }),
+                    "type-check" | "typecheck" | "check" | "format" | "format:check" => {
                         Some(ParseCommands::Lint { file: None })
                     }
                     _ => None,
@@ -326,7 +332,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         runner: Some(TestRunner::Bun),
                         file: None,
                     }),
-                    "lint" | "type-check" | "typecheck" | "check" | "format" | "format:check" => {
+                    s if s.starts_with("lint") => Some(ParseCommands::Lint { file: None }),
+                    "type-check" | "typecheck" | "check" | "format" | "format:check" => {
                         Some(ParseCommands::Lint { file: None })
                     }
                     _ => None,
@@ -373,6 +380,27 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                         file: None,
                     }),
                     "ruff" | "mypy" | "pylint" => Some(ParseCommands::Lint { file: None }),
+                    _ => None,
+                }
+            }
+            _ => None,
+        },
+        // poetry — Python dependency manager. `poetry run <tool>` dispatches
+        // the same way as `uv run <tool>` and `python3 -m <module>`.
+        "poetry" => match subcmd {
+            "install" | "add" | "update" | "remove" | "lock" => {
+                Some(ParseCommands::Install { file: None })
+            }
+            "run" => {
+                let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
+                match inner {
+                    "pytest" => Some(ParseCommands::Test {
+                        runner: Some(TestRunner::Pytest),
+                        file: None,
+                    }),
+                    "ruff" | "mypy" | "pylint" | "flake8" | "black" | "isort" => {
+                        Some(ParseCommands::Lint { file: None })
+                    }
                     _ => None,
                 }
             }
