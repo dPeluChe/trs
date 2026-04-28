@@ -443,6 +443,10 @@ pub enum Commands {
         /// (codex, antigravity, windsurf) show as "(untagged)".
         #[arg(long = "by-agent")]
         by_agent: bool,
+        /// Aggregate by normalised command family (git diff, cargo test,
+        /// npm run lint…) — strips paths and flags, groups variants.
+        #[arg(long = "by-command")]
+        by_command: bool,
         /// Number of rows to show. Applies to `--history` (default 20)
         /// and to the summary's Top Commands table (default 15).
         #[arg(long, short = 'n')]

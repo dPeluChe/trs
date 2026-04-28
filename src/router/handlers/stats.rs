@@ -69,6 +69,8 @@ pub struct StatsInput {
     pub json: bool,
     /// Break down totals by AI agent (from `TRS_AGENT` attribution).
     pub by_agent: bool,
+    /// Aggregate by normalised command family (strips paths/flags).
+    pub by_command: bool,
     /// Row cap. Overrides the default for either `--history` (20) or
     /// the summary's Top Commands table (15).
     pub limit: Option<usize>,
@@ -126,6 +128,12 @@ pub fn handle_stats(input: &StatsInput) {
         return;
     }
 
+    if input.by_command {
+        let limit = input.limit.unwrap_or(DEFAULT_TOP_LIMIT);
+        print_by_command(&entries, limit);
+        return;
+    }
+
     if input.history {
         let limit = input.limit.unwrap_or(DEFAULT_HISTORY_LIMIT);
         print_history(&entries, limit);
@@ -133,6 +141,122 @@ pub fn handle_stats(input: &StatsInput) {
         let top_limit = input.limit.unwrap_or(DEFAULT_TOP_LIMIT);
         print_summary(&entries, top_limit);
     }
+}
+
+/// Normalise a full command string to its "family" key:
+/// strips file paths, numeric IDs, and flags — keeps only the
+/// binary name plus up to two meaningful subcommand tokens.
+///
+/// Examples:
+///   "grep -rn foo /src"          → "grep"
+///   "git diff --stat origin/main" → "git diff"
+///   "npm run format:check"        → "npm run format:check"
+///   "gh pr view 123"              → "gh pr view"
+///   "cargo test --lib"            → "cargo test"
+fn normalize_cmd(cmd: &str) -> String {
+    let parts: Vec<&str> = cmd.split_whitespace().collect();
+    let base = match parts.first() {
+        Some(b) => *b,
+        None => return String::new(),
+    };
+
+    // Helper: is a token a "meaningful" subcommand (not a flag, path, or number)?
+    let is_subcmd = |t: &str| -> bool {
+        !t.starts_with('-')
+            && !t.starts_with('/')
+            && !t.starts_with('~')
+            && !t.starts_with('.')
+            && !t
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_digit())
+                .unwrap_or(false)
+    };
+
+    match base {
+        // Commands where binary + subcommand matters
+        "git" | "cargo" | "docker" | "kubectl" | "helm" | "terraform" | "aws" => {
+            match parts.get(1).copied().filter(|t| is_subcmd(t)) {
+                Some(sub) => format!("{} {}", base, sub),
+                None => base.to_string(),
+            }
+        }
+        // gh has 3-token commands: gh pr view, gh run list
+        "gh" => {
+            let sub1 = parts.get(1).copied().filter(|t| is_subcmd(t));
+            let sub2 = parts.get(2).copied().filter(|t| is_subcmd(t));
+            match (sub1, sub2) {
+                (Some(s1), Some(s2)) => format!("{} {} {}", base, s1, s2),
+                (Some(s1), None) => format!("{} {}", base, s1),
+                _ => base.to_string(),
+            }
+        }
+        // npm/pnpm/bun/yarn run <script> — include script name
+        "npm" | "pnpm" | "bun" | "yarn" => {
+            let sub = parts.get(1).copied().unwrap_or("");
+            if sub == "run" {
+                let script = parts.get(2).copied().filter(|t| is_subcmd(t));
+                match script {
+                    Some(s) => format!("{} run {}", base, s),
+                    None => format!("{} run", base),
+                }
+            } else if is_subcmd(sub) {
+                format!("{} {}", base, sub)
+            } else {
+                base.to_string()
+            }
+        }
+        // Everything else: binary name only
+        _ => base.to_string(),
+    }
+}
+
+/// Aggregate by normalised command family and print sorted by tokens saved.
+fn print_by_command(entries: &[HistoryEntry], limit: usize) {
+    use std::collections::BTreeMap;
+
+    let mut agg: BTreeMap<String, CommandAgg> = BTreeMap::new();
+    for entry in entries {
+        let key = normalize_cmd(&entry.cmd);
+        if key.is_empty() {
+            continue;
+        }
+        let e = agg.entry(key).or_default();
+        e.count += 1;
+        e.in_bytes += entry.in_bytes;
+        e.out_bytes += entry.out_bytes;
+    }
+
+    let mut rows: Vec<(String, CommandAgg)> = agg.into_iter().collect();
+    rows.sort_by_key(|(_, a)| std::cmp::Reverse(a.saved()));
+    rows.truncate(limit);
+
+    println!("trs Token Savings — by command");
+    println!("{}", "=".repeat(50));
+    println!(
+        "  {:<22} {:>5} {:>7}  {:>6}  {:>10}",
+        "COMMAND", "CALLS", "SHARE", "AVG -%", "SAVED"
+    );
+    println!("{}", "\u{2500}".repeat(50));
+
+    let total_saved: usize = rows.iter().map(|(_, a)| a.saved()).sum();
+    for (cmd, stats) in &rows {
+        let share = if total_saved > 0 {
+            100.0 * stats.saved() as f64 / total_saved as f64
+        } else {
+            0.0
+        };
+        println!(
+            "  {:<22} {:>5} {:>6.1}%  {:>5.0}%  {:>10}",
+            truncate_cmd(cmd, 22),
+            stats.count,
+            share,
+            stats.avg_reduction_pct(),
+            format_bytes_human(stats.saved() / 4)
+        );
+    }
+    println!();
+    println!("More: https://github.com/dPeluChe/trs/blob/main/docs/features/stats.md");
 }
 
 /// Per-agent breakdown. Aggregates count / tokens saved / avg

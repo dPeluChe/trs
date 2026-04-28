@@ -10,9 +10,10 @@ pub(crate) mod extra_db;
 pub(crate) mod extra_download;
 pub(crate) mod extra_env;
 pub(crate) mod extra_network;
-pub(crate) mod extra_services;
 pub(crate) mod extra_system;
 pub(crate) mod find;
+pub(crate) mod gh_pr;
+pub(crate) mod gh_run;
 pub(crate) mod git_branch;
 pub(crate) mod git_diff;
 pub(crate) mod git_diff_format;
@@ -88,6 +89,11 @@ impl ParseHandler {
         serde_json::to_string_pretty(&value).unwrap_or_else(|_| value.to_string())
     }
 
+    /// Truncate a string to max_len chars, appending "..." if truncated.
+    pub(crate) fn truncate_str(s: &str, max_len: usize) -> String {
+        crate::formatter::helpers::truncate(s, max_len)
+    }
+
     /// Format a byte size into a human-readable string (e.g. 1.2K, 3.5M).
     pub(crate) fn format_human_size(bytes: u64) -> String {
         if bytes < 1024 {
@@ -132,6 +138,8 @@ impl CommandHandler for ParseHandler {
             ParseCommands::GhPr { file } => Self::handle_gh_pr(file, ctx),
             ParseCommands::GhIssue { file } => Self::handle_gh_issue(file, ctx),
             ParseCommands::GhRun { file } => Self::handle_gh_run(file, ctx),
+            ParseCommands::GhPrChecks { file } => Self::handle_gh_pr_checks(file, ctx),
+            ParseCommands::GhRunView { file } => Self::handle_gh_run_view(file, ctx),
             ParseCommands::GhPrView { file } => Self::handle_gh_pr_view(file, ctx),
             ParseCommands::CargoTest { file } => Self::handle_cargo_test(file, ctx),
             ParseCommands::GoTest { file } => Self::handle_go_test(file, ctx),

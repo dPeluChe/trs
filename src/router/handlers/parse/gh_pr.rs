@@ -3,12 +3,6 @@ use super::ParseHandler;
 use crate::OutputFormat;
 
 impl ParseHandler {
-    /// Truncate a string to max_len chars, appending "..." if truncated.
-    /// UTF-8 safe.
-    fn truncate_str(s: &str, max_len: usize) -> String {
-        crate::formatter::helpers::truncate(s, max_len)
-    }
-
     /// Parse `gh pr list` output (TTY emoji format or non-TTY TSV).
     pub(crate) fn handle_gh_pr(
         file: &Option<std::path::PathBuf>,
@@ -24,35 +18,30 @@ impl ParseHandler {
                 continue;
             }
 
-            // Detect format: TSV (non-TTY) has tabs
             if trimmed.contains('\t') {
                 // TSV format: number\ttitle\tauthor:branch\tstate\tdate
                 let fields: Vec<&str> = trimmed.split('\t').collect();
                 if fields.len() >= 2 {
                     let number = fields[0].trim();
                     let title = fields[1].trim();
-                    // Extract just author name from "user:branch" or "dependabot/..."
                     let author = fields
                         .get(2)
                         .map(|s| {
                             let s = s.trim();
-                            // "user:branch" → "user"
                             if let Some(pos) = s.find(':') {
                                 &s[..pos]
                             } else if let Some(pos) = s.find('/') {
-                                // "dependabot/go_modules/..." → "dependabot"
                                 &s[..pos]
                             } else {
                                 s
                             }
                         })
                         .unwrap_or("");
-                    prs.push(serde_json::json!({
-                        "number": number, "title": title, "author": author
-                    }));
+                    prs.push(
+                        serde_json::json!({"number": number, "title": title, "author": author}),
+                    );
                 }
             } else if trimmed.contains('#') {
-                // TTY format: #123 title (author)
                 if let Some(hash_pos) = trimmed.find('#') {
                     let rest = &trimmed[hash_pos + 1..];
                     let parts: Vec<&str> = rest.splitn(2, ' ').collect();
@@ -67,9 +56,9 @@ impl ParseHandler {
                         } else {
                             (remainder, "")
                         };
-                        prs.push(serde_json::json!({
-                            "number": number, "title": title, "author": author
-                        }));
+                        prs.push(
+                            serde_json::json!({"number": number, "title": title, "author": author}),
+                        );
                     }
                 }
             }
@@ -182,129 +171,6 @@ impl ParseHandler {
         Ok(())
     }
 
-    /// Parse `gh run list` output.
-    pub(crate) fn handle_gh_run(
-        file: &Option<std::path::PathBuf>,
-        ctx: &CommandContext,
-    ) -> CommandResult {
-        // Read raw input to detect status emoji markers before stripping
-        let raw_input = Self::read_input_raw(file)?;
-        let input = super::super::common::strip_emojis(&raw_input);
-        let input_bytes = raw_input.len();
-        let mut runs: Vec<serde_json::Value> = Vec::new();
-
-        let raw_lines: Vec<&str> = raw_input.lines().collect();
-        let clean_lines: Vec<&str> = input.lines().collect();
-
-        for (i, line) in clean_lines.iter().enumerate() {
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-
-            let raw_line = raw_lines.get(i).unwrap_or(&"");
-
-            // Detect format: TSV (non-TTY) has tabs
-            if trimmed.contains('\t') {
-                // TSV format: status\tconclusion\tname\tdisplay_title\tbranch\tevent\tid\telapsed\tdate
-                let fields: Vec<&str> = trimmed.split('\t').collect();
-                if fields.len() >= 3 {
-                    let status_text = fields[0].trim().to_lowercase();
-                    let conclusion = fields[1].trim().to_lowercase();
-                    let name = fields[2].trim();
-                    let event = fields.get(5).map(|s| s.trim()).unwrap_or("");
-                    let status = if conclusion == "success" {
-                        "success"
-                    } else if conclusion == "failure" {
-                        "failure"
-                    } else if status_text == "in_progress" {
-                        "in_progress"
-                    } else if conclusion == "cancelled" {
-                        "cancelled"
-                    } else {
-                        &status_text
-                    };
-                    runs.push(serde_json::json!({"name": name, "event": event, "status": status}));
-                }
-            } else {
-                // TTY format: skip headers
-                if trimmed.starts_with("Workflow") || trimmed.starts_with("Showing") {
-                    continue;
-                }
-
-                // Parse: name [id]
-                if let Some(bracket_start) = trimmed.rfind('[') {
-                    let name = trimmed[..bracket_start].trim();
-                    let id = trimmed[bracket_start + 1..].trim_end_matches(']').trim();
-
-                    let status = if raw_line.contains('\u{2705}')
-                        || raw_line.contains("success")
-                        || raw_line.contains("completed")
-                    {
-                        "success"
-                    } else if raw_line.contains('\u{274C}')
-                        || raw_line.contains("failure")
-                        || raw_line.contains("failed")
-                    {
-                        "failure"
-                    } else if raw_line.contains("in_progress")
-                        || raw_line.contains("queued")
-                        || raw_line.contains('\u{1F7E1}')
-                    {
-                        "in_progress"
-                    } else if raw_line.contains('\u{1F534}') || raw_line.contains("cancelled") {
-                        "cancelled"
-                    } else {
-                        "unknown"
-                    };
-
-                    if !name.is_empty() {
-                        runs.push(serde_json::json!({"name": name, "id": id, "status": status}));
-                    }
-                }
-            }
-        }
-
-        let output = match ctx.format {
-            OutputFormat::Json => {
-                serde_json::json!({"runs": runs, "count": runs.len()}).to_string()
-            }
-            _ => {
-                if runs.is_empty() {
-                    "no workflow runs\n".to_string()
-                } else {
-                    let mut out = format!("runs: {}\n", runs.len());
-                    for run in &runs {
-                        let marker = match run["status"].as_str().unwrap_or("") {
-                            "success" => "+",
-                            "failure" => "-",
-                            "in_progress" => "~",
-                            _ => "?",
-                        };
-                        let name = Self::truncate_str(run["name"].as_str().unwrap_or(""), 50);
-                        let event = run["event"].as_str().unwrap_or("");
-                        if !event.is_empty() {
-                            out.push_str(&format!("  {} {} ({})\n", marker, name, event));
-                        } else {
-                            out.push_str(&format!("  {} {}\n", marker, name));
-                        }
-                    }
-                    out
-                }
-            }
-        };
-        print!("{}", output);
-        if ctx.stats {
-            CommandStats::new()
-                .with_reducer("gh-run")
-                .with_input_bytes(input_bytes)
-                .with_output_bytes(output.len())
-                .with_items_processed(runs.len())
-                .print();
-        }
-        Ok(())
-    }
-
     /// Parse `gh pr view N` output.
     /// Keeps title, state, author, url, labels, and first 3 lines of body.
     pub(crate) fn handle_gh_pr_view(
@@ -326,7 +192,6 @@ impl ParseHandler {
                 }
                 continue;
             }
-            // Key:  value lines
             if let Some((key, val)) = line.split_once(':') {
                 let k = key.trim().to_lowercase();
                 let v = val.trim().to_string();
@@ -399,6 +264,132 @@ impl ParseHandler {
                 .with_reducer("gh-pr-view")
                 .with_input_bytes(input_bytes)
                 .with_output_bytes(output.len())
+                .print();
+        }
+        Ok(())
+    }
+
+    /// Parse `gh pr checks <pr>` output (TTY emoji or TSV).
+    /// Keeps check name, status, and duration; summarises pass/fail counts.
+    pub(crate) fn handle_gh_pr_checks(
+        file: &Option<std::path::PathBuf>,
+        ctx: &CommandContext,
+    ) -> CommandResult {
+        let raw_input = Self::read_input_raw(file)?;
+        let input = super::super::common::strip_emojis(&raw_input);
+        let input_bytes = raw_input.len();
+
+        #[derive(serde::Serialize)]
+        struct Check {
+            name: String,
+            status: String,
+            duration: String,
+        }
+
+        let mut checks: Vec<Check> = Vec::new();
+
+        for (raw_line, clean_line) in raw_input.lines().zip(input.lines()) {
+            let trimmed = clean_line.trim();
+            if trimmed.is_empty()
+                || trimmed.starts_with("All checks")
+                || trimmed.starts_with("Some checks")
+                || trimmed.starts_with("No checks")
+            {
+                continue;
+            }
+
+            if trimmed.contains('\t') {
+                // TSV: name\tstatus\tduration\turl
+                let f: Vec<&str> = trimmed.splitn(4, '\t').collect();
+                if f.len() >= 2 {
+                    checks.push(Check {
+                        name: f[0].trim().to_string(),
+                        status: f[1].trim().to_string(),
+                        duration: f.get(2).map(|s| s.trim()).unwrap_or("").to_string(),
+                    });
+                }
+            } else {
+                let status = if raw_line.contains('\u{2705}') || raw_line.contains("pass") {
+                    "pass"
+                } else if raw_line.contains('\u{274C}')
+                    || raw_line.contains("fail")
+                    || raw_line.contains("error")
+                {
+                    "fail"
+                } else if raw_line.contains('\u{1F7E1}')
+                    || raw_line.contains("pending")
+                    || raw_line.contains("queued")
+                {
+                    "pending"
+                } else {
+                    continue;
+                };
+
+                let name = trimmed
+                    .trim_start_matches(|c: char| !c.is_alphanumeric())
+                    .split("  ")
+                    .next()
+                    .unwrap_or(trimmed)
+                    .trim()
+                    .to_string();
+
+                let duration = trimmed
+                    .split_whitespace()
+                    .find(|t| t.ends_with('s') && t.chars().any(|c| c.is_ascii_digit()))
+                    .unwrap_or("")
+                    .to_string();
+
+                if !name.is_empty() {
+                    checks.push(Check {
+                        name,
+                        status: status.to_string(),
+                        duration,
+                    });
+                }
+            }
+        }
+
+        let pass = checks.iter().filter(|c| c.status == "pass").count();
+        let fail = checks.iter().filter(|c| c.status == "fail").count();
+        let pending = checks.iter().filter(|c| c.status == "pending").count();
+
+        let output = match ctx.format {
+            OutputFormat::Json => serde_json::json!({
+                "checks": checks,
+                "summary": {"pass": pass, "fail": fail, "pending": pending},
+            })
+            .to_string(),
+            _ => {
+                let mut out = format!("checks: {} pass, {} fail", pass, fail);
+                if pending > 0 {
+                    out.push_str(&format!(", {} pending", pending));
+                }
+                out.push('\n');
+                for c in checks.iter().filter(|c| c.status != "pass") {
+                    let dur = if c.duration.is_empty() {
+                        String::new()
+                    } else {
+                        format!(", {}", c.duration)
+                    };
+                    out.push_str(&format!(
+                        "  {} {} ({}{})\n",
+                        if c.status == "fail" { "✗" } else { "~" },
+                        Self::truncate_str(&c.name, 60),
+                        c.status,
+                        dur
+                    ));
+                }
+                out
+            }
+        };
+
+        print!("{}", output);
+        if ctx.stats {
+            CommandStats::new()
+                .with_reducer("gh-pr-checks")
+                .with_input_bytes(input_bytes)
+                .with_output_bytes(output.len())
+                .with_items_processed(checks.len())
                 .print();
         }
         Ok(())
