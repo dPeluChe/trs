@@ -344,6 +344,16 @@ pub enum ParseCommands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+
+    /// Parse git pull / git fetch output — strips remote progress noise,
+    /// keeps branch update lines and the file-change summary.
+    ///
+    /// Example: git pull | trs parse git-pull
+    GitPull {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
 }
 
 impl ParseCommands {
@@ -391,6 +401,7 @@ impl ParseCommands {
             Self::GoTest { .. } => Self::GoTest { file: Some(path) },
             Self::Lint { .. } => Self::Lint { file: Some(path) },
             Self::Db { .. } => Self::Db { file: Some(path) },
+            Self::GitPull { .. } => Self::GitPull { file: Some(path) },
         }
     }
 }

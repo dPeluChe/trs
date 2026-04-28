@@ -51,6 +51,7 @@ const HOOK_COMPETITORS: &[&str] = &[
     "rtk rewrite",
     "rtk proxy",
     "rtk git",
+    "rtk hook", // v0.37.2+ Windows binary hook format
     "token-optimizer",
     "tokopt",
 ];
