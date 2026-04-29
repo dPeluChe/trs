@@ -479,4 +479,50 @@ fn test_run_command_capture_duration_true() {
     assert!(json["duration_ms"].is_u64());
 }
 
+// Grep Parser Correctness Tests
 // ============================================================
+
+#[test]
+fn test_parse_grep_path_with_dashes() {
+    // Paths like src/my-module/foo.rs were incorrectly split at the first dash,
+    // producing path="src/my" instead of the full path. The two-pass scan fixes this.
+    let grep_input = "src/my-module/foo.rs:10:fn handle() {\nsrc/my-module/bar.rs:25:let x = 1;";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["counts"]["total_files"], 2);
+    assert_eq!(json["files"][0]["path"], "src/my-module/foo.rs");
+    assert_eq!(json["files"][0]["matches"][0]["line_number"], 10);
+    assert_eq!(json["files"][1]["path"], "src/my-module/bar.rs");
+    assert_eq!(json["files"][1]["matches"][0]["line_number"], 25);
+}
+
+#[test]
+fn test_parse_grep_context_lines_with_dashed_path() {
+    // Context lines (grep -C 1) use '-' separator: path-lineno-content
+    // A dashed path like my-component.tsx should still parse correctly.
+    let grep_input =
+        "my-component.tsx:5:export default function App() {\nmy-component.tsx-4-import React;";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("grep")
+        .write_stdin(grep_input)
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["files"][0]["path"], "my-component.tsx");
+    assert_eq!(json["files"][0]["matches"][0]["line_number"], 5);
+    assert_eq!(json["files"][0]["matches"][0]["is_context"], false);
+    assert_eq!(json["files"][0]["matches"][1]["line_number"], 4);
+    assert_eq!(json["files"][0]["matches"][1]["is_context"], true);
+}
