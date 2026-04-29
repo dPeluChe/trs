@@ -78,15 +78,17 @@ fn standalone_file() -> String {
          All shell commands are intercepted by trs automatically via the\n\
          PreToolUse hook. No prefix needed — trs compresses command output\n\
          transparently.\n\n\
-         **Token savings are the priority.** Let trs handle every command\n\
-         by default — compression is lossless for normal workflows.\n\
-         `trs raw` exists for genuine edge cases only:\n\
-         - Debugging a trs parser issue (e.g. comparing raw vs compressed)\n\
-         - Piping exact bytes to another tool that would break on compressed output\n\
-         - A command whose output you must read character-for-character\n\
-         Do NOT use `trs raw` for routine commands like `npm run *`,\n\
-         `cargo *`, `git *`, `pytest`, `gh *` — trs already handles these\n\
-         optimally and using raw throws away 60-99% token savings.\n\n\
+         **Token savings are the priority.** trs compresses output — it never\n\
+         deletes data, only makes it compact. The compressed form has the same\n\
+         signal as the raw output for normal workflows.\n\n\
+         Default: let trs handle every command automatically. No prefix needed.\n\n\
+         `trs raw` is for genuine edge cases only:\n\
+         - Debugging a trs parser (comparing raw vs compressed output)\n\
+         - Piping exact bytes to another tool that breaks on compressed output\n\
+         - A command whose output you must read character-for-character\n\n\
+         **Do NOT use `trs raw` for routine commands** — `npm run *`, `cargo *`,\n\
+         `git *`, `pytest`, `gh *`, `grep`, `find` are already handled optimally.\n\
+         Using raw on these throws away 60–99% token savings for no benefit.\n\n\
          - `trs raw <cmd>` — passthrough, still tracked in stats\n\
          - `TRS_SKIP=1 <cmd>` — full bypass, not tracked\n\n\
          Meta commands (invoke directly, not through the hook):\n\

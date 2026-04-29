@@ -52,19 +52,27 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         std::process::exit(output.status.code().unwrap_or(1));
     }
 
-    // Lint commands: output goes to stderr (clippy, ruff, eslint, etc.)
-    // Combine stdout+stderr so the lint parser can process everything
-    let is_lint = matches!(
+    // Several commands write their primary output (errors, warnings, results)
+    // to stderr rather than stdout. Combine both streams so the parser sees
+    // everything. Build tools (cargo build, make, gcc) and linters all do this.
+    // Notably excluded: cargo test — test results go to stdout and mixing in
+    // cargo's stderr progress would confuse the test parser.
+    let combine_stderr = matches!(
         (cmd, subcmd),
-        ("cargo", "clippy")
+        ("cargo", "clippy" | "build" | "check")
             | ("eslint", _)
             | ("biome", _)
             | ("ruff", _)
             | ("pylint", _)
             | ("golangci-lint", _)
+            | ("make" | "cmake", _)
+            | ("gcc" | "g++" | "clang" | "javac", _)
+            | ("go", "build")
+            | ("swift", "build")
+            | ("xcodebuild", _)
     );
     let effective_stdout;
-    let stdout_ref = if is_lint && !stderr.is_empty() {
+    let stdout_ref = if combine_stderr && !stderr.is_empty() {
         effective_stdout = format!("{}{}", stdout, stderr);
         &effective_stdout
     } else {
