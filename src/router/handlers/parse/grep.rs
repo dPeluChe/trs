@@ -182,121 +182,113 @@ impl ParseHandler {
             }
         }
 
-        // Determine if this is a context line or match line
-        // Context lines use "-" as separator: "path-line-content"
-        // Match lines use ":" as separator: "path:line:content"
-        // Find the first separator (either : or -)
-        let is_context_line = if let Some(dash_pos) = line.find('-') {
-            // Check if dash comes before any colon (or no colon at all)
-            match line.find(':') {
-                Some(colon_pos) if colon_pos < dash_pos => false,
-                _ => true,
-            }
-        } else {
-            false
-        };
+        // Two-pass scan: prefer ':N:' patterns (match lines) over '-N-' (context lines).
+        // This correctly handles paths that contain dashes (e.g. src/my-module/foo.rs:10:content)
+        // because we look for the FIRST separator+digits+separator sequence per type.
 
-        // Find the first separator to get the path
-        let sep_pos = if is_context_line {
-            line.find('-')?
-        } else {
-            line.find(':')?
-        };
-
-        let potential_path = &line[..sep_pos];
-
-        // If the path is empty or the rest doesn't have content, skip
-        if potential_path.is_empty() || line.len() <= sep_pos + 1 {
-            return None;
+        // Pass 1: match line — find ':N:' or ':N$'
+        if let Some((path, lineno, rest)) = find_sep_digits(line, b':') {
+            // Optional column: rest may start with 'N:content'
+            let (column, content) = extract_column(rest);
+            return Some((
+                path,
+                GrepMatch {
+                    line_number: lineno,
+                    column,
+                    line: content,
+                    is_context: false,
+                    excerpt: None,
+                },
+            ));
         }
 
-        let rest = &line[sep_pos + 1..];
+        // Pass 2: context line — find '-N-' or '-N$'
+        if let Some((path, lineno, rest)) = find_sep_digits(line, b'-') {
+            // Optional column for context lines: rest may start with 'N-content'
+            let (column, content) = extract_column_sep(rest, b'-');
+            return Some((
+                path,
+                GrepMatch {
+                    line_number: lineno,
+                    column,
+                    line: content,
+                    is_context: true,
+                    excerpt: None,
+                },
+            ));
+        }
 
-        // Try to parse line number and optionally column
-        // Format: line_number:content OR line_number:column:content OR just content
-        // Context lines: line_number-content OR line_number-column-content
-        let (line_number, column, content, is_context) =
-            Self::parse_grep_line_content(rest, is_context_line);
+        // Fallback: path:content without line number (grep without -n)
+        if let Some(pos) = line.find(':') {
+            let path = &line[..pos];
+            if !path.is_empty() {
+                return Some((
+                    path.to_string(),
+                    GrepMatch {
+                        line_number: None,
+                        column: None,
+                        line: line[pos + 1..].to_string(),
+                        is_context: false,
+                        excerpt: None,
+                    },
+                ));
+            }
+        }
 
-        Some((
-            potential_path.to_string(),
-            GrepMatch {
-                line_number,
-                column,
-                line: content.to_string(),
-                is_context,
-                excerpt: None,
-            },
-        ))
+        None
     }
+}
 
-    /// Parse the content part of a grep line (after the path: or path-).
-    ///
-    /// Context lines use "-" as separator (e.g., "10-content" for context)
-    /// while match lines use ":" (e.g., "10:content" for matches).
-    pub(crate) fn parse_grep_line_content(
-        rest: &str,
-        is_context_line: bool,
-    ) -> (Option<usize>, Option<usize>, &str, bool) {
-        if is_context_line {
-            // Context line: use "-" as separator
-            // Format: "10-content" or "10-5-content"
-            if let Some(dash_pos) = rest.find('-') {
-                let potential_line_num = &rest[..dash_pos];
-
-                // Check if it's a valid line number before the dash
-                if let Ok(line_number) = potential_line_num.parse::<usize>() {
-                    let after_line = &rest[dash_pos + 1..];
-
-                    // Try to parse column if present (context with column: "10-5-content")
-                    if let Some(dash_pos2) = after_line.find('-') {
-                        let potential_column = &after_line[..dash_pos2];
-                        if let Ok(column) = potential_column.parse::<usize>() {
-                            return (
-                                Some(line_number),
-                                Some(column),
-                                &after_line[dash_pos2 + 1..],
-                                true, // is_context
-                            );
-                        }
-                    }
-
-                    // No column, just line number with context
-                    return (Some(line_number), None, after_line, true);
-                }
-            }
-            // Couldn't parse as context line, return as content
-            (None, None, rest, true)
+/// Scan `line` for the first `sep + pure_digits + (sep | eol)` sequence where
+/// the path before the separator is non-empty. Returns (path, lineno, content_after).
+fn find_sep_digits(line: &str, sep: u8) -> Option<(String, Option<usize>, String)> {
+    let bytes = line.as_bytes();
+    for (i, &b) in bytes.iter().enumerate() {
+        if b != sep || i == 0 {
+            continue;
+        }
+        let digit_start = i + 1;
+        let digit_end = bytes[digit_start..]
+            .iter()
+            .position(|&d| !d.is_ascii_digit())
+            .map(|p| digit_start + p)
+            .unwrap_or(bytes.len());
+        if digit_end == digit_start {
+            continue; // no digits follow the separator
+        }
+        let terminated = digit_end == bytes.len() || bytes[digit_end] == sep;
+        if !terminated {
+            continue;
+        }
+        let path = line[..i].to_string();
+        let lineno = line[digit_start..digit_end].parse::<usize>().ok();
+        let content = if digit_end < bytes.len() {
+            line[digit_end + 1..].to_string()
         } else {
-            // Match line: use ":" as separator
-            // Try to find the first colon for line number
-            if let Some(colon_pos) = rest.find(':') {
-                let potential_line_num = &rest[..colon_pos];
+            String::new()
+        };
+        return Some((path, lineno, content));
+    }
+    None
+}
 
-                // Check if it's a valid line number
-                if let Ok(line_number) = potential_line_num.parse::<usize>() {
-                    let after_line = &rest[colon_pos + 1..];
+/// Extract an optional column number from a `"N:rest"` string (match lines).
+/// Returns `(Some(N), rest)` if the prefix is a valid usize; otherwise `(None, original)`.
+fn extract_column(s: String) -> (Option<usize>, String) {
+    extract_column_sep(s, b':')
+}
 
-                    // Try to parse column if present
-                    if let Some(colon_pos2) = after_line.find(':') {
-                        let potential_column = &after_line[..colon_pos2];
-                        if let Ok(column) = potential_column.parse::<usize>() {
-                            return (
-                                Some(line_number),
-                                Some(column),
-                                &after_line[colon_pos2 + 1..],
-                                false, // is_context
-                            );
-                        }
-                    }
-
-                    // No column, just line number
-                    return (Some(line_number), None, after_line, false);
-                }
-            }
-
-            // No line number, just content
-            (None, None, rest, false)
+/// Extract an optional column from `"N<sep>rest"` for any separator byte.
+fn extract_column_sep(s: String, sep: u8) -> (Option<usize>, String) {
+    let bytes = s.as_bytes();
+    let num_end = bytes
+        .iter()
+        .position(|&b| !b.is_ascii_digit())
+        .unwrap_or(bytes.len());
+    if num_end > 0 && num_end < bytes.len() && bytes[num_end] == sep {
+        if let Ok(col) = s[..num_end].parse::<usize>() {
+            return (Some(col), s[num_end + 1..].to_string());
         }
     }
+    (None, s)
 }
