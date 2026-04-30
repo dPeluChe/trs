@@ -134,7 +134,9 @@ pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
 ## Terminal Output Optimization
 
 This project uses `trs` (Token-Reducing Shell) for token-optimized terminal output.
-When running shell commands, prefer prefixing with `trs` for compact output:
+Codex has no pre-execution hook, so **you must prefix every shell command with `trs`**
+to get compressed output. Without the prefix, you see the full raw output and save
+nothing:
 
 ```bash
 # Instead of:
@@ -142,13 +144,15 @@ git status
 cargo test
 cargo clippy
 
-# Use:
+# Always use:
 trs git status
 trs cargo test
 trs cargo clippy
 ```
 
 This reduces token consumption by 68-99% without losing signal.
+Commands without a dedicated parser still get ANSI stripping and whitespace
+collapse (~30-40% reduction "free").
 
 "#,
     output_saver_block_literal!(),
