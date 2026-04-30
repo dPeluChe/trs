@@ -8,6 +8,11 @@
 
 set -e
 
+# Always run from project root regardless of how the script was invoked
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+cd "$PROJECT_ROOT"
+
 BLUE='\033[0;34m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -93,8 +98,13 @@ timed_run() {
     local _var="$1" _tvar="$2"; shift 2
     local _start _end
     _start=$(now_ms)
-    local _out
-    _out=$("$@" 2>/dev/null) || _out="(timeout)"
+    local _out _exit=0
+    _out=$("$@" 2>/dev/null) || _exit=$?
+    if [ "$_exit" -eq 124 ]; then
+        _out="(timeout)"
+    elif [ "$_exit" -ne 0 ] && [ -z "$_out" ]; then
+        _out="(error $_exit)"
+    fi
     _end=$(now_ms)
     eval "$_var=\$_out"
     eval "$_tvar=$((_end - _start))"

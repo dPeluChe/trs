@@ -113,6 +113,13 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ## Completed
 
+### v0.5.14
+
+- fix(grep): two-pass scan fixes path mangling on dashed filenames — `src/my-module/foo.rs:10:content` no longer parsed as `path="src/my"`. New algorithm: prefer `:N:` (match lines) in first pass, fall back to `-N-` (context lines) only if no colon-separated lineno found.
+- fix(build): combine stderr for build tools — `cargo build/check`, `make/cmake`, `gcc/g++/clang`, `go build`, `swift build`, `xcodebuild` now merge stderr into parser input; errors and warnings were previously lost (only `cargo clippy` had this). `cargo test` is explicitly excluded.
+- fix(template): sync `standalone_file()` with strong `trs raw` guidance — bold DO NOT, explicit "No prefix needed" line, routine commands listed. Next `trs upgrade` distributes the corrected version to all installed agent configs.
+- fix(benchmark): `benchmark.sh` always `cd`s to project root regardless of invocation path; `timed_run` now distinguishes real timeout (exit 124) from command error (exit N) — tests 6/9/10 no longer falsely show `(timeout)`.
+
 ### v0.5.13
 
 - `gh pr diff` → GitDiff parser (~90% reduction)
