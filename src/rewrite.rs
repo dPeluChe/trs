@@ -164,13 +164,27 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
         .get("tool_input")
         .and_then(|ti| ti.get("command"))
         .and_then(|c| c.as_str())?;
-    let rewritten = maybe_rewrite(cmd)?;
 
     let event = HookEvent::parse(
         json.get("hook_event_name")
             .and_then(|v| v.as_str())
             .unwrap_or(""),
     );
+
+    // Bypass telemetry: `TRS_SKIP=1 <cmd>` (with or without preceding
+    // env-var assignments) signals the agent wants this command to
+    // skip trs entirely. We honor the bypass — return None so the hook
+    // emits no rewrite — but log the attempt under the agent's label
+    // first. `stats --by-agent` surfaces these counts so the user can
+    // see whether per-agent bypass rates drop after prompt changes.
+    // Done before `maybe_rewrite` so we don't double-count the same
+    // observation (maybe_rewrite would also short-circuit on TRS_SKIP).
+    if cmd_bypasses_trs(cmd) {
+        crate::tracker::log_bypass(cmd, Some(event.agent_label()));
+        return None;
+    }
+
+    let rewritten = maybe_rewrite(cmd)?;
 
     // Tag the rewritten command with the agent name so the downstream
     // `trs <cmd>` invocation can log it to history.jsonl. The shell
@@ -243,6 +257,29 @@ fn split_env_prefix(cmd: &str) -> Option<(String, &str)> {
         None
     } else {
         Some((collected.join(" "), rest.trim_start()))
+    }
+}
+
+/// True when `cmd` is bypassing trs via a `TRS_SKIP=` env-var
+/// prefix. Walks any leading `NAME=value` tokens because real-world
+/// shells accept multiple assignments before the actual command
+/// (`FOO=1 TRS_SKIP=1 git status`). Stops at the first non-assignment
+/// token. Used by the JSON hook path to log bypass observations
+/// before short-circuiting — keeps `maybe_rewrite` purely functional.
+fn cmd_bypasses_trs(cmd: &str) -> bool {
+    let mut rest = cmd.trim_start();
+    loop {
+        if rest.starts_with("TRS_SKIP=") {
+            return true;
+        }
+        let Some(space_at) = rest.find(char::is_whitespace) else {
+            return false;
+        };
+        let token = &rest[..space_at];
+        if !looks_like_env_assignment(token) {
+            return false;
+        }
+        rest = rest[space_at..].trim_start();
     }
 }
 
@@ -460,6 +497,26 @@ mod tests {
         // the normal rewrite treatment with the env preserved in
         // front of the wrapped command.
         assert!(maybe_rewrite("RUSTFLAGS=-C git status").is_some());
+    }
+
+    #[test]
+    fn test_cmd_bypasses_trs_detection() {
+        // Direct prefix.
+        assert!(cmd_bypasses_trs("TRS_SKIP=1 git status"));
+        assert!(cmd_bypasses_trs("TRS_SKIP=true cargo test"));
+        // Hidden behind another env-var assignment — still bypass.
+        assert!(cmd_bypasses_trs("FOO=bar TRS_SKIP=1 git log"));
+        assert!(cmd_bypasses_trs("A=1 B=2 TRS_SKIP=1 cargo build"));
+        // Leading whitespace tolerated.
+        assert!(cmd_bypasses_trs("  TRS_SKIP=1 git status"));
+        // Negative cases — ordinary commands shouldn't trip the helper.
+        assert!(!cmd_bypasses_trs("git status"));
+        assert!(!cmd_bypasses_trs("RUSTFLAGS=-C cargo build"));
+        assert!(!cmd_bypasses_trs("trs git status"));
+        // TRS_SKIP appearing later in the command line (not as an env
+        // prefix) is not a bypass — for example a literal arg or a
+        // grep pattern.
+        assert!(!cmd_bypasses_trs("git log --grep TRS_SKIP=1"));
     }
 
     #[test]

@@ -73,15 +73,15 @@ Shows which AI agent triggered each execution. Added in v0.5.8.
 
 ```
 trs Token Savings — by agent
-==================================================
-  AGENT           CALLS    SHARE  AVG -%       SAVED
-──────────────────────────────────────────────────
-  claude            1247    58.2%     71%       720K
-  cursor             403    18.8%     68%       190K
-  opencode           210     9.8%     77%       145K
-  gemini              89     4.2%     65%        48K
-  kilo                12     0.6%     72%         8K
-  (untagged)         182     8.5%     44%        31K
+============================================================
+  AGENT           CALLS    SHARE  AVG -%       SAVED      BYPASS
+────────────────────────────────────────────────────────────
+  claude            1247    58.2%     71%       720K   3 (0.2%)
+  cursor             403    18.8%     68%       190K           0
+  opencode           210     9.8%     77%       145K           0
+  gemini              89     4.2%     65%        48K   1 (1.1%)
+  kilo                12     0.6%     72%         8K           0
+  (untagged)         182     8.5%     44%        31K           0
 ```
 
 Labels come from the `TRS_AGENT` env var that `trs rewrite` and the
@@ -89,6 +89,24 @@ OpenCode / Kilo plugin templates inject into the rewritten command
 before the shell runs it. The shell strips the env-var assignment,
 so it's transparent to git/cargo/etc downstream, and trs's tracker
 picks it up when the rewritten invocation eventually logs.
+
+### The BYPASS column
+
+`BYPASS` counts how many commands the agent prefixed with
+`TRS_SKIP=1` — those skip trs entirely, so we never see the output
+and can't compress it. The column shows the count plus the rate as
+a fraction of the agent's total calls (`3 (0.2%)`); `0` is rendered
+as a plain zero so the eye skips over the common case.
+
+We log bypass observations even though we don't see the output, so
+the dashboard can answer: "is this agent reaching for the escape
+hatch on routine commands?" High rates (>5%) usually mean the
+agent's prompt promotes bypass too aggressively — refresh
+`~/.<agent>/trs.md` via `trs output-saver --refresh` to ship the
+current minimal template.
+
+Bypass entries carry zero in/out byte counts, so they don't affect
+SAVED / AVG -% — they only contribute to CALLS and BYPASS.
 
 ### Which agents get attributed
 
@@ -162,9 +180,15 @@ Structured output suitable for dashboards or CI:
   "input_tokens": 1050000,
   "output_tokens": 232500,
   "saved_tokens": 817500,
-  "avg_reduction_pct": 77.8
+  "avg_reduction_pct": 77.8,
+  "bypass_count": 4
 }
 ```
+
+`bypass_count` is the number of `TRS_SKIP=1` observations across the
+window — same signal as the BYPASS column in `--by-agent`, but
+aggregated. Useful for dashboards that want a single bypass-rate
+metric (`bypass_count / total_commands`).
 
 ## What gets tracked
 

@@ -141,7 +141,7 @@ git status | trs parse git-status  # también soporta pipe
 | GitHub | `gh` (pr list, pr view, issue list, run list + `gh api`) |
 | Sistema | `ps`, `env`, `wc`, `brew`, `curl`, `wget` |
 
-También incluye **chain-aware rewrite** (`cd X && cargo test`), **preservación de env-prefix** (`RUSTFLAGS=x cargo build`), **sintaxis de pipe** (`cmd | trs parse …`) y `TRS_SKIP=1` para omitir el wrapping.
+También incluye **chain-aware rewrite** (`cd X && cargo test`), **preservación de env-prefix** (`RUSTFLAGS=x cargo build`) y **sintaxis de pipe** (`cmd | trs parse …`).
 
 [Referencia completa de comandos con subcomandos y ejemplos →](docs/support/commands.md)
 

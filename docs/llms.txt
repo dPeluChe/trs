@@ -23,5 +23,5 @@
 ## Safety and configuration
 
 - [Safety guarantees](https://usetrs.dev/support/safety.md): credential preservation scan, fail-open on errors, 10% ratio gate
-- [Configuration](https://usetrs.dev/features/configuration.md): TRS_SKIP, TRS_DEBUG, per-command passthrough options
+- [Configuration](https://usetrs.dev/features/configuration.md): env vars and tunables for human / debug use
 - [Output formats](https://usetrs.dev/features/formats.md): plain text, JSON, structured compression rules
