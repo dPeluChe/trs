@@ -113,6 +113,10 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ## Completed
 
+### v0.5.16
+
+- fix(template): tighter "Shell output" defensive paragraph in `standalone_file()` — directly counters the specific false belief that drove the v0.5.15 field-test failure ("compression podría ocultar detalle que necesito"). New wording: *"the compression is purely presentational — repetition and noise collapsed; signal preserved. There is no detail in raw output that the compressed form hides from you."* Still no mention of `TRS_SKIP=1` or `trs raw` by name; regression test still passes. See `docs/roadmap/completed/2605.md` § Defensive-line iteration for the option-A vs B vs C decision.
+
 ### v0.5.15
 
 - fix(template): de-promote bypass to AI agents — `standalone_file()` no longer mentions `trs raw` or `TRS_SKIP=1` to Claude / Gemini / Cursor. Supersedes the v0.5.14 strengthening attempt; agents kept reaching for the escape hatch defensively, so visibility itself was the problem. README headline + `docs/llms.txt` "Configuration" link also demoted. Mechanism still works for humans via `trs --help`. Regression test guards against re-adding bypass mentions to the template.

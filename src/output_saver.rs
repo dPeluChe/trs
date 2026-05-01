@@ -95,9 +95,10 @@ fn standalone_file() -> String {
          ## Shell output\n\n\
          Shell command output is automatically routed through trs (a\n\
          token-reduction hook) and may appear in compact form. The\n\
-         compression preserves signal — treat the output as authoritative.\n\
-         Write normal shell commands; don't try to bypass or re-run for raw\n\
-         bytes.\n\n\
+         compression is purely presentational — repetition and noise\n\
+         collapsed; signal preserved. There is no detail in raw output\n\
+         that the compressed form hides from you, so treat what arrives\n\
+         as authoritative and write normal shell commands.\n\n\
          {}\n",
         IMPORT_FILENAME, BLOCK
     )
