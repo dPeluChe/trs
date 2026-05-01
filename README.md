@@ -141,7 +141,7 @@ git status | trs parse git-status  # pipe syntax too
 | GitHub | `gh` (pr list, pr view, issue list, run list + `gh api`) |
 | System | `ps`, `env`, `wc`, `brew`, `curl`, `wget` |
 
-Plus **chain-aware rewrite** (`cd X && cargo test`), **env-prefix preservation** (`RUSTFLAGS=x cargo build`), **pipe syntax** (`cmd | trs parse …`), and `TRS_SKIP=1` to bypass any wrapping.
+Plus **chain-aware rewrite** (`cd X && cargo test`), **env-prefix preservation** (`RUSTFLAGS=x cargo build`), and **pipe syntax** (`cmd | trs parse …`).
 
 [Full command reference with subcommands and examples →](docs/support/commands.md)
 

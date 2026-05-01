@@ -87,6 +87,12 @@ struct CommandAgg {
     count: usize,
     in_bytes: usize,
     out_bytes: usize,
+    /// Subset of `count` recorded as a bypass observation
+    /// (`TRS_SKIP=1` prefix). Surfaces as a column in the
+    /// `--by-agent` view so the user can tell which agents reach for
+    /// the escape hatch and whether prompt-level interventions are
+    /// reducing it.
+    bypass_count: usize,
 }
 
 impl CommandAgg {
@@ -276,32 +282,38 @@ fn print_by_agent(entries: &[HistoryEntry]) {
         e.count += 1;
         e.in_bytes += entry.in_bytes;
         e.out_bytes += entry.out_bytes;
+        if entry.bypass.unwrap_or(false) {
+            e.bypass_count += 1;
+        }
     }
 
     let total_cmds: usize = agg.values().map(|a| a.count).sum();
+    let any_bypass = agg.values().any(|a| a.bypass_count > 0);
     let mut rows: Vec<(String, CommandAgg)> = agg.into_iter().collect();
     rows.sort_by_key(|(_, a)| std::cmp::Reverse(a.saved()));
 
     println!("trs Token Savings — by agent");
-    println!("{}", "=".repeat(50));
+    println!("{}", "=".repeat(60));
     println!(
-        "  {:<14} {:>6} {:>8}  {:>6}  {:>10}",
-        "AGENT", "CALLS", "SHARE", "AVG -%", "SAVED"
+        "  {:<14} {:>6} {:>8}  {:>6}  {:>10}  {:>10}",
+        "AGENT", "CALLS", "SHARE", "AVG -%", "SAVED", "BYPASS"
     );
-    println!("{}", "\u{2500}".repeat(50));
+    println!("{}", "\u{2500}".repeat(60));
     for (agent, stats) in &rows {
         let share = if total_cmds > 0 {
             100.0 * stats.count as f64 / total_cmds as f64
         } else {
             0.0
         };
+        let bypass_cell = format_bypass_cell(stats.bypass_count, stats.count);
         println!(
-            "  {:<14} {:>6} {:>7.1}%  {:>5.0}%  {:>10}",
+            "  {:<14} {:>6} {:>7.1}%  {:>5.0}%  {:>10}  {:>10}",
             agent,
             stats.count,
             share,
             stats.avg_reduction_pct(),
-            format_bytes_human(stats.saved() / 4)
+            format_bytes_human(stats.saved() / 4),
+            bypass_cell,
         );
     }
     println!();
@@ -309,8 +321,28 @@ fn print_by_agent(entries: &[HistoryEntry]) {
     println!("(Claude / Gemini / Cursor / Droid) and the OpenCode / Kilo plugin");
     println!("templates. Rules-based agents (Codex / Antigravity / Windsurf) and");
     println!("direct shell invocations land under (untagged).");
+    if any_bypass {
+        println!();
+        println!("BYPASS counts commands the agent prefixed with TRS_SKIP=1 — trs stepped");
+        println!("aside and didn't compress. High rates suggest the agent is reaching for");
+        println!("the escape hatch on routine commands; consider refreshing prompts.");
+    }
     println!();
     println!("More: https://github.com/dPeluChe/trs/blob/main/docs/features/stats.md");
+}
+
+/// Render the BYPASS column for one row. Zero is shown as plain "0"
+/// (no parens) so the eye skips over it; non-zero shows the count and
+/// rate, which is what the user is actually looking for.
+fn format_bypass_cell(bypass_count: usize, total_count: usize) -> String {
+    if bypass_count == 0 {
+        "0".to_string()
+    } else if total_count == 0 {
+        format!("{}", bypass_count)
+    } else {
+        let pct = 100.0 * bypass_count as f64 / total_count as f64;
+        format!("{} ({:.1}%)", bypass_count, pct)
+    }
 }
 
 /// Print the full summary view with efficiency meter and top commands.
@@ -551,6 +583,8 @@ fn print_json(
     let days = ((span_secs as f64 / 86400.0).ceil() as u64).max(1);
     let saved_tokens = total_saved / 4;
 
+    let bypass_count = entries.iter().filter(|e| e.bypass.unwrap_or(false)).count();
+
     let mut json = serde_json::json!({
         "total_commands": entries.len(),
         "period_start": format_date(first_ts),
@@ -564,6 +598,7 @@ fn print_json(
         "output_tokens": total_out / 4,
         "saved_tokens": total_saved / 4,
         "avg_reduction_pct": (avg_pct * 10.0).round() / 10.0,
+        "bypass_count": bypass_count,
     });
 
     if include_history {
@@ -622,4 +657,32 @@ fn print_json(
 /// Truncate a command string to fit within a given width. UTF-8 safe.
 fn truncate_cmd(cmd: &str, max_len: usize) -> String {
     crate::formatter::helpers::truncate(cmd, max_len)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_bypass_cell_zero_is_plain() {
+        // Eye-skip rendering for the common case.
+        assert_eq!(format_bypass_cell(0, 100), "0");
+        assert_eq!(format_bypass_cell(0, 0), "0");
+    }
+
+    #[test]
+    fn format_bypass_cell_includes_rate_when_nonzero() {
+        // Non-zero shows count and rate so the user can tell at a
+        // glance whether bypass is rare or chronic.
+        assert_eq!(format_bypass_cell(3, 142), "3 (2.1%)");
+        assert_eq!(format_bypass_cell(50, 100), "50 (50.0%)");
+    }
+
+    #[test]
+    fn format_bypass_cell_zero_total_omits_rate() {
+        // Defensive: avoid div-by-zero when total is 0 but bypass > 0
+        // (shouldn't happen in practice — bypass entries also count
+        // as commands — but the guard keeps the function total).
+        assert_eq!(format_bypass_cell(2, 0), "2");
+    }
 }

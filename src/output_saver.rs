@@ -68,32 +68,36 @@ const IMPORT_FILENAME_LEGACY: &str = "trs-output-saver.md";
 
 /// Wrap the block with a banner suitable for a standalone file (used
 /// when the agent supports `@imports`).
+///
+/// Hook-context only. This file lands in agents whose shell output is
+/// already routed through trs by a pre-tool hook (Claude, Gemini,
+/// Cursor; same shape used for InlineFile agents whose AGENTS.md is
+/// auto-loaded). The agent doesn't need to know how to invoke trs —
+/// the hook handles every command transparently. Earlier versions of
+/// this template documented `trs raw` and `TRS_SKIP=1` as escape
+/// hatches; in practice agents reached for them defensively on
+/// routine commands (`TRS_SKIP=1 grep …`, `TRS_SKIP=1 npm test`),
+/// throwing away 60–99% of the savings the hook just bought. Mere
+/// visibility of a bypass option created the temptation, so we no
+/// longer mention them. One short defensive line keeps the agent
+/// from misreading compact output as garbled — that's the entire
+/// trs-awareness budget. Bypass mechanisms still exist for humans
+/// (see `trs --help` / public docs); they just aren't promoted to
+/// the model. No-hook agents (Codex / Antigravity / Windsurf) get a
+/// different template via `init_templates.rs` that does prescribe
+/// the `trs <cmd>` prefix, since there's no hook to do it for them.
 fn standalone_file() -> String {
     format!(
         "# trs — token-reducing shell\n\n\
          Installed by `trs output-saver --install`. Remove with\n\
          `trs output-saver --remove` or delete this file plus the\n\
          `@{}` import line in the parent config.\n\n\
-         ## Input rewrite\n\n\
-         All shell commands are intercepted by trs automatically via the\n\
-         PreToolUse hook. No prefix needed — trs compresses command output\n\
-         transparently.\n\n\
-         **Token savings are the priority.** trs compresses output — it never\n\
-         deletes data, only makes it compact. The compressed form has the same\n\
-         signal as the raw output for normal workflows.\n\n\
-         Default: let trs handle every command automatically. No prefix needed.\n\n\
-         `trs raw` is for genuine edge cases only:\n\
-         - Debugging a trs parser (comparing raw vs compressed output)\n\
-         - Piping exact bytes to another tool that breaks on compressed output\n\
-         - A command whose output you must read character-for-character\n\n\
-         **Do NOT use `trs raw` for routine commands** — `npm run *`, `cargo *`,\n\
-         `git *`, `pytest`, `gh *`, `grep`, `find` are already handled optimally.\n\
-         Using raw on these throws away 60–99% token savings for no benefit.\n\n\
-         - `trs raw <cmd>` — passthrough, still tracked in stats\n\
-         - `TRS_SKIP=1 <cmd>` — full bypass, not tracked\n\n\
-         Meta commands (invoke directly, not through the hook):\n\
-         - `trs stats` — token savings dashboard\n\
-         - `trs stats --by-agent` — breakdown per agent\n\n\
+         ## Shell output\n\n\
+         Shell command output is automatically routed through trs (a\n\
+         token-reduction hook) and may appear in compact form. The\n\
+         compression preserves signal — treat the output as authoritative.\n\
+         Write normal shell commands; don't try to bypass or re-run for raw\n\
+         bytes.\n\n\
          {}\n",
         IMPORT_FILENAME, BLOCK
     )
@@ -724,6 +728,26 @@ mod tests {
         let s = standalone_file();
         assert!(s.contains("Output saver"));
         assert!(s.contains("No preambles"));
+    }
+
+    /// Regression guard: hook-context template must NOT advertise
+    /// bypass mechanisms to agents. They reached for them defensively
+    /// on routine commands and burned the savings the hook just
+    /// bought. If you're tempted to add usage docs back here, read
+    /// the comment on `standalone_file()` first — bypass docs belong
+    /// in human-facing channels (`trs --help`, public docs), not in
+    /// the agent's prompt.
+    #[test]
+    fn standalone_file_does_not_promote_bypass_mechanisms() {
+        let s = standalone_file();
+        assert!(
+            !s.contains("TRS_SKIP"),
+            "hook-context template must not mention TRS_SKIP — see fn comment"
+        );
+        assert!(
+            !s.contains("trs raw"),
+            "hook-context template must not mention `trs raw` — see fn comment"
+        );
     }
 
     #[test]

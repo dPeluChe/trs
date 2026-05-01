@@ -37,6 +37,17 @@ pub struct HistoryEntry {
     /// it still deserialize.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
+    /// `Some(true)` when this entry records a bypass observation —
+    /// the caller prefixed `TRS_SKIP=1` so trs stepped aside and the
+    /// shell ran the command raw. We log the *attempt* (not the
+    /// output, which we never see) so `stats --by-agent` can surface
+    /// which agents reach for the escape hatch and whether prompt
+    /// changes are reducing it. Bypass entries carry zero
+    /// in_bytes/out_bytes/ms — they don't affect savings totals,
+    /// only counts. Defaults to `None`; old history lines without
+    /// the field still deserialize.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bypass: Option<bool>,
 }
 
 /// Returns the path to the history file: `~/.trs/history.jsonl`.
@@ -56,20 +67,30 @@ pub(crate) fn home_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// Log a command execution to the history file.
-///
-/// Inline fire-and-forget: a single small append is faster than thread spawn overhead.
-/// If anything fails, silently returns without affecting the main command flow.
-pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: u64) {
+/// Append a single entry to `~/.trs/history.jsonl`. Fire-and-forget:
+/// every failure path silently returns so logging never affects the
+/// caller. Inline append is faster than spawning a thread for one
+/// small write.
+fn append_history_entry(entry: &HistoryEntry) {
     let Some(dir) = dirs_path() else { return };
+    if !dir.exists() && fs::create_dir_all(&dir).is_err() {
+        return;
+    }
     let path = dir.join("history.jsonl");
 
-    if !dir.exists() {
-        if fs::create_dir_all(&dir).is_err() {
-            return;
-        }
-    }
+    let Ok(mut line) = serde_json::to_string(entry) else {
+        return;
+    };
+    line.push('\n');
 
+    let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&path) else {
+        return;
+    };
+    let _ = file.write_all(line.as_bytes());
+}
+
+/// Log a command execution to the history file.
+pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: u64) {
     let saved_pct = if in_bytes == 0 || out_bytes >= in_bytes {
         0u8
     } else {
@@ -90,7 +111,7 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
     // An empty value is treated as absent so we don't record "".
     let agent = std::env::var("TRS_AGENT").ok().filter(|v| !v.is_empty());
 
-    let entry = HistoryEntry {
+    append_history_entry(&HistoryEntry {
         ts,
         cmd: cmd.to_string(),
         in_bytes,
@@ -99,18 +120,37 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
         ms: duration_ms,
         cwd,
         agent,
-    };
+        bypass: None,
+    });
+}
 
-    let Ok(mut line) = serde_json::to_string(&entry) else {
-        return;
-    };
-    line.push('\n');
+/// Log a bypass observation: the caller prefixed `TRS_SKIP=1` so the
+/// hook returned without rewriting. We record the *attempt* (no
+/// output to measure) so `stats --by-agent` can surface which agents
+/// reach for the escape hatch and whether prompt-level changes
+/// reduce it. Bypass entries carry zero in_bytes/out_bytes/ms — they
+/// don't perturb savings totals, only counts.
+pub fn log_bypass(cmd: &str, agent: Option<&str>) {
+    let cwd = std::env::current_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
 
-    let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&path) else {
-        return;
-    };
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
 
-    let _ = file.write_all(line.as_bytes());
+    append_history_entry(&HistoryEntry {
+        ts,
+        cmd: cmd.to_string(),
+        in_bytes: 0,
+        out_bytes: 0,
+        saved_pct: 0,
+        ms: 0,
+        cwd,
+        agent: agent.map(String::from),
+        bypass: Some(true),
+    });
 }
 
 /// Read all history entries from `~/.trs/history.jsonl`.
@@ -202,11 +242,45 @@ mod tests {
             ms: 12,
             cwd: "/path/to/project".to_string(),
             agent: None,
+            bypass: None,
         };
 
         let json = serde_json::to_string(&entry).unwrap();
         let parsed: HistoryEntry = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.cmd, "git status");
         assert_eq!(parsed.saved_pct, 83);
+    }
+
+    /// Old entries (pre-bypass field) must still deserialize cleanly.
+    /// Forward compatibility: `#[serde(default)]` on the field means
+    /// missing values become `None` rather than failing the parse.
+    #[test]
+    fn test_history_entry_legacy_lines_deserialize() {
+        let legacy = r#"{"ts":1,"cmd":"git status","in_bytes":100,"out_bytes":20,"saved_pct":80,"ms":5,"cwd":"/p"}"#;
+        let parsed: HistoryEntry = serde_json::from_str(legacy).unwrap();
+        assert_eq!(parsed.bypass, None);
+        assert_eq!(parsed.agent, None);
+    }
+
+    /// Bypass entries: `bypass` field present and set to true,
+    /// byte-counts are zero so they don't perturb savings sums.
+    #[test]
+    fn test_bypass_entry_round_trip() {
+        let entry = HistoryEntry {
+            ts: 42,
+            cmd: "TRS_SKIP=1 git status".to_string(),
+            in_bytes: 0,
+            out_bytes: 0,
+            saved_pct: 0,
+            ms: 0,
+            cwd: "/p".to_string(),
+            agent: Some("claude".into()),
+            bypass: Some(true),
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        assert!(json.contains("\"bypass\":true"));
+        let parsed: HistoryEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.bypass, Some(true));
+        assert_eq!(parsed.agent.as_deref(), Some("claude"));
     }
 }
