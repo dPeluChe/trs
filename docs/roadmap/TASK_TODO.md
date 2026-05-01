@@ -113,11 +113,12 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ## Completed
 
-### Unreleased
+### v0.5.15
 
 - fix(template): de-promote bypass to AI agents — `standalone_file()` no longer mentions `trs raw` or `TRS_SKIP=1` to Claude / Gemini / Cursor. Supersedes the v0.5.14 strengthening attempt; agents kept reaching for the escape hatch defensively, so visibility itself was the problem. README headline + `docs/llms.txt` "Configuration" link also demoted. Mechanism still works for humans via `trs --help`. Regression test guards against re-adding bypass mentions to the template.
 - feat(stats): bypass telemetry — `tracker::log_bypass` records `TRS_SKIP=` observations from the JSON hook path. `stats --by-agent` adds a BYPASS column (count + rate); `stats --json` exposes top-level `bypass_count`. Lets the user measure whether the prompt-level intervention is reducing bypass per agent.
 - refactor(tracker): extract `append_history_entry` private helper to dedupe I/O between `log_execution` and `log_bypass`.
+- fix(templates): `CODEX_AGENTS_SECTION` imperative prefix — replaced soft "prefer prefixing" with explicit "you must prefix every shell command with `trs`" since Codex has no pre-execution hook; soft language was getting interpreted as optional and yielding 0% savings. Also refreshed Gemini hook format to the current matcher+nested-hooks shape.
 - chore(repo): GitHub description updated from legacy `"Tars - TRS CLI"` to `"Token-Reducing Shell — terminal output compression for AI coding agents"`.
 - See `docs/roadmap/completed/2605.md` for full session log + decisions.
 
