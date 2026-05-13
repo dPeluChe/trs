@@ -50,11 +50,29 @@ CASES=(
     "triple chain¦cd /tmp && git status && git log¦rewritten"
     "mixed chain¦cd /tmp && echo hello¦passthrough"
     "chain with pipe¦cd /tmp && git status | less¦passthrough"
-    "pure pipe¦git log | grep fix¦passthrough"
+    # Pipes/redirects rewrite the FIRST segment only (trs rewrites the
+    # data-producing command, leaves head/grep/file untouched).
+    "pure pipe¦git log | grep fix¦rewritten"
     "semicolon chain¦git status ; git log¦passthrough"
-    "redirection¦git diff > out.txt¦passthrough"
+    "redirection¦git diff > out.txt¦rewritten"
     "already trs¦trs git status¦passthrough"
     "env assignment¦FOO=bar¦passthrough"
+    # Transparent prefixes: wrapper stays in front; trs slots in front of the inner cmd.
+    "wrapper time¦time cargo test¦rewritten"
+    "wrapper nohup¦nohup cargo build¦rewritten"
+    "wrapper noglob¦noglob git status¦rewritten"
+    "wrapper command¦command git log -5¦rewritten"
+    "wrapper exec¦exec git status¦rewritten"
+    "wrapper builtin¦builtin git status¦rewritten"
+    "wrapper nocorrect¦nocorrect git status¦rewritten"
+    "wrapper setsid¦setsid cargo build¦rewritten"
+    "wrapper unbuffer¦unbuffer cargo test¦rewritten"
+    "wrapper stdbuf¦stdbuf cargo test¦rewritten"
+    "wrapper + env¦RUSTFLAGS=-C time cargo test¦rewritten"
+    "nested wrappers¦nohup time cargo build¦rewritten"
+    "wrapper + chain¦time cargo fmt && cargo clippy¦rewritten"
+    "wrapper false-prefix (timeout)¦timeout 5 git status¦rewritten"
+    "wrapper + skip inner (cd)¦time cd /tmp¦passthrough"
 )
 
 pass=0
