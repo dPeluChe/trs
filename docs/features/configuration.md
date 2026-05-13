@@ -53,6 +53,32 @@ the agent's context.
 pretty-printing. Default 10. Deeper nesting is truncated with an
 ellipsis marker so the agent sees "shape" without the full depth.
 
+## Hook-time wrappers
+
+Some workflows put a wrapper in front of every command — `direnv exec
+.`, `poetry run`, `docker exec myapp`, `shadowenv exec --`. Without
+help, the rewrite layer can't see past the wrapper and the inner
+command stays uncompressed. Register the wrapper as a transparent
+prefix and trs will strip → route → re-prepend:
+
+```toml
+[hooks]
+transparent_prefixes = [
+  "docker exec myapp",
+  "poetry run",
+  "direnv exec .",
+]
+```
+
+With that, `docker exec myapp git status` rewrites to `docker exec
+myapp trs git status` — the wrapper still runs, but the inner
+command flows through trs.
+
+Matching is literal — no patterns. Built-in shell prefixes (`noglob`,
+`command`, `builtin`, `exec`, `nocorrect`) and 1-token process
+wrappers (`time`, `nohup`, `setsid`, `unbuffer`, `stdbuf`) are
+recognized without config.
+
 ## Inspecting the active config
 
 ```bash

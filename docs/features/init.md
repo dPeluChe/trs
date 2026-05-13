@@ -11,6 +11,7 @@ for the full per-agent reference.
 trs init --show                      # status of all 9 agents
 trs init --all --global              # install for every detected agent
 trs init <agent>                     # install for one: claude, gemini, cursor, …
+trs init --all --global --dry-run    # preview every file that would change
 trs init --all --global --force      # refresh templates (see "Refreshing hooks")
 trs init <agent> --replace           # migrate cleanly from another compressor
 ```
@@ -25,13 +26,33 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | Factory Droid | JSON hook | `~/.factory/settings.json` |
 | OpenCode | TS plugin | `~/.config/opencode/plugins/trs.ts` |
 | Kilo Code | TS plugin | `~/.config/kilo/plugins/trs.ts` |
-| Codex | Rules append | `AGENTS.md` in repo |
+| Codex | Rules append | `AGENTS.md` in repo (or `~/.codex/AGENTS.md` with `--global`) |
 | Google Antigravity | Rules file | `.agent/rules/antigravity-trs-rules.md` |
 | Windsurf | Rules file | `.windsurfrules` |
 
 Hooks fire deterministically on every shell-tool invocation. Rules
 files are probabilistic — they only work because the agent chooses to
 follow the guidance in them.
+
+Codex sits in the rules-only column on purpose: its `PreToolUse` hook
+schema accepts but doesn't implement `updatedInput`, so trs can't
+rewrite shell commands from a hook today. The AGENTS.md block tells
+the model to prefix shell commands with `trs` instead.
+
+## Preview with `--dry-run`
+
+`--dry-run` lists every file that would change without writing
+anything. Useful before installing globally on a machine that already
+has other tooling in those configs.
+
+```bash
+trs init --all --global --dry-run
+trs init codex --global --dry-run
+```
+
+Each line shows the target path and the planned action (`would
+create`, `would merge trs hook entries into`, `already configured`).
+Re-run without `--dry-run` to apply.
 
 ## Collision handling
 
