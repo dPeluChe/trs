@@ -129,14 +129,23 @@ export const TrsPlugin = async () => {
 };
 "#;
 
+/// Sentinel that marks the Codex AGENTS.md block on re-runs. The block's
+/// prose uses backtick-wrapped `` `trs` `` which doesn't match the plain
+/// `trs (Token-Reducing Shell)` marker — without this sentinel re-runs
+/// duplicate the section.
+pub(crate) const CODEX_AGENTS_SENTINEL_START: &str = "<!-- trs:codex-rules:start v1 -->";
+
 pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
+    "<!-- trs:codex-rules:start v1 -->\n",
     r#"
 ## Terminal Output Optimization
 
 This project uses `trs` (Token-Reducing Shell) for token-optimized terminal output.
-Codex has no pre-execution hook, so **you must prefix every shell command with `trs`**
-to get compressed output. Without the prefix, you see the full raw output and save
-nothing:
+
+Codex's PreToolUse hook parses but does not implement `updatedInput`
+([codex docs](https://developers.openai.com/codex/hooks)), so trs cannot
+rewrite commands automatically from a hook. **Prefix every shell command
+with `trs`** to get compressed output:
 
 ```bash
 # Instead of:
@@ -168,6 +177,8 @@ already have definitions in the source tree — flagging them as "remove and
 link" vs "extract to a new file".
 
 See https://github.com/dPeluChe/trs for details.
+
+<!-- trs:codex-rules:end -->
 "#
 );
 

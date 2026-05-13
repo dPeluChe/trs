@@ -78,6 +78,11 @@ pub enum Commands {
         /// Risk: double-compression can corrupt command output.
         #[arg(long)]
         force: bool,
+
+        /// Preview the install without writing anything. Lists every file
+        /// that would change and the action taken (create / merge / skip).
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Validate trs installation health (binary, PATH, deps, config)
