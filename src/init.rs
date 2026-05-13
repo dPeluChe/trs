@@ -14,12 +14,14 @@ use crate::init_templates::{
 
 /// Options for an install run. `global` picks home-dir vs project-local;
 /// `replace` scrubs competing compressor hooks before installing trs;
-/// `force` installs anyway when a collision is present.
+/// `force` installs anyway when a collision is present; `dry_run` prints
+/// what would change without touching the filesystem.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct InstallOpts {
     pub global: bool,
     pub replace: bool,
     pub force: bool,
+    pub dry_run: bool,
 }
 
 /// Supported AI tools for hook installation.
@@ -98,7 +100,7 @@ impl AiTool {
             Self::Claude => "hooks → ~/.claude/settings.json",
             Self::Gemini => "hooks → ~/.gemini/settings.json",
             Self::Cursor => "hooks → ~/.cursor/hooks.json",
-            Self::Codex => "rules → AGENTS.md (hooks.json support is experimental)",
+            Self::Codex => "rules → AGENTS.md (Codex hooks don't support rewrite)",
             Self::OpenCode => "plugin → .opencode/plugins/trs.ts",
             Self::Kilo => "plugin → .kilo/plugins/trs.ts",
             Self::Antigravity => "rules → .agent/rules/antigravity-trs-rules.md",
@@ -194,8 +196,13 @@ impl AiTool {
                 filename: "settings.json",
                 content: DROID_HOOKS,
             }),
-            // Rules-based tools (no programmatic hooks) — handled via
-            // install_codex / install_rules instead.
+            // Codex has PreToolUse hooks but its docs explicitly state
+            // `updatedInput` is "parsed but not supported yet" — the hook
+            // fails open with "unsupported updatedInput" if we try to rewrite
+            // commands. Until OpenAI ships input rewriting we ride on the
+            // AGENTS.md rules path only (handled in install_hook via
+            // install_codex_agents). Rules-based tools (Antigravity, Windsurf)
+            // also fall here.
             Self::Codex | Self::Antigravity | Self::Windsurf => None,
         }
     }
@@ -236,6 +243,13 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
             if !seen.insert(c.location.clone()) {
                 continue;
             }
+            if opts.dry_run {
+                println!(
+                    "  would scrub competitor hook from {}",
+                    c.location.display()
+                );
+                continue;
+            }
             match init_collision::scrub_file(&c.location) {
                 Ok(true) => println!("  scrubbed competitor hook from {}", c.location.display()),
                 Ok(false) => {}
@@ -245,11 +259,13 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
     }
 
     let result = match tool {
-        AiTool::Codex => install_codex(),
-        AiTool::Antigravity => {
-            install_rules(".agent/rules/antigravity-trs-rules.md", ANTIGRAVITY_RULES)
-        }
-        AiTool::Windsurf => install_rules(".windsurfrules", WINDSURF_RULES),
+        AiTool::Codex => install_codex_agents(opts),
+        AiTool::Antigravity => install_rules(
+            ".agent/rules/antigravity-trs-rules.md",
+            ANTIGRAVITY_RULES,
+            opts,
+        ),
+        AiTool::Windsurf => install_rules(".windsurfrules", WINDSURF_RULES, opts),
         _ => {
             if let Some(spec) = tool.spec() {
                 install_from_spec(&spec, opts)
@@ -261,22 +277,29 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
 
     match result {
         Ok(path) => {
-            println!("trs hook installed for {} at {}", tool.name(), path);
-            eprintln!(
-                "note: restart any open {} sessions for the hook to take effect",
-                tool.name()
-            );
-            // Warn if trs is not in PATH
-            if !is_trs_in_path() {
+            let verb = if opts.dry_run {
+                "would install"
+            } else {
+                "installed"
+            };
+            println!("trs hook {} for {} at {}", verb, tool.name(), path);
+            if !opts.dry_run {
                 eprintln!(
-                    "warning: 'trs' not found in PATH. The hook may fail silently.\n\
-                     Make sure trs is installed: npm install -g @dpeluche/trs\n\
-                     (or cargo install trs-cli, or curl-sh script — see README)"
+                    "note: restart any open {} sessions for the hook to take effect",
+                    tool.name()
                 );
+                // Warn if trs is not in PATH
+                if !is_trs_in_path() {
+                    eprintln!(
+                        "warning: 'trs' not found in PATH. The hook may fail silently.\n\
+                         Make sure trs is installed: npm install -g @dpeluche/trs\n\
+                         (or cargo install trs-cli, or curl-sh script — see README)"
+                    );
+                }
+                // For Imported agents (Claude, Gemini): also write trs.md so the
+                // agent config gets both the hook and the output-saver/input-rewrite rules.
+                install_trs_md_for(tool);
             }
-            // For Imported agents (Claude, Gemini): also write trs.md so the
-            // agent config gets both the hook and the output-saver/input-rewrite rules.
-            install_trs_md_for(tool);
         }
         Err(e) => eprintln!("Failed to install hook for {}: {}", tool.name(), e),
     }
@@ -319,15 +342,24 @@ pub(crate) fn install_all(opts: InstallOpts) {
         }
     }
 
+    let installed_label = if opts.dry_run {
+        "would install"
+    } else {
+        "installed"
+    };
     println!(
-        "\n{} installed, {} already configured, {} skipped (not detected), {} total",
+        "\n{} {}, {} already configured, {} skipped (not detected), {} total",
         installed,
+        installed_label,
         skipped,
         undetected,
         tools.len()
     );
-    if installed > 0 {
+    if installed > 0 && !opts.dry_run {
         eprintln!("note: restart any open AI tool sessions for hooks to take effect");
+    }
+    if opts.dry_run {
+        eprintln!("note: dry-run — nothing was written. Re-run without --dry-run to apply.");
     }
     // When everything is already wired up, remind the user how to force
     // a refresh — template content can change between releases even
@@ -444,7 +476,19 @@ pub(crate) fn show_status_and_usage() {
 /// `trs init --force` to update the template.
 pub(crate) fn check_tool(tool: &AiTool) -> bool {
     match tool {
-        AiTool::Codex => return has_any_trs_marker_at("AGENTS.md"),
+        AiTool::Codex => {
+            // Codex reads both ./AGENTS.md (project) and ~/.codex/AGENTS.md
+            // (global). Either being configured counts.
+            if has_any_trs_marker_at("AGENTS.md") {
+                return true;
+            }
+            if let Ok(home) = home_dir() {
+                if has_any_trs_marker_at_path(&home.join(".codex").join("AGENTS.md")) {
+                    return true;
+                }
+            }
+            return false;
+        }
         AiTool::Antigravity => {
             return has_any_trs_marker_at_path(Path::new(".agent/rules/antigravity-trs-rules.md"));
         }
@@ -487,22 +531,29 @@ fn install_from_spec(spec: &HookSpec, opts: InstallOpts) -> Result<String, Strin
             let home = home_dir()?;
             let dir = home.join(global_dir);
             let path = dir.join(spec.filename);
-            return write_hook(&dir, &path, spec.content, opts.replace);
+            return write_hook(&dir, &path, spec.content, opts);
         }
         // No global config location for this tool — fall back to local install.
         eprintln!("note: --global not supported for this tool, installing locally instead");
     }
     let dir = PathBuf::from(spec.local_dir);
     let path = dir.join(spec.filename);
-    write_hook(&dir, &path, spec.content, opts.replace)
+    write_hook(&dir, &path, spec.content, opts)
 }
 
 // ============================================================
 // Codex — AGENTS.md append (unique pattern)
 // ============================================================
 
-fn install_codex() -> Result<String, String> {
-    let path = PathBuf::from("AGENTS.md");
+/// Append the trs rules block to AGENTS.md. With `--global` the target is
+/// `~/.codex/AGENTS.md` (Codex reads it globally); otherwise it lands in the
+/// project root. Idempotent against the trs marker. Honors `opts.dry_run`.
+fn install_codex_agents(opts: InstallOpts) -> Result<String, String> {
+    let path = if opts.global {
+        home_dir()?.join(".codex").join("AGENTS.md")
+    } else {
+        PathBuf::from("AGENTS.md")
+    };
 
     if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
@@ -510,9 +561,23 @@ fn install_codex() -> Result<String, String> {
             // Idempotent: already installed is a success, not a failure.
             return Ok(format!("{} (already configured)", path.display()));
         }
+        if opts.dry_run {
+            return Ok(format!("{} (would append trs rules block)", path.display()));
+        }
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Cannot create {}: {}", parent.display(), e))?;
+        }
         let updated = format!("{}\n{}", content, CODEX_AGENTS_SECTION);
         fs::write(&path, updated).map_err(|e| e.to_string())?;
     } else {
+        if opts.dry_run {
+            return Ok(format!("{} (would create with trs rules)", path.display()));
+        }
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Cannot create {}: {}", parent.display(), e))?;
+        }
         fs::write(&path, CODEX_AGENTS_SECTION.trim()).map_err(|e| e.to_string())?;
     }
     Ok(path.display().to_string())
@@ -523,18 +588,25 @@ fn install_codex() -> Result<String, String> {
 // ============================================================
 
 /// Install a rules/instructions file. Project-local only (rules tools lack a
-/// global equivalent today). Idempotent: re-running is a no-op.
-fn install_rules(path_rel: &str, content: &str) -> Result<String, String> {
+/// global equivalent today). Idempotent: re-running is a no-op. Honors
+/// `opts.dry_run` — returns a preview message without touching the file.
+fn install_rules(path_rel: &str, content: &str, opts: InstallOpts) -> Result<String, String> {
     let path = PathBuf::from(path_rel);
     if path.exists() {
         let existing = fs::read_to_string(&path).unwrap_or_default();
         if has_trs_marker(&existing) {
             return Ok(format!("{} (already configured)", path.display()));
         }
+        if opts.dry_run {
+            return Ok(format!("{} (would append trs rules)", path.display()));
+        }
         // Append instead of overwriting — the user may have their own rules.
         let updated = format!("{}\n\n{}", existing.trim_end(), content);
         fs::write(&path, updated).map_err(|e| e.to_string())?;
     } else {
+        if opts.dry_run {
+            return Ok(format!("{} (would create with trs rules)", path.display()));
+        }
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
             fs::create_dir_all(parent)
                 .map_err(|e| format!("Cannot create {}: {}", parent.display(), e))?;
@@ -554,13 +626,14 @@ fn has_trs_marker(content: &str) -> bool {
     file_has_any_trs_marker(content)
 }
 
-/// Same as `has_trs_marker` but named to match the public-ish helpers
-/// used from `check_tool`. Separate name keeps the intent readable
-/// when the call sites are scanning files rather than raw content.
+/// Recognizes modern marker, legacy `TARS CLI` marker (v0.5.8 and earlier),
+/// `trs rewrite` hook-command, and the Codex sentinel (needed because the
+/// codex rules block prose uses `` `trs` `` with backticks).
 fn file_has_any_trs_marker(content: &str) -> bool {
     content.contains("trs (Token-Reducing Shell)")
         || content.contains("trs (TARS CLI)")
         || content.contains("trs rewrite")
+        || content.contains(crate::init_templates::CODEX_AGENTS_SENTINEL_START)
 }
 
 fn has_any_trs_marker_at(path_str: &str) -> bool {
@@ -594,15 +667,16 @@ fn check_file_contains_path(path: &Path, needle: &str) -> bool {
 
 /// Write a hook file. For JSON settings files, merge our `hooks` section into
 /// existing content (preserving user's other config). For non-JSON files,
-/// refuse to overwrite if the file already has foreign content.
-fn write_hook(dir: &Path, path: &Path, content: &str, replace: bool) -> Result<String, String> {
+/// refuse to overwrite if the file already has foreign content. Honors
+/// `opts.dry_run`.
+fn write_hook(dir: &Path, path: &Path, content: &str, opts: InstallOpts) -> Result<String, String> {
     let is_json = path
         .extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| e.eq_ignore_ascii_case("json"));
 
     if is_json {
-        return merge_json_hook(dir, path, content, replace);
+        return merge_json_hook(dir, path, content, opts);
     }
 
     // Non-JSON file (e.g. plugin .ts, hooks.json written by us directly).
@@ -616,6 +690,9 @@ fn write_hook(dir: &Path, path: &Path, content: &str, replace: bool) -> Result<S
             path.display()
         ));
     }
+    if opts.dry_run {
+        return Ok(format!("{} (would create)", path.display()));
+    }
     fs::create_dir_all(dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
     fs::write(path, content).map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
     Ok(path.display().to_string())
@@ -627,8 +704,9 @@ fn merge_json_hook(
     dir: &Path,
     path: &Path,
     template: &str,
-    replace: bool,
+    opts: InstallOpts,
 ) -> Result<String, String> {
+    let replace = opts.replace;
     let template_value: serde_json::Value = serde_json::from_str(template)
         .map_err(|e| format!("internal: template JSON invalid: {}", e))?;
     let template_hooks = template_value
@@ -727,6 +805,14 @@ fn merge_json_hook(
         return Ok(format!("{} (already configured)", path.display()));
     }
 
+    if opts.dry_run {
+        let verb = if path.exists() {
+            "would merge trs hook entries into"
+        } else {
+            "would create with trs hook"
+        };
+        return Ok(format!("{} ({})", path.display(), verb));
+    }
     fs::create_dir_all(dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
     let pretty = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
     fs::write(path, format!("{}\n", pretty))

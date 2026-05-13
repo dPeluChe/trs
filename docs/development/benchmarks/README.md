@@ -18,7 +18,7 @@ should we improve?" — not to publish a leaderboard.
 |--------|---------|
 | [`benchmark.sh`](./benchmark.sh) | Comparative runs against rtk and token-saver on a curated set of real-world commands |
 | [`benchmark-real.sh`](./benchmark-real.sh) | Longer, more varied workload (slower, more representative) |
-| [`chain-rewrite.sh`](./chain-rewrite.sh) | Verifies the hook rewriter correctly handles `A && B` chains, pipes, redirections, and edge cases |
+| [`chain-rewrite.sh`](./chain-rewrite.sh) | Verifies the hook rewriter handles `A && B` chains, pipes, redirections, transparent wrappers (`time`, `nohup`, `noglob`, etc.), and edge cases |
 
 ## How to use
 

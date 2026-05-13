@@ -349,6 +349,12 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
         return maybe_rewrite(body).map(|r| format!("{} {}", env_prefix, r));
     }
 
+    // Transparent wrapper: `time cargo test` → `time trs cargo test`.
+    // Strip → recurse → re-prepend keeps the wrapping semantics intact.
+    if let Some((wrapper, body)) = strip_transparent_prefix(trimmed) {
+        return maybe_rewrite(body).map(|r| format!("{} {}", wrapper, r));
+    }
+
     // Hot-path optimization: almost all incoming commands are plain "git X"
     // with no shell operators. A single byte scan rejects that fast case before
     // we do any of the more expensive `contains(" && ")` / shell-op lookups.
@@ -439,6 +445,48 @@ fn maybe_rewrite(cmd: &str) -> Option<String> {
     Some(format!("trs {}", trimmed))
 }
 
+/// Always-on wrappers: shell builtins the shell consumes before exec, plus
+/// 1-token process wrappers with no required args. Arg-taking wrappers
+/// (`sudo`, `env`, `nice -n N`) go through user config instead.
+const TRANSPARENT_PREFIX_BUILTINS: &[&str] = &[
+    "noglob",
+    "command",
+    "builtin",
+    "exec",
+    "nocorrect",
+    "time",
+    "nohup",
+    "setsid",
+    "unbuffer",
+    "stdbuf",
+];
+
+fn strip_transparent_prefix(cmd: &str) -> Option<(&str, &str)> {
+    for prefix in TRANSPARENT_PREFIX_BUILTINS {
+        if let Some(rest) = strip_word_prefix(cmd, prefix) {
+            return Some((prefix, rest));
+        }
+    }
+    for prefix in &crate::config::config().hooks.transparent_prefixes {
+        if let Some(rest) = strip_word_prefix(cmd, prefix.as_str()) {
+            return Some((prefix.as_str(), rest));
+        }
+    }
+    None
+}
+
+/// Whole-word prefix match. `prefix="time"` matches `"time x"` but not
+/// `"timeout"`. A bare wrapper with no trailing whitespace is rejected.
+fn strip_word_prefix<'a>(cmd: &'a str, prefix: &str) -> Option<&'a str> {
+    let rest = cmd.strip_prefix(prefix)?;
+    let next = rest.as_bytes().first()?;
+    if next.is_ascii_whitespace() {
+        Some(rest.trim_start())
+    } else {
+        None
+    }
+}
+
 /// Split a command at the first shell operator (pipe or redirect) so the left
 /// side can be rewritten independently. Longer delimiters (`" >> "`) are
 /// tried before their prefixes (`" > "`) so we don't misclassify them.
@@ -489,6 +537,93 @@ mod tests {
         assert_eq!(maybe_rewrite("TRS_SKIP=1 git status"), None);
         assert_eq!(maybe_rewrite("TRS_SKIP=true cargo test"), None);
         assert_eq!(maybe_rewrite("TRS_SKIP= git log"), None); // empty value still signals skip
+    }
+
+    #[test]
+    fn test_transparent_prefix_builtins() {
+        // 1-token wrappers strip → recurse → re-prepend, preserving
+        // wrapping semantics. `time` measures the inner command, not trs.
+        assert_eq!(
+            maybe_rewrite("time cargo test"),
+            Some("time trs cargo test".into())
+        );
+        assert_eq!(
+            maybe_rewrite("nohup cargo build"),
+            Some("nohup trs cargo build".into())
+        );
+        // Shell builtins.
+        assert_eq!(
+            maybe_rewrite("noglob git status"),
+            Some("noglob trs git status".into())
+        );
+        assert_eq!(
+            maybe_rewrite("command git log -5"),
+            Some("command trs git log -5".into())
+        );
+    }
+
+    #[test]
+    fn test_transparent_prefix_partial_match_not_stripped() {
+        // `timeout` must not match the `time` prefix (whole-word only).
+        // `timeout 5 cargo test` rewrites the inner cmd through the
+        // generic path, with `timeout` left as the wrapper arg list —
+        // but since `timeout` isn't a known prefix, it falls through to
+        // the generic "rewrite the whole line" path.
+        let r = maybe_rewrite("timeout 5 cargo test").unwrap();
+        assert!(
+            !r.starts_with("time trs"),
+            "expected `time` not to match `timeout`, got: {}",
+            r
+        );
+    }
+
+    #[test]
+    fn test_transparent_prefix_alone_not_stripped() {
+        // `time` with no inner command isn't a real invocation — fall
+        // through to generic rewrite (or none) instead of looping.
+        let out = maybe_rewrite("time");
+        assert!(out != Some("time".into()), "shouldn't strip bare wrapper");
+    }
+
+    #[test]
+    fn test_transparent_prefix_composes_with_env() {
+        // Env prefix wraps a transparent wrapper wraps the real command.
+        // RUSTFLAGS=-C time cargo test → RUSTFLAGS=-C time trs cargo test
+        assert_eq!(
+            maybe_rewrite("RUSTFLAGS=-C time cargo test"),
+            Some("RUSTFLAGS=-C time trs cargo test".into())
+        );
+    }
+
+    #[test]
+    fn test_transparent_prefix_nested() {
+        // Stacked wrappers strip one at a time, re-prepend on the way
+        // back. Bounded naturally by token consumption.
+        assert_eq!(
+            maybe_rewrite("nohup time cargo build"),
+            Some("nohup time trs cargo build".into())
+        );
+    }
+
+    #[test]
+    fn test_transparent_prefix_skips_when_inner_skipped() {
+        // `time cd /tmp` — inner is in SKIP_PREFIXES, so the whole
+        // expression returns None. Wrapper alone doesn't force a rewrite.
+        assert_eq!(maybe_rewrite("time cd /tmp"), None);
+    }
+
+    #[test]
+    fn test_strip_word_prefix_strict() {
+        // Helper-level: whole-word, single separator.
+        assert_eq!(
+            strip_word_prefix("time cargo test", "time"),
+            Some("cargo test")
+        );
+        assert_eq!(strip_word_prefix("timeout 5 x", "time"), None);
+        // Exact match (no trailing space) does not strip.
+        assert_eq!(strip_word_prefix("time", "time"), None);
+        // Empty prefix is rejected.
+        assert_eq!(strip_word_prefix("foo bar", ""), None);
     }
 
     #[test]

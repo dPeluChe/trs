@@ -133,11 +133,13 @@ fn main() {
             all,
             replace,
             force,
+            dry_run,
         }) => {
             let opts = init::InstallOpts {
                 global: *global,
                 replace: *replace,
                 force: *force,
+                dry_run: *dry_run,
             };
             if *show {
                 init::show_status();
