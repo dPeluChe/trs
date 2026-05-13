@@ -8,84 +8,17 @@
 //!   stdout: (empty = no change, or modified JSON)
 //!   exit 0 = allow
 //!
-//! For commands trs knows how to compress, rewrites "git status" → "trs git status".
-//! For commands trs doesn't handle, passes through unchanged.
+//! Decision logic (which commands get wrapped) lives in `rewrite_decide.rs`.
+//! This module owns the I/O entry point and the per-agent JSON envelopes.
 
 use std::io::Read;
 
-/// Commands (prefixes) that trs should rewrite.
-/// Keep in sync with classifier.rs — but intentionally broad.
-/// Unknown commands still get generic compression.
-const REWRITE_PREFIXES: &[&str] = &[
-    "git ",
-    "ls ",
-    "ls\n",
-    "lsd ",
-    "exa ",
-    "eza ",
-    "tree ",
-    "find ",
-    "fd ",
-    "grep ",
-    "rg ",
-    "ag ",
-    "ack ",
-    "tail ",
-    "cargo ",
-    "npm ",
-    "pnpm ",
-    "bun ",
-    "yarn ",
-    "pip ",
-    "pip3 ",
-    "pytest",
-    "jest",
-    "vitest",
-    "make ",
-    "make\n",
-    "cmake ",
-    "tsc ",
-    "gcc ",
-    "g++ ",
-    "clang ",
-    "javac ",
-    "docker ",
-    "gh ",
-    "env\n",
-    "env ",
-    "printenv",
-    "wc ",
-    "wget ",
-    "curl ",
-    "eslint",
-    "biome ",
-    "ruff ",
-    "pylint",
-    "golangci-lint",
-    "ollama ",
-    "kubectl ",
-    "swift ",
-    "xcodebuild ",
-    "ping ",
-    "brew ",
-    "python ",
-    "python3 ",
-    "npx ",
-    "ps ",
-    "uv ",
-];
-
-/// Commands that should NEVER be rewritten (internal, cd, pipes, etc.)
-const SKIP_PREFIXES: &[&str] = &[
-    "trs ", "cd ", "echo ", "cat ", "head ", "tail -f", "export ", "source ", ".", "set ",
-    "unset ", "alias ", "which ", "type ", "true", "false", "exit", "return",
-];
+use crate::rewrite_decide::{looks_like_env_assignment, maybe_rewrite};
 
 /// Run the rewrite logic. Called from main.rs.
 pub(crate) fn run_rewrite() {
     let mut input = String::new();
     if std::io::stdin().read_to_string(&mut input).is_err() {
-        // No input or read error — allow unchanged
         return;
     }
 
@@ -94,7 +27,6 @@ pub(crate) fn run_rewrite() {
         return;
     }
 
-    // Try to parse as JSON (Claude Code / Gemini protocol)
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(input) {
         handle_json_protocol(&json);
         return;
@@ -106,19 +38,15 @@ pub(crate) fn run_rewrite() {
     }
 }
 
-/// Handle JSON hook protocol. Prints the response envelope (or nothing when
-/// no rewrite is needed). Pure formatting lives in `build_hook_response` for
-/// testability.
 fn handle_json_protocol(json: &serde_json::Value) {
     if let Some(response) = build_hook_response(json) {
         println!("{}", response);
     }
 }
 
-/// Which client's hook protocol are we speaking. Each emits a different
-/// rewrite envelope; the wire name of the `hook_event_name` field identifies
-/// the client. Claude Code is the default when the field is missing or unknown
-/// because it's by far the most common client.
+/// Which client's hook protocol we're speaking. Each emits a different
+/// envelope; `hook_event_name` identifies the client. Claude Code is the
+/// default when the field is missing/unknown — by far the most common.
 #[derive(Clone, Copy)]
 enum HookEvent {
     /// Claude Code — `hook_event_name: "PreToolUse"` (capitalized).
@@ -138,10 +66,9 @@ impl HookEvent {
         }
     }
 
-    /// Short label written into the TRS_AGENT env var of the rewritten
-    /// command so history.jsonl can attribute the execution. Droid
-    /// shares Claude's wire format — both land in `ClaudePreToolUse`
-    /// and we label them "claude" here.
+    /// Label written into the TRS_AGENT env-var so history.jsonl can
+    /// attribute the run. Droid shares Claude's wire format, so both land
+    /// in `ClaudePreToolUse` and label as "claude".
     fn agent_label(&self) -> &'static str {
         match self {
             Self::GeminiBeforeTool => "gemini",
@@ -151,11 +78,10 @@ impl HookEvent {
     }
 }
 
-/// Build the JSON response for the current hook event, or return `None` to
-/// emit nothing (the agent runs the original command unchanged).
-///
-/// All supported clients share the same input envelope (`tool_input.command`)
-/// but expect different output shapes:
+/// Build the JSON response for the current hook event, or `None` to emit
+/// nothing (the agent runs the original command unchanged). All clients
+/// share the same input envelope (`tool_input.command`) but expect
+/// different output shapes:
 ///   Claude Code → hookSpecificOutput.updatedInput.command
 ///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
 ///   Cursor      → top-level `permission` + top-level `updated_input.command`
@@ -171,29 +97,14 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
             .unwrap_or(""),
     );
 
-    // Bypass telemetry: `TRS_SKIP=1 <cmd>` (with or without preceding
-    // env-var assignments) signals the agent wants this command to
-    // skip trs entirely. We honor the bypass — return None so the hook
-    // emits no rewrite — but log the attempt under the agent's label
-    // first. `stats --by-agent` surfaces these counts so the user can
-    // see whether per-agent bypass rates drop after prompt changes.
-    // Done before `maybe_rewrite` so we don't double-count the same
-    // observation (maybe_rewrite would also short-circuit on TRS_SKIP).
+    // Bypass telemetry — log the agent-attributed observation before the
+    // short-circuit so `stats --by-agent` can surface per-agent rates.
     if cmd_bypasses_trs(cmd) {
         crate::tracker::log_bypass(cmd, Some(event.agent_label()));
         return None;
     }
 
     let rewritten = maybe_rewrite(cmd)?;
-
-    // Tag the rewritten command with the agent name so the downstream
-    // `trs <cmd>` invocation can log it to history.jsonl. The shell
-    // strips the env-var assignment before executing, so this is
-    // transparent to git/cargo/etc. Note: Claude Code and Factory
-    // Droid both use PreToolUse — we label as "claude" since the two
-    // are indistinguishable at the wire-format layer. If Droid's
-    // install template ever diverges (e.g. a distinct matcher), we
-    // can add a second detection path.
     let rewritten = tag_with_agent(&rewritten, event.agent_label());
 
     let response = match event {
@@ -220,52 +131,9 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
     Some(response)
 }
 
-/// If `cmd` starts with one or more shell-style `NAME=value` tokens
-/// before the actual command, split them off. Returns
-/// `Some((env_prefix, remainder))` where `env_prefix` is the
-/// concatenated assignments (space-separated) and `remainder` is
-/// everything from the actual command onward. Returns `None` when
-/// there's no env prefix so the caller can take the fast path.
-///
-/// Heuristic for what counts as `NAME=value`:
-/// - First character is ASCII letter or underscore.
-/// - Characters before `=` are ASCII alphanumeric or underscore.
-/// - Must contain `=`.
-/// - Doesn't start with `-` (rules out `--foo=bar` flag patterns).
-///
-/// Multi-token env prefixes (`A=1 B=2 cargo build`) are handled by
-/// iterating left-to-right.
-fn split_env_prefix(cmd: &str) -> Option<(String, &str)> {
-    let mut rest = cmd;
-    let mut collected: Vec<&str> = Vec::new();
-    loop {
-        let trimmed = rest.trim_start();
-        if trimmed.is_empty() {
-            break;
-        }
-        let Some(space_at) = trimmed.find(char::is_whitespace) else {
-            break;
-        };
-        let token = &trimmed[..space_at];
-        if !looks_like_env_assignment(token) {
-            break;
-        }
-        collected.push(token);
-        rest = &trimmed[space_at..];
-    }
-    if collected.is_empty() {
-        None
-    } else {
-        Some((collected.join(" "), rest.trim_start()))
-    }
-}
-
-/// True when `cmd` is bypassing trs via a `TRS_SKIP=` env-var
-/// prefix. Walks any leading `NAME=value` tokens because real-world
-/// shells accept multiple assignments before the actual command
-/// (`FOO=1 TRS_SKIP=1 git status`). Stops at the first non-assignment
-/// token. Used by the JSON hook path to log bypass observations
-/// before short-circuiting — keeps `maybe_rewrite` purely functional.
+/// True when `cmd` is bypassing trs via a `TRS_SKIP=` env-var prefix.
+/// Walks leading `NAME=value` tokens because shells accept multiple
+/// assignments before the command (`FOO=1 TRS_SKIP=1 git status`).
 fn cmd_bypasses_trs(cmd: &str) -> bool {
     let mut rest = cmd.trim_start();
     loop {
@@ -283,222 +151,14 @@ fn cmd_bypasses_trs(cmd: &str) -> bool {
     }
 }
 
-/// True when `token` matches the shell env-var assignment shape
-/// `NAME=value`. Restrictive enough not to match flag patterns like
-/// `--crate-name=foo` or URL-ish strings.
-fn looks_like_env_assignment(token: &str) -> bool {
-    let Some(eq_at) = token.find('=') else {
-        return false;
-    };
-    if eq_at == 0 {
-        return false;
-    }
-    let name = &token[..eq_at];
-    let first = name.chars().next().unwrap();
-    if !(first.is_ascii_alphabetic() || first == '_') {
-        return false;
-    }
-    name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-}
-
-/// Prefix `cmd` with a `TRS_AGENT=<label>` env-var assignment so the
-/// downstream `trs <cmd>` execution picks it up and logs attribution
-/// to history.jsonl. The shell treats leading `VAR=value` as a
-/// per-command env override and removes it before executing the rest
-/// of the command line.
+/// Prefix `cmd` with `TRS_AGENT=<label>` so the downstream `trs <cmd>`
+/// execution can attribute the run. The shell strips the leading
+/// `VAR=value` assignment before exec, so it's transparent to git/cargo/etc.
 fn tag_with_agent(cmd: &str, agent: &str) -> String {
-    // Defensive: don't double-tag if the caller already prefixed.
     if cmd.starts_with("TRS_AGENT=") {
         return cmd.to_string();
     }
     format!("TRS_AGENT={} {}", agent, cmd)
-}
-
-/// Decide if a command should be rewritten to go through trs.
-/// Returns Some(rewritten) or None (leave unchanged).
-fn maybe_rewrite(cmd: &str) -> Option<String> {
-    let trimmed = cmd.trim();
-
-    // Never rewrite empty commands
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    // Never rewrite commands that are already using trs
-    if trimmed.starts_with("trs ") {
-        return None;
-    }
-
-    // Explicit per-invocation opt-out: `TRS_SKIP=1 git log ...` tells us
-    // the caller (user or agent) wants this specific command to bypass
-    // trs compression and receive raw output. The env var assignment
-    // stays in the command string — the shell will strip it before
-    // executing git, so the bypass is transparent downstream. Any value
-    // after the `=` works; we only care that the prefix is present.
-    if trimmed.starts_with("TRS_SKIP=") {
-        return None;
-    }
-
-    // Env-var prefix: `RUSTFLAGS=xyz cargo build` should rewrite to
-    // `RUSTFLAGS=xyz trs cargo build` (env stays attached to the
-    // wrapped command) rather than `trs RUSTFLAGS=xyz cargo build`
-    // (which would leave trs without the env and pass the assignment
-    // as a plain argument). Detects leading `NAME=value` tokens
-    // before the actual command.
-    if let Some((env_prefix, body)) = split_env_prefix(trimmed) {
-        return maybe_rewrite(body).map(|r| format!("{} {}", env_prefix, r));
-    }
-
-    // Transparent wrapper: `time cargo test` → `time trs cargo test`.
-    // Strip → recurse → re-prepend keeps the wrapping semantics intact.
-    if let Some((wrapper, body)) = strip_transparent_prefix(trimmed) {
-        return maybe_rewrite(body).map(|r| format!("{} {}", wrapper, r));
-    }
-
-    // Hot-path optimization: almost all incoming commands are plain "git X"
-    // with no shell operators. A single byte scan rejects that fast case before
-    // we do any of the more expensive `contains(" && ")` / shell-op lookups.
-    let has_shell_op = trimmed
-        .as_bytes()
-        .iter()
-        .any(|b| matches!(b, b'&' | b'|' | b'>' | b'<' | b';'));
-
-    // Chain handling: split on " && " and rewrite each segment independently.
-    // Checked BEFORE SKIP_PREFIXES so `cd X && git Y` isn't short-circuited by
-    // the "cd" skip. Pipes (`|`) and semicolons (`;`) are left to the shell.
-    if has_shell_op
-        && trimmed.contains(" && ")
-        && !trimmed.contains(" | ")
-        && !trimmed.contains(" ; ")
-    {
-        let segments: Vec<&str> = trimmed.split(" && ").map(str::trim).collect();
-        let mut any_changed = false;
-        let mut rewritten: Vec<String> = Vec::with_capacity(segments.len());
-        for seg in &segments {
-            match maybe_rewrite(seg) {
-                Some(r) => {
-                    any_changed = true;
-                    rewritten.push(r);
-                }
-                None => rewritten.push(seg.to_string()),
-            }
-        }
-        if any_changed {
-            return Some(rewritten.join(" && "));
-        }
-        return None;
-    }
-
-    // Never rewrite internal/shell commands
-    for skip in SKIP_PREFIXES {
-        if trimmed.starts_with(skip) || trimmed == skip.trim() {
-            return None;
-        }
-    }
-
-    // Semicolon chains are too unpredictable (independent commands) — skip.
-    if has_shell_op && trimmed.contains(" ; ") {
-        return None;
-    }
-
-    // Pipe / redirect: rewrite ONLY the first segment and keep the rest
-    // untouched. Agents routinely append `| head -N`, `| grep X`, or `> file`
-    // to cap / filter output; blocking rewrite on any pipe silently defeated
-    // the hook for those very common cases. Rewriting just the command that
-    // produces the data preserves shell semantics while still applying trs
-    // compression.
-    if has_shell_op {
-        if let Some((first, rest)) = split_at_shell_op(trimmed) {
-            let rewritten = maybe_rewrite(first)?;
-            return Some(format!("{}{}", rewritten, rest));
-        }
-    }
-
-    // Never rewrite subshells or command substitution
-    if trimmed.contains("$(") || trimmed.contains('`') {
-        return None;
-    }
-
-    // Block --no-verify on git commands (security: don't let agents skip hooks)
-    if (trimmed.starts_with("git commit") || trimmed.starts_with("git push"))
-        && (trimmed.contains("--no-verify") || trimmed.contains("-n "))
-    {
-        eprintln!("[trs] blocked: --no-verify is not allowed (protects pre-commit hooks)");
-        std::process::exit(2); // Exit 2 = block in Claude Code hook protocol
-    }
-
-    // Check if this is a command trs handles
-    for prefix in REWRITE_PREFIXES {
-        let p = prefix.trim();
-        if trimmed.starts_with(prefix) || trimmed == p {
-            return Some(format!("trs {}", trimmed));
-        }
-    }
-
-    // Unknown command — still rewrite for generic compression
-    // (whitespace collapse, ANSI stripping)
-    // But skip very short commands or assignment-like patterns
-    if trimmed.contains('=') && !trimmed.contains(' ') {
-        return None; // VAR=value
-    }
-
-    Some(format!("trs {}", trimmed))
-}
-
-/// Always-on wrappers: shell builtins the shell consumes before exec, plus
-/// 1-token process wrappers with no required args. Arg-taking wrappers
-/// (`sudo`, `env`, `nice -n N`) go through user config instead.
-const TRANSPARENT_PREFIX_BUILTINS: &[&str] = &[
-    "noglob",
-    "command",
-    "builtin",
-    "exec",
-    "nocorrect",
-    "time",
-    "nohup",
-    "setsid",
-    "unbuffer",
-    "stdbuf",
-];
-
-fn strip_transparent_prefix(cmd: &str) -> Option<(&str, &str)> {
-    for prefix in TRANSPARENT_PREFIX_BUILTINS {
-        if let Some(rest) = strip_word_prefix(cmd, prefix) {
-            return Some((prefix, rest));
-        }
-    }
-    for prefix in &crate::config::config().hooks.transparent_prefixes {
-        if let Some(rest) = strip_word_prefix(cmd, prefix.as_str()) {
-            return Some((prefix.as_str(), rest));
-        }
-    }
-    None
-}
-
-/// Whole-word prefix match. `prefix="time"` matches `"time x"` but not
-/// `"timeout"`. A bare wrapper with no trailing whitespace is rejected.
-fn strip_word_prefix<'a>(cmd: &'a str, prefix: &str) -> Option<&'a str> {
-    let rest = cmd.strip_prefix(prefix)?;
-    let next = rest.as_bytes().first()?;
-    if next.is_ascii_whitespace() {
-        Some(rest.trim_start())
-    } else {
-        None
-    }
-}
-
-/// Split a command at the first shell operator (pipe or redirect) so the left
-/// side can be rewritten independently. Longer delimiters (`" >> "`) are
-/// tried before their prefixes (`" > "`) so we don't misclassify them.
-///
-/// Returns `(first_segment, operator_and_rest)` — splicing them back yields
-/// the original string.
-fn split_at_shell_op(s: &str) -> Option<(&str, &str)> {
-    [" | ", " >> ", " > ", " < "]
-        .iter()
-        .filter_map(|op| s.find(op).map(|pos| (pos, *op)))
-        .min_by_key(|(pos, _)| *pos)
-        .map(|(pos, _)| (&s[..pos], &s[pos..]))
 }
 
 #[cfg(test)]
@@ -506,359 +166,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_rewrite_git() {
-        assert_eq!(maybe_rewrite("git status"), Some("trs git status".into()));
-        assert_eq!(maybe_rewrite("git log -5"), Some("trs git log -5".into()));
-    }
-
-    #[test]
-    fn test_rewrite_cargo() {
-        assert_eq!(maybe_rewrite("cargo test"), Some("trs cargo test".into()));
-        assert_eq!(
-            maybe_rewrite("cargo clippy"),
-            Some("trs cargo clippy".into())
-        );
-    }
-
-    #[test]
-    fn test_skip_already_trs() {
-        assert_eq!(maybe_rewrite("trs git status"), None);
-    }
-
-    #[test]
-    fn test_skip_cd() {
-        assert_eq!(maybe_rewrite("cd /tmp"), None);
-    }
-
-    #[test]
-    fn test_skip_trs_skip_env_var() {
-        // Explicit per-invocation bypass. The agent adds TRS_SKIP=1 when
-        // it genuinely wants raw command output.
-        assert_eq!(maybe_rewrite("TRS_SKIP=1 git status"), None);
-        assert_eq!(maybe_rewrite("TRS_SKIP=true cargo test"), None);
-        assert_eq!(maybe_rewrite("TRS_SKIP= git log"), None); // empty value still signals skip
-    }
-
-    #[test]
-    fn test_transparent_prefix_builtins() {
-        // 1-token wrappers strip → recurse → re-prepend, preserving
-        // wrapping semantics. `time` measures the inner command, not trs.
-        assert_eq!(
-            maybe_rewrite("time cargo test"),
-            Some("time trs cargo test".into())
-        );
-        assert_eq!(
-            maybe_rewrite("nohup cargo build"),
-            Some("nohup trs cargo build".into())
-        );
-        // Shell builtins.
-        assert_eq!(
-            maybe_rewrite("noglob git status"),
-            Some("noglob trs git status".into())
-        );
-        assert_eq!(
-            maybe_rewrite("command git log -5"),
-            Some("command trs git log -5".into())
-        );
-    }
-
-    #[test]
-    fn test_transparent_prefix_partial_match_not_stripped() {
-        // `timeout` must not match the `time` prefix (whole-word only).
-        // `timeout 5 cargo test` rewrites the inner cmd through the
-        // generic path, with `timeout` left as the wrapper arg list —
-        // but since `timeout` isn't a known prefix, it falls through to
-        // the generic "rewrite the whole line" path.
-        let r = maybe_rewrite("timeout 5 cargo test").unwrap();
-        assert!(
-            !r.starts_with("time trs"),
-            "expected `time` not to match `timeout`, got: {}",
-            r
-        );
-    }
-
-    #[test]
-    fn test_transparent_prefix_alone_not_stripped() {
-        // `time` with no inner command isn't a real invocation — fall
-        // through to generic rewrite (or none) instead of looping.
-        let out = maybe_rewrite("time");
-        assert!(out != Some("time".into()), "shouldn't strip bare wrapper");
-    }
-
-    #[test]
-    fn test_transparent_prefix_composes_with_env() {
-        // Env prefix wraps a transparent wrapper wraps the real command.
-        // RUSTFLAGS=-C time cargo test → RUSTFLAGS=-C time trs cargo test
-        assert_eq!(
-            maybe_rewrite("RUSTFLAGS=-C time cargo test"),
-            Some("RUSTFLAGS=-C time trs cargo test".into())
-        );
-    }
-
-    #[test]
-    fn test_transparent_prefix_nested() {
-        // Stacked wrappers strip one at a time, re-prepend on the way
-        // back. Bounded naturally by token consumption.
-        assert_eq!(
-            maybe_rewrite("nohup time cargo build"),
-            Some("nohup time trs cargo build".into())
-        );
-    }
-
-    #[test]
-    fn test_transparent_prefix_skips_when_inner_skipped() {
-        // `time cd /tmp` — inner is in SKIP_PREFIXES, so the whole
-        // expression returns None. Wrapper alone doesn't force a rewrite.
-        assert_eq!(maybe_rewrite("time cd /tmp"), None);
-    }
-
-    #[test]
-    fn test_strip_word_prefix_strict() {
-        // Helper-level: whole-word, single separator.
-        assert_eq!(
-            strip_word_prefix("time cargo test", "time"),
-            Some("cargo test")
-        );
-        assert_eq!(strip_word_prefix("timeout 5 x", "time"), None);
-        // Exact match (no trailing space) does not strip.
-        assert_eq!(strip_word_prefix("time", "time"), None);
-        // Empty prefix is rejected.
-        assert_eq!(strip_word_prefix("foo bar", ""), None);
-    }
-
-    #[test]
-    fn test_trs_skip_does_not_match_other_env_vars() {
-        // Only TRS_SKIP= triggers bypass — other env var prefixes get
-        // the normal rewrite treatment with the env preserved in
-        // front of the wrapped command.
-        assert!(maybe_rewrite("RUSTFLAGS=-C git status").is_some());
-    }
-
-    #[test]
     fn test_cmd_bypasses_trs_detection() {
-        // Direct prefix.
         assert!(cmd_bypasses_trs("TRS_SKIP=1 git status"));
         assert!(cmd_bypasses_trs("TRS_SKIP=true cargo test"));
         // Hidden behind another env-var assignment — still bypass.
         assert!(cmd_bypasses_trs("FOO=bar TRS_SKIP=1 git log"));
         assert!(cmd_bypasses_trs("A=1 B=2 TRS_SKIP=1 cargo build"));
-        // Leading whitespace tolerated.
         assert!(cmd_bypasses_trs("  TRS_SKIP=1 git status"));
-        // Negative cases — ordinary commands shouldn't trip the helper.
+        // Negatives.
         assert!(!cmd_bypasses_trs("git status"));
         assert!(!cmd_bypasses_trs("RUSTFLAGS=-C cargo build"));
         assert!(!cmd_bypasses_trs("trs git status"));
-        // TRS_SKIP appearing later in the command line (not as an env
-        // prefix) is not a bypass — for example a literal arg or a
-        // grep pattern.
+        // TRS_SKIP as a literal arg later in the line is not a bypass.
         assert!(!cmd_bypasses_trs("git log --grep TRS_SKIP=1"));
     }
-
-    #[test]
-    fn test_env_prefix_stays_in_front() {
-        // `RUSTFLAGS=-C cargo build` — env should remain attached to
-        // the wrapped command so the shell still applies it to cargo,
-        // not to trs itself.
-        assert_eq!(
-            maybe_rewrite("RUSTFLAGS=-C cargo build"),
-            Some("RUSTFLAGS=-C trs cargo build".into())
-        );
-    }
-
-    #[test]
-    fn test_multi_env_prefix() {
-        assert_eq!(
-            maybe_rewrite("A=1 B=2 cargo build"),
-            Some("A=1 B=2 trs cargo build".into())
-        );
-    }
-
-    #[test]
-    fn test_env_prefix_before_unknown_command_still_rewrites() {
-        // Unknown command still gets wrapped for generic compression,
-        // with env attached correctly.
-        let out = maybe_rewrite("FOO=bar something-weird arg").unwrap();
-        assert!(out.starts_with("FOO=bar trs "));
-    }
-
-    #[test]
-    fn test_flag_looks_like_assignment_not_matched() {
-        // --crate-name=foo is NOT an env-var assignment.
-        let out = maybe_rewrite("--crate-name=foo cargo build").unwrap();
-        assert!(!out.starts_with("--crate-name=foo trs"));
-    }
-
-    #[test]
-    fn test_split_env_prefix_empty_when_none() {
-        assert!(split_env_prefix("cargo build").is_none());
-        assert!(split_env_prefix("git status").is_none());
-    }
-
-    #[test]
-    fn test_stderr_redirects_survive_rewrite() {
-        // The shell interprets `2>&1`, `2>/dev/null`, `&>file` before
-        // invoking trs, so the classifier never sees them as args.
-        // Rewrite just keeps them attached to the wrapped command and
-        // the shell applies the redirect to the trs process (which is
-        // equivalent to applying it to the underlying command).
-        assert_eq!(
-            maybe_rewrite("cargo test 2>&1"),
-            Some("trs cargo test 2>&1".into())
-        );
-        assert_eq!(
-            maybe_rewrite("git status 2>/dev/null"),
-            Some("trs git status 2>/dev/null".into())
-        );
-        assert_eq!(
-            maybe_rewrite("cargo test 2>&1 | head -5"),
-            Some("trs cargo test 2>&1 | head -5".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_pipe_first_segment() {
-        // Agents frequently append `| head -N` / `| grep X` — rewrite only
-        // the command producing the data, leave the pipeline untouched.
-        assert_eq!(
-            maybe_rewrite("git log | grep fix"),
-            Some("trs git log | grep fix".into())
-        );
-        assert_eq!(
-            maybe_rewrite("find . -name '*.rs' | xargs wc"),
-            Some("trs find . -name '*.rs' | xargs wc".into())
-        );
-        assert_eq!(
-            maybe_rewrite("git status | head -3"),
-            Some("trs git status | head -3".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_multi_pipe_first_segment_only() {
-        // Only the first segment gets rewritten; any further pipes are
-        // treated as opaque post-processing.
-        assert_eq!(
-            maybe_rewrite("git log | head -5 | tail -1"),
-            Some("trs git log | head -5 | tail -1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_redirect_first_segment() {
-        // Redirects follow the same rule — rewrite the producer, keep the
-        // redirect target untouched.
-        assert_eq!(
-            maybe_rewrite("git diff > out.txt"),
-            Some("trs git diff > out.txt".into())
-        );
-        assert_eq!(
-            maybe_rewrite("git log >> history.txt"),
-            Some("trs git log >> history.txt".into())
-        );
-    }
-
-    #[test]
-    fn test_skip_pipe_when_first_segment_is_skipped() {
-        // If the left side is something we'd never rewrite (cat, echo,
-        // already-trs), the whole pipeline stays as-is.
-        assert_eq!(maybe_rewrite("cat < input.txt"), None);
-        assert_eq!(maybe_rewrite("echo hello | xxd"), None);
-        assert_eq!(maybe_rewrite("trs git status | head -3"), None);
-    }
-
-    #[test]
-    fn test_skip_subshells() {
-        assert_eq!(maybe_rewrite("echo $(git status)"), None);
-    }
-
-    #[test]
-    fn test_skip_assignments() {
-        assert_eq!(maybe_rewrite("FOO=bar"), None);
-    }
-
-    #[test]
-    fn test_skip_empty() {
-        assert_eq!(maybe_rewrite(""), None);
-    }
-
-    #[test]
-    fn test_rewrite_unknown_command() {
-        // Unknown commands still get generic compression
-        assert_eq!(
-            maybe_rewrite("terraform plan"),
-            Some("trs terraform plan".into())
-        );
-    }
-
-    #[test]
-    fn test_json_protocol() {
-        let input = r#"{"tool_name":"Bash","tool_input":{"command":"git status"}}"#;
-        let json: serde_json::Value = serde_json::from_str(input).unwrap();
-
-        let cmd = json
-            .get("tool_input")
-            .and_then(|ti| ti.get("command"))
-            .and_then(|c| c.as_str())
-            .unwrap();
-        assert_eq!(maybe_rewrite(cmd), Some("trs git status".into()));
-    }
-
-    #[test]
-    fn test_skip_echo() {
-        assert_eq!(maybe_rewrite("echo hello"), None);
-    }
-
-    #[test]
-    fn test_rewrite_env() {
-        assert_eq!(maybe_rewrite("env"), Some("trs env".into()));
-    }
-
-    #[test]
-    fn test_skip_shell_builtins() {
-        assert_eq!(maybe_rewrite("export PATH=/usr/bin"), None);
-        assert_eq!(maybe_rewrite("source .env"), None);
-    }
-
-    #[test]
-    fn test_rewrite_cd_chain() {
-        assert_eq!(
-            maybe_rewrite("cd /tmp && git status"),
-            Some("cd /tmp && trs git status".into())
-        );
-        assert_eq!(
-            maybe_rewrite("cd /path/to/project && cargo test"),
-            Some("cd /path/to/project && trs cargo test".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_multi_chain() {
-        // All rewritable segments get rewritten independently
-        assert_eq!(
-            maybe_rewrite("cd /tmp && git status && git log"),
-            Some("cd /tmp && trs git status && trs git log".into())
-        );
-        assert_eq!(
-            maybe_rewrite("cargo fmt && cargo clippy"),
-            Some("trs cargo fmt && trs cargo clippy".into())
-        );
-    }
-
-    #[test]
-    fn test_skip_cd_chain_with_pipe() {
-        // If any segment has a pipe, disable chain handling entirely
-        assert_eq!(maybe_rewrite("cd /tmp && git status | less"), None);
-    }
-
-    #[test]
-    fn test_skip_cd_chain_all_skips() {
-        // Only non-rewritable commands — nothing changes
-        assert_eq!(maybe_rewrite("cd /tmp && echo hello"), None);
-    }
-
-    // ----------------------------------------------------------------
-    // Hook-response dispatch: Claude Code vs Gemini CLI
-    // ----------------------------------------------------------------
 
     fn parse_input(s: &str) -> serde_json::Value {
         serde_json::from_str(s).expect("test input must be valid JSON")
@@ -866,8 +187,6 @@ mod tests {
 
     #[test]
     fn test_hook_response_claude_code_format() {
-        // Claude Code sends hook_event_name: PreToolUse — we emit Claude's
-        // updatedInput envelope.
         let input = parse_input(
             r#"{
                 "hook_event_name":"PreToolUse",
@@ -884,17 +203,12 @@ mod tests {
             out["hookSpecificOutput"]["updatedInput"]["command"],
             serde_json::json!("TRS_AGENT=claude trs git status")
         );
-        // Claude format must NOT carry Gemini's tool_input field.
         assert!(out["hookSpecificOutput"]["tool_input"].is_null());
-        // No top-level `decision` in Claude's schema.
         assert!(out.get("decision").is_none());
     }
 
     #[test]
     fn test_hook_response_cursor_format() {
-        // Cursor's preToolUse emits a flat envelope with `permission` and
-        // `updated_input` at the top level. Lowercase event name distinguishes
-        // it from Claude's PreToolUse.
         let input = parse_input(
             r#"{
                 "hook_event_name":"preToolUse",
@@ -908,15 +222,12 @@ mod tests {
             out["updated_input"]["command"],
             serde_json::json!("TRS_AGENT=cursor trs git status")
         );
-        // Cursor format must NOT carry Claude's or Gemini's wrapping.
         assert!(out.get("hookSpecificOutput").is_none());
         assert!(out.get("decision").is_none());
     }
 
     #[test]
     fn test_hook_response_gemini_format() {
-        // Gemini CLI sends hook_event_name: BeforeTool — we emit its
-        // tool_input envelope with a top-level `decision` field.
         let input = parse_input(
             r#"{
                 "hook_event_name":"BeforeTool",
@@ -930,14 +241,12 @@ mod tests {
             out["hookSpecificOutput"]["tool_input"]["command"],
             serde_json::json!("TRS_AGENT=gemini trs git status")
         );
-        // Gemini format must NOT carry Claude's updatedInput field.
         assert!(out["hookSpecificOutput"]["updatedInput"].is_null());
     }
 
     #[test]
     fn test_hook_response_default_is_claude_format() {
-        // Missing / unknown hook_event_name defaults to Claude's shape so
-        // we don't silently break the majority client.
+        // Missing / unknown hook_event_name defaults to Claude's shape.
         let input = parse_input(r#"{"tool_input":{"command":"git status"}}"#);
         let out = build_hook_response(&input).expect("should rewrite");
         assert_eq!(
@@ -949,8 +258,6 @@ mod tests {
 
     #[test]
     fn test_hook_response_no_rewrite_returns_none() {
-        // Commands that don't need rewriting produce no response — the hook
-        // is expected to emit nothing so the command runs unchanged.
         let input = parse_input(
             r#"{
                 "hook_event_name":"PreToolUse",
@@ -962,14 +269,14 @@ mod tests {
 
     #[test]
     fn test_hook_response_missing_command_returns_none() {
-        // Malformed input (no tool_input.command) — emit nothing.
         let input = parse_input(r#"{"hook_event_name":"BeforeTool"}"#);
         assert!(build_hook_response(&input).is_none());
     }
 
     #[test]
     fn test_hook_response_chain_preserved_across_formats() {
-        // The chain-aware rewrite applies identically in both formats.
+        // Chain-aware rewrite applies in every format; build_hook_response
+        // prefixes the whole result with TRS_AGENT= once.
         let claude = parse_input(
             r#"{
                 "hook_event_name":"PreToolUse",
@@ -982,9 +289,6 @@ mod tests {
                 "tool_input":{"command":"cd /tmp && git status && cargo test"}
             }"#,
         );
-        // Same chain, different agent tag per envelope — the chain
-        // rewrite runs first and build_hook_response then prefixes the
-        // whole thing with TRS_AGENT= once.
         assert_eq!(
             build_hook_response(&claude).unwrap()["hookSpecificOutput"]["updatedInput"]["command"],
             serde_json::json!("TRS_AGENT=claude cd /tmp && trs git status && trs cargo test")

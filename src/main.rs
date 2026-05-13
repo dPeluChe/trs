@@ -45,6 +45,7 @@ mod process;
 #[allow(dead_code)]
 mod reducer;
 mod rewrite;
+mod rewrite_decide;
 mod router;
 #[allow(dead_code)]
 mod schema;
