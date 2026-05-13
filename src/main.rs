@@ -37,6 +37,7 @@ mod help;
 mod ingest;
 mod init;
 mod init_collision;
+mod init_install;
 mod init_templates;
 mod output_saver;
 #[allow(dead_code)]
