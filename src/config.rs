@@ -21,6 +21,18 @@ pub fn config() -> &'static Config {
 #[serde(default)]
 pub struct Config {
     pub limits: Limits,
+    pub hooks: Hooks,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+#[serde(default)]
+pub struct Hooks {
+    /// Literal wrapper prefixes to strip before routing and re-prepend on
+    /// the rewrite. Use for project-wide command wrappers like
+    /// `["docker exec myapp", "poetry run", "direnv exec ."]`. Shell
+    /// builtins and 1-token wrappers (`time`, `nohup`, …) are recognized
+    /// without config.
+    pub transparent_prefixes: Vec<String>,
 }
 
 /// Output caps and truncation limits.
@@ -56,6 +68,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             limits: Limits::default(),
+            hooks: Hooks::default(),
         }
     }
 }
