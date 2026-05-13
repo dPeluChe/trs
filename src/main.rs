@@ -38,6 +38,7 @@ mod ingest;
 mod init;
 mod init_collision;
 mod init_install;
+mod init_show;
 mod init_templates;
 mod output_saver;
 #[allow(dead_code)]
@@ -144,7 +145,7 @@ fn main() {
                 dry_run: *dry_run,
             };
             if *show {
-                init::show_status();
+                init_show::show_status();
             } else if *all {
                 init::install_all(opts);
             } else if let Some(tool_name) = tool {
@@ -158,7 +159,7 @@ fn main() {
                 }
             } else {
                 // No args: show current status + usage hint combined.
-                init::show_status_and_usage();
+                init_show::show_status_and_usage();
             }
         }
         Some(Commands::Doctor { json }) => {
