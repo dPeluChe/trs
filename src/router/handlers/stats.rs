@@ -71,6 +71,9 @@ pub struct StatsInput {
     pub by_agent: bool,
     /// Aggregate by normalised command family (strips paths/flags).
     pub by_command: bool,
+    /// Coverage analysis: which commands are passing through with poor
+    /// compression vs which have effective parsers.
+    pub coverage: bool,
     /// Row cap. Overrides the default for either `--history` (20) or
     /// the summary's Top Commands table (15).
     pub limit: Option<usize>,
@@ -116,6 +119,12 @@ pub fn handle_stats(input: &StatsInput) {
     } else {
         tracker::read_history()
     };
+
+    if input.coverage {
+        let limit = input.limit.unwrap_or(15);
+        super::stats_coverage::print_coverage(&entries, limit, input.json);
+        return;
+    }
 
     if input.json {
         let history_limit = input.limit.unwrap_or(DEFAULT_HISTORY_LIMIT);

@@ -478,6 +478,11 @@ pub enum Commands {
         /// npm run lint…) — strips paths and flags, groups variants.
         #[arg(long = "by-command")]
         by_command: bool,
+        /// Coverage analysis: which commands pass through with poor
+        /// compression vs which have effective parsers. Use `--json`
+        /// to share a report for parser-gap requests.
+        #[arg(long)]
+        coverage: bool,
         /// Number of rows to show. Applies to `--history` (default 20)
         /// and to the summary's Top Commands table (default 15).
         #[arg(long, short = 'n')]
