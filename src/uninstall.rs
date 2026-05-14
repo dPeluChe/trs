@@ -6,9 +6,9 @@ use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 
-use crate::init::AiTool;
+use crate::init::{file_has_any_trs_marker, AiTool};
 use crate::init_install::contains_trs_rewrite;
-use crate::init_templates::CODEX_AGENTS_SENTINEL_START;
+use crate::init_templates::{CODEX_AGENTS_SENTINEL_END, CODEX_AGENTS_SENTINEL_START};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct UninstallOpts {
@@ -18,7 +18,6 @@ pub(crate) struct UninstallOpts {
     pub yes: bool,
 }
 
-const CODEX_SENTINEL_END: &str = "<!-- trs:codex-rules:end -->";
 const DRY_RUN_NOTE: &str =
     "note: dry-run — nothing was written. Re-run without --dry-run to apply.";
 
@@ -160,7 +159,7 @@ fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
             remove_between_sentinels(
                 &path,
                 CODEX_AGENTS_SENTINEL_START,
-                CODEX_SENTINEL_END,
+                CODEX_AGENTS_SENTINEL_END,
                 opts.dry_run,
             )
         } else if path.extension().and_then(|e| e.to_str()) == Some("ts") {
@@ -206,7 +205,7 @@ fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
 /// `~/.tool/...` (global) and `./.tool/...` (project-local) variants so
 /// uninstall catches installs run from either flag.
 fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
-    let home = home_dir();
+    let home = crate::init::home_dir().ok();
     let mut v: Vec<PathBuf> = Vec::new();
     let mut push_home = |rel: &str| {
         if let Some(h) = &home {
@@ -297,8 +296,8 @@ fn scrub_trs_from_json(path: &Path, dry_run: bool) -> Result<Option<String>, Str
     )))
 }
 
-/// Remove the sentinel-delimited block from a text file. Preserves
-/// surrounding content. No-op when the start sentinel isn't present.
+/// Remove the sentinel-delimited block from a text file. When the whole
+/// file was just our block, delete the file instead of leaving an empty one.
 fn remove_between_sentinels(
     path: &Path,
     start: &str,
@@ -309,37 +308,22 @@ fn remove_between_sentinels(
         return Ok(None);
     }
     let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    let Some(s) = content.find(start) else {
+    if !content.contains(start) {
         return Ok(None);
-    };
-    let Some(e) = content[s..].find(end).map(|pos| s + pos + end.len()) else {
-        return Ok(None);
-    };
+    }
     if dry_run {
         return Ok(Some(format!(
             "would remove trs block from {}",
             path.display()
         )));
     }
-    let before = &content[..s];
-    let after = content[e..].trim_start_matches('\n');
-    let combined = format!(
-        "{}{}",
-        before.trim_end(),
-        if after.is_empty() {
-            String::new()
-        } else {
-            format!("\n{}", after)
-        }
-    );
-    let final_content = if combined.is_empty() {
-        // Whole file was just our block — remove the file entirely.
+    let stripped = crate::output_saver::replace_between(&content, start, end, "");
+    let trimmed = stripped.trim();
+    if trimmed.is_empty() {
         fs::remove_file(path).map_err(|e| e.to_string())?;
         return Ok(Some(format!("removed empty {}", path.display())));
-    } else {
-        combined.trim_end_matches('\n').to_string() + "\n"
-    };
-    fs::write(path, final_content).map_err(|e| e.to_string())?;
+    }
+    fs::write(path, format!("{}\n", trimmed)).map_err(|e| e.to_string())?;
     Ok(Some(format!("removed trs block from {}", path.display())))
 }
 
@@ -383,7 +367,7 @@ fn remove_output_saver(agent_id: &str, dry_run: bool) -> Result<String, String> 
 /// inline agents (codex / cursor / windsurf) wrap it with sentinels in
 /// their primary rules file.
 fn has_output_saver_installed(agent_id: &str) -> bool {
-    let Some(home) = home_dir() else {
+    let Ok(home) = crate::init::home_dir() else {
         return false;
     };
     let sidecar_path = match agent_id {
@@ -405,12 +389,11 @@ fn has_output_saver_installed(agent_id: &str) -> bool {
     inline_paths.iter().any(|p| {
         p.exists()
             && fs::read_to_string(p)
-                .map(|c| c.contains("trs:output-saver:start"))
+                .map(|c| c.contains(crate::output_saver::SENTINEL_START))
                 .unwrap_or(false)
     })
 }
 
-/// Symmetric to `run_output_saver_only` for the `--output-saver` flag entry.
 fn run_output_saver_removal(tool_name: &str, agent_id: &str, dry_run: bool) {
     if !has_output_saver_installed(agent_id) {
         return;
@@ -430,12 +413,9 @@ fn has_trs_artifacts(tool: &AiTool) -> bool {
         if p.extension().and_then(|e| e.to_str()) == Some("ts") {
             return true;
         }
-        let Ok(content) = fs::read_to_string(p) else {
-            return false;
-        };
-        content.contains("trs rewrite")
-            || content.contains(CODEX_AGENTS_SENTINEL_START)
-            || content.contains("trs (Token-Reducing Shell)")
+        fs::read_to_string(p)
+            .map(|c| file_has_any_trs_marker(&c))
+            .unwrap_or(false)
     })
 }
 
@@ -454,10 +434,6 @@ fn is_json(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| e.eq_ignore_ascii_case("json"))
-}
-
-fn home_dir() -> Option<PathBuf> {
-    crate::init::home_dir().ok()
 }
 
 fn confirm(prompt: &str) -> bool {
