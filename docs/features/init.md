@@ -143,18 +143,23 @@ that checkout, or for CI that needs a pinned local config.
 
 Sometimes you want the agent to get raw command output — to diff
 exact bytes, pipe into `sha256sum`, or assert on an unmodified shell
-response. Prefix the command with `TRS_SKIP=1` and `trs rewrite`
-will pass it through unchanged:
+response. Three equivalent env-var prefixes signal bypass:
 
 ```bash
 TRS_SKIP=1 git log --pretty=format:'%H %s'
-TRS_SKIP=1 cargo test -- --nocapture
+TRS_DISABLE=1 npx tsc --noEmit
+env TRS_DISABLE=1 cargo test -- --nocapture
 ```
+
+`TRS_DISABLE=1` is an alias for `TRS_SKIP=1` — historically users
+invented the convention and it's now recognized. The env-wrapped form
+(`env TRS_DISABLE=1 <cmd>` or `/usr/bin/env TRS_SKIP=1 <cmd>`) is
+also stripped so the bypass survives the `env` indirection.
 
 The env-var assignment stays in the command string; the shell strips
 it before executing the downstream program, so the bypass is
 transparent to git / cargo / whatever. Any value after `=` works —
-we only check for the `TRS_SKIP=` prefix.
+we only check for the prefix.
 
 No global toggle: the bypass is always per-invocation. Removing trs
 entirely is done via uninstall (below), not via an always-skip flag.

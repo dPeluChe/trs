@@ -62,6 +62,15 @@ const REWRITE_PREFIXES: &[&str] = &[
     "npx ",
     "ps ",
     "uv ",
+    // Inline scripts and generic CLIs — no dedicated parser, but
+    // generic ANSI/whitespace compression alone yields ~30-40% on the
+    // larger outputs (`bash -c "..."` with concatenated diagnostics,
+    // `du -h` trees, `awk` data dumps).
+    "bash ",
+    "node ",
+    "awk ",
+    "du ",
+    "jq ",
 ];
 
 /// Commands that should NEVER be rewritten (internal, cd, pipes, etc.)
@@ -70,9 +79,16 @@ const SKIP_PREFIXES: &[&str] = &[
     "unset ", "alias ", "which ", "type ", "true", "false", "exit", "return",
 ];
 
-/// Always-on wrappers: shell builtins the shell consumes before exec, plus
-/// 1-token process wrappers with no required args. Arg-taking wrappers
-/// (`sudo`, `env`, `nice -n N`) go through user config instead.
+/// Always-on wrappers stripped before routing and re-prepended on the
+/// rewrite. Two groups:
+///
+/// - Shell builtins + 1-token process wrappers: the shell or the wrapper
+///   consume them before exec without changing what command runs.
+/// - Venv runners (`poetry run`, `uv run`, `pdm run`): the wrapper
+///   passes the inner command through uninterpreted, so trs can route
+///   the inner cmd to its parser. Notably NOT included: `bun run`,
+///   `pnpm run`, `npm run`, `yarn`, `npx` — those interpret the
+///   following token as a script name or package, not a command.
 const TRANSPARENT_PREFIX_BUILTINS: &[&str] = &[
     "noglob",
     "command",
@@ -84,6 +100,9 @@ const TRANSPARENT_PREFIX_BUILTINS: &[&str] = &[
     "setsid",
     "unbuffer",
     "stdbuf",
+    "poetry run",
+    "uv run",
+    "pdm run",
 ];
 
 /// Decide if a command should be rewritten through trs. Returns
@@ -99,9 +118,11 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
-    // Explicit per-invocation opt-out. `TRS_SKIP=1 <cmd>` survives downstream
-    // because the shell strips the env-var assignment before exec.
-    if trimmed.starts_with("TRS_SKIP=") {
+    // Explicit per-invocation opt-out. `TRS_SKIP=1 <cmd>` and the
+    // historical `TRS_DISABLE=1 <cmd>` alias both bypass rewriting.
+    // The shell strips the env-var assignment before exec, so the
+    // downstream program never sees these markers.
+    if trimmed.starts_with("TRS_SKIP=") || trimmed.starts_with("TRS_DISABLE=") {
         return None;
     }
 

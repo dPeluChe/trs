@@ -56,17 +56,17 @@ ellipsis marker so the agent sees "shape" without the full depth.
 ## Hook-time wrappers
 
 Some workflows put a wrapper in front of every command — `direnv exec
-.`, `poetry run`, `docker exec myapp`, `shadowenv exec --`. Without
-help, the rewrite layer can't see past the wrapper and the inner
-command stays uncompressed. Register the wrapper as a transparent
-prefix and trs will strip → route → re-prepend:
+.`, `docker exec myapp`, `shadowenv exec --`. Without help, the
+rewrite layer can't see past the wrapper and the inner command stays
+uncompressed. Register the wrapper as a transparent prefix and trs
+will strip → route → re-prepend:
 
 ```toml
 [hooks]
 transparent_prefixes = [
   "docker exec myapp",
-  "poetry run",
   "direnv exec .",
+  "shadowenv exec --",
 ]
 ```
 
@@ -74,10 +74,39 @@ With that, `docker exec myapp git status` rewrites to `docker exec
 myapp trs git status` — the wrapper still runs, but the inner
 command flows through trs.
 
-Matching is literal — no patterns. Built-in shell prefixes (`noglob`,
-`command`, `builtin`, `exec`, `nocorrect`) and 1-token process
-wrappers (`time`, `nohup`, `setsid`, `unbuffer`, `stdbuf`) are
-recognized without config.
+Matching is literal — no patterns. Built-in wrappers (no config
+needed):
+
+- **Shell builtins** — `noglob`, `command`, `builtin`, `exec`,
+  `nocorrect`.
+- **Process wrappers** — `time`, `nohup`, `setsid`, `unbuffer`,
+  `stdbuf`.
+- **Venv runners** — `poetry run`, `uv run`, `pdm run`. The inner
+  command is passed through uninterpreted, so `poetry run pytest -v`
+  routes the pytest parser correctly.
+
+Notably NOT recognized (and why): `bun run <script>`, `pnpm run
+<script>`, `npm run <script>`, `yarn <script>`, and `npx <pkg>` —
+the token after the wrapper is a script name or package name, not a
+command. Stripping would break (e.g. `bun run trs typecheck` would
+look for a script literally named "trs"). These are routed at the
+classifier layer instead.
+
+## Bypassing trs for a single command
+
+Two equivalent env-var prefixes disable trs for one invocation:
+
+```bash
+TRS_SKIP=1 git log --pretty=format:'%H %s'
+TRS_DISABLE=1 npx tsc --noEmit
+env TRS_DISABLE=1 cargo test     # env-wrapped form also works
+```
+
+Both are recognized at the hook layer (the bypass is logged for
+attribution — see `stats --by-agent` BYPASS column) and at the plain-
+text rewrite path. The shell strips the env-var assignment before
+executing the downstream program, so the bypass is transparent to
+git / cargo / etc.
 
 ## Inspecting the active config
 
