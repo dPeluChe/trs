@@ -62,6 +62,15 @@ const REWRITE_PREFIXES: &[&str] = &[
     "npx ",
     "ps ",
     "uv ",
+    // Inline scripts and generic CLIs — no dedicated parser, but
+    // generic ANSI/whitespace compression alone yields ~30-40% on the
+    // larger outputs (`bash -c "..."` with concatenated diagnostics,
+    // `du -h` trees, `awk` data dumps).
+    "bash ",
+    "node ",
+    "awk ",
+    "du ",
+    "jq ",
 ];
 
 /// Commands that should NEVER be rewritten (internal, cd, pipes, etc.)

@@ -325,3 +325,39 @@ fn test_skip_cd_chain_with_pipe() {
 fn test_skip_cd_chain_all_skips() {
     assert_eq!(maybe_rewrite("cd /tmp && echo hello"), None);
 }
+
+#[test]
+fn test_rewrite_inline_scripts_and_generic_clis() {
+    // bash -c, node -e, awk, du, jq — no dedicated parser but generic
+    // ANSI/whitespace compression should kick in via REWRITE_PREFIXES.
+    assert_eq!(
+        maybe_rewrite("bash -c \"echo hello\""),
+        Some("trs bash -c \"echo hello\"".into())
+    );
+    assert_eq!(
+        maybe_rewrite("node -e 'console.log(1)'"),
+        Some("trs node -e 'console.log(1)'".into())
+    );
+    assert_eq!(
+        maybe_rewrite("awk '/foo/ {print}' file.txt"),
+        Some("trs awk '/foo/ {print}' file.txt".into())
+    );
+    assert_eq!(
+        maybe_rewrite("du -h dist/"),
+        Some("trs du -h dist/".into())
+    );
+    assert_eq!(
+        maybe_rewrite("jq -r .name package.json"),
+        Some("trs jq -r .name package.json".into())
+    );
+}
+
+#[test]
+fn test_node_prefix_does_not_match_nodemon() {
+    // Whole-word prefix matching — `node ` shouldn't swallow `nodemon`.
+    let out = maybe_rewrite("nodemon server.js");
+    // Falls to generic unknown-command path, which DOES rewrite, but
+    // the wrapper position is what matters: trs goes IN FRONT of the
+    // full command, not between "node" and "mon".
+    assert_eq!(out, Some("trs nodemon server.js".into()));
+}
