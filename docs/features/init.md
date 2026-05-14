@@ -195,17 +195,16 @@ environment.
 
 ## Uninstalling
 
-There's no dedicated uninstaller yet. Manual steps:
-
-- JSON hooks: edit `settings.json` and remove the PreToolUse entry
-  whose `command` is `trs rewrite`.
-- Plugins: delete `~/.config/opencode/plugins/trs.ts` and
-  `~/.config/kilo/plugins/trs.ts`.
-- Rules files: delete or edit `.agent/rules/antigravity-trs-rules.md`
-  and `.windsurfrules`.
+Use [`trs uninstall`](uninstall.md). It's symmetric to `trs init` —
+interactive by default, or `--all` / `--tool <x>` / `--output-saver` /
+`--dry-run` for scripted removal. JSON hooks get scrubbed (user-added
+entries on the same event survive), plugin files are deleted, and the
+Codex sentinel block in `AGENTS.md` is removed in place. See the
+`trs uninstall` doc for the per-surface details.
 
 ## See also
 
+- [`trs uninstall`](uninstall.md) — symmetric removal command.
 - [`trs output-saver`](output-saver.md) — the symmetric feature for
   LLM-generated output.
 - [`trs doctor`](doctor.md) — health check that reports install
