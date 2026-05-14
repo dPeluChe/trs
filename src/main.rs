@@ -51,6 +51,7 @@ mod router;
 #[allow(dead_code)]
 mod schema;
 pub(crate) mod tracker;
+mod uninstall;
 mod upgrade;
 
 #[allow(unused_imports)]
@@ -161,6 +162,23 @@ fn main() {
                 // No args: show current status + usage hint combined.
                 init_show::show_status_and_usage();
             }
+        }
+        Some(Commands::Uninstall {
+            tool,
+            global,
+            all,
+            output_saver,
+            dry_run,
+            yes,
+        }) => {
+            let opts = uninstall::UninstallOpts {
+                global: *global,
+                all: *all,
+                output_saver: *output_saver,
+                dry_run: *dry_run,
+                yes: *yes,
+            };
+            uninstall::run_uninstall(tool.as_deref(), opts);
         }
         Some(Commands::Doctor { json }) => {
             let checks = doctor::run_checks();
@@ -451,6 +469,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "rewrite"
             | "discover"
             | "init"
+            | "uninstall"
             | "doctor"
             | "benchmark"
             | "ingest"

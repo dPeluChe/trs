@@ -85,6 +85,36 @@ pub enum Commands {
         dry_run: bool,
     },
 
+    /// Remove trs hooks / plugins / rules from agent configs.
+    ///
+    /// Default is interactive: lists what's installed and asks what to
+    /// remove. `--all`, `--tool`, and `--output-saver` skip the prompt.
+    Uninstall {
+        /// Uninstall for one tool (claude, gemini, cursor, codex, …).
+        /// Mutually exclusive with --all.
+        tool: Option<String>,
+
+        /// Target the user-level config (`~/.tool/`) instead of project-local.
+        #[arg(short, long)]
+        global: bool,
+
+        /// Remove trs from every detected agent.
+        #[arg(long)]
+        all: bool,
+
+        /// Only remove output-saver blocks (preserve hooks / plugins).
+        #[arg(long = "output-saver")]
+        output_saver: bool,
+
+        /// Preview without writing anything.
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Skip the "are you sure?" prompt. Useful in scripts.
+        #[arg(short = 'y', long = "yes")]
+        yes: bool,
+    },
+
     /// Validate trs installation health (binary, PATH, deps, config)
     Doctor {
         /// Output in JSON format
