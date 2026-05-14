@@ -342,10 +342,7 @@ fn test_rewrite_inline_scripts_and_generic_clis() {
         maybe_rewrite("awk '/foo/ {print}' file.txt"),
         Some("trs awk '/foo/ {print}' file.txt".into())
     );
-    assert_eq!(
-        maybe_rewrite("du -h dist/"),
-        Some("trs du -h dist/".into())
-    );
+    assert_eq!(maybe_rewrite("du -h dist/"), Some("trs du -h dist/".into()));
     assert_eq!(
         maybe_rewrite("jq -r .name package.json"),
         Some("trs jq -r .name package.json".into())

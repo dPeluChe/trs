@@ -147,18 +147,14 @@ fn cmd_bypasses_trs(cmd: &str) -> bool {
         .or_else(|| rest.strip_prefix("/usr/bin/env "));
     if let Some(after) = env_stripped {
         rest = after.trim_start();
-        loop {
-            let Some(tok) = rest.split_whitespace().next() else {
-                break;
-            };
-            if tok.starts_with('-') || looks_like_env_assignment(tok) {
-                if tok.starts_with("TRS_SKIP=") || tok.starts_with("TRS_DISABLE=") {
-                    return true;
-                }
-                rest = rest[tok.len()..].trim_start();
-            } else {
+        while let Some(tok) = rest.split_whitespace().next() {
+            if !(tok.starts_with('-') || looks_like_env_assignment(tok)) {
                 break;
             }
+            if tok.starts_with("TRS_SKIP=") || tok.starts_with("TRS_DISABLE=") {
+                return true;
+            }
+            rest = rest[tok.len()..].trim_start();
         }
     }
     loop {
@@ -221,9 +217,7 @@ mod tests {
         // for bypass intent. Recognize the env-wrapped form too.
         assert!(cmd_bypasses_trs("env TRS_DISABLE=1 npx tsc"));
         assert!(cmd_bypasses_trs("/usr/bin/env TRS_SKIP=1 cargo build"));
-        assert!(cmd_bypasses_trs(
-            "env FOO=bar TRS_DISABLE=1 npx tsc"
-        ));
+        assert!(cmd_bypasses_trs("env FOO=bar TRS_DISABLE=1 npx tsc"));
         // env without the bypass marker → not a bypass.
         assert!(!cmd_bypasses_trs("env FOO=bar cargo build"));
     }
