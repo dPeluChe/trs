@@ -310,6 +310,7 @@ fn main() {
             json,
             by_agent,
             by_command,
+            coverage,
             limit,
         }) => {
             use router::handlers::stats::{handle_stats, StatsInput};
@@ -319,6 +320,7 @@ fn main() {
                 json: *json,
                 by_agent: *by_agent,
                 by_command: *by_command,
+                coverage: *coverage,
                 limit: *limit,
             };
             handle_stats(&input);

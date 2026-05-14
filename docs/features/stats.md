@@ -12,7 +12,8 @@ trs stats --history    # per-command log (most recent 20)
 trs stats -n 30        # override row cap (top 30 in summary, last 30 in --history)
 trs stats --by-agent   # breakdown by which AI agent triggered the run
 trs stats --by-command # breakdown by normalized command family (e.g. "git diff", "npm run lint")
-trs stats --json       # machine-readable summary
+trs stats --coverage   # parser-gap analysis (what compresses well, what falls through)
+trs stats --json       # machine-readable summary (combines with any of the above)
 ```
 
 ## Summary (default)
@@ -158,6 +159,46 @@ trs Token Savings — by command
 Normalization strips paths, flags, and IDs — `git diff HEAD~1` and
 `git diff main..feature` both count as `git diff`. `npm run lint`
 and `pnpm run lint` are separate entries (binary is kept).
+
+## `--coverage` — parser-gap analysis
+
+```bash
+trs stats --coverage           # human-readable, three tiers
+trs stats --coverage --json    # machine-readable (use this to share)
+trs stats --coverage -n 20     # row cap per tier (default 15)
+```
+
+Aggregates every entry by `(binary, subcommand)` and surfaces three
+tiers:
+
+1. **Gaps** — high-volume subcommands with poor compression. These are
+   the highest-leverage parser additions. Sample row:
+   `poetry run  count=769  avg_in=11186  %low=51%`.
+2. **Unrecognized binaries** — commands trs has no dedicated parser
+   for. Falls through to generic ANSI / whitespace compression
+   (~30-40%). Adding the binary to `REWRITE_PREFIXES` ensures even
+   that minimum kicks in.
+3. **Well-covered** — top by volume, low `%low` rate. Confirmation
+   the existing parsers are doing their job.
+
+A row qualifies as "low" when its `saved_pct < 10`. A row enters tier 1
+or 2 only if at least 40% of its entries are low AND the average input
+is ≥ 256 bytes (small outputs intrinsically can't be compressed much).
+
+### Reporting a parser gap
+
+Run `--coverage --json` and paste the output into an issue:
+
+```bash
+trs stats --coverage --json > coverage.json
+gh issue create --repo dPeluChe/trs --title "parser-gap: poetry run" --body-file coverage.json
+```
+
+The JSON is self-contained (`trs_version`, entry range, tier rows with
+binary/sub/count/in_bytes/avg_in/low_pct/sample). No cwd paths or
+secrets leak — `sample` is truncated to 70 chars and may include flag
+patterns, so glance over it before sharing if your project layouts
+contain sensitive names.
 
 ## JSON mode
 
