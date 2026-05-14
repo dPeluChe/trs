@@ -7,11 +7,11 @@ use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 
 use crate::init::AiTool;
+use crate::init_install::contains_trs_rewrite;
 use crate::init_templates::CODEX_AGENTS_SENTINEL_START;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct UninstallOpts {
-    pub global: bool,
     pub all: bool,
     pub output_saver: bool,
     pub dry_run: bool,
@@ -19,6 +19,8 @@ pub(crate) struct UninstallOpts {
 }
 
 const CODEX_SENTINEL_END: &str = "<!-- trs:codex-rules:end -->";
+const DRY_RUN_NOTE: &str =
+    "note: dry-run — nothing was written. Re-run without --dry-run to apply.";
 
 pub(crate) fn run_uninstall(tool: Option<&str>, opts: UninstallOpts) {
     if opts.output_saver {
@@ -58,9 +60,7 @@ fn run_all(opts: UninstallOpts) {
     for tool in &AiTool::all_tools() {
         uninstall_one(tool, opts);
     }
-    if opts.dry_run {
-        eprintln!("note: dry-run — nothing was written. Re-run without --dry-run to apply.");
-    }
+    print_dry_run_note(opts);
 }
 
 fn run_output_saver_only(opts: UninstallOpts) {
@@ -76,8 +76,12 @@ fn run_output_saver_only(opts: UninstallOpts) {
             run_output_saver_removal(tool.name(), agent_id, opts.dry_run);
         }
     }
+    print_dry_run_note(opts);
+}
+
+fn print_dry_run_note(opts: UninstallOpts) {
     if opts.dry_run {
-        eprintln!("note: dry-run — nothing was written. Re-run without --dry-run to apply.");
+        eprintln!("{}", DRY_RUN_NOTE);
     }
 }
 
@@ -119,9 +123,7 @@ fn run_interactive(opts: UninstallOpts) {
         for t in &installed {
             uninstall_one(t, opts);
         }
-        if opts.dry_run {
-            eprintln!("note: dry-run — nothing was written. Re-run without --dry-run to apply.");
-        }
+        print_dry_run_note(opts);
         return;
     }
 
@@ -143,9 +145,7 @@ fn run_interactive(opts: UninstallOpts) {
     for t in &selected {
         uninstall_one(t, opts);
     }
-    if opts.dry_run {
-        eprintln!("note: dry-run — nothing was written. Re-run without --dry-run to apply.");
-    }
+    print_dry_run_note(opts);
 }
 
 /// Per-tool uninstall — dispatches by install surface. Walks every path
@@ -153,7 +153,7 @@ fn run_interactive(opts: UninstallOpts) {
 fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
     let mut actions: Vec<String> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
-    for path in candidate_paths(tool, opts.global) {
+    for path in candidate_paths(tool) {
         let result = if is_json(&path) {
             scrub_trs_from_json(&path, opts.dry_run)
         } else if path.ends_with("AGENTS.md") {
@@ -202,10 +202,10 @@ fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
     }
 }
 
-/// Every path this tool's install could have written. Includes both the
-/// global (`~/.tool/...`) and project (`./.tool/...`) variants so we
-/// catch installs run from either flag.
-fn candidate_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
+/// Every path this tool's install could have written — both the
+/// `~/.tool/...` (global) and `./.tool/...` (project-local) variants so
+/// uninstall catches installs run from either flag.
+fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
     let home = home_dir();
     let mut v: Vec<PathBuf> = Vec::new();
     let mut push_home = |rel: &str| {
@@ -273,7 +273,7 @@ fn scrub_trs_from_json(path: &Path, dry_run: bool) -> Result<Option<String>, Str
         for (_event, event_val) in hooks.iter_mut() {
             if let Some(arr) = event_val.as_array_mut() {
                 let before = arr.len();
-                arr.retain(|e| !json_contains_trs_rewrite(e));
+                arr.retain(|e| !contains_trs_rewrite(e));
                 removed += before - arr.len();
             }
         }
@@ -343,7 +343,6 @@ fn remove_between_sentinels(
     Ok(Some(format!("removed trs block from {}", path.display())))
 }
 
-/// Delete a trs-owned plugin file. 100% our content — no need to scrub.
 fn delete_plugin_file(path: &Path, dry_run: bool) -> Result<Option<String>, String> {
     if !path.exists() {
         return Ok(None);
@@ -355,11 +354,8 @@ fn delete_plugin_file(path: &Path, dry_run: bool) -> Result<Option<String>, Stri
     Ok(Some(format!("deleted {}", path.display())))
 }
 
-/// Delete a rules file (Antigravity, Windsurf). The whole file is ours
-/// in the install path — there's no surgical "remove just the trs part"
-/// because the install wrote the entire content. If the user added
-/// their own prose after our block, this is destructive — warn before
-/// removing files larger than the templates.
+/// Delete a rules file (Antigravity / Windsurf). Whole file is ours; the
+/// install path wrote it end-to-end, so there's no surgical-remove option.
 fn delete_rules_file(path: &Path, dry_run: bool) -> Result<Option<String>, String> {
     if !path.exists() {
         return Ok(None);
@@ -426,7 +422,7 @@ fn run_output_saver_removal(tool_name: &str, agent_id: &str, dry_run: bool) {
 }
 
 fn has_trs_artifacts(tool: &AiTool) -> bool {
-    candidate_paths(tool, true).iter().any(|p| {
+    candidate_paths(tool).iter().any(|p| {
         if !p.exists() {
             return false;
         }
@@ -460,20 +456,8 @@ fn is_json(path: &Path) -> bool {
         .is_some_and(|e| e.eq_ignore_ascii_case("json"))
 }
 
-fn json_contains_trs_rewrite(val: &serde_json::Value) -> bool {
-    match val {
-        serde_json::Value::String(s) => s.contains("trs rewrite"),
-        serde_json::Value::Object(o) => o.values().any(json_contains_trs_rewrite),
-        serde_json::Value::Array(a) => a.iter().any(json_contains_trs_rewrite),
-        _ => false,
-    }
-}
-
 fn home_dir() -> Option<PathBuf> {
-    std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .ok()
-        .map(PathBuf::from)
+    crate::init::home_dir().ok()
 }
 
 fn confirm(prompt: &str) -> bool {

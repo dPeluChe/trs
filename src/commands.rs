@@ -88,15 +88,11 @@ pub enum Commands {
     /// Remove trs hooks / plugins / rules from agent configs.
     ///
     /// Default is interactive: lists what's installed and asks what to
-    /// remove. `--all`, `--tool`, and `--output-saver` skip the prompt.
+    /// remove. Uninstall scans both global (`~/.tool/`) and project-local
+    /// (`./.tool/`) paths — it's symmetric with how `trs init` writes.
     Uninstall {
         /// Uninstall for one tool (claude, gemini, cursor, codex, …).
-        /// Mutually exclusive with --all.
         tool: Option<String>,
-
-        /// Target the user-level config (`~/.tool/`) instead of project-local.
-        #[arg(short, long)]
-        global: bool,
 
         /// Remove trs from every detected agent.
         #[arg(long)]

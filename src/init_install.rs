@@ -238,7 +238,10 @@ fn merge_json_hook(
     Ok(path.display().to_string())
 }
 
-fn contains_trs_rewrite(val: &serde_json::Value) -> bool {
+/// Recursively true when any string inside `val` contains `trs rewrite`.
+/// Shared with `uninstall::scrub_trs_from_json` to keep both sides of the
+/// install/uninstall loop matching the same hook signature.
+pub(crate) fn contains_trs_rewrite(val: &serde_json::Value) -> bool {
     match val {
         serde_json::Value::String(s) => s.contains("trs rewrite"),
         serde_json::Value::Object(o) => o.values().any(contains_trs_rewrite),

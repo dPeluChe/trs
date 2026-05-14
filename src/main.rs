@@ -165,14 +165,12 @@ fn main() {
         }
         Some(Commands::Uninstall {
             tool,
-            global,
             all,
             output_saver,
             dry_run,
             yes,
         }) => {
             let opts = uninstall::UninstallOpts {
-                global: *global,
                 all: *all,
                 output_saver: *output_saver,
                 dry_run: *dry_run,
