@@ -37,6 +37,8 @@ mod help;
 mod ingest;
 mod init;
 mod init_collision;
+mod init_install;
+mod init_show;
 mod init_templates;
 mod output_saver;
 #[allow(dead_code)]
@@ -44,10 +46,12 @@ mod process;
 #[allow(dead_code)]
 mod reducer;
 mod rewrite;
+mod rewrite_decide;
 mod router;
 #[allow(dead_code)]
 mod schema;
 pub(crate) mod tracker;
+mod uninstall;
 mod upgrade;
 
 #[allow(unused_imports)]
@@ -142,7 +146,7 @@ fn main() {
                 dry_run: *dry_run,
             };
             if *show {
-                init::show_status();
+                init_show::show_status();
             } else if *all {
                 init::install_all(opts);
             } else if let Some(tool_name) = tool {
@@ -156,8 +160,23 @@ fn main() {
                 }
             } else {
                 // No args: show current status + usage hint combined.
-                init::show_status_and_usage();
+                init_show::show_status_and_usage();
             }
+        }
+        Some(Commands::Uninstall {
+            tool,
+            all,
+            output_saver,
+            dry_run,
+            yes,
+        }) => {
+            let opts = uninstall::UninstallOpts {
+                all: *all,
+                output_saver: *output_saver,
+                dry_run: *dry_run,
+                yes: *yes,
+            };
+            uninstall::run_uninstall(tool.as_deref(), opts);
         }
         Some(Commands::Doctor { json }) => {
             let checks = doctor::run_checks();
@@ -448,6 +467,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "rewrite"
             | "discover"
             | "init"
+            | "uninstall"
             | "doctor"
             | "benchmark"
             | "ingest"

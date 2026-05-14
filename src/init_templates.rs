@@ -134,6 +134,7 @@ export const TrsPlugin = async () => {
 /// `trs (Token-Reducing Shell)` marker — without this sentinel re-runs
 /// duplicate the section.
 pub(crate) const CODEX_AGENTS_SENTINEL_START: &str = "<!-- trs:codex-rules:start v1 -->";
+pub(crate) const CODEX_AGENTS_SENTINEL_END: &str = "<!-- trs:codex-rules:end -->";
 
 pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
     "<!-- trs:codex-rules:start v1 -->\n",

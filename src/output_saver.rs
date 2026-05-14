@@ -56,8 +56,8 @@ User instructions always override these rules."#
 
 pub(crate) const BLOCK: &str = output_saver_block_literal!();
 
-const SENTINEL_START: &str = "<!-- trs:output-saver:start v1 -->";
-const SENTINEL_END: &str = "<!-- trs:output-saver:end -->";
+pub(crate) const SENTINEL_START: &str = "<!-- trs:output-saver:start v1 -->";
+pub(crate) const SENTINEL_END: &str = "<!-- trs:output-saver:end -->";
 
 /// Import filename used by Claude Code and Gemini CLI when we install
 /// as a standalone file + `@import` line.
@@ -484,7 +484,7 @@ fn remove_agent_with_home(
 /// with `new_block`. Assumes both sentinels are present — caller must
 /// verify. Normalizes whitespace around the splice so repeated calls
 /// don't accumulate trailing newlines.
-fn replace_between(content: &str, start: &str, end: &str, new_block: &str) -> String {
+pub(crate) fn replace_between(content: &str, start: &str, end: &str, new_block: &str) -> String {
     let Some(s) = content.find(start) else {
         return content.to_string();
     };
