@@ -131,13 +131,38 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
     Some(response)
 }
 
-/// True when `cmd` is bypassing trs via a `TRS_SKIP=` env-var prefix.
-/// Walks leading `NAME=value` tokens because shells accept multiple
-/// assignments before the command (`FOO=1 TRS_SKIP=1 git status`).
+/// True when `cmd` is bypassing trs via a `TRS_SKIP=` or `TRS_DISABLE=`
+/// env-var prefix. Walks leading `NAME=value` tokens because shells
+/// accept multiple assignments before the command (`FOO=1 TRS_SKIP=1
+/// git status`). Also strips a leading `env [-...] [NAME=value...]`
+/// invocation so `env TRS_DISABLE=1 npx tsc` is recognized too.
 fn cmd_bypasses_trs(cmd: &str) -> bool {
     let mut rest = cmd.trim_start();
+    // Strip a leading `env` invocation: `env [-i|-u VAR|--] [NAME=val...]`
+    // (or `/usr/bin/env`, the absolute form the user's shell may resolve
+    // to) is functionally equivalent to bare `NAME=val ...` for our
+    // bypass detection.
+    let env_stripped = rest
+        .strip_prefix("env ")
+        .or_else(|| rest.strip_prefix("/usr/bin/env "));
+    if let Some(after) = env_stripped {
+        rest = after.trim_start();
+        loop {
+            let Some(tok) = rest.split_whitespace().next() else {
+                break;
+            };
+            if tok.starts_with('-') || looks_like_env_assignment(tok) {
+                if tok.starts_with("TRS_SKIP=") || tok.starts_with("TRS_DISABLE=") {
+                    return true;
+                }
+                rest = rest[tok.len()..].trim_start();
+            } else {
+                break;
+            }
+        }
+    }
     loop {
-        if rest.starts_with("TRS_SKIP=") {
+        if rest.starts_with("TRS_SKIP=") || rest.starts_with("TRS_DISABLE=") {
             return true;
         }
         let Some(space_at) = rest.find(char::is_whitespace) else {
@@ -179,6 +204,28 @@ mod tests {
         assert!(!cmd_bypasses_trs("trs git status"));
         // TRS_SKIP as a literal arg later in the line is not a bypass.
         assert!(!cmd_bypasses_trs("git log --grep TRS_SKIP=1"));
+    }
+
+    #[test]
+    fn test_cmd_bypasses_trs_disable_alias() {
+        // TRS_DISABLE=1 — historically used by users as an ad-hoc
+        // disable; recognize as bypass for telemetry parity with
+        // TRS_SKIP=1.
+        assert!(cmd_bypasses_trs("TRS_DISABLE=1 npx tsc"));
+        assert!(cmd_bypasses_trs("FOO=bar TRS_DISABLE=1 cargo build"));
+    }
+
+    #[test]
+    fn test_cmd_bypasses_env_wrapped() {
+        // `env [-flags] VAR=val cmd` is equivalent to `VAR=val cmd`
+        // for bypass intent. Recognize the env-wrapped form too.
+        assert!(cmd_bypasses_trs("env TRS_DISABLE=1 npx tsc"));
+        assert!(cmd_bypasses_trs("/usr/bin/env TRS_SKIP=1 cargo build"));
+        assert!(cmd_bypasses_trs(
+            "env FOO=bar TRS_DISABLE=1 npx tsc"
+        ));
+        // env without the bypass marker → not a bypass.
+        assert!(!cmd_bypasses_trs("env FOO=bar cargo build"));
     }
 
     fn parse_input(s: &str) -> serde_json::Value {

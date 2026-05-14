@@ -118,9 +118,11 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
-    // Explicit per-invocation opt-out. `TRS_SKIP=1 <cmd>` survives downstream
-    // because the shell strips the env-var assignment before exec.
-    if trimmed.starts_with("TRS_SKIP=") {
+    // Explicit per-invocation opt-out. `TRS_SKIP=1 <cmd>` and the
+    // historical `TRS_DISABLE=1 <cmd>` alias both bypass rewriting.
+    // The shell strips the env-var assignment before exec, so the
+    // downstream program never sees these markers.
+    if trimmed.starts_with("TRS_SKIP=") || trimmed.starts_with("TRS_DISABLE=") {
         return None;
     }
 
