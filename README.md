@@ -92,12 +92,19 @@ See [`docs/features/upgrade.md`](docs/features/upgrade.md) and [`docs/features/d
 ```bash
 # 1. Wire hooks into every detected AI agent (the main path)
 trs init --all --global
+trs init --all --global --dry-run  # preview without writing
 
 # 2. See your savings
 trs stats                          # dashboard
 trs stats --by-agent               # breakdown per AI agent
 trs stats -n 30                    # custom row limit
+
+# 3. Walk back when you want — symmetric removal
+trs uninstall                      # interactive
+trs uninstall --all --yes          # scripted
 ```
+
+[Full `trs uninstall` reference →](docs/features/uninstall.md)
 
 ## Supported AI agents
 
@@ -188,7 +195,7 @@ trs compresses what agents **see** via `trs rewrite`. `trs output-saver` closes 
 ```bash
 trs output-saver               # read-only scan
 trs output-saver --install     # install on detected agents
-trs output-saver --remove      # clean uninstall
+trs uninstall --output-saver   # remove the block from every agent
 ```
 
 Eight of nine agents supported (Antigravity is per-project only). [Full `trs output-saver` reference →](docs/features/output-saver.md)
