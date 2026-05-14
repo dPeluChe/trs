@@ -345,7 +345,9 @@ fn delete_rules_file(path: &Path, dry_run: bool) -> Result<Option<String>, Strin
         return Ok(None);
     }
     let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    if !content.contains("trs (Token-Reducing Shell)") {
+    // Match all marker variants — legacy `trs (TARS CLI)` (≤ v0.5.8),
+    // modern `trs (Token-Reducing Shell)`, sentinels, etc.
+    if !file_has_any_trs_marker(&content) {
         return Ok(None);
     }
     if dry_run {
