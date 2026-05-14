@@ -73,6 +73,26 @@ CASES=(
     "wrapper + chain¦time cargo fmt && cargo clippy¦rewritten"
     "wrapper false-prefix (timeout)¦timeout 5 git status¦rewritten"
     "wrapper + skip inner (cd)¦time cd /tmp¦passthrough"
+    # Venv runners — v0.6.2 transparent_prefix additions. Inner cmd goes
+    # through trs's parsers (pytest / python / etc.) instead of bypassing.
+    "wrapper poetry run¦poetry run pytest¦rewritten"
+    "wrapper poetry run with args¦poetry run python manage.py migrate¦rewritten"
+    "wrapper uv run¦uv run pytest -v¦rewritten"
+    "wrapper pdm run¦pdm run pytest¦rewritten"
+    # Inline scripts and generic CLIs added to REWRITE_PREFIXES in v0.6.2.
+    # These get generic ANSI/whitespace compression even without a parser.
+    "bash inline¦bash -c \"git status\"¦rewritten"
+    "node inline¦node -e \"console.log(1)\"¦rewritten"
+    "awk filter¦awk /pattern/ file.txt¦rewritten"
+    "du size¦du -h dist/¦rewritten"
+    "jq query¦jq -r .name package.json¦rewritten"
+    # Bypass channels — v0.6.2 adds TRS_DISABLE alias + env-wrapped form.
+    "bypass trs_skip¦TRS_SKIP=1 git status¦passthrough"
+    "bypass trs_disable¦TRS_DISABLE=1 npx tsc¦passthrough"
+    "bypass env-wrapped¦env TRS_DISABLE=1 npx tsc¦passthrough"
+    # Wrappers we deliberately do NOT strip (next token is script name).
+    "bun run stays wrapped¦bun run typecheck¦rewritten"
+    "pnpm run stays wrapped¦pnpm run build¦rewritten"
 )
 
 pass=0
