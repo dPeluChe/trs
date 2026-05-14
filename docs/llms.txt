@@ -12,7 +12,8 @@
 
 ## Features
 
-- [trs init](https://usetrs.dev/features/init.md): agent hook installer with collision detection, `--global` and `--project` scopes
+- [trs init](https://usetrs.dev/features/init.md): agent hook installer with collision detection, `--global` / `--dry-run` modes, transparent-prefix support for `time`/`docker exec`/`poetry run` wrappers
+- [trs uninstall](https://usetrs.dev/features/uninstall.md): symmetric removal — interactive menu or `--all` / `--tool` / `--output-saver` / `--dry-run` flags
 - [trs stats](https://usetrs.dev/features/stats.md): token savings analytics, per-command and per-agent breakdowns
 - [trs ingest](https://usetrs.dev/features/ingest.md): compress local files or URLs before reading them into context
 - [trs output-saver](https://usetrs.dev/features/output-saver.md): installs Markdown rules blocks that keep agent replies concise

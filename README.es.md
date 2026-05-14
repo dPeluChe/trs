@@ -92,12 +92,19 @@ Referencias: [actualizar](docs/features/upgrade.md) · [doctor](docs/features/do
 ```bash
 # 1. Instala hooks en cada agente detectado (el camino principal)
 trs init --all --global
+trs init --all --global --dry-run  # preview sin escribir
 
 # 2. Ve tu ahorro
 trs stats                          # dashboard
 trs stats --by-agent               # desglose por agente de IA
 trs stats -n 30                    # límite de filas personalizado
+
+# 3. Desinstala cuando quieras — flujo simétrico
+trs uninstall                      # interactivo
+trs uninstall --all --yes          # scriptable
 ```
+
+[Referencia completa de `trs uninstall` →](docs/features/uninstall.md)
 
 ## Agentes de IA soportados
 
@@ -188,7 +195,7 @@ trs ingest --list              # digests guardados + HEAD sha + si están stale
 ```bash
 trs output-saver               # escaneo de solo lectura
 trs output-saver --install     # instala en los agentes detectados
-trs output-saver --remove      # desinstala limpio
+trs uninstall --output-saver   # quita el bloque de todos los agentes
 ```
 
 Ocho de nueve agentes soportados (Antigravity solo funciona a nivel de proyecto). [Referencia completa de `trs output-saver` →](docs/features/output-saver.md)

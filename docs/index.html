@@ -1292,7 +1292,7 @@ ad55480 feat(init): smart JSON merge
       </div>
       <div class="feature">
         <div class="feature-title">Check-first by default</div>
-        <div class="feature-desc">Dry-run scan shows exactly what would change. <code>--install</code> to write, <code>--remove</code> to uninstall cleanly.</div>
+        <div class="feature-desc">Dry-run scan shows exactly what would change. <code>--install</code> to write, <code>trs uninstall --output-saver</code> to remove cleanly across every agent.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Idempotent merge</div>
@@ -1346,6 +1346,14 @@ ad55480 feat(init): smart JSON merge
       <div class="feature">
         <div class="feature-title">Collision check</div>
         <div class="feature-desc"><code>trs init</code> scans target configs for hooks from other token-compression tools (following <code>@imports</code> too) and aborts by default. <code>--replace</code> migrates cleanly; <code>--force</code> stacks at your own risk.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Symmetric uninstall</div>
+        <div class="feature-desc"><code>trs uninstall</code> walks every surface <code>trs init</code> wrote — JSON hooks (preserves user-added entries), plugin files, Codex sentinel blocks, output-saver sidecars. Interactive by default, or <code>--all</code> / <code>--tool</code> / <code>--output-saver</code> / <code>--dry-run</code> for scripts.</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title">Transparent wrappers</div>
+        <div class="feature-desc">Built-ins like <code>time</code>, <code>nohup</code>, <code>noglob</code>, <code>command</code> are recognized automatically. Project-specific wrappers (<code>docker exec myapp</code>, <code>poetry run</code>, <code>direnv exec .</code>) plug in via <code>[hooks].transparent_prefixes</code> in <code>~/.trs/config.toml</code>.</div>
       </div>
     </div>
   </div>
