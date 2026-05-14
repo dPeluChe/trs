@@ -70,9 +70,16 @@ const SKIP_PREFIXES: &[&str] = &[
     "unset ", "alias ", "which ", "type ", "true", "false", "exit", "return",
 ];
 
-/// Always-on wrappers: shell builtins the shell consumes before exec, plus
-/// 1-token process wrappers with no required args. Arg-taking wrappers
-/// (`sudo`, `env`, `nice -n N`) go through user config instead.
+/// Always-on wrappers stripped before routing and re-prepended on the
+/// rewrite. Two groups:
+///
+/// - Shell builtins + 1-token process wrappers: the shell or the wrapper
+///   consume them before exec without changing what command runs.
+/// - Venv runners (`poetry run`, `uv run`, `pdm run`): the wrapper
+///   passes the inner command through uninterpreted, so trs can route
+///   the inner cmd to its parser. Notably NOT included: `bun run`,
+///   `pnpm run`, `npm run`, `yarn`, `npx` — those interpret the
+///   following token as a script name or package, not a command.
 const TRANSPARENT_PREFIX_BUILTINS: &[&str] = &[
     "noglob",
     "command",
@@ -84,6 +91,9 @@ const TRANSPARENT_PREFIX_BUILTINS: &[&str] = &[
     "setsid",
     "unbuffer",
     "stdbuf",
+    "poetry run",
+    "uv run",
+    "pdm run",
 ];
 
 /// Decide if a command should be rewritten through trs. Returns

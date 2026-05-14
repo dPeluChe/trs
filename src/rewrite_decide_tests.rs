@@ -87,6 +87,41 @@ fn test_transparent_prefix_nested() {
 }
 
 #[test]
+fn test_transparent_prefix_venv_runners() {
+    // poetry run / uv run / pdm run pass the inner command through
+    // their venv; trs strips them, routes the inner, re-prepends.
+    assert_eq!(
+        maybe_rewrite("poetry run pytest"),
+        Some("poetry run trs pytest".into())
+    );
+    assert_eq!(
+        maybe_rewrite("uv run python script.py"),
+        Some("uv run trs python script.py".into())
+    );
+    assert_eq!(
+        maybe_rewrite("pdm run pytest -v"),
+        Some("pdm run trs pytest -v".into())
+    );
+}
+
+#[test]
+fn test_npm_run_not_transparent_prefix() {
+    // `bun run <script>` / `npm run <script>` interpret the next token
+    // as a script name in package.json, not a command. Stripping them
+    // would break (e.g. `bun run trs typecheck` would look for a script
+    // named "trs"). They MUST stay in REWRITE_PREFIXES path (`trs bun
+    // run typecheck` runs bun normally; trs sees the full output).
+    let bun = maybe_rewrite("bun run typecheck").unwrap();
+    assert!(
+        bun.starts_with("trs bun run "),
+        "bun run must be wrapped, not stripped: {}",
+        bun
+    );
+    let pnpm = maybe_rewrite("pnpm run build").unwrap();
+    assert!(pnpm.starts_with("trs pnpm run "));
+}
+
+#[test]
 fn test_transparent_prefix_skips_when_inner_skipped() {
     // `time cd /tmp` — inner is in SKIP_PREFIXES, whole expr returns None.
     assert_eq!(maybe_rewrite("time cd /tmp"), None);
