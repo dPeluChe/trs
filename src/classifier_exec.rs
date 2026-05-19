@@ -255,8 +255,24 @@ fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
         content.push_str(&format!("\n--- truncated at {} bytes ---", max_bytes));
     }
 
-    std::fs::write(&filepath, &content).ok()?;
+    // mode 0600: tee/*.log can carry response bodies that include
+    // credentials or session tokens — user-only readable on Unix.
+    write_user_only(&filepath, content.as_bytes()).ok()?;
     Some(filepath.to_string_lossy().to_string())
+}
+
+fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()> {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+    let mut opts = OpenOptions::new();
+    opts.create(true).truncate(true).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    let mut f = opts.open(path)?;
+    f.write_all(content)
 }
 
 /// Generic compression for commands without a dedicated parser.

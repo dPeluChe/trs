@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A single history entry representing one trs command execution.
@@ -83,10 +83,24 @@ fn append_history_entry(entry: &HistoryEntry) {
     };
     line.push('\n');
 
-    let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&path) else {
+    let Ok(mut file) = open_user_only(&path) else {
         return;
     };
     let _ = file.write_all(line.as_bytes());
+}
+
+/// Open a user-private file for append-create. On Unix, sets mode 0600 on
+/// first create so a different user on the same machine can't read
+/// command lines (which may carry tokens, basic-auth, API keys).
+fn open_user_only(path: &Path) -> std::io::Result<fs::File> {
+    let mut opts = OpenOptions::new();
+    opts.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    opts.open(path)
 }
 
 /// Log a command execution to the history file.
