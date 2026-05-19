@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Nine AI coding agents are supported end-to-end. Each row lists the
+Ten AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -13,8 +13,9 @@ install scope.
 | OpenCode | plugin template | ✓ | ✓ (inline block) | `opencode` | global |
 | Kilo Code | plugin template | ✓ | ✓ (inline block) | `kilo` | global |
 | Factory Droid | programmatic hook | ✓ | ✓ (inline block) | `claude` (see caveat) | global + project |
+| Antigravity IDE | programmatic hook (shared) | ✓ | ✓ (`@import`) | `gemini` (see caveat) | global |
+| Antigravity CLI (`agy`) | programmatic hook (shared) | ✓ | ✓ (`@import`) | `gemini` (see caveat) | global |
 | Codex CLI | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
-| Google Antigravity | rules file only | — | — | `(untagged)` | project only |
 | Windsurf | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
 
 ## Column legend
@@ -30,9 +31,9 @@ install scope.
   status`). Rules-only agents cannot do this; the model ends up
   running raw commands unless the user prefixes `trs` manually.
 - **Output-saver.** Whether `trs output-saver --install` can inject
-  the anti-preamble / result-first rules block. Antigravity is the
-  only exception because its rules files are per-project with no
-  global equivalent.
+  the anti-preamble / result-first rules block. All ten agents are
+  supported as of v0.6.4 (Antigravity moved off its per-project rules
+  files and joined the Gemini CLI harness).
 - **Attribution label.** What `trs stats --by-agent` shows for runs
   triggered by this agent. `(untagged)` means trs has no
   programmatic signal to identify the agent — rules-only agents fall
@@ -88,17 +89,36 @@ install scope.
   eyeball the `cwd` paths or the time of day. A disambiguation flag
   is tracked on the roadmap.
 
-### Codex CLI, Google Antigravity, Windsurf
+### Antigravity IDE + Antigravity CLI (`agy`)
+
+- **Install mechanism:** programmatic hook into `~/.gemini/settings.json`
+  under `hooks.BeforeTool[]`. Both products share the Gemini CLI agent
+  harness — same file, same envelope — so installing Gemini, Antigravity
+  IDE, or Antigravity CLI all converge on the same hook entry.
+  `merge_json_hook` is idempotent on `trs rewrite`, so installing all
+  three doesn't double-fire.
+- **Aliases:** `trs init antigravity` resolves to the IDE for
+  back-compat. Use `trs init antigravity-cli` or `trs init agy` for
+  the new terminal CLI explicitly. `trs init --show` lists both rows
+  separately so you can see what's detected.
+- **Caveat — shared `gemini` attribution.** Because the hook lives in
+  Gemini's `settings.json`, every invocation tags as `gemini` in
+  `trs stats --by-agent`. We can't disambiguate Gemini vs Antigravity
+  IDE vs Antigravity CLI at hook time; same disambiguation roadmap
+  item as Droid/Claude.
+- **Migration from pre-v0.6.4:** old installs wrote
+  `.agent/rules/antigravity-trs-rules.md` per project. The IDE no
+  longer reads that path. `trs uninstall antigravity` sweeps it up
+  automatically.
+
+### Codex CLI, Windsurf
 
 - **Install mechanism:** rules file only — these agents have no
   programmatic hook surface. `trs init` appends a rules block
   recommending manual `trs <cmd>` prefixes; the agent reads the rules
   at session start but there's no enforcement.
-- **Antigravity exception:** rules files are per-project, no global
-  equivalent, and no output-saver rules file — it's the only agent
-  missing both halves of the loop.
-- **Attribution:** all three show as `(untagged)` in stats since
-  there's no programmatic signal to tag commands with an agent.
+- **Attribution:** both show as `(untagged)` in stats since there's
+  no programmatic signal to tag commands with an agent.
 
 ## Install commands
 

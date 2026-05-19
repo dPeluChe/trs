@@ -108,15 +108,15 @@ trs uninstall --all --yes          # scripted
 
 ## Supported AI agents
 
-Nine agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Factory Droid. Rules file only for Codex CLI, Google Antigravity, Windsurf.
+Ten agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Factory Droid, Antigravity IDE, Antigravity CLI. Rules file only for Codex CLI, Windsurf.
 
 | Agent | Install method | Input hook | Output-saver | Attribution |
 |---|---|---|---|---|
 | Claude Code · Gemini · Cursor | programmatic hook | ✓ | ✓ | `claude` / `gemini` / `cursor` |
 | OpenCode · Kilo Code | plugin template | ✓ | ✓ | `opencode` / `kilo` |
 | Factory Droid | programmatic hook | ✓ | ✓ | `claude` (shares envelope) |
+| Antigravity IDE · Antigravity CLI (`agy`) | programmatic hook | ✓ | ✓ | `gemini` (shared harness) |
 | Codex CLI · Windsurf | rules file only | — | ✓ | `(untagged)` |
-| Google Antigravity | rules file only | — | — | `(untagged)` |
 
 [Full compatibility matrix, caveats, and per-agent config paths →](docs/support/agents.md)
 
@@ -198,7 +198,7 @@ trs output-saver --install     # install on detected agents
 trs uninstall --output-saver   # remove the block from every agent
 ```
 
-Eight of nine agents supported (Antigravity is per-project only). [Full `trs output-saver` reference →](docs/features/output-saver.md)
+All ten agents supported (Antigravity IDE + CLI share Gemini's `~/.gemini/GEMINI.md` import). [Full `trs output-saver` reference →](docs/features/output-saver.md)
 
 ## Output formats
 

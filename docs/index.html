@@ -20,7 +20,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="trs (Token-Reducing Shell)">
   <meta property="og:title" content="trs — Terminal compression for AI agents">
-  <meta property="og:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, Windsurf, Antigravity.">
+  <meta property="og:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, Windsurf, Antigravity (IDE + CLI / agy).">
   <meta property="og:url" content="https://usetrs.dev/">
   <meta property="og:image" content="https://usetrs.dev/og-image.png">
   <meta property="og:image:alt" content="trs — Terminal compression for AI agents">
@@ -866,7 +866,7 @@
 <section id="agents">
   <div class="container">
     <h2>Supported AI agents</h2>
-    <p class="section-intro">Nine agents, three install mechanisms. <code class="inline">trs init --all --global</code> wires every detected agent in one shot.</p>
+    <p class="section-intro">Ten agents, three install mechanisms. <code class="inline">trs init --all --global</code> wires every detected agent in one shot.</p>
 
     <div style="overflow-x: auto; margin-top: 24px;">
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -883,8 +883,8 @@
           <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Claude Code · Gemini · Cursor</td><td style="padding: 8px;">programmatic hook</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">claude</code> / <code class="inline">gemini</code> / <code class="inline">cursor</code></td></tr>
           <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">OpenCode · Kilo Code</td><td style="padding: 8px;">plugin template</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">opencode</code> / <code class="inline">kilo</code></td></tr>
           <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Factory Droid</td><td style="padding: 8px;">programmatic hook</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">claude</code> (shared envelope)</td></tr>
-          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Codex CLI · Windsurf</td><td style="padding: 8px;">rules file only</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
-          <tr><td style="padding: 8px;">Google Antigravity</td><td style="padding: 8px;">rules file only</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Antigravity IDE · Antigravity CLI (<code class="inline">agy</code>)</td><td style="padding: 8px;">programmatic hook (shared)</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">gemini</code> (shared harness)</td></tr>
+          <tr><td style="padding: 8px;">Codex CLI · Windsurf</td><td style="padding: 8px;">rules file only</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
         </tbody>
       </table>
     </div>
@@ -1287,8 +1287,8 @@ ad55480 feat(init): smart JSON merge
 
     <div class="features-grid" style="margin-top: 24px;">
       <div class="feature">
-        <div class="feature-title">Eight of nine agents covered</div>
-        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, Windsurf. Antigravity is the only holdout (project-only rules files).</div>
+        <div class="feature-title">All ten agents covered</div>
+        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, Windsurf, Antigravity IDE, Antigravity CLI. The Antigravity pair (IDE + <code>agy</code>) joined in v0.6.4 via Gemini's shared hook harness.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Check-first by default</div>

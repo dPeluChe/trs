@@ -27,7 +27,8 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | OpenCode | TS plugin | `~/.config/opencode/plugins/trs.ts` |
 | Kilo Code | TS plugin | `~/.config/kilo/plugins/trs.ts` |
 | Codex | Rules append | `AGENTS.md` in repo (or `~/.codex/AGENTS.md` with `--global`) |
-| Google Antigravity | Rules file | `.agent/rules/antigravity-trs-rules.md` |
+| Antigravity IDE | JSON hook (shared) | `~/.gemini/settings.json` — same target as Gemini CLI |
+| Antigravity CLI (`agy`) | JSON hook (shared) | `~/.gemini/settings.json` — same target as Gemini CLI |
 | Windsurf | Rules file | `.windsurfrules` |
 
 Hooks fire deterministically on every shell-tool invocation. Rules
@@ -180,13 +181,14 @@ Labels per agent:
 
 - `claude` — Claude Code (and Factory Droid, which shares the same
   wire format)
-- `gemini` — Gemini CLI
+- `gemini` — Gemini CLI, Antigravity IDE, and Antigravity CLI (all
+  three share `~/.gemini/settings.json`, so the same hook tags them
+  with `gemini`)
 - `cursor` — Cursor
 - `opencode` — OpenCode (baked into the plugin template)
 - `kilo` — Kilo Code (baked into its plugin template)
-- `(untagged)` — rules-only agents (Codex / Antigravity / Windsurf)
-  and direct-shell invocations, where no programmatic signal is
-  available
+- `(untagged)` — rules-only agents (Codex / Windsurf) and direct-
+  shell invocations, where no programmatic signal is available
 
 If you want to spoof attribution for a specific command (e.g.
 testing), prefix manually:

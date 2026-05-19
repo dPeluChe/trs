@@ -22,7 +22,8 @@ matrix below. Six distinct target paths across three mechanisms:
 | OpenCode | inline with sentinels | `~/.config/opencode/AGENTS.md` |
 | Kilo Code | inline with sentinels | `~/.config/kilo/AGENTS.md` |
 | Factory Droid | inline with sentinels | `~/.factory/AGENTS.md` |
-| Antigravity | not supported globally — use `trs init antigravity` per project |
+| Antigravity IDE | `@import` (shared with Gemini) — `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
+| Antigravity CLI (`agy`) | `@import` (shared with Gemini) — `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
 
 Inline installs use the sentinels
 `<!-- trs:output-saver:start v1 -->` / `<!-- trs:output-saver:end -->`
@@ -49,9 +50,9 @@ differ.
 
 | Type | How it works | Agents | File written |
 |---|---|---|---|
-| **Hook (JSON event)** | Agent fires a PreToolUse-style event, hands us the command on stdin, applies our rewrite response | Claude Code, Gemini CLI, Cursor, Factory Droid | `settings.json` / `hooks.json` |
+| **Hook (JSON event)** | Agent fires a PreToolUse-style event, hands us the command on stdin, applies our rewrite response | Claude Code, Gemini CLI, Cursor, Factory Droid, Antigravity IDE, Antigravity CLI | `settings.json` / `hooks.json` |
 | **Plugin (TypeScript)** | Agent auto-discovers `.ts` plugin files at startup and mutates tool args in-process | OpenCode, Kilo Code | `plugins/trs.ts` |
-| **Rules file** | No programmatic interception. Agent reads a rules/instructions file and VOLUNTARILY prefixes `trs` | Codex, Google Antigravity, Windsurf | `AGENTS.md` / `.agent/rules/*.md` / `.windsurfrules` |
+| **Rules file** | No programmatic interception. Agent reads a rules/instructions file and VOLUNTARILY prefixes `trs` | Codex, Windsurf | `AGENTS.md` / `.windsurfrules` |
 
 Hook and plugin are deterministic (binary: fires or not). Rules-based is
 probabilistic — depends on the agent choosing to follow the guidance.
@@ -89,7 +90,8 @@ downstream `trs <cmd>` execution can attribute the run.
 | OpenCode | plugin template bakes the label | `opencode` |
 | Kilo Code | separate plugin template bakes the label | `kilo` |
 | Factory Droid | same wire format as Claude | `claude` (indistinguishable from Claude) |
-| Codex / Antigravity / Windsurf | rules-only, no programmatic signal | `(untagged)` |
+| Antigravity IDE / CLI | shared Gemini settings.json | `gemini` (indistinguishable from Gemini) |
+| Codex / Windsurf | rules-only, no programmatic signal | `(untagged)` |
 
 The shell treats leading `VAR=value` as a per-command env override
 and strips it before executing the downstream program — so the tag
@@ -226,24 +228,45 @@ rule and applies it voluntarily when the prompt mentions optimization.
 Validate with the rules-based test prompt (see `docs/agent-test-prompts.md`
 section below).
 
-### Google Antigravity
+### Antigravity IDE + Antigravity CLI
 
 | | |
 |---|---|
-| Type | Rules file |
-| Config | `.agent/rules/antigravity-trs-rules.md` (project) |
-| Template | `ANTIGRAVITY_RULES` |
+| Type | Programmatic hook (shared with Gemini CLI) |
+| Config | `~/.gemini/settings.json` under `hooks.BeforeTool[]` |
+| Template | `GEMINI_HOOKS` (reused — same harness) |
+
+**Background**: Google launched Antigravity 2.0 on 2026-05-19, rolling
+out a CLI (`agy`) alongside the rewrite of the desktop IDE. Both
+products share the Gemini CLI agent harness — same `~/.gemini/`
+config directory, same `BeforeTool` hook envelope (`tool_input` in,
+`hookSpecificOutput.tool_input` out). Two trs `AiTool` variants
+(`Antigravity` / `AntigravityCLI`) target the same `HookSpec` so the
+shared `settings.json` gets a single `trs rewrite` entry no matter
+which subset is installed.
+
+**Detection**:
+- IDE: `app_exists("Antigravity")` ∨ `~/.gemini/antigravity-ide/`
+  exists ∨ legacy `~/.antigravity/`.
+- CLI: `in_path("agy")` ∨ `~/.gemini/antigravity-cli/` exists.
+
+**Attribution**: both pin as `gemini` in `trs stats --by-agent` —
+inseparable from Gemini CLI at hook time because they share the
+config. Same disambiguation roadmap item as Droid (which shares
+Claude's envelope).
+
+**Pre-v0.6.4 migration**: the previous trs Antigravity install wrote
+`.agent/rules/antigravity-trs-rules.md` per project. The new IDE
+does NOT read that path. `trs uninstall antigravity` sweeps it up as
+part of the candidate-paths cleanup.
 
 **Quirks**:
-- Antigravity is VS Code-based. It spawns its tool-shell as non-interactive
-  zsh, which reads ONLY `~/.zshenv` — NOT `~/.zshrc`. If the user added
-  `~/.local/bin` to PATH only in `.zshrc`, Antigravity's agent shell gets
-  `command not found: trs`.
-- The `install.sh` now recommends `~/.zshenv` for zsh users instead of
-  `~/.zshrc`. Fixed in `6f84f62`.
-- `ANTIGRAVITY_RULES` includes a fallback pointing to the absolute
-  `$HOME/.local/bin/trs` path for users who can't easily change their shell
-  config.
+- The desktop IDE is VS Code-based. Older Antigravity 1.x spawned
+  its tool-shell as non-interactive zsh and only read `~/.zshenv`;
+  this could surface as `command not found: trs` if `~/.local/bin`
+  was only added to `.zshrc`. install.sh recommends `~/.zshenv` for
+  zsh users (fixed in `6f84f62`). Antigravity 2.0 still inherits
+  this constraint when invoked from a fresh shell.
 
 ### Windsurf
 
@@ -253,7 +276,7 @@ section below).
 | Config | `.windsurfrules` (project root) |
 | Template | `WINDSURF_RULES` |
 
-Windsurf Cascade has no pre-execution hook. Works like Codex/Antigravity —
+Windsurf Cascade has no pre-execution hook. Works like Codex —
 rules-based voluntary adoption.
 
 ## Test prompts
