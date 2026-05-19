@@ -263,6 +263,89 @@ pub(crate) enum Status {
     Unsupported { reason: &'static str },
 }
 
+/// Deeper check than `Status::AlreadyInstalled` — verifies the file
+/// content on disk matches the canonical template. Used by `trs doctor`
+/// to report drift (manual edits, partial updates from older versions).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum VerifyStatus {
+    /// File present and content matches the current canonical template.
+    Ok,
+    /// File present but contents differ — either a manual edit, a stale
+    /// template from a prior release, or a partial write. The user
+    /// should run `trs output-saver --refresh` to restore.
+    Drifted,
+    /// Same enum as `scan_agent` — pass through when nothing to verify.
+    NotInstalled,
+    NotDetected,
+    Unsupported,
+}
+
+pub(crate) fn verify_agent(agent_id: &str) -> VerifyStatus {
+    let home = std::env::var("HOME").ok().map(PathBuf::from);
+    verify_agent_with_home(agent_id, home.as_deref())
+}
+
+fn verify_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> VerifyStatus {
+    let target = resolve_target_with_home(agent_id, home);
+    match target {
+        Target::NotSupported { .. } => VerifyStatus::Unsupported,
+        Target::Imported { dir, root_file } => {
+            if !dir.exists() {
+                return VerifyStatus::NotDetected;
+            }
+            let saver = dir.join(IMPORT_FILENAME);
+            let import_line = format!("@{}", IMPORT_FILENAME);
+            let root = dir.join(&root_file);
+            let has_import = fs::read_to_string(&root)
+                .map(|c| c.contains(&import_line))
+                .unwrap_or(false);
+            if !has_import || !saver.exists() {
+                return VerifyStatus::NotInstalled;
+            }
+            match fs::read_to_string(&saver) {
+                Ok(content) if content == standalone_file() => VerifyStatus::Ok,
+                Ok(_) => VerifyStatus::Drifted,
+                Err(_) => VerifyStatus::Drifted,
+            }
+        }
+        Target::RulesDir { path } => {
+            if !path.exists() {
+                return VerifyStatus::NotInstalled;
+            }
+            // Rules-dir agents (Cursor) write the wrapped block to a
+            // dedicated file; compare against the canonical wrap.
+            match fs::read_to_string(&path) {
+                Ok(content) if content.contains(BLOCK) => VerifyStatus::Ok,
+                Ok(_) => VerifyStatus::Drifted,
+                Err(_) => VerifyStatus::Drifted,
+            }
+        }
+        Target::InlineFile { path } => {
+            if !path.exists() {
+                return VerifyStatus::NotInstalled;
+            }
+            let Ok(content) = fs::read_to_string(&path) else {
+                return VerifyStatus::Drifted;
+            };
+            if !content.contains(SENTINEL_START) || !content.contains(SENTINEL_END) {
+                return VerifyStatus::NotInstalled;
+            }
+            // Pull out the sentinel-delimited slice and compare its
+            // inner body with BLOCK. Whitespace between sentinel and
+            // BLOCK is ignored — the install path uses `sentinel_wrapped`
+            // which adds a leading newline + blank line.
+            let s = content.find(SENTINEL_START).unwrap() + SENTINEL_START.len();
+            let e = content[s..].find(SENTINEL_END).map(|p| s + p).unwrap_or(s);
+            let inner = content[s..e].trim();
+            if inner == BLOCK.trim() {
+                VerifyStatus::Ok
+            } else {
+                VerifyStatus::Drifted
+            }
+        }
+    }
+}
+
 pub(crate) fn scan_agent(agent_id: &str) -> Status {
     let home = std::env::var("HOME").ok().map(PathBuf::from);
     scan_agent_with_home(agent_id, home.as_deref())
