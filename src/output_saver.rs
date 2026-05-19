@@ -21,6 +21,14 @@
 //! - **Skip plugin-based agents.** Droid/OpenCode/Kilo/Antigravity have
 //!   no global rules mechanism we can target without writing into user
 //!   project files. We say so explicitly rather than pretending.
+//!
+//! The rules in `BLOCK` aren't arbitrary opinions — each one has either
+//! an empirical source (Anthropic's leaked Claude Code system prompt,
+//! Anthropic A/B-validated) or a research-backed prompt-engineering
+//! principle (positive vs negative instructions, from pink-elephant
+//! studies). For the per-rule provenance and what was deliberately
+//! NOT included, see `docs/features/output-saver.md` § "Why these
+//! rules — research backing".
 
 use std::fs;
 use std::path::PathBuf;
@@ -35,20 +43,24 @@ macro_rules! output_saver_block_literal {
     () => {
         r#"## Output saver — keep replies cheap
 
-These rules reduce tokens on every agent reply:
+Keep replies under ~100 words unless the task needs more. Between tool
+calls, stay under ~25 words. Match shape to task — a one-line question
+gets a one-line answer, no headers.
 
-- No preambles. Don't open with "Sure!", "Great question!", "Absolutely!",
-  "I'll help you...", or "You're absolutely right!". Start with the answer.
-- No narration. Don't announce what you're about to do or recap what you
-  just did — the diff / tool output already shows it.
+Open with the answer or the diff. End when the answer ends.
+
 - Result first; explanation only if non-obvious. State the finding, show
   the fix, stop.
+- Let tool output speak for itself; don't restate or recap what the diff
+  already shows.
 - Structured output when the data is structured: bullets, tables, JSON.
   Prose only when the reader is human and the content is narrative.
 - Never invent file paths, function names, or API fields. If unknown,
   say "UNKNOWN" or return null — guessing costs more tokens than asking.
 - One pass: don't iterate on passing code, don't refactor / polish unless
   asked.
+- In code: no comments by default; one short line max if the WHY is
+  non-obvious. Never multi-paragraph docstrings.
 
 User instructions always override these rules."#
     };
@@ -261,6 +273,89 @@ pub(crate) enum Status {
     AlreadyInstalled,
     /// Couldn't target this agent (plugin-based or unknown).
     Unsupported { reason: &'static str },
+}
+
+/// Deeper check than `Status::AlreadyInstalled` — verifies the file
+/// content on disk matches the canonical template. Used by `trs doctor`
+/// to report drift (manual edits, partial updates from older versions).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum VerifyStatus {
+    /// File present and content matches the current canonical template.
+    Ok,
+    /// File present but contents differ — either a manual edit, a stale
+    /// template from a prior release, or a partial write. The user
+    /// should run `trs output-saver --refresh` to restore.
+    Drifted,
+    /// Same enum as `scan_agent` — pass through when nothing to verify.
+    NotInstalled,
+    NotDetected,
+    Unsupported,
+}
+
+pub(crate) fn verify_agent(agent_id: &str) -> VerifyStatus {
+    let home = std::env::var("HOME").ok().map(PathBuf::from);
+    verify_agent_with_home(agent_id, home.as_deref())
+}
+
+fn verify_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> VerifyStatus {
+    let target = resolve_target_with_home(agent_id, home);
+    match target {
+        Target::NotSupported { .. } => VerifyStatus::Unsupported,
+        Target::Imported { dir, root_file } => {
+            if !dir.exists() {
+                return VerifyStatus::NotDetected;
+            }
+            let saver = dir.join(IMPORT_FILENAME);
+            let import_line = format!("@{}", IMPORT_FILENAME);
+            let root = dir.join(&root_file);
+            let has_import = fs::read_to_string(&root)
+                .map(|c| c.contains(&import_line))
+                .unwrap_or(false);
+            if !has_import || !saver.exists() {
+                return VerifyStatus::NotInstalled;
+            }
+            match fs::read_to_string(&saver) {
+                Ok(content) if content == standalone_file() => VerifyStatus::Ok,
+                Ok(_) => VerifyStatus::Drifted,
+                Err(_) => VerifyStatus::Drifted,
+            }
+        }
+        Target::RulesDir { path } => {
+            if !path.exists() {
+                return VerifyStatus::NotInstalled;
+            }
+            // Rules-dir agents (Cursor) write the wrapped block to a
+            // dedicated file; compare against the canonical wrap.
+            match fs::read_to_string(&path) {
+                Ok(content) if content.contains(BLOCK) => VerifyStatus::Ok,
+                Ok(_) => VerifyStatus::Drifted,
+                Err(_) => VerifyStatus::Drifted,
+            }
+        }
+        Target::InlineFile { path } => {
+            if !path.exists() {
+                return VerifyStatus::NotInstalled;
+            }
+            let Ok(content) = fs::read_to_string(&path) else {
+                return VerifyStatus::Drifted;
+            };
+            if !content.contains(SENTINEL_START) || !content.contains(SENTINEL_END) {
+                return VerifyStatus::NotInstalled;
+            }
+            // Pull out the sentinel-delimited slice and compare its
+            // inner body with BLOCK. Whitespace between sentinel and
+            // BLOCK is ignored — the install path uses `sentinel_wrapped`
+            // which adds a leading newline + blank line.
+            let s = content.find(SENTINEL_START).unwrap() + SENTINEL_START.len();
+            let e = content[s..].find(SENTINEL_END).map(|p| s + p).unwrap_or(s);
+            let inner = content[s..e].trim();
+            if inner == BLOCK.trim() {
+                VerifyStatus::Ok
+            } else {
+                VerifyStatus::Drifted
+            }
+        }
+    }
 }
 
 pub(crate) fn scan_agent(agent_id: &str) -> Status {
@@ -728,7 +823,7 @@ mod tests {
     fn standalone_file_contains_block() {
         let s = standalone_file();
         assert!(s.contains("Output saver"));
-        assert!(s.contains("No preambles"));
+        assert!(s.contains("Open with the answer"));
     }
 
     /// Regression guard: hook-context template must NOT advertise
@@ -760,7 +855,7 @@ mod tests {
         // Both retain the sentinels and the block.
         assert!(out.contains(SENTINEL_START));
         assert!(out.contains(SENTINEL_END));
-        assert!(out.contains("No preambles"));
+        assert!(out.contains("Open with the answer"));
     }
 
     #[test]
@@ -841,7 +936,7 @@ mod tests {
         let after2 = fs::read_to_string(&agents_path).unwrap();
         assert_eq!(after1, after2, "second install mutated the file");
         assert!(after1.contains("Custom rules."));
-        assert!(after1.contains("No preambles"));
+        assert!(after1.contains("Open with the answer"));
         assert_eq!(
             after1.matches(SENTINEL_START).count(),
             1,

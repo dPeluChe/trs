@@ -20,14 +20,18 @@ trs output-saver --print         # dump the block to stdout (pipe-friendly)
 
 ## What the block says
 
-Six directives, roughly 200 tokens total:
+Eight directives, roughly 250 tokens total. The exact text:
 
-- **No preambles.** Explicit blocklist: "Sure!", "Great question!",
-  "Absolutely!", "I'll help you…", "You're absolutely right!".
-- **No narration.** Don't announce what's about to happen or recap
-  what just happened — the diff / tool output shows it.
+- **Numeric token budget.** "Keep replies under ~100 words unless the
+  task needs more. Between tool calls, stay under ~25 words."
+- **Task-shape calibration.** "Match shape to task — a one-line
+  question gets a one-line answer, no headers."
+- **Open and end positively.** "Open with the answer or the diff.
+  End when the answer ends."
 - **Result first; explanation only if non-obvious.** State the
   finding, show the fix, stop.
+- **Let tool output speak for itself.** Don't restate or recap what
+  the diff already shows.
 - **Structured output when the data is structured.** Bullets, tables,
   JSON — prose only when the reader is human and the content is
   narrative.
@@ -36,12 +40,69 @@ Six directives, roughly 200 tokens total:
   than asking.
 - **One pass.** Don't iterate on passing code, don't refactor or
   polish unless asked.
+- **Code comments: none by default.** One short line max if the WHY
+  is non-obvious. Never multi-paragraph docstrings.
 
 Plus an explicit user-override clause so the rules never fight a
 user's deliberate instructions.
 
 Run `trs output-saver --print` to see the exact text before
 installing.
+
+## Why these rules — research backing
+
+The current rules block is the result of a 2026-Q2 research pass into
+public prompt-engineering patterns for response-length reduction. Two
+classes of sources informed each rule:
+
+1. **Anthropic's own Claude Code system prompt** (publicly leaked and
+   archived at [`asgeirtj/system_prompts_leaks`][leak-1] and
+   [`Piebald-AI/claude-code-system-prompts`][leak-2]). Anthropic
+   A/B-tested numeric token budgets against the qualitative "be
+   concise" baseline and reported ~1.2% output token reduction in
+   production. This is the strongest empirical signal available for a
+   terminal-tooling agent like Claude Code — the closest match to
+   trs's deployment shape.
+
+2. **Positive vs negative instruction studies** ([eval.16x.engineer
+   pink-elephant analysis][pink-1], [gadlet.com on negative
+   prompting][pink-2]). InstructGPT-class models reliably comply less
+   with "Don't do X" than with "Do Y" — the negation primes the
+   forbidden behavior. Our previous block leaned heavily on negatives
+   ("No preambles", "No narration", "Don't iterate"); the rewrite
+   flips them where the positive alternative is unambiguous.
+
+### Rule-by-rule provenance
+
+| Rule | Source | Status |
+|---|---|---|
+| Numeric token budget | Claude Code system prompt | Empirically validated by Anthropic A/B |
+| Task-shape calibration | Claude Code system prompt | Opinion-but-Anthropic-validated |
+| "Open with the answer or the diff" | Pink-elephant studies (positive form) | Replaces older negative "No preambles / No narration" |
+| Result first | Carryover from v0.5 | Internal opinion, no published study |
+| Tool output speaks for itself | Pink-elephant rewrite | Positive form of old "No narration" |
+| Structured when data is structured | Carryover from v0.5 | Internal opinion |
+| Never invent | Carryover from v0.5 | Common LLM hallucination guard |
+| One pass | Carryover from v0.5 | Internal opinion |
+| Code comments: none by default | Claude Code system prompt | Direct lift; addresses a known bloat source agents emit |
+
+### What was deliberately NOT added
+
+- **`<answer>` XML delimiters** — Anthropic-documented for *parsing*
+  structured outputs, not brevity. Wrong tool for this surface.
+- **CoT (chain-of-thought) suppression in the prompt** — extended
+  thinking is controlled by API parameters (`max_thinking_tokens`),
+  not by reply-text instructions. Out of scope here.
+- **GPT-5 `<verbosity>low</verbosity>` tag** — empirically validated
+  by OpenAI for Codex / GPT-5+ agents, but requires per-agent
+  conditional content (Claude doesn't honor it). Worth a follow-up
+  with agent-specific templates; not in the current single-template
+  shape.
+
+[leak-1]: https://github.com/asgeirtj/system_prompts_leaks/blob/main/Anthropic/claude-code.md
+[leak-2]: https://github.com/Piebald-AI/claude-code-system-prompts
+[pink-1]: https://eval.16x.engineer/blog/the-pink-elephant-negative-instructions-llms-effectiveness-analysis
+[pink-2]: https://gadlet.com/posts/negative-prompting/
 
 ## Coverage matrix
 

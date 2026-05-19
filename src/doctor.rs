@@ -132,36 +132,54 @@ pub(crate) fn run_checks() -> Vec<Check> {
 }
 
 /// Count how many of the supported agents have the trs output-saver
-/// block installed. Mirrors `check_hooks_installed` so the doctor
-/// report has symmetric coverage of input hooks vs output-saver.
+/// block installed AND whether the content matches the current canonical
+/// template. Drift (manual edits, stale content from older installs)
+/// surfaces as a warning so users know to run `--refresh`.
 fn check_output_saver_installed() -> Check {
-    use crate::output_saver::{scan_agent, Status, AGENTS};
+    use crate::output_saver::{verify_agent, VerifyStatus, AGENTS};
     let mut installed = 0;
+    let mut drifted: Vec<&str> = Vec::new();
     let mut supported = 0;
     for agent in AGENTS {
-        match scan_agent(agent.id) {
-            Status::AlreadyInstalled => {
+        match verify_agent(agent.id) {
+            VerifyStatus::Ok => {
                 installed += 1;
                 supported += 1;
             }
-            Status::NotInstalled | Status::NotDetected => {
+            VerifyStatus::Drifted => {
+                installed += 1;
+                supported += 1;
+                drifted.push(agent.id);
+            }
+            VerifyStatus::NotInstalled | VerifyStatus::NotDetected => {
                 supported += 1;
             }
-            Status::Unsupported { .. } => {}
+            VerifyStatus::Unsupported => {}
         }
     }
-    if installed > 0 {
-        Check::pass(
-            "output saver",
-            format!(
-                "output-saver ({}/{} agents configured)",
-                installed, supported
-            ),
+    if installed == 0 {
+        return Check::warn("output saver", "output-saver not installed")
+            .with_hint("`trs output-saver --install` adds anti-preamble rules to agent configs");
+    }
+    let label = if drifted.is_empty() {
+        format!(
+            "output-saver ({}/{} agents configured, content matches canonical)",
+            installed, supported
         )
-        .with_hint("run `trs output-saver` to review or extend")
     } else {
-        Check::warn("output saver", "output-saver not installed")
-            .with_hint("`trs output-saver --install` adds anti-preamble rules to agent configs")
+        format!(
+            "output-saver ({}/{} configured, {} drifted: {})",
+            installed,
+            supported,
+            drifted.len(),
+            drifted.join(", ")
+        )
+    };
+    if drifted.is_empty() {
+        Check::pass("output saver", label).with_hint("run `trs output-saver` to review or extend")
+    } else {
+        Check::warn("output saver", label)
+            .with_hint("run `trs output-saver --refresh` to restore the canonical block")
     }
 }
 
