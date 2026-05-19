@@ -102,6 +102,29 @@ try {
     Write-Err "download failed: $_"
 }
 
+# Verify checksum against SHA256SUMS published in the release.
+# Optional for releases < v0.6.3 (no sums file shipped); required when
+# the file exists. Mismatch hard-fails the install.
+$sumsUrl = "https://github.com/$Repo/releases/download/$version/SHA256SUMS"
+$sumsTmp = Join-Path $env:TEMP "trs-sums.txt"
+try {
+    Invoke-WebRequest -Uri $sumsUrl -OutFile $sumsTmp -UseBasicParsing -ErrorAction Stop
+    $line = Get-Content $sumsTmp | Where-Object { $_ -match " $asset$" } | Select-Object -First 1
+    if (-not $line) {
+        Write-Err "SHA256SUMS published for $version but missing entry for $asset"
+    }
+    $expected = ($line -split '\s+')[0]
+    $actual = (Get-FileHash -Algorithm SHA256 $target).Hash.ToLower()
+    if ($expected -ne $actual) {
+        Write-Err "checksum mismatch for $asset (expected $expected, got $actual)"
+    }
+    Write-Ok "sha256 verified"
+} catch {
+    Write-Info "no SHA256SUMS for $version — skipping checksum (older release)"
+} finally {
+    if (Test-Path $sumsTmp) { Remove-Item $sumsTmp -Force }
+}
+
 # ------------------------------------------------------------------
 # Detect existing install (npm / choco / scoop / manual)
 # ------------------------------------------------------------------

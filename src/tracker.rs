@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A single history entry representing one trs command execution.
@@ -83,10 +83,24 @@ fn append_history_entry(entry: &HistoryEntry) {
     };
     line.push('\n');
 
-    let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&path) else {
+    let Ok(mut file) = open_user_only(&path) else {
         return;
     };
     let _ = file.write_all(line.as_bytes());
+}
+
+/// Open a user-private file for append-create. On Unix, sets mode 0600 on
+/// first create so a different user on the same machine can't read
+/// command lines (which may carry tokens, basic-auth, API keys).
+fn open_user_only(path: &Path) -> std::io::Result<fs::File> {
+    let mut opts = OpenOptions::new();
+    opts.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    opts.open(path)
 }
 
 /// Log a command execution to the history file.
@@ -113,7 +127,7 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
 
     append_history_entry(&HistoryEntry {
         ts,
-        cmd: cmd.to_string(),
+        cmd: redact_secrets(cmd),
         in_bytes,
         out_bytes,
         saved_pct,
@@ -122,6 +136,53 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
         agent,
         bypass: None,
     });
+}
+
+/// Replace common credential patterns in a command string with `[REDACTED]`
+/// so they don't land in history.jsonl. Patterns covered:
+///
+/// - `-u user:pass` / `--user user:pass` (curl basic auth) — replace pass.
+/// - `--password=...` / `-p ...` (only when followed by non-flag value).
+/// - `--token=...`, `--api-key=...`, `--secret-access-key=...`.
+/// - Bearer / Basic in inline `Authorization:` headers.
+/// - Basic-auth in URLs: `https://user:pass@host`.
+/// - Common token prefixes inline: `ghp_`, `gho_`, `ghu_`, `ghs_`, `xoxb-`,
+///   `sk-` (OpenAI-shape), `AKIA` (AWS access key id).
+///
+/// Deliberately conservative — false positives mangle the cmd but never
+/// drop signal. False negatives are acceptable (heuristic; not a vault).
+pub(crate) fn redact_secrets(cmd: &str) -> String {
+    use std::sync::OnceLock;
+    static RULES: OnceLock<Vec<(regex::Regex, &'static str)>> = OnceLock::new();
+    let rules = RULES.get_or_init(|| {
+        let raw: &[(&str, &str)] = &[
+            // -u user:pass (curl basic auth) — preserve user, redact pass.
+            // Stops at whitespace OR quote chars so trailing `'` / `"`
+            // from shell-quoted args isn't swallowed.
+            (r#"((?:^|\s)-u\s+[^\s:]+:)[^\s'"]+"#, "$1[REDACTED]"),
+            (r#"(--user[= ][^\s:]+:)[^\s'"]+"#, "$1[REDACTED]"),
+            (
+                r#"(--(?:password|token|api[-_]?key|secret[-_]?access[-_]?key|access[-_]?token|client[-_]?secret)[= ])[^\s'"]+"#,
+                "$1[REDACTED]",
+            ),
+            (r#"(?i)(authorization:\s*(?:bearer|basic)\s+)[^\s'"]+"#, "$1[REDACTED]"),
+            // Basic-auth embedded in URLs: scheme://user:pass@host.
+            (r"(://[^/\s:]+:)[^@\s]+(@)", "$1[REDACTED]$2"),
+            // Known token shapes by prefix — opaque secret part only.
+            (r"\b(ghp_|gho_|ghu_|ghs_|ghr_)[A-Za-z0-9]{20,}\b", "${1}[REDACTED]"),
+            (r"\bsk-[A-Za-z0-9_-]{20,}\b", "sk-[REDACTED]"),
+            (r"\bAKIA[0-9A-Z]{16}\b", "AKIA[REDACTED]"),
+            (r"\b(xox[baprs])-[A-Za-z0-9-]{10,}\b", "$1-[REDACTED]"),
+        ];
+        raw.iter()
+            .filter_map(|(pat, repl)| regex::Regex::new(pat).ok().map(|r| (r, *repl)))
+            .collect()
+    });
+    let mut out = cmd.to_string();
+    for (re, repl) in rules.iter() {
+        out = re.replace_all(&out, *repl).into_owned();
+    }
+    out
 }
 
 /// Log a bypass observation: the caller prefixed `TRS_SKIP=1` so the
@@ -202,6 +263,56 @@ pub fn format_bytes_human(bytes: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn redact_curl_basic_auth() {
+        assert_eq!(
+            redact_secrets("curl -u admin:hunter2 https://api.example.com"),
+            "curl -u admin:[REDACTED] https://api.example.com"
+        );
+    }
+
+    #[test]
+    fn redact_url_basic_auth() {
+        assert_eq!(
+            redact_secrets("git push https://oauth2:ghp_AAA@github.com/user/repo"),
+            "git push https://oauth2:[REDACTED]@github.com/user/repo"
+        );
+    }
+
+    #[test]
+    fn redact_password_flag() {
+        assert_eq!(
+            redact_secrets("mysql --password=hunter2 -h localhost"),
+            "mysql --password=[REDACTED] -h localhost"
+        );
+        assert_eq!(
+            redact_secrets("foo --api-key=AKIA1234567890ABCDEF"),
+            "foo --api-key=[REDACTED]"
+        );
+    }
+
+    #[test]
+    fn redact_authorization_header() {
+        assert_eq!(
+            redact_secrets("curl -H 'Authorization: Bearer ghp_AAAAAAAAAAAAAAAAAAAA1234' x"),
+            "curl -H 'Authorization: Bearer [REDACTED]' x"
+        );
+    }
+
+    #[test]
+    fn redact_token_shapes() {
+        let out = redact_secrets("echo ghp_AAAAAAAAAAAAAAAAAAAA1234 sk-test_AAAAAAAAAAAAAAAAAAAA");
+        assert!(out.contains("ghp_[REDACTED]"));
+        assert!(out.contains("sk-[REDACTED]"));
+        assert!(!out.contains("ghp_AAAAAAAAAAAAAAAAAAAA1234"));
+    }
+
+    #[test]
+    fn redact_leaves_normal_commands_alone() {
+        let plain = "git log --oneline main..HEAD";
+        assert_eq!(redact_secrets(plain), plain);
+    }
 
     #[test]
     fn test_format_bytes_human() {
