@@ -119,7 +119,8 @@ SAVED / AVG -% — they only contribute to CALLS and BYPASS.
 | OpenCode | plugin template | `opencode` |
 | Kilo Code | plugin template | `kilo` |
 | Factory Droid | same wire format as Claude | `claude` (limitation) |
-| Codex / Antigravity / Windsurf | no programmatic signal (rules-only) | `(untagged)` |
+| Antigravity IDE / CLI | shared Gemini settings.json | `gemini` (limitation) |
+| Codex / Windsurf | no programmatic signal (rules-only) | `(untagged)` |
 
 Direct-shell invocations (`trs git status` typed manually) also land
 under `(untagged)`. We don't invent a label where we don't have

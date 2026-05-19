@@ -510,3 +510,58 @@ fn check_file_contains_path(path: &Path, needle: &str) -> bool {
             .map(|c| c.contains(needle))
             .unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn antigravity_aliases_resolve_to_ide() {
+        // Back-compat: pre-v0.6.4 users typing `trs init antigravity`
+        // land on the IDE variant. Explicit aliases stay explicit.
+        assert!(matches!(
+            AiTool::from_str("antigravity"),
+            Some(AiTool::Antigravity)
+        ));
+        assert!(matches!(
+            AiTool::from_str("antigravity-ide"),
+            Some(AiTool::Antigravity)
+        ));
+        assert!(matches!(
+            AiTool::from_str("gravity"),
+            Some(AiTool::Antigravity)
+        ));
+    }
+
+    #[test]
+    fn antigravity_cli_aliases() {
+        assert!(matches!(
+            AiTool::from_str("antigravity-cli"),
+            Some(AiTool::AntigravityCLI)
+        ));
+        // `agy` is the binary name — most likely thing a user will type.
+        assert!(matches!(
+            AiTool::from_str("agy"),
+            Some(AiTool::AntigravityCLI)
+        ));
+    }
+
+    #[test]
+    fn antigravity_variants_share_gemini_hookspec() {
+        // Both variants pivot to Gemini's shared `~/.gemini/settings.json`
+        // in v0.6.4. The HookSpec must match exactly — a divergence here
+        // would mean trs init installs different content under the same
+        // target file depending on which variant the user invoked.
+        let ide = AiTool::Antigravity.spec().expect("IDE spec exists");
+        let cli = AiTool::AntigravityCLI.spec().expect("CLI spec exists");
+        let gemini = AiTool::Gemini.spec().expect("Gemini spec exists");
+        assert_eq!(ide.local_dir, gemini.local_dir);
+        assert_eq!(ide.global_dir, gemini.global_dir);
+        assert_eq!(ide.filename, gemini.filename);
+        assert_eq!(ide.content, gemini.content);
+        assert_eq!(cli.local_dir, gemini.local_dir);
+        assert_eq!(cli.global_dir, gemini.global_dir);
+        assert_eq!(cli.filename, gemini.filename);
+        assert_eq!(cli.content, gemini.content);
+    }
+}
