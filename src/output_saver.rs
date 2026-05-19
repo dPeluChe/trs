@@ -21,6 +21,14 @@
 //! - **Skip plugin-based agents.** Droid/OpenCode/Kilo/Antigravity have
 //!   no global rules mechanism we can target without writing into user
 //!   project files. We say so explicitly rather than pretending.
+//!
+//! The rules in `BLOCK` aren't arbitrary opinions — each one has either
+//! an empirical source (Anthropic's leaked Claude Code system prompt,
+//! Anthropic A/B-validated) or a research-backed prompt-engineering
+//! principle (positive vs negative instructions, from pink-elephant
+//! studies). For the per-rule provenance and what was deliberately
+//! NOT included, see `docs/features/output-saver.md` § "Why these
+//! rules — research backing".
 
 use std::fs;
 use std::path::PathBuf;
