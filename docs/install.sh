@@ -246,6 +246,34 @@ trap 'rm -f "$tmp"' EXIT
 
 info "downloading..."
 download "$url" "$tmp"
+
+# Verify checksum against SHA256SUMS published in the release.
+# Optional for older releases (< v0.6.3) that don't ship a sums file;
+# required when the file exists. Mismatch is hard-fail.
+sums_url="https://github.com/${REPO}/releases/download/${version}/SHA256SUMS"
+sums_tmp=$(mktemp "${TMPDIR:-/tmp}/trs-sums.XXXXXX")
+trap 'rm -f "$tmp" "$sums_tmp"' EXIT
+
+if download "$sums_url" "$sums_tmp" 2>/dev/null && [ -s "$sums_tmp" ]; then
+    expected=$(grep " ${asset}\$" "$sums_tmp" | awk '{print $1}')
+    if [ -z "$expected" ]; then
+        error "SHA256SUMS published for $version but missing entry for $asset"
+    fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        actual=$(sha256sum "$tmp" | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+        actual=$(shasum -a 256 "$tmp" | awk '{print $1}')
+    else
+        error "neither sha256sum nor shasum found — cannot verify download"
+    fi
+    if [ "$expected" != "$actual" ]; then
+        error "checksum mismatch for $asset (expected $expected, got $actual)"
+    fi
+    ok "sha256 verified"
+else
+    info "no SHA256SUMS for $version — skipping checksum (older release)"
+fi
+
 chmod +x "$tmp"
 
 # Sanity check: run --version to verify binary works on this system

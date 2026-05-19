@@ -112,6 +112,21 @@ jobs:
         with:
           path: artifacts/
 
+      - name: Generate SHA256SUMS
+        run: |
+          # One sums file covering every published binary so install.sh /
+          # install.ps1 can verify the download before chmod +x.
+          # Format matches `shasum -a 256` output: `<hex>  <filename>`.
+          cd artifacts
+          sha256sum \
+            trs-linux-x64/trs-linux-x64 \
+            trs-linux-arm64/trs-linux-arm64 \
+            trs-darwin-x64/trs-darwin-x64 \
+            trs-darwin-arm64/trs-darwin-arm64 \
+            trs-windows-x64.exe/trs-windows-x64.exe \
+            | sed 's|.*/||' > SHA256SUMS
+          cat SHA256SUMS
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -122,6 +137,7 @@ jobs:
             artifacts/trs-darwin-x64/trs-darwin-x64
             artifacts/trs-darwin-arm64/trs-darwin-arm64
             artifacts/trs-windows-x64.exe/trs-windows-x64.exe
+            artifacts/SHA256SUMS
 
   npm-publish:
     name: Publish npm packages
