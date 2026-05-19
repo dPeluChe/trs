@@ -243,7 +243,16 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
             v.push(PathBuf::from("AGENTS.md"));
         }
         AiTool::Antigravity => {
+            // v0.6.4+ shares the Gemini hook target. The legacy rules
+            // file (from pre-v0.6.4 installs) is still listed so
+            // uninstall sweeps it up if present.
+            push_home(".gemini/settings.json");
+            v.push(PathBuf::from(".gemini/settings.json"));
             v.push(PathBuf::from(".agent/rules/antigravity-trs-rules.md"));
+        }
+        AiTool::AntigravityCLI => {
+            push_home(".gemini/settings.json");
+            v.push(PathBuf::from(".gemini/settings.json"));
         }
         AiTool::Windsurf => {
             v.push(PathBuf::from(".windsurfrules"));
@@ -428,6 +437,12 @@ fn output_saver_agent_id(tool: &AiTool) -> Option<&'static str> {
         AiTool::Codex => Some("codex"),
         AiTool::Cursor => Some("cursor"),
         AiTool::Windsurf => Some("windsurf"),
+        // Both Antigravity variants share Gemini's trs.md — uninstalling
+        // either touches the same file. We return their respective
+        // agent_ids so the per-tool report names them clearly; the
+        // underlying `output_saver::remove_agent` is idempotent.
+        AiTool::Antigravity => Some("antigravity"),
+        AiTool::AntigravityCLI => Some("antigravity-cli"),
         _ => None,
     }
 }

@@ -177,9 +177,18 @@ pub(crate) const AGENTS: &[Agent] = &[
         id: "kilo",
         display: "Kilo Code",
     },
+    // Antigravity 2.0 (IDE + CLI) shares the Gemini CLI harness — both
+    // read `~/.gemini/GEMINI.md` and honor `@imports`. Listed as two
+    // entries so `--show` calls each out. The Imported target points to
+    // the same dir; install_agent's idempotent merge writes the
+    // `@trs.md` import line once.
     Agent {
         id: "antigravity",
-        display: "Antigravity",
+        display: "Antigravity IDE",
+    },
+    Agent {
+        id: "antigravity-cli",
+        display: "Antigravity CLI",
     },
 ];
 
@@ -251,9 +260,18 @@ fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::Path>) -> T
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
             }),
-        "antigravity" => Target::NotSupported {
-            reason: "rules are per-project only — run `trs init antigravity`",
-        },
+        // Antigravity 2.0 IDE + CLI both honor `@imports` from
+        // `~/.gemini/GEMINI.md` (shared with Gemini CLI). install_agent
+        // is idempotent — if Gemini already installed, the import line
+        // is detected and not re-added.
+        "antigravity" | "antigravity-cli" => push_home(".gemini")
+            .map(|dir| Target::Imported {
+                dir,
+                root_file: "GEMINI.md".into(),
+            })
+            .unwrap_or(Target::NotSupported {
+                reason: "HOME not set",
+            }),
         _ => Target::NotSupported {
             reason: "unknown agent",
         },
