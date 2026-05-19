@@ -35,20 +35,24 @@ macro_rules! output_saver_block_literal {
     () => {
         r#"## Output saver — keep replies cheap
 
-These rules reduce tokens on every agent reply:
+Keep replies under ~100 words unless the task needs more. Between tool
+calls, stay under ~25 words. Match shape to task — a one-line question
+gets a one-line answer, no headers.
 
-- No preambles. Don't open with "Sure!", "Great question!", "Absolutely!",
-  "I'll help you...", or "You're absolutely right!". Start with the answer.
-- No narration. Don't announce what you're about to do or recap what you
-  just did — the diff / tool output already shows it.
+Open with the answer or the diff. End when the answer ends.
+
 - Result first; explanation only if non-obvious. State the finding, show
   the fix, stop.
+- Let tool output speak for itself; don't restate or recap what the diff
+  already shows.
 - Structured output when the data is structured: bullets, tables, JSON.
   Prose only when the reader is human and the content is narrative.
 - Never invent file paths, function names, or API fields. If unknown,
   say "UNKNOWN" or return null — guessing costs more tokens than asking.
 - One pass: don't iterate on passing code, don't refactor / polish unless
   asked.
+- In code: no comments by default; one short line max if the WHY is
+  non-obvious. Never multi-paragraph docstrings.
 
 User instructions always override these rules."#
     };
@@ -811,7 +815,7 @@ mod tests {
     fn standalone_file_contains_block() {
         let s = standalone_file();
         assert!(s.contains("Output saver"));
-        assert!(s.contains("No preambles"));
+        assert!(s.contains("Open with the answer"));
     }
 
     /// Regression guard: hook-context template must NOT advertise
@@ -843,7 +847,7 @@ mod tests {
         // Both retain the sentinels and the block.
         assert!(out.contains(SENTINEL_START));
         assert!(out.contains(SENTINEL_END));
-        assert!(out.contains("No preambles"));
+        assert!(out.contains("Open with the answer"));
     }
 
     #[test]
@@ -924,7 +928,7 @@ mod tests {
         let after2 = fs::read_to_string(&agents_path).unwrap();
         assert_eq!(after1, after2, "second install mutated the file");
         assert!(after1.contains("Custom rules."));
-        assert!(after1.contains("No preambles"));
+        assert!(after1.contains("Open with the answer"));
         assert_eq!(
             after1.matches(SENTINEL_START).count(),
             1,
