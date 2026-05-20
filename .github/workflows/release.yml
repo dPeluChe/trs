@@ -150,6 +150,13 @@ jobs:
     name: Publish npm packages
     needs: build
     runs-on: ubuntu-latest
+    # Trusted Publishing requires the workflow to mint an OIDC token that
+    # npm verifies against its allowlist. No NPM_TOKEN secret needed —
+    # the publisher identity is the (repo + workflow + ref) tuple.
+    # See https://docs.npmjs.com/trusted-publishers
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v5
 
@@ -157,6 +164,9 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm to ≥11.5 (Trusted Publishing + provenance)
+        run: npm install -g npm@latest
 
       - name: Download all npm artifacts
         uses: actions/download-artifact@v5
@@ -202,19 +212,19 @@ jobs:
           done
 
       - name: Publish platform packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # No NODE_AUTH_TOKEN — Trusted Publishing uses the OIDC token
+        # implicitly via `npm publish` (npm CLI 11+ detects the runtime).
+        # `--provenance` attaches a cryptographic attestation that the
+        # tarball was built by this workflow at this commit.
         run: |
           for dir in npm/platforms/*/; do
             echo "Publishing $(basename $dir)..."
             cd "$dir"
-            npm publish --access public || echo "Failed to publish $(basename $dir), continuing..."
+            npm publish --access public --provenance || echo "Failed to publish $(basename $dir), continuing..."
             cd -
           done
 
       - name: Publish base package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd npm
-          npm publish --access public
+          npm publish --access public --provenance

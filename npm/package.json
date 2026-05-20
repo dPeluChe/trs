@@ -1,11 +1,11 @@
 {
   "name": "@dpeluche/trs",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Transform noisy terminal output into compact, structured signal. CLI toolkit for developers, automation pipelines, and AI agents. 68-99% token savings.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dPeluChe/trs"
+    "url": "git+https://github.com/dPeluChe/trs.git"
   },
   "homepage": "https://usetrs.dev",
   "author": {
@@ -47,10 +47,10 @@
     "compact"
   ],
   "optionalDependencies": {
-    "@dpeluche/trs-cli-darwin-x64": "0.6.3",
-    "@dpeluche/trs-cli-darwin-arm64": "0.6.3",
-    "@dpeluche/trs-cli-linux-x64": "0.6.3",
-    "@dpeluche/trs-cli-linux-arm64": "0.6.3",
-    "@dpeluche/trs-cli-win32-x64": "0.6.3"
+    "@dpeluche/trs-cli-darwin-x64": "0.6.4",
+    "@dpeluche/trs-cli-darwin-arm64": "0.6.4",
+    "@dpeluche/trs-cli-linux-x64": "0.6.4",
+    "@dpeluche/trs-cli-linux-arm64": "0.6.4",
+    "@dpeluche/trs-cli-win32-x64": "0.6.4"
   }
 }
