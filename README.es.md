@@ -108,15 +108,15 @@ trs uninstall --all --yes          # scriptable
 
 ## Agentes de IA soportados
 
-Nueve agentes cubiertos de extremo a extremo. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code y Factory Droid. Solo archivo de reglas para Codex CLI, Google Antigravity y Windsurf.
+Diez agentes cubiertos de extremo a extremo. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Factory Droid, Antigravity IDE y Antigravity CLI. Solo archivo de reglas para Codex CLI y Windsurf.
 
 | Agente | Método de instalación | Hook de entrada | Output-saver | Etiqueta en stats |
 |---|---|---|---|---|
 | Claude Code · Gemini · Cursor | hook programático | ✓ | ✓ | `claude` / `gemini` / `cursor` |
 | OpenCode · Kilo Code | plantilla de plugin | ✓ | ✓ | `opencode` / `kilo` |
 | Factory Droid | hook programático | ✓ | ✓ | `claude` (mismo envelope) |
+| Antigravity IDE · Antigravity CLI (`agy`) | hook programático | ✓ | ✓ | `gemini` (harness compartido) |
 | Codex CLI · Windsurf | solo archivo de reglas | — | ✓ | `(untagged)` |
-| Google Antigravity | solo archivo de reglas | — | — | `(untagged)` |
 
 [Matriz completa, detalles y rutas de configuración por agente →](docs/support/agents.md)
 
@@ -198,7 +198,7 @@ trs output-saver --install     # instala en los agentes detectados
 trs uninstall --output-saver   # quita el bloque de todos los agentes
 ```
 
-Ocho de nueve agentes soportados (Antigravity solo funciona a nivel de proyecto). [Referencia completa de `trs output-saver` →](docs/features/output-saver.md)
+Los diez agentes soportados (Antigravity IDE + CLI comparten el `~/.gemini/GEMINI.md` de Gemini). [Referencia completa de `trs output-saver` →](docs/features/output-saver.md)
 
 ## Formatos de salida
 

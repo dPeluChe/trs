@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use crate::init_collision;
 use crate::init_install::{install_codex_agents, install_from_spec, install_rules};
 use crate::init_templates::{
-    ANTIGRAVITY_RULES, CLAUDE_HOOKS, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN,
-    OPENCODE_PLUGIN, WINDSURF_RULES,
+    CLAUDE_HOOKS, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN, OPENCODE_PLUGIN,
+    WINDSURF_RULES,
 };
 
 /// Options for an install run. `global` picks home-dir vs project-local;
@@ -33,7 +33,13 @@ pub(crate) enum AiTool {
     Codex,
     OpenCode,
     Kilo,
+    /// Google Antigravity desktop IDE (Antigravity 2.0). Shares the
+    /// Gemini CLI harness — hooks live in `~/.gemini/settings.json`.
     Antigravity,
+    /// Google Antigravity CLI (binary `agy`, launched 2026-05-19).
+    /// Same shared `~/.gemini/` config as the IDE — listed separately
+    /// so detection + `init --show` can call it out.
+    AntigravityCLI,
     Droid,
     Windsurf,
 }
@@ -55,7 +61,10 @@ impl AiTool {
             "codex" => Some(Self::Codex),
             "opencode" => Some(Self::OpenCode),
             "kilo" | "kilocode" => Some(Self::Kilo),
-            "antigravity" | "gravity" => Some(Self::Antigravity),
+            // `antigravity` keeps mapping to the IDE for back-compat with
+            // pre-v0.6.4 users; the CLI gets its own explicit aliases.
+            "antigravity" | "antigravity-ide" | "gravity" => Some(Self::Antigravity),
+            "antigravity-cli" | "agy" => Some(Self::AntigravityCLI),
             "droid" | "factory" => Some(Self::Droid),
             "windsurf" | "cascade" => Some(Self::Windsurf),
             _ => None,
@@ -70,17 +79,18 @@ impl AiTool {
             Self::Codex => "Codex",
             Self::OpenCode => "OpenCode",
             Self::Kilo => "Kilo Code",
-            Self::Antigravity => "Google Antigravity",
+            Self::Antigravity => "Antigravity IDE",
+            Self::AntigravityCLI => "Antigravity CLI",
             Self::Droid => "Factory Droid",
             Self::Windsurf => "Windsurf",
         }
     }
 
     pub(crate) fn all_names() -> &'static str {
-        "claude, gemini, cursor, codex, opencode, kilo, antigravity, droid, windsurf"
+        "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, windsurf"
     }
 
-    pub(crate) fn all_tools() -> [Self; 9] {
+    pub(crate) fn all_tools() -> [Self; 10] {
         [
             Self::Claude,
             Self::Gemini,
@@ -89,6 +99,7 @@ impl AiTool {
             Self::OpenCode,
             Self::Kilo,
             Self::Antigravity,
+            Self::AntigravityCLI,
             Self::Droid,
             Self::Windsurf,
         ]
@@ -104,7 +115,8 @@ impl AiTool {
             Self::Codex => "rules → AGENTS.md (Codex hooks don't support rewrite)",
             Self::OpenCode => "plugin → .opencode/plugins/trs.ts",
             Self::Kilo => "plugin → .kilo/plugins/trs.ts",
-            Self::Antigravity => "rules → .agent/rules/antigravity-trs-rules.md",
+            Self::Antigravity => "hooks → ~/.gemini/settings.json (shared with Gemini)",
+            Self::AntigravityCLI => "hooks → ~/.gemini/settings.json (shared with Gemini)",
             Self::Droid => "hooks → ~/.factory/settings.json",
             Self::Windsurf => "rules → .windsurfrules",
         }
@@ -142,7 +154,19 @@ impl AiTool {
             }
             Self::OpenCode => in_path("opencode") || home_has(".opencode"),
             Self::Kilo => in_path("kilo") || home_has(".kilo"),
-            Self::Antigravity => app_exists("Antigravity") || home_has(".antigravity"),
+            // IDE (desktop) — installs the app + writes binary state into
+            // `~/.gemini/antigravity-ide/`. Keep the legacy `.antigravity`
+            // check as a soft signal for pre-Antigravity-2.0 users.
+            Self::Antigravity => {
+                app_exists("Antigravity")
+                    || home_has(".gemini/antigravity-ide")
+                    || home_has(".gemini/antigravity")
+                    || home_has(".antigravity")
+            }
+            // CLI — installed as the `agy` binary, writes data into
+            // `~/.gemini/antigravity-cli/`. The shared hooks config lives
+            // at `~/.gemini/settings.json` regardless of which is installed.
+            Self::AntigravityCLI => in_path("agy") || home_has(".gemini/antigravity-cli"),
             Self::Droid => in_path("droid") || home_has(".factory"),
             Self::Windsurf => {
                 in_path("windsurf") || app_exists("Windsurf") || home_has(".windsurfrules")
@@ -197,14 +221,25 @@ impl AiTool {
                 filename: "settings.json",
                 content: DROID_HOOKS,
             }),
+            // Antigravity 2.0 (IDE + CLI) shares the Gemini CLI harness —
+            // hooks live in `~/.gemini/settings.json` with the same
+            // BeforeTool envelope. Two AiTool variants reuse the Gemini
+            // template; `merge_json_hook`'s idempotent merge means
+            // installing all three (Gemini + IDE + CLI) writes the entry
+            // exactly once.
+            Self::Antigravity | Self::AntigravityCLI => Some(HookSpec {
+                local_dir: ".gemini",
+                global_dir: Some(".gemini"),
+                filename: "settings.json",
+                content: GEMINI_HOOKS,
+            }),
             // Codex has PreToolUse hooks but its docs explicitly state
             // `updatedInput` is "parsed but not supported yet" — the hook
             // fails open with "unsupported updatedInput" if we try to rewrite
             // commands. Until OpenAI ships input rewriting we ride on the
             // AGENTS.md rules path only (handled in install_hook via
-            // install_codex_agents). Rules-based tools (Antigravity, Windsurf)
-            // also fall here.
-            Self::Codex | Self::Antigravity | Self::Windsurf => None,
+            // install_codex_agents). Windsurf has no hook mechanism either.
+            Self::Codex | Self::Windsurf => None,
         }
     }
 }
@@ -261,11 +296,6 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
 
     let result = match tool {
         AiTool::Codex => install_codex_agents(opts),
-        AiTool::Antigravity => install_rules(
-            ".agent/rules/antigravity-trs-rules.md",
-            ANTIGRAVITY_RULES,
-            opts,
-        ),
         AiTool::Windsurf => install_rules(".windsurfrules", WINDSURF_RULES, opts),
         _ => {
             if let Some(spec) = tool.spec() {
@@ -408,9 +438,6 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
             }
             return false;
         }
-        AiTool::Antigravity => {
-            return has_any_trs_marker_at_path(Path::new(".agent/rules/antigravity-trs-rules.md"));
-        }
         AiTool::Windsurf => {
             return has_any_trs_marker_at(".windsurfrules");
         }
@@ -482,4 +509,59 @@ fn check_file_contains_path(path: &Path, needle: &str) -> bool {
         && fs::read_to_string(path)
             .map(|c| c.contains(needle))
             .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn antigravity_aliases_resolve_to_ide() {
+        // Back-compat: pre-v0.6.4 users typing `trs init antigravity`
+        // land on the IDE variant. Explicit aliases stay explicit.
+        assert!(matches!(
+            AiTool::from_str("antigravity"),
+            Some(AiTool::Antigravity)
+        ));
+        assert!(matches!(
+            AiTool::from_str("antigravity-ide"),
+            Some(AiTool::Antigravity)
+        ));
+        assert!(matches!(
+            AiTool::from_str("gravity"),
+            Some(AiTool::Antigravity)
+        ));
+    }
+
+    #[test]
+    fn antigravity_cli_aliases() {
+        assert!(matches!(
+            AiTool::from_str("antigravity-cli"),
+            Some(AiTool::AntigravityCLI)
+        ));
+        // `agy` is the binary name — most likely thing a user will type.
+        assert!(matches!(
+            AiTool::from_str("agy"),
+            Some(AiTool::AntigravityCLI)
+        ));
+    }
+
+    #[test]
+    fn antigravity_variants_share_gemini_hookspec() {
+        // Both variants pivot to Gemini's shared `~/.gemini/settings.json`
+        // in v0.6.4. The HookSpec must match exactly — a divergence here
+        // would mean trs init installs different content under the same
+        // target file depending on which variant the user invoked.
+        let ide = AiTool::Antigravity.spec().expect("IDE spec exists");
+        let cli = AiTool::AntigravityCLI.spec().expect("CLI spec exists");
+        let gemini = AiTool::Gemini.spec().expect("Gemini spec exists");
+        assert_eq!(ide.local_dir, gemini.local_dir);
+        assert_eq!(ide.global_dir, gemini.global_dir);
+        assert_eq!(ide.filename, gemini.filename);
+        assert_eq!(ide.content, gemini.content);
+        assert_eq!(cli.local_dir, gemini.local_dir);
+        assert_eq!(cli.global_dir, gemini.global_dir);
+        assert_eq!(cli.filename, gemini.filename);
+        assert_eq!(cli.content, gemini.content);
+    }
 }

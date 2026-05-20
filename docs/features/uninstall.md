@@ -23,7 +23,8 @@ trs uninstall --dry-run              # preview without writing
 | JSON hooks (Claude / Gemini / Cursor / Factory Droid) | scrub entries whose `command` contains `trs rewrite` |
 | Plugin files (OpenCode / Kilo) | delete `~/.config/<tool>/plugins/trs.ts` |
 | Codex AGENTS.md | remove the sentinel-delimited block; delete the file if it was just our block |
-| Antigravity / Windsurf rules | delete the file when it carries the trs marker |
+| Windsurf rules file | delete `.windsurfrules` when it carries the trs marker |
+| Legacy Antigravity rules | delete pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md` if present (new installs use the shared Gemini hook) |
 | Output-saver block (Imported agents) | remove the sidecar `trs.md` and the `@trs.md` import line |
 | Output-saver block (inline agents) | remove the `<!-- trs:output-saver:start v1 -->` … `:end -->` block in place |
 

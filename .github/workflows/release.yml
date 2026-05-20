@@ -115,16 +115,23 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           # One sums file covering every published binary so install.sh /
-          # install.ps1 can verify the download before chmod +x.
-          # Format matches `shasum -a 256` output: `<hex>  <filename>`.
+          # install.ps1 can verify the download before chmod +x. Format
+          # is `<hex>  <filename>` (two spaces) — what `shasum -a 256`
+          # outputs natively when run from the file's own dir.
+          #
+          # v0.6.3 footgun: piping `sha256sum a/b ...` through
+          # `sed 's|.*/||'` looks like it strips the dir prefix, but
+          # the greedy `.*` also matched the hash + double-space + dir
+          # — published file ended up with names only, no hashes.
+          # Hash inside each artifact dir to avoid that path-juggling.
           cd artifacts
-          sha256sum \
-            trs-linux-x64/trs-linux-x64 \
-            trs-linux-arm64/trs-linux-arm64 \
-            trs-darwin-x64/trs-darwin-x64 \
-            trs-darwin-arm64/trs-darwin-arm64 \
-            trs-windows-x64.exe/trs-windows-x64.exe \
-            | sed 's|.*/||' > SHA256SUMS
+          : > SHA256SUMS
+          for asset in trs-linux-x64 trs-linux-arm64 trs-darwin-x64 \
+                       trs-darwin-arm64 trs-windows-x64.exe; do
+            # Subshell does the cd; outer redirect writes to
+            # `artifacts/SHA256SUMS` (the outer cwd, not the subshell's).
+            (cd "$asset" && sha256sum "$asset") >> SHA256SUMS
+          done
           cat SHA256SUMS
 
       - name: Create Release

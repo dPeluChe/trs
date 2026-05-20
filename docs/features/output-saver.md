@@ -116,7 +116,8 @@ classes of sources informed each rule:
 | OpenCode | Inline with sentinels | `~/.config/opencode/AGENTS.md` |
 | Kilo Code | Inline with sentinels | `~/.config/kilo/AGENTS.md` |
 | Factory Droid | Inline with sentinels | `~/.factory/AGENTS.md` |
-| Antigravity | — | not supported globally; use `trs init antigravity` per project |
+| Antigravity IDE | Standalone file + `@import` (shared with Gemini) | `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
+| Antigravity CLI (`agy`) | Standalone file + `@import` (shared with Gemini) | `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
 
 Codex, OpenCode, Kilo, and Droid are signatories of the
 [`AGENTS.md` convention](https://factory.ai/news/agents-md), which is
@@ -155,13 +156,14 @@ Sample output:
 ```
 trs output-saver — scan
 
-  + Claude Code  already installed
-  . Gemini CLI   not yet installed
-  - Cursor       not detected on this system
-  + Codex        already installed
-  ~ Antigravity  skipped (rules are per-project only — run `trs init antigravity`)
+  + Claude Code     already installed
+  . Gemini CLI      not yet installed
+  - Cursor          not detected on this system
+  + Codex           already installed
+  + Antigravity IDE already installed (shared with Gemini)
+  + Antigravity CLI already installed (shared with Gemini)
 
-  1 installable, 2 already installed, 1 not detected, 1 unsupported
+  1 installable, 4 already installed, 1 not detected, 0 unsupported
 ```
 
 ## `--refresh` — pick up template changes without adding new installs

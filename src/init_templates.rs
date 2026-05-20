@@ -183,59 +183,12 @@ See https://github.com/dPeluChe/trs for details.
 "#
 );
 
-pub(crate) const ANTIGRAVITY_RULES: &str = concat!(
-    r#"
-# trs (Token-Reducing Shell) — terminal output optimization
-
-Antigravity does not support pre-execution hooks, so this rules file is the
-only mechanism to opt into trs for this project. When you run shell commands,
-prefix them with `trs` to get compact, structured output.
-
-```bash
-# Instead of:
-git status
-cargo test
-npm test
-
-# Use:
-trs git status
-trs cargo test
-trs npm test
-```
-
-Commands without a dedicated trs parser still get whitespace / ANSI
-compression (~30-40% reduction). Pipes and chains are passed through unchanged.
-
-## If `trs: command not found` in Antigravity's shell
-
-Antigravity's tool shell does not always inherit your login PATH. If `trs`
-runs from your terminal but fails here, fall back to the absolute binary
-path or make sure your PATH is exported for non-login shells:
-
-```bash
-# Option 1 — explicit path (always works):
-$HOME/.local/bin/trs git status
-
-# Option 2 — add to ~/.profile (read by non-login sh / bash):
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
-```
-
-Re-run `trs init antigravity` to pick up future updates to this guidance.
-
-"#,
-    output_saver_block_literal!(),
-    r#"
-
-## Keeping this file lean
-
-Run `trs audit-docs` periodically to spot content that belongs elsewhere
-(duplicate sections, embedded SQL/JSON/code blocks, references to files
-that no longer exist). Every unnecessary token here loads on every agent
-call.
-
-Reference: https://github.com/dPeluChe/trs
-"#
-);
+// `ANTIGRAVITY_RULES` was retired in v0.6.4: Antigravity 2.0 (IDE + CLI)
+// joined the Gemini CLI harness and now honors `BeforeTool` hooks in
+// `~/.gemini/settings.json`. Both AiTool variants reuse `GEMINI_HOOKS`.
+// The legacy `.agent/rules/antigravity-trs-rules.md` files installed by
+// pre-v0.6.4 trs are cleaned up by `trs uninstall antigravity` via the
+// existing candidate-paths sweep.
 
 pub(crate) const WINDSURF_RULES: &str = concat!(
     r#"
