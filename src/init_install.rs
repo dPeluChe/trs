@@ -29,7 +29,22 @@ pub(crate) fn install_from_spec(spec: &HookSpec, opts: InstallOpts) -> Result<St
 /// Append the trs rules block to `AGENTS.md`. `--global` targets
 /// `~/.codex/AGENTS.md` (Codex reads it globally); otherwise project root.
 /// Idempotent against the trs sentinel + markers.
+///
+/// Also defensively scrubs legacy `trs rewrite` entries from
+/// `~/.codex/hooks.json` — pre-v0.6.x installs wrote a PreToolUse hook
+/// there, but Codex versions vary in `updatedInput` support so orphans
+/// cause "unsupported updatedInput" errors on every tool call. Scrub
+/// runs only on `--global` since that's where the orphan lives.
 pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> {
+    if opts.global {
+        if let Ok(home) = home_dir() {
+            let hooks_path = home.join(".codex").join("hooks.json");
+            if let Err(e) = scrub_legacy_codex_hook(&hooks_path, opts.dry_run) {
+                eprintln!("  warning: could not scrub {}: {}", hooks_path.display(), e);
+            }
+        }
+    }
+
     let path = if opts.global {
         home_dir()?.join(".codex").join("AGENTS.md")
     } else {
@@ -246,5 +261,133 @@ pub(crate) fn contains_trs_rewrite(val: &serde_json::Value) -> bool {
         serde_json::Value::Object(o) => o.values().any(contains_trs_rewrite),
         serde_json::Value::Array(a) => a.iter().any(contains_trs_rewrite),
         _ => false,
+    }
+}
+
+/// Remove any `trs rewrite` entries from `~/.codex/hooks.json` while
+/// preserving user-added hooks. Returns `Some(msg)` if anything changed.
+/// No-op when the file is missing or already clean.
+pub(crate) fn scrub_legacy_codex_hook(
+    path: &Path,
+    dry_run: bool,
+) -> Result<Option<String>, String> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    if !content.contains("trs rewrite") {
+        return Ok(None);
+    }
+    let mut val: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("not valid JSON: {}", e))?;
+    let mut removed = 0usize;
+    let mut empty_events: Vec<String> = Vec::new();
+    if let Some(hooks) = val.get_mut("hooks").and_then(|h| h.as_object_mut()) {
+        for (event, event_val) in hooks.iter_mut() {
+            if let Some(arr) = event_val.as_array_mut() {
+                let before = arr.len();
+                arr.retain(|e| !contains_trs_rewrite(e));
+                removed += before - arr.len();
+                if arr.is_empty() && before > 0 {
+                    empty_events.push(event.clone());
+                }
+            }
+        }
+        // Drop event keys that we emptied — leaves a tidier file for
+        // users who only had the trs entry (and matches what they'd
+        // expect after "uninstall").
+        for k in &empty_events {
+            hooks.remove(k);
+        }
+    }
+    if removed == 0 {
+        return Ok(None);
+    }
+    if dry_run {
+        return Ok(Some(format!(
+            "would scrub {} legacy trs entry/entries from {}",
+            removed,
+            path.display()
+        )));
+    }
+    let pretty = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
+    fs::write(path, format!("{}\n", pretty)).map_err(|e| e.to_string())?;
+    println!(
+        "  scrubbed {} legacy trs hook entry/entries from {}",
+        removed,
+        path.display()
+    );
+    Ok(Some(format!(
+        "scrubbed {} from {}",
+        removed,
+        path.display()
+    )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn scrub_legacy_codex_hook_removes_trs_only_event() {
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp,
+            r#"{{"hooks":{{"PreToolUse":[{{"hooks":[{{"command":"trs rewrite","type":"command"}}],"matcher":".*"}}],"SessionStart":[{{"hooks":[{{"command":"notify","type":"command"}}]}}]}}}}"#
+        )
+        .unwrap();
+        let result = scrub_legacy_codex_hook(tmp.path(), false).unwrap();
+        assert!(result.is_some(), "scrub should report a change");
+        let after: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(tmp.path()).unwrap()).unwrap();
+        // PreToolUse was trs-only → key removed entirely.
+        assert!(after["hooks"]["PreToolUse"].is_null());
+        // SessionStart preserved verbatim.
+        assert_eq!(
+            after["hooks"]["SessionStart"][0]["hooks"][0]["command"],
+            serde_json::json!("notify")
+        );
+    }
+
+    #[test]
+    fn scrub_legacy_codex_hook_preserves_user_entries_in_same_event() {
+        // PreToolUse has trs AND a user-added entry — only trs is dropped,
+        // the event survives.
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp,
+            r#"{{"hooks":{{"PreToolUse":[{{"hooks":[{{"command":"trs rewrite","type":"command"}}]}},{{"hooks":[{{"command":"my-audit","type":"command"}}]}}]}}}}"#
+        )
+        .unwrap();
+        scrub_legacy_codex_hook(tmp.path(), false).unwrap();
+        let after: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(tmp.path()).unwrap()).unwrap();
+        let arr = after["hooks"]["PreToolUse"].as_array().unwrap();
+        assert_eq!(arr.len(), 1);
+        assert_eq!(arr[0]["hooks"][0]["command"], serde_json::json!("my-audit"));
+    }
+
+    #[test]
+    fn scrub_legacy_codex_hook_is_noop_when_clean() {
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp,
+            r#"{{"hooks":{{"SessionStart":[{{"hooks":[{{"command":"notify","type":"command"}}]}}]}}}}"#
+        )
+        .unwrap();
+        let result = scrub_legacy_codex_hook(tmp.path(), false).unwrap();
+        assert!(result.is_none(), "no trs entry → no-op");
+    }
+
+    #[test]
+    fn scrub_legacy_codex_hook_dry_run_does_not_write() {
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        let original = r#"{"hooks":{"PreToolUse":[{"hooks":[{"command":"trs rewrite","type":"command"}],"matcher":".*"}]}}"#;
+        write!(tmp, "{}", original).unwrap();
+        let result = scrub_legacy_codex_hook(tmp.path(), true).unwrap();
+        assert!(result.is_some());
+        let after = std::fs::read_to_string(tmp.path()).unwrap();
+        assert_eq!(after, original, "dry-run must not modify file");
     }
 }

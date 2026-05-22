@@ -240,18 +240,36 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
         }
         AiTool::Codex => {
             push_home(".codex/AGENTS.md");
+            // Legacy installs (pre-v0.6.x) wrote `trs rewrite` into
+            // `~/.codex/hooks.json`. Codex versions vary in `updatedInput`
+            // support — orphans cause "unsupported updatedInput" errors
+            // on every PreToolUse. Sweep them here so uninstall removes
+            // the trs entries even though current installs no longer write
+            // there. Ordering matters: all push_home calls run before any
+            // direct v.push to keep the closure's mutable borrow contiguous.
+            push_home(".codex/hooks.json");
             v.push(PathBuf::from("AGENTS.md"));
         }
         AiTool::Antigravity => {
-            // v0.6.4+ shares the Gemini hook target. The legacy rules
-            // file (from pre-v0.6.4 installs) is still listed so
-            // uninstall sweeps it up if present.
+            // v0.6.5+ writes to the jetski hooks.json. Keep
+            // `.gemini/settings.json` in the sweep too because v0.6.4
+            // wrongly installed a BeforeTool entry there — and so users
+            // upgrading get the orphan cleaned up automatically. The
+            // legacy `.agent/rules/antigravity-trs-rules.md` (pre-v0.6.4)
+            // also still gets swept.
+            push_home(".gemini/antigravity-ide/hooks.json");
             push_home(".gemini/settings.json");
+            v.push(PathBuf::from(".gemini/antigravity-ide/hooks.json"));
             v.push(PathBuf::from(".gemini/settings.json"));
             v.push(PathBuf::from(".agent/rules/antigravity-trs-rules.md"));
         }
         AiTool::AntigravityCLI => {
+            // Same upgrade story as the IDE — clean up the orphaned
+            // BeforeTool from settings.json while installing into the
+            // jetski hooks.json.
+            push_home(".gemini/antigravity-cli/hooks.json");
             push_home(".gemini/settings.json");
+            v.push(PathBuf::from(".gemini/antigravity-cli/hooks.json"));
             v.push(PathBuf::from(".gemini/settings.json"));
         }
         AiTool::Windsurf => {

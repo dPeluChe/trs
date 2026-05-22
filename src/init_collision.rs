@@ -138,10 +138,14 @@ fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
             push_home(&mut v, ".codex/AGENTS.md");
             v.push(PathBuf::from("AGENTS.md"));
         }
-        AiTool::Antigravity | AiTool::AntigravityCLI => {
-            // Antigravity 2.0 (IDE + CLI) shares the Gemini CLI hook target.
-            push_home(&mut v, ".gemini/settings.json");
-            v.push(PathBuf::from(".gemini/settings.json"));
+        AiTool::Antigravity => {
+            // v0.6.5+: jetski hooks.json under each variant's data dir.
+            push_home(&mut v, ".gemini/antigravity-ide/hooks.json");
+            v.push(PathBuf::from(".gemini/antigravity-ide/hooks.json"));
+        }
+        AiTool::AntigravityCLI => {
+            push_home(&mut v, ".gemini/antigravity-cli/hooks.json");
+            v.push(PathBuf::from(".gemini/antigravity-cli/hooks.json"));
         }
         AiTool::Windsurf => {
             push_home(&mut v, ".codeium/windsurf/memories/global_rules.md");

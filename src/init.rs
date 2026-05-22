@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use crate::init_collision;
 use crate::init_install::{install_codex_agents, install_from_spec, install_rules};
 use crate::init_templates::{
-    CLAUDE_HOOKS, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN, OPENCODE_PLUGIN,
-    WINDSURF_RULES,
+    ANTIGRAVITY_HOOKS, CLAUDE_HOOKS, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN,
+    OPENCODE_PLUGIN, WINDSURF_RULES,
 };
 
 /// Options for an install run. `global` picks home-dir vs project-local;
@@ -33,12 +33,14 @@ pub(crate) enum AiTool {
     Codex,
     OpenCode,
     Kilo,
-    /// Google Antigravity desktop IDE (Antigravity 2.0). Shares the
-    /// Gemini CLI harness — hooks live in `~/.gemini/settings.json`.
+    /// Google Antigravity desktop IDE (Antigravity 2.0). Built on Google's
+    /// jetski framework — hooks live in `~/.gemini/antigravity-ide/hooks.json`
+    /// as `PreToolUse` events (Claude/Codex envelope, not Gemini's BeforeTool).
     Antigravity,
-    /// Google Antigravity CLI (binary `agy`, launched 2026-05-19).
-    /// Same shared `~/.gemini/` config as the IDE — listed separately
-    /// so detection + `init --show` can call it out.
+    /// Google Antigravity CLI (binary `agy`, launched 2026-05-19). Same
+    /// jetski framework as the IDE but writes to
+    /// `~/.gemini/antigravity-cli/hooks.json` so the two variants can
+    /// be configured independently.
     AntigravityCLI,
     Droid,
     Windsurf,
@@ -115,8 +117,10 @@ impl AiTool {
             Self::Codex => "rules → AGENTS.md (Codex hooks don't support rewrite)",
             Self::OpenCode => "plugin → .opencode/plugins/trs.ts",
             Self::Kilo => "plugin → .kilo/plugins/trs.ts",
-            Self::Antigravity => "hooks → ~/.gemini/settings.json (shared with Gemini)",
-            Self::AntigravityCLI => "hooks → ~/.gemini/settings.json (shared with Gemini)",
+            Self::Antigravity => "hooks → ~/.gemini/antigravity-ide/hooks.json (jetski PreToolUse)",
+            Self::AntigravityCLI => {
+                "hooks → ~/.gemini/antigravity-cli/hooks.json (jetski PreToolUse)"
+            }
             Self::Droid => "hooks → ~/.factory/settings.json",
             Self::Windsurf => "rules → .windsurfrules",
         }
@@ -164,8 +168,9 @@ impl AiTool {
                     || home_has(".antigravity")
             }
             // CLI — installed as the `agy` binary, writes data into
-            // `~/.gemini/antigravity-cli/`. The shared hooks config lives
-            // at `~/.gemini/settings.json` regardless of which is installed.
+            // `~/.gemini/antigravity-cli/`. Its hooks config is the
+            // sibling `~/.gemini/antigravity-cli/hooks.json` (jetski
+            // PreToolUse), written by trs init.
             Self::AntigravityCLI => in_path("agy") || home_has(".gemini/antigravity-cli"),
             Self::Droid => in_path("droid") || home_has(".factory"),
             Self::Windsurf => {
@@ -221,17 +226,28 @@ impl AiTool {
                 filename: "settings.json",
                 content: DROID_HOOKS,
             }),
-            // Antigravity 2.0 (IDE + CLI) shares the Gemini CLI harness —
-            // hooks live in `~/.gemini/settings.json` with the same
-            // BeforeTool envelope. Two AiTool variants reuse the Gemini
-            // template; `merge_json_hook`'s idempotent merge means
-            // installing all three (Gemini + IDE + CLI) writes the entry
-            // exactly once.
-            Self::Antigravity | Self::AntigravityCLI => Some(HookSpec {
-                local_dir: ".gemini",
-                global_dir: Some(".gemini"),
-                filename: "settings.json",
-                content: GEMINI_HOOKS,
+            // Antigravity 2.0 (IDE + CLI/`agy`) is built on Google's
+            // "jetski" framework — same hook system as Codex/Claude:
+            // `PreToolUse` event in a `hooks.json` file (not settings.json,
+            // and NOT BeforeTool — that's Gemini CLI only). Each variant
+            // has its own data dir so the IDE and CLI can have separate
+            // hooks without stepping on each other.
+            //
+            // Discovery confirmed empirically against agy v1.0.1: the
+            // binary reads `~/.gemini/antigravity-{cli,ide}/hooks.json`
+            // (and `~/.gemini/hooks.json`); BeforeTool entries in
+            // settings.json are silently ignored.
+            Self::Antigravity => Some(HookSpec {
+                local_dir: ".gemini/antigravity-ide",
+                global_dir: Some(".gemini/antigravity-ide"),
+                filename: "hooks.json",
+                content: ANTIGRAVITY_HOOKS,
+            }),
+            Self::AntigravityCLI => Some(HookSpec {
+                local_dir: ".gemini/antigravity-cli",
+                global_dir: Some(".gemini/antigravity-cli"),
+                filename: "hooks.json",
+                content: ANTIGRAVITY_HOOKS,
             }),
             // Codex has PreToolUse hooks but its docs explicitly state
             // `updatedInput` is "parsed but not supported yet" — the hook
@@ -547,21 +563,34 @@ mod tests {
     }
 
     #[test]
-    fn antigravity_variants_share_gemini_hookspec() {
-        // Both variants pivot to Gemini's shared `~/.gemini/settings.json`
-        // in v0.6.4. The HookSpec must match exactly — a divergence here
-        // would mean trs init installs different content under the same
-        // target file depending on which variant the user invoked.
+    fn antigravity_variants_use_jetski_hooks_json() {
+        // v0.6.5 fix: Antigravity 2.0 (IDE + CLI) is jetski-based, NOT
+        // Gemini-CLI-based. Each variant writes its own `hooks.json` with
+        // the PreToolUse event (Claude/Codex-style), not BeforeTool in
+        // settings.json. A regression here would silently break agy:
+        // jetski ignores BeforeTool entries in settings.json.
         let ide = AiTool::Antigravity.spec().expect("IDE spec exists");
         let cli = AiTool::AntigravityCLI.spec().expect("CLI spec exists");
+        assert_eq!(ide.filename, "hooks.json");
+        assert_eq!(cli.filename, "hooks.json");
+        assert_eq!(ide.global_dir, Some(".gemini/antigravity-ide"));
+        assert_eq!(cli.global_dir, Some(".gemini/antigravity-cli"));
+        // Both variants share the same template content (jetski PreToolUse).
+        assert_eq!(ide.content, cli.content);
+        // Sanity: the template is PreToolUse-shaped, not BeforeTool-shaped.
+        assert!(ide.content.contains("\"PreToolUse\""));
+        assert!(!ide.content.contains("\"BeforeTool\""));
+        assert!(ide.content.contains("trs rewrite"));
+    }
+
+    #[test]
+    fn antigravity_does_not_share_gemini_spec() {
+        // Defensive: confirm the variants DIVERGE from Gemini's spec —
+        // the old code wrongly aliased them, which is what broke agy.
+        let cli = AiTool::AntigravityCLI.spec().expect("CLI spec exists");
         let gemini = AiTool::Gemini.spec().expect("Gemini spec exists");
-        assert_eq!(ide.local_dir, gemini.local_dir);
-        assert_eq!(ide.global_dir, gemini.global_dir);
-        assert_eq!(ide.filename, gemini.filename);
-        assert_eq!(ide.content, gemini.content);
-        assert_eq!(cli.local_dir, gemini.local_dir);
-        assert_eq!(cli.global_dir, gemini.global_dir);
-        assert_eq!(cli.filename, gemini.filename);
-        assert_eq!(cli.content, gemini.content);
+        assert_ne!(cli.filename, gemini.filename);
+        assert_ne!(cli.global_dir, gemini.global_dir);
+        assert_ne!(cli.content, gemini.content);
     }
 }
