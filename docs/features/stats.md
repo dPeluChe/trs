@@ -119,7 +119,7 @@ SAVED / AVG -% — they only contribute to CALLS and BYPASS.
 | OpenCode | plugin template | `opencode` |
 | Kilo Code | plugin template | `kilo` |
 | Factory Droid | same wire format as Claude | `claude` (limitation) |
-| Antigravity IDE / CLI | shared Gemini settings.json | `gemini` (limitation) |
+| Antigravity IDE / CLI (`agy`) | `ANTIGRAVITY_CONVERSATION_ID` env on Claude-shaped event | `antigravity` |
 | Codex / Windsurf | no programmatic signal (rules-only) | `(untagged)` |
 
 Direct-shell invocations (`trs git status` typed manually) also land
