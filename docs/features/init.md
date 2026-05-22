@@ -27,8 +27,8 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | OpenCode | TS plugin | `~/.config/opencode/plugins/trs.ts` |
 | Kilo Code | TS plugin | `~/.config/kilo/plugins/trs.ts` |
 | Codex | Rules append | `AGENTS.md` in repo (or `~/.codex/AGENTS.md` with `--global`) |
-| Antigravity IDE | JSON hook (shared) | `~/.gemini/settings.json` — same target as Gemini CLI |
-| Antigravity CLI (`agy`) | JSON hook (shared) | `~/.gemini/settings.json` — same target as Gemini CLI |
+| Antigravity IDE | JSON hook (jetski `PreToolUse`) | `~/.gemini/antigravity-ide/hooks.json` |
+| Antigravity CLI (`agy`) | JSON hook (jetski `PreToolUse`) | `~/.gemini/antigravity-cli/hooks.json` |
 | Windsurf | Rules file | `.windsurfrules` |
 
 Hooks fire deterministically on every shell-tool invocation. Rules
@@ -181,9 +181,11 @@ Labels per agent:
 
 - `claude` — Claude Code (and Factory Droid, which shares the same
   wire format)
-- `gemini` — Gemini CLI, Antigravity IDE, and Antigravity CLI (all
-  three share `~/.gemini/settings.json`, so the same hook tags them
-  with `gemini`)
+- `gemini` — Gemini CLI
+- `antigravity` — Antigravity IDE and Antigravity CLI (`agy`). Both
+  speak the Claude/Codex `PreToolUse` envelope (jetski framework),
+  disambiguated from raw Claude via the `ANTIGRAVITY_CONVERSATION_ID`
+  env var that jetski sets on every hook invocation.
 - `cursor` — Cursor
 - `opencode` — OpenCode (baked into the plugin template)
 - `kilo` — Kilo Code (baked into its plugin template)
