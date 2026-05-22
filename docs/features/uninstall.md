@@ -20,11 +20,13 @@ trs uninstall --dry-run              # preview without writing
 
 | Surface | Action |
 |---|---|
-| JSON hooks (Claude / Gemini / Cursor / Factory Droid) | scrub entries whose `command` contains `trs rewrite` |
+| JSON hooks (Claude / Gemini / Cursor / Factory Droid / Antigravity IDE+CLI) | scrub entries whose `command` contains `trs rewrite` |
 | Plugin files (OpenCode / Kilo) | delete `~/.config/<tool>/plugins/trs.ts` |
 | Codex AGENTS.md | remove the sentinel-delimited block; delete the file if it was just our block |
+| Codex legacy `hooks.json` | scrub orphan `trs rewrite` entries from `~/.codex/hooks.json` (pre-v0.6.x installs added a PreToolUse hook; Codex versions vary in `updatedInput` support, so orphans break tool calls) |
 | Windsurf rules file | delete `.windsurfrules` when it carries the trs marker |
-| Legacy Antigravity rules | delete pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md` if present (new installs use the shared Gemini hook) |
+| Legacy Antigravity rules | delete pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md` if present |
+| Legacy Antigravity `BeforeTool` | scrub orphan `BeforeTool → trs rewrite` from `~/.gemini/settings.json` (v0.6.4 wrongly aliased Antigravity to the Gemini harness; v0.6.5+ uses jetski `PreToolUse` in `~/.gemini/antigravity-{ide,cli}/hooks.json` instead) |
 | Output-saver block (Imported agents) | remove the sidecar `trs.md` and the `@trs.md` import line |
 | Output-saver block (inline agents) | remove the `<!-- trs:output-saver:start v1 -->` … `:end -->` block in place |
 

@@ -126,9 +126,42 @@ pub(crate) fn run_checks() -> Vec<Check> {
         check_history_writable(),
         check_stdin_pipeline(),
         check_hooks_installed(),
+        check_codex_hooks_orphan(),
         check_output_saver_installed(),
         check_agent_docs_health(),
     ]
+}
+
+/// Flag legacy `trs rewrite` entries in `~/.codex/hooks.json`. Codex versions
+/// vary in `updatedInput` support — orphans from pre-v0.6.x installs cause
+/// "PreToolUse hook returned unsupported updatedInput" errors on every tool
+/// call. We no longer install Codex hooks; this surfaces the leftover so
+/// users know to run `trs uninstall codex`.
+fn check_codex_hooks_orphan() -> Check {
+    use std::fs;
+    let Ok(home) = crate::init::home_dir() else {
+        return Check::pass("codex hooks.json", "no HOME — skipped".to_string());
+    };
+    let path = home.join(".codex").join("hooks.json");
+    if !path.exists() {
+        return Check::pass("codex hooks.json", "no orphan trs entry".to_string());
+    }
+    let content = match fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(_) => return Check::pass("codex hooks.json", "unreadable — skipped".to_string()),
+    };
+    if !content.contains("trs rewrite") {
+        return Check::pass("codex hooks.json", "no orphan trs entry".to_string());
+    }
+    Check::warn(
+        "codex hooks.json",
+        format!("legacy `trs rewrite` entry in {}", path.display()),
+    )
+    .with_hint(
+        "Codex's PreToolUse rejects `updatedInput` on some versions \
+         (\"unsupported updatedInput\" errors). Run `trs uninstall codex` \
+         to scrub, or re-run `trs init codex --global` (auto-scrubs).",
+    )
 }
 
 /// Count how many of the supported agents have the trs output-saver

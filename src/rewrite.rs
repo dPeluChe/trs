@@ -67,12 +67,25 @@ impl HookEvent {
     }
 
     /// Label written into the TRS_AGENT env-var so history.jsonl can
-    /// attribute the run. Droid shares Claude's wire format, so both land
-    /// in `ClaudePreToolUse` and label as "claude".
+    /// attribute the run. Reads the runtime env to disambiguate Antigravity
+    /// from Claude (both speak the same PreToolUse envelope).
     fn agent_label(&self) -> &'static str {
+        self.agent_label_for(std::env::var_os("ANTIGRAVITY_CONVERSATION_ID").is_some())
+    }
+
+    /// Pure version of `agent_label` — env state passed explicitly so tests
+    /// don't have to mutate process env (which races with parallel tests).
+    ///
+    /// Antigravity 2.0 (IDE + CLI/`agy`) speaks `ClaudePreToolUse` because
+    /// jetski uses the same envelope. We disambiguate via the
+    /// `ANTIGRAVITY_CONVERSATION_ID` env var which agy sets when invoking
+    /// hooks — without this, all agy runs would show up as `claude` in
+    /// `trs stats --by-agent`.
+    fn agent_label_for(&self, has_antigravity_env: bool) -> &'static str {
         match self {
             Self::GeminiBeforeTool => "gemini",
             Self::CursorPreToolUse => "cursor",
+            Self::ClaudePreToolUse if has_antigravity_env => "antigravity",
             Self::ClaudePreToolUse => "claude",
         }
     }
@@ -283,6 +296,21 @@ mod tests {
             serde_json::json!("TRS_AGENT=gemini trs git status")
         );
         assert!(out["hookSpecificOutput"]["updatedInput"].is_null());
+    }
+
+    #[test]
+    fn test_agent_label_antigravity_env_disambiguates_claude_envelope() {
+        // The wire envelope is shared between Claude and Antigravity (jetski).
+        // The agent gets relabeled to "antigravity" only when the env var
+        // is present at hook-invocation time.
+        assert_eq!(HookEvent::ClaudePreToolUse.agent_label_for(false), "claude");
+        assert_eq!(
+            HookEvent::ClaudePreToolUse.agent_label_for(true),
+            "antigravity"
+        );
+        // Gemini/Cursor labels are unaffected by the agy env var.
+        assert_eq!(HookEvent::GeminiBeforeTool.agent_label_for(true), "gemini");
+        assert_eq!(HookEvent::CursorPreToolUse.agent_label_for(true), "cursor");
     }
 
     #[test]

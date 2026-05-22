@@ -67,6 +67,36 @@ pub(crate) const GEMINI_HOOKS: &str = r#"{
   }
 }"#;
 
+// Antigravity 2.0 (both IDE and CLI/`agy`) is built on Google's
+// "jetski" framework — same hook protocol as Claude/Codex:
+//   - File: `hooks.json` in the variant's data dir (NOT settings.json)
+//   - Event: `PreToolUse` (NOT BeforeTool — that's Gemini CLI only)
+//   - Output shape: Claude/Codex `hookSpecificOutput.updatedInput.command`
+//
+// Confirmed empirically against agy v1.0.1 binary strings + log:
+// `loaded N named hooks from M hooks.json file(s)` fires only when
+// hooks live in one of agy's discovery paths.
+//
+// We use a unique `name` so install/uninstall can sweep this entry
+// without disturbing user-added hooks in the same file.
+pub(crate) const ANTIGRAVITY_HOOKS: &str = r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "name": "trs-rewrite",
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "trs rewrite"
+          }
+        ],
+        "description": "Route commands through trs for token-optimized output"
+      }
+    ]
+  }
+}"#;
+
 // Cursor's `beforeShellExecution` hook can only allow/deny — it cannot
 // rewrite the command. The only hook with `updated_input` support is
 // `preToolUse`. `matcher: "Shell"` limits the hook to actual shell tool
