@@ -304,6 +304,34 @@ fn main() {
                 ingest::run_ingest(&config);
             }
         }
+        Some(Commands::History {
+            prune,
+            older_than,
+            dry_run,
+        }) => {
+            if !*prune {
+                // Without --prune the command currently has nothing to
+                // do — viewing history is still `trs stats --history`.
+                // Print a hint instead of failing silently.
+                eprintln!("trs history: use --prune to delete old monthly archives.");
+                eprintln!("  Example: trs history --prune --older-than 90");
+                eprintln!("  View history: trs stats --history");
+                return;
+            }
+            let (count, freed) = tracker::prune_archives(*older_than, *dry_run);
+            let verb = if *dry_run { "would remove" } else { "removed" };
+            if count == 0 {
+                println!("trs history: no archives older than {} days.", older_than);
+            } else {
+                println!(
+                    "trs history: {} {} archive{} ({} freed).",
+                    verb,
+                    count,
+                    if count == 1 { "" } else { "s" },
+                    tracker::format_bytes_human(freed as usize)
+                );
+            }
+        }
         Some(Commands::Stats {
             history,
             project,
@@ -477,6 +505,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "output-saver"
             | "upgrade"
             | "debug-info"
+            | "history"
             | "stats"
             | "raw"
             | "help"

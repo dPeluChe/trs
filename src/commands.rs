@@ -457,6 +457,22 @@ pub enum Commands {
         check_untracked: Option<bool>,
     },
 
+    /// Manage the trs telemetry history (~/.trs/history.jsonl and its
+    /// monthly archives). Use --prune to delete archives older than a
+    /// retention window so disk usage stays bounded over time.
+    History {
+        /// Delete monthly archives older than `--older-than` days.
+        /// The active `history.jsonl` is never touched.
+        #[arg(long)]
+        prune: bool,
+        /// Retention window in days, used with `--prune`. Default 90.
+        #[arg(long = "older-than", default_value = "90")]
+        older_than: u64,
+        /// Preview what would be removed without actually deleting.
+        #[arg(long = "dry-run")]
+        dry_run: bool,
+    },
+
     /// Show token savings statistics
     Stats {
         /// Show recent command history

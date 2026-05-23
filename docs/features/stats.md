@@ -4,6 +4,15 @@ Every trs invocation logs an entry to `~/.trs/history.jsonl`:
 timestamp, command, input bytes, output bytes, duration. `trs stats`
 reads that log and produces a dashboard of cumulative savings.
 
+The active file rolls into a month-stamped archive
+(`~/.trs/history.YYYY-MM.jsonl`) at the first append of each new month.
+`trs stats` reads the active file plus every archive transparently, so
+your cumulative numbers don't reset. Use `trs history --prune
+--older-than 90` to retire archives older than your retention window.
+
+`trs stats --history` lists commands **newest first** (top of output is
+the most recent run). Same ordering in `--json` mode.
+
 ## Quick reference
 
 ```bash

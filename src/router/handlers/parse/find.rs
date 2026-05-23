@@ -216,8 +216,11 @@ impl ParseHandler {
             String::new()
         };
 
-        // Detect single extension (e.g. all .rs) to strip from filenames
-        let single_ext = if find_output.extensions.len() == 1 {
+        // Detect single extension (e.g. all .rs) to strip from filenames.
+        // Only kick in when 2+ files share the extension — with a single
+        // result, the extension is part of the unique identifier and
+        // stripping it just loses information (`Cargo.toml` → `Cargo`).
+        let single_ext = if find_output.extensions.len() == 1 && find_output.files.len() >= 2 {
             find_output.extensions.keys().next().cloned()
         } else {
             None
