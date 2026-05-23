@@ -162,6 +162,17 @@ fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
                 CODEX_AGENTS_SENTINEL_END,
                 opts.dry_run,
             )
+        } else if path.ends_with("GEMINI.md") {
+            // v0.6.6+ Antigravity rules block. The sentinels keep it from
+            // being mistaken for the Gemini CLI output-saver `@trs.md`
+            // import line (which lives in the same file but is managed
+            // separately by `output_saver::remove_agent`).
+            remove_between_sentinels(
+                &path,
+                crate::init_templates::ANTIGRAVITY_RULES_SENTINEL_START,
+                crate::init_templates::ANTIGRAVITY_RULES_SENTINEL_END,
+                opts.dry_run,
+            )
         } else if path.extension().and_then(|e| e.to_str()) == Some("ts") {
             delete_plugin_file(&path, opts.dry_run)
         } else {
@@ -250,27 +261,25 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
             push_home(".codex/hooks.json");
             v.push(PathBuf::from("AGENTS.md"));
         }
-        AiTool::Antigravity => {
-            // v0.6.5+ writes to the jetski hooks.json. Keep
-            // `.gemini/settings.json` in the sweep too because v0.6.4
-            // wrongly installed a BeforeTool entry there — and so users
-            // upgrading get the orphan cleaned up automatically. The
-            // legacy `.agent/rules/antigravity-trs-rules.md` (pre-v0.6.4)
-            // also still gets swept.
+        AiTool::Antigravity | AiTool::AntigravityCLI => {
+            // v0.6.6 reclassified Antigravity to rules-only. Sweep covers
+            // every install variant that previous trs versions wrote, so
+            // upgrades produce a clean state:
+            //   - v0.6.6+ rules block in `~/.gemini/GEMINI.md` (current)
+            //   - v0.6.5  `~/.gemini/antigravity-{cli,ide}/hooks.json`
+            //     (jetski PreToolUse — never actually fired)
+            //   - v0.6.4  BeforeTool entry in `~/.gemini/settings.json`
+            //     (aliased to Gemini's harness — also never fired)
+            //   - pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md`
+            //     per-project rules file
+            push_home(".gemini/GEMINI.md");
             push_home(".gemini/antigravity-ide/hooks.json");
-            push_home(".gemini/settings.json");
-            v.push(PathBuf::from(".gemini/antigravity-ide/hooks.json"));
-            v.push(PathBuf::from(".gemini/settings.json"));
-            v.push(PathBuf::from(".agent/rules/antigravity-trs-rules.md"));
-        }
-        AiTool::AntigravityCLI => {
-            // Same upgrade story as the IDE — clean up the orphaned
-            // BeforeTool from settings.json while installing into the
-            // jetski hooks.json.
             push_home(".gemini/antigravity-cli/hooks.json");
             push_home(".gemini/settings.json");
+            v.push(PathBuf::from(".gemini/antigravity-ide/hooks.json"));
             v.push(PathBuf::from(".gemini/antigravity-cli/hooks.json"));
             v.push(PathBuf::from(".gemini/settings.json"));
+            v.push(PathBuf::from(".agent/rules/antigravity-trs-rules.md"));
         }
         AiTool::Windsurf => {
             v.push(PathBuf::from(".windsurfrules"));

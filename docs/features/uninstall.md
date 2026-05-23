@@ -26,7 +26,9 @@ trs uninstall --dry-run              # preview without writing
 | Codex legacy `hooks.json` | scrub orphan `trs rewrite` entries from `~/.codex/hooks.json` (pre-v0.6.x installs added a PreToolUse hook; Codex versions vary in `updatedInput` support, so orphans break tool calls) |
 | Windsurf rules file | delete `.windsurfrules` when it carries the trs marker |
 | Legacy Antigravity rules | delete pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md` if present |
-| Legacy Antigravity `BeforeTool` | scrub orphan `BeforeTool → trs rewrite` from `~/.gemini/settings.json` (v0.6.4 wrongly aliased Antigravity to the Gemini harness; v0.6.5+ uses jetski `PreToolUse` in `~/.gemini/antigravity-{ide,cli}/hooks.json` instead) |
+| Antigravity rules block | remove the `<!-- trs:antigravity-rules:start v1 -->` … `:end -->` block from `~/.gemini/GEMINI.md` (v0.6.6+ rules-only integration) |
+| Legacy Antigravity hooks.json | remove inert `~/.gemini/antigravity-{ide,cli}/hooks.json` (v0.6.5 jetski install that never fired — see [research notes](../development/antigravity-hooks-research.md)) |
+| Legacy Antigravity `BeforeTool` | scrub orphan `BeforeTool → trs rewrite` from `~/.gemini/settings.json` (v0.6.4 wrongly aliased Antigravity to the Gemini harness) |
 | Output-saver block (Imported agents) | remove the sidecar `trs.md` and the `@trs.md` import line |
 | Output-saver block (inline agents) | remove the `<!-- trs:output-saver:start v1 -->` … `:end -->` block in place |
 
