@@ -67,35 +67,19 @@ pub(crate) const GEMINI_HOOKS: &str = r#"{
   }
 }"#;
 
-// Antigravity 2.0 (both IDE and CLI/`agy`) is built on Google's
-// "jetski" framework — same hook protocol as Claude/Codex:
-//   - File: `hooks.json` in the variant's data dir (NOT settings.json)
-//   - Event: `PreToolUse` (NOT BeforeTool — that's Gemini CLI only)
-//   - Output shape: Claude/Codex `hookSpecificOutput.updatedInput.command`
+// ANTIGRAVITY_HOOKS was REMOVED in v0.6.6 (see commit log for branch
+// fix/antigravity-rules-only-revert).
 //
-// Confirmed empirically against agy v1.0.1 binary strings + log:
-// `loaded N named hooks from M hooks.json file(s)` fires only when
-// hooks live in one of agy's discovery paths.
+// The v0.6.5 jetski PreToolUse integration was reverted after empirical
+// validation against agy v1.0.1 showed user-defined `hooks.json` entries
+// load as **subagents** (via `invoke_subagent`), NOT as tool-call
+// wrappers. The `Step_RunCommand` execution path for Bash bypasses the
+// user-visible PreToolHook system entirely — only internal MCP browser
+// hooks are wired up upstream.
 //
-// We use a unique `name` so install/uninstall can sweep this entry
-// without disturbing user-added hooks in the same file.
-pub(crate) const ANTIGRAVITY_HOOKS: &str = r#"{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "name": "trs-rewrite",
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "trs rewrite"
-          }
-        ],
-        "description": "Route commands through trs for token-optimized output"
-      }
-    ]
-  }
-}"#;
+// Full investigation: docs/development/antigravity-hooks-research.md.
+// Until Google ships user-configurable PreToolHook for Bash, Antigravity
+// (IDE + CLI) is rules-only — see ANTIGRAVITY_RULES_SECTION below.
 
 // Cursor's `beforeShellExecution` hook can only allow/deny — it cannot
 // rewrite the command. The only hook with `updated_input` support is
@@ -213,12 +197,54 @@ See https://github.com/dPeluChe/trs for details.
 "#
 );
 
-// `ANTIGRAVITY_RULES` was retired in v0.6.4: Antigravity 2.0 (IDE + CLI)
-// joined the Gemini CLI harness and now honors `BeforeTool` hooks in
-// `~/.gemini/settings.json`. Both AiTool variants reuse `GEMINI_HOOKS`.
-// The legacy `.agent/rules/antigravity-trs-rules.md` files installed by
-// pre-v0.6.4 trs are cleaned up by `trs uninstall antigravity` via the
-// existing candidate-paths sweep.
+/// Sentinel that wraps the Antigravity rules block in `~/.gemini/GEMINI.md`.
+/// Lets re-runs and uninstall identify the block without false positives
+/// from prose mentions of `trs`.
+pub(crate) const ANTIGRAVITY_RULES_SENTINEL_START: &str = "<!-- trs:antigravity-rules:start v1 -->";
+pub(crate) const ANTIGRAVITY_RULES_SENTINEL_END: &str = "<!-- trs:antigravity-rules:end -->";
+
+/// Rules block appended to `~/.gemini/GEMINI.md` for both the Antigravity
+/// IDE and the Antigravity CLI (`agy`). Both products read this file at
+/// session start via the Gemini-style `@import` resolution.
+///
+/// The block is small on purpose — Antigravity sessions already consume a
+/// lot of context. We rely on the existing `@trs.md` import for the
+/// full output-saver / response shape rules; this block only documents
+/// the manual-prefix recommendation and explains why automatic
+/// rewriting is not active (jetski PreTool hooks aren't user-config).
+pub(crate) const ANTIGRAVITY_RULES_SECTION: &str = concat!(
+    "<!-- trs:antigravity-rules:start v1 -->\n",
+    r#"
+## Terminal Output Optimization (Antigravity IDE + agy CLI)
+
+This project uses `trs` (Token-Reducing Shell) for token-optimized terminal output.
+
+Antigravity v1.0.1 does **not yet expose user-configurable `PreToolUse`
+hooks** for shell commands, so trs cannot rewrite commands automatically
+on your behalf. Until Google ships that surface, **prefix every shell
+command with `trs`** when you want compressed output:
+
+```bash
+# Instead of:
+git status
+cargo test
+cargo clippy
+
+# Use:
+trs git status
+trs cargo test
+trs cargo clippy
+```
+
+68-99% token reduction with no signal loss. Commands without a dedicated
+parser still get ANSI stripping + whitespace collapse (~30-40% "free").
+
+See `docs/development/antigravity-hooks-research.md` in the trs repo
+for the investigation that led to this rules-only integration.
+
+<!-- trs:antigravity-rules:end -->
+"#
+);
 
 pub(crate) const WINDSURF_RULES: &str = concat!(
     r#"

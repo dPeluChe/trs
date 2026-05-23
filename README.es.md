@@ -115,7 +115,7 @@ Diez agentes cubiertos de extremo a extremo. Hook programático para Claude Code
 | Claude Code · Gemini · Cursor | hook programático | ✓ | ✓ | `claude` / `gemini` / `cursor` |
 | OpenCode · Kilo Code | plantilla de plugin | ✓ | ✓ | `opencode` / `kilo` |
 | Factory Droid | hook programático | ✓ | ✓ | `claude` (mismo envelope) |
-| Antigravity IDE · Antigravity CLI (`agy`) | hook programático (jetski `PreToolUse`) | ✓ | ✓ | `antigravity` (vía env `ANTIGRAVITY_CONVERSATION_ID`) |
+| Antigravity IDE · Antigravity CLI (`agy`) | archivo de reglas ([notas](docs/development/antigravity-hooks-research.md)) | — | ✓ | `(untagged)` |
 | Codex CLI · Windsurf | solo archivo de reglas | — | ✓ | `(untagged)` |
 
 [Matriz completa, detalles y rutas de configuración por agente →](docs/support/agents.md)

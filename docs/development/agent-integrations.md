@@ -90,7 +90,7 @@ downstream `trs <cmd>` execution can attribute the run.
 | OpenCode | plugin template bakes the label | `opencode` |
 | Kilo Code | separate plugin template bakes the label | `kilo` |
 | Factory Droid | same wire format as Claude | `claude` (indistinguishable from Claude) |
-| Antigravity IDE / CLI | `ANTIGRAVITY_CONVERSATION_ID` env var (set by jetski) on a `PreToolUse` payload | `antigravity` |
+| Antigravity IDE / CLI | rules-only as of v0.6.6 ([why](antigravity-hooks-research.md)) | `(untagged)` |
 | Codex / Windsurf | rules-only, no programmatic signal | `(untagged)` |
 
 The shell treats leading `VAR=value` as a per-command env override
@@ -232,58 +232,48 @@ section below).
 
 | | |
 |---|---|
-| Type | Programmatic hook (Google jetski framework) |
-| Config (IDE) | `~/.gemini/antigravity-ide/hooks.json` |
-| Config (CLI) | `~/.gemini/antigravity-cli/hooks.json` |
-| Event | `PreToolUse` with `matcher: ".*"` (Claude/Codex envelope) |
-| Template | `ANTIGRAVITY_HOOKS` (shared by IDE + CLI) |
-| Tool name | shell tools (any `Bash`/`Execute`-like name — `.*` matches all) |
+| Type | Rules file (was programmatic hook, reverted in v0.6.6) |
+| Config (shared) | `~/.gemini/GEMINI.md` (sentinel-wrapped rules block) |
+| Template | `ANTIGRAVITY_RULES_SECTION` |
+| Tool name | n/a — no programmatic interception |
 
-**Background**: Google launched Antigravity 2.0 on 2026-05-19, rolling
-out a CLI (`agy`) alongside the rewrite of the desktop IDE. Both
-products are built on Google's **jetski** framework (the same hook
-system Codex uses), so they speak the Claude `PreToolUse` envelope —
-NOT Gemini's `BeforeTool`. Empirically validated against agy v1.0.1:
-the binary reads `hooks.json` files (not `settings.json`) and emits
-`loaded N named hooks from M hooks.json file(s)` on startup when the
-file is in one of its discovery paths.
-
-**v0.6.5 fix**: pre-v0.6.5 installs wrote `BeforeTool` to
-`~/.gemini/settings.json` thinking Antigravity shared the Gemini CLI
-harness. agy silently ignored that entry — the hook NEVER fired in
-Antigravity. The new install path targets each variant's
-`~/.gemini/antigravity-{ide,cli}/hooks.json` with the jetski
-PreToolUse envelope. `trs uninstall antigravity` sweeps the orphaned
-`BeforeTool` entry from `settings.json` as part of the upgrade.
+**v0.6.6 revert.** Antigravity (IDE + CLI/`agy`) is rules-only.
+Empirical testing against agy v1.0.1 showed user-defined entries in
+`~/.gemini/antigravity-{cli,ide}/hooks.json` load as **subagents**
+(via `invoke_subagent`), not as tool-call wrappers. Bash invocations
+go through `Step_RunCommand` and bypass the user-visible PreToolHook
+pipeline entirely. The full investigation lives at
+[`docs/development/antigravity-hooks-research.md`](antigravity-hooks-research.md).
 
 **Detection**:
 - IDE: `app_exists("Antigravity")` ∨ `~/.gemini/antigravity-ide/`
   exists ∨ legacy `~/.antigravity/`.
 - CLI: `in_path("agy")` ∨ `~/.gemini/antigravity-cli/` exists.
 
-**Attribution**: agy sets `ANTIGRAVITY_CONVERSATION_ID=<id>` on every
-hook invocation. `rewrite.rs::HookEvent::agent_label_for` checks this
-env var on Claude-shaped events and relabels as `antigravity` — so
-Antigravity runs no longer collide with Claude in
-`trs stats --by-agent`. IDE and CLI both label as `antigravity`
-(they're indistinguishable from the env var alone).
+**Attribution**: `(untagged)` in `trs stats --by-agent`. The hook
+never fires programmatically, so there is no `TRS_AGENT` signal to
+attach. Manual prefixes (`trs git status` typed by the agent or
+user) also land in `(untagged)`. Same posture as Codex/Windsurf.
 
-**Pre-v0.6.4 migration**: the previous trs Antigravity install wrote
-`.agent/rules/antigravity-trs-rules.md` per project. The new IDE
-does NOT read that path. `trs uninstall antigravity` sweeps it up as
-part of the candidate-paths cleanup.
+**Migration cleanup**. `trs init` and `trs uninstall` both sweep:
+- v0.6.5 hooks.json at `~/.gemini/antigravity-{cli,ide}/hooks.json`
+- v0.6.4 BeforeTool entry in `~/.gemini/settings.json`
+- Pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md` per-project file
+
+**Re-enable plan.** When Google ships user-configurable PreToolHook
+for Bash, restoring the programmatic integration is a mechanical
+revert of branch `fix/antigravity-rules-only-revert`. See the
+[research doc](antigravity-hooks-research.md#what-unblocks-re-enabling-the-integration)
+for the exact checklist.
 
 **Quirks**:
 - The desktop IDE is VS Code-based. Older Antigravity 1.x spawned
   its tool-shell as non-interactive zsh and only read `~/.zshenv`;
   this could surface as `command not found: trs` if `~/.local/bin`
   was only added to `.zshrc`. install.sh recommends `~/.zshenv` for
-  zsh users (fixed in `6f84f62`). Antigravity 2.0 still inherits
-  this constraint when invoked from a fresh shell.
-- agy also reads `~/.gemini/hooks.json` (the un-suffixed location).
-  We don't write there to avoid colliding with users who want to
-  scope hooks per-tool; if you want one hook to apply to both IDE and
-  CLI, manually copy the config to `~/.gemini/hooks.json`.
+  zsh users (fixed in `6f84f62`, plus an explicit warning added in
+  v0.6.6 for users who already have `.local/bin` in `.zshrc` only).
+  Antigravity 2.0 inherits this constraint.
 
 ### Windsurf
 

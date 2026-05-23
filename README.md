@@ -115,7 +115,7 @@ Ten agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, 
 | Claude Code · Gemini · Cursor | programmatic hook | ✓ | ✓ | `claude` / `gemini` / `cursor` |
 | OpenCode · Kilo Code | plugin template | ✓ | ✓ | `opencode` / `kilo` |
 | Factory Droid | programmatic hook | ✓ | ✓ | `claude` (shares envelope) |
-| Antigravity IDE · Antigravity CLI (`agy`) | programmatic hook (jetski `PreToolUse`) | ✓ | ✓ | `antigravity` (via `ANTIGRAVITY_CONVERSATION_ID` env) |
+| Antigravity IDE · Antigravity CLI (`agy`) | rules file ([see notes](docs/development/antigravity-hooks-research.md)) | — | ✓ | `(untagged)` |
 | Codex CLI · Windsurf | rules file only | — | ✓ | `(untagged)` |
 
 [Full compatibility matrix, caveats, and per-agent config paths →](docs/support/agents.md)

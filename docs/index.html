@@ -883,7 +883,7 @@
           <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Claude Code · Gemini · Cursor</td><td style="padding: 8px;">programmatic hook</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">claude</code> / <code class="inline">gemini</code> / <code class="inline">cursor</code></td></tr>
           <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">OpenCode · Kilo Code</td><td style="padding: 8px;">plugin template</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">opencode</code> / <code class="inline">kilo</code></td></tr>
           <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Factory Droid</td><td style="padding: 8px;">programmatic hook</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">claude</code> (shared envelope)</td></tr>
-          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Antigravity IDE · Antigravity CLI (<code class="inline">agy</code>)</td><td style="padding: 8px;">programmatic hook (jetski <code class="inline">PreToolUse</code>)</td><td style="text-align: center; padding: 8px;">✓</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">antigravity</code> (via <code class="inline">ANTIGRAVITY_CONVERSATION_ID</code>)</td></tr>
+          <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 8px;">Antigravity IDE · Antigravity CLI (<code class="inline">agy</code>)</td><td style="padding: 8px;">rules file (<a href="https://github.com/dPeluChe/trs/blob/main/docs/development/antigravity-hooks-research.md">why</a>)</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
           <tr><td style="padding: 8px;">Codex CLI · Windsurf</td><td style="padding: 8px;">rules file only</td><td style="text-align: center; padding: 8px;">&mdash;</td><td style="text-align: center; padding: 8px;">✓</td><td style="padding: 8px;"><code class="inline">(untagged)</code></td></tr>
         </tbody>
       </table>
@@ -1288,7 +1288,7 @@ ad55480 feat(init): smart JSON merge
     <div class="features-grid" style="margin-top: 24px;">
       <div class="feature">
         <div class="feature-title">All ten agents covered</div>
-        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, Windsurf, Antigravity IDE, Antigravity CLI. The Antigravity pair (IDE + <code>agy</code>) runs on Google's jetski framework — v0.6.5 ships the corrected <code>PreToolUse</code> + <code>hooks.json</code> integration.</div>
+        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, Windsurf, Antigravity IDE, Antigravity CLI. The Antigravity pair (IDE + <code>agy</code>) is rules-only as of v0.6.6 — agy v1.0.1 doesn't yet expose user-configurable PreTool hooks (<a href="https://github.com/dPeluChe/trs/blob/main/docs/development/antigravity-hooks-research.md">research</a>).</div>
       </div>
       <div class="feature">
         <div class="feature-title">Check-first by default</div>
