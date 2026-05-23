@@ -234,6 +234,7 @@ impl Router {
             | Commands::Upgrade { .. }
             | Commands::DebugInfo { .. }
             | Commands::Benchmark { .. }
+            | Commands::History { .. }
             | Commands::Ingest { .. } => {
                 // These are handled in main.rs before reaching the router
                 Ok(())

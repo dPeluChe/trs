@@ -286,9 +286,39 @@ ok "installed $BIN_NAME $version to $INSTALL_DIR/$BIN_NAME"
 
 # PATH check — with pick_install_dir's zero-config default, this should
 # rarely fire. When it does, print the exact line the user needs to add.
+#
+# zsh sub-check: even when $PATH is correct for the current (interactive)
+# shell, IDE-spawned non-interactive shells (Antigravity, Cursor, VS Code,
+# Windsurf, Claude Code in some configs) only source ~/.zshenv. If the
+# user added $INSTALL_DIR to ~/.zshrc but not ~/.zshenv, agents will hit
+# "command not found: trs" — silently, with no install error to chase.
+zshenv_has_path() {
+    case "${SHELL:-}" in
+        */zsh) ;;
+        *) return 1 ;;
+    esac
+    [ -f "$HOME/.zshenv" ] || return 1
+    # Match either an explicit `export PATH=` referencing $INSTALL_DIR or
+    # the literal directory anywhere in the file. Avoid false positives by
+    # not matching commented lines.
+    grep -E -v '^[[:space:]]*#' "$HOME/.zshenv" 2>/dev/null \
+        | grep -q -F "$INSTALL_DIR"
+}
+
 if already_in_path; then
     ok "$INSTALL_DIR is in PATH"
-    printf '\n%bDone.%b Run: %btrs doctor%b\n\n' "$C_GREEN" "$C_RESET" "$C_CYAN" "$C_RESET"
+    # zsh IDE-spawn pitfall: $PATH is fine for interactive shells but
+    # silent failure in IDE-internal terminals if .zshenv doesn't have it.
+    if [ "${SHELL##*/}" = "zsh" ] && ! zshenv_has_path; then
+        printf '\n'
+        warn "zsh: $INSTALL_DIR is in your PATH for this shell, but not in ~/.zshenv."
+        printf '  IDE-spawned shells (Antigravity, Cursor, VS Code, Windsurf, Claude Code)\n'
+        printf '  only source %b~/.zshenv%b — they will see %bcommand not found: trs%b.\n' \
+            "$C_BOLD" "$C_RESET" "$C_RED" "$C_RESET"
+        printf '  Add this line to %b~/.zshenv%b to fix:\n' "$C_BOLD" "$C_RESET"
+        printf '    %bexport PATH="%s:$PATH"%b\n\n' "$C_CYAN" "$INSTALL_DIR" "$C_RESET"
+    fi
+    printf '%bDone.%b Run: %btrs doctor%b\n\n' "$C_GREEN" "$C_RESET" "$C_CYAN" "$C_RESET"
 else
     append_path_instructions
     printf '%bDone.%b After reloading your shell, try: %btrs doctor%b\n\n' \

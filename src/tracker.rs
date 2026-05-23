@@ -71,12 +71,19 @@ pub(crate) fn home_dir() -> Option<PathBuf> {
 /// every failure path silently returns so logging never affects the
 /// caller. Inline append is faster than spawning a thread for one
 /// small write.
+///
+/// Rotates the active file into a month-stamped archive
+/// (`history.YYYY-MM.jsonl`) before the first append of a new month.
+/// `read_history()` transparently reads active + archives so stats
+/// stay correct across rotation.
 fn append_history_entry(entry: &HistoryEntry) {
     let Some(dir) = dirs_path() else { return };
     if !dir.exists() && fs::create_dir_all(&dir).is_err() {
         return;
     }
     let path = dir.join("history.jsonl");
+
+    maybe_rotate_active(&path, entry.ts);
 
     let Ok(mut line) = serde_json::to_string(entry) else {
         return;
@@ -87,6 +94,74 @@ fn append_history_entry(entry: &HistoryEntry) {
         return;
     };
     let _ = file.write_all(line.as_bytes());
+}
+
+/// Rotate `history.jsonl` into `history.YYYY-MM.jsonl` when the
+/// month-of-the-first-entry doesn't match the month of `now_ts`.
+///
+/// Two-tier check keeps the hot path cheap:
+///   1. stat `mtime`. If mtime is in the same month as now, the file
+///      was touched this month — nothing to rotate.
+///   2. Only when mtime is older than the current month, slurp the
+///      first valid JSONL line to read the oldest entry's timestamp
+///      and use its month for the archive name.
+///
+/// The first rotation after upgrade can produce an archive that
+/// spans multiple months (the legacy file accumulated cross-month
+/// data). Subsequent rotations are clean monthly buckets.
+fn maybe_rotate_active(path: &Path, now_ts: u64) {
+    if !path.exists() {
+        return;
+    }
+    let now_month = month_key_from_ts(now_ts);
+
+    if let Ok(meta) = fs::metadata(path) {
+        if let Ok(mtime) = meta.modified() {
+            if let Ok(d) = mtime.duration_since(UNIX_EPOCH) {
+                if month_key_from_ts(d.as_secs()) == now_month {
+                    return;
+                }
+            }
+        }
+    }
+
+    let Some(first_ts) = peek_first_entry_ts(path) else {
+        return;
+    };
+    let first_month = month_key_from_ts(first_ts);
+    if first_month == now_month {
+        return;
+    }
+    let archived = path.with_file_name(format!("history.{}.jsonl", first_month));
+    // Best-effort: if rename fails, leave the file in place. Better
+    // than nuking telemetry on a transient FS error.
+    let _ = fs::rename(path, &archived);
+}
+
+/// Read just the first valid `HistoryEntry` line's `ts` field. Streams
+/// the file rather than loading it entirely, so an 8MB history.jsonl
+/// only reads ~200 bytes for the check.
+fn peek_first_entry_ts(path: &Path) -> Option<u64> {
+    use std::io::BufRead;
+    let file = fs::File::open(path).ok()?;
+    let reader = std::io::BufReader::new(file);
+    for line in reader.lines().map_while(Result::ok) {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Ok(entry) = serde_json::from_str::<HistoryEntry>(&line) {
+            return Some(entry.ts);
+        }
+    }
+    None
+}
+
+/// `YYYY-MM` key derived from a unix timestamp (UTC). Used both for
+/// archive filenames and for cheap month-equality comparisons.
+fn month_key_from_ts(ts: u64) -> String {
+    use time::OffsetDateTime;
+    let dt = OffsetDateTime::from_unix_timestamp(ts as i64).unwrap_or(OffsetDateTime::UNIX_EPOCH);
+    format!("{:04}-{:02}", dt.year(), u8::from(dt.month()))
 }
 
 /// Open a user-private file for append-create. On Unix, sets mode 0600 on
@@ -214,24 +289,137 @@ pub fn log_bypass(cmd: &str, agent: Option<&str>) {
     });
 }
 
-/// Read all history entries from `~/.trs/history.jsonl`.
+/// Read all history entries from `~/.trs/history.jsonl` PLUS any
+/// monthly archives (`history.YYYY-MM.jsonl`) that share the same
+/// directory. Archives come first (chronologically older) and the
+/// active file comes last so the merged Vec stays chronologically
+/// ordered the same way single-file history did pre-rotation.
 ///
-/// Returns an empty Vec if the file doesn't exist or can't be read.
+/// Returns an empty Vec if the dir doesn't exist or can't be read.
 /// Malformed lines are silently skipped.
 pub fn read_history() -> Vec<HistoryEntry> {
-    let Some(path) = history_path() else {
+    let Some(active) = history_path() else {
         return Vec::new();
     };
-
-    let Ok(contents) = fs::read_to_string(&path) else {
-        return Vec::new();
+    let dir = match active.parent() {
+        Some(p) => p.to_path_buf(),
+        None => return Vec::new(),
     };
 
+    let mut archives: Vec<PathBuf> = fs::read_dir(&dir)
+        .ok()
+        .map(|read| {
+            read.filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| is_history_archive(p))
+                .collect()
+        })
+        .unwrap_or_default();
+    // Filename sort gives chronological order because `YYYY-MM` is
+    // lexicographically equivalent to date order.
+    archives.sort();
+
+    let mut entries: Vec<HistoryEntry> = Vec::new();
+    for archive in archives {
+        entries.extend(read_jsonl(&archive));
+    }
+    entries.extend(read_jsonl(&active));
+    entries
+}
+
+fn read_jsonl(path: &Path) -> Vec<HistoryEntry> {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
     contents
         .lines()
         .filter(|line| !line.trim().is_empty())
         .filter_map(|line| serde_json::from_str::<HistoryEntry>(line).ok())
         .collect()
+}
+
+/// True when `path`'s filename matches `history.YYYY-MM.jsonl` (the
+/// monthly archive pattern). The legacy first-rotation archive uses
+/// the same pattern so this catches it too. Active `history.jsonl` is
+/// excluded — callers add it separately.
+fn is_history_archive(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    if name == "history.jsonl" {
+        return false;
+    }
+    // history.YYYY-MM.jsonl → "history" + ".YYYY-MM" + ".jsonl"
+    if let Some(middle) = name
+        .strip_prefix("history.")
+        .and_then(|s| s.strip_suffix(".jsonl"))
+    {
+        // YYYY-MM: 4 digits, dash, 2 digits.
+        if middle.len() == 7 && middle.as_bytes()[4] == b'-' {
+            let (year, month) = middle.split_at(4);
+            let dash_month = &month[1..];
+            return year.chars().all(|c| c.is_ascii_digit())
+                && dash_month.chars().all(|c| c.is_ascii_digit());
+        }
+    }
+    false
+}
+
+/// Delete monthly history archives older than `days` days. Returns the
+/// number of files removed plus the total bytes freed. The active
+/// `history.jsonl` is never touched — only archives.
+///
+/// "Older than N days" means: the archive's month ended more than N
+/// days before today. So `--older-than 90` on May 22 2026 removes
+/// archives for months ending on or before Feb 21 2026 (Feb, Jan, etc.).
+pub fn prune_archives(days: u64, dry_run: bool) -> (usize, u64) {
+    let Some(active) = history_path() else {
+        return (0, 0);
+    };
+    let dir = match active.parent() {
+        Some(p) => p.to_path_buf(),
+        None => return (0, 0),
+    };
+    let now_ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let cutoff_ts = now_ts.saturating_sub(days * 86_400);
+    let cutoff_month = month_key_from_ts(cutoff_ts);
+
+    let Ok(read) = fs::read_dir(&dir) else {
+        return (0, 0);
+    };
+    let mut removed = 0usize;
+    let mut freed = 0u64;
+    for entry in read.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if !is_history_archive(&path) {
+            continue;
+        }
+        let Some(month_key) = path.file_name().and_then(|n| n.to_str()).and_then(|n| {
+            n.strip_prefix("history.")
+                .and_then(|s| s.strip_suffix(".jsonl"))
+        }) else {
+            continue;
+        };
+        // Archive month is strictly older than the cutoff month
+        // (lexicographic compare works because `YYYY-MM`).
+        if month_key >= cutoff_month.as_str() {
+            continue;
+        }
+        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+        if dry_run {
+            removed += 1;
+            freed += size;
+            continue;
+        }
+        if fs::remove_file(&path).is_ok() {
+            removed += 1;
+            freed += size;
+        }
+    }
+    (removed, freed)
 }
 
 /// Read history entries filtered to the current working directory.
@@ -263,6 +451,94 @@ pub fn format_bytes_human(bytes: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn month_key_from_ts_pads_zero() {
+        // 2026-01-15 12:00:00 UTC → ts = 1768564800
+        let key = month_key_from_ts(1_768_564_800);
+        assert_eq!(key, "2026-01");
+    }
+
+    #[test]
+    fn month_key_from_ts_handles_december() {
+        // 2026-12-31 23:59:59 UTC → ts = 1798761599
+        let key = month_key_from_ts(1_798_761_599);
+        assert_eq!(key, "2026-12");
+    }
+
+    #[test]
+    fn is_history_archive_recognizes_monthly_pattern() {
+        assert!(is_history_archive(Path::new("/x/history.2026-05.jsonl")));
+        assert!(is_history_archive(Path::new("history.2024-12.jsonl")));
+        assert!(!is_history_archive(Path::new("history.jsonl")));
+        assert!(!is_history_archive(Path::new("history.foo.jsonl")));
+        assert!(!is_history_archive(Path::new("history.2026.jsonl")));
+        // 8-char middle → 4+1+3 is wrong shape; reject
+        assert!(!is_history_archive(Path::new("history.2026-005.jsonl")));
+        // Pre-v0.5.1 dump uses a non-month suffix — must NOT be picked
+        // up as an archive (we don't want stats to merge it).
+        assert!(!is_history_archive(Path::new("history-pre-v0.5.1.jsonl")));
+    }
+
+    #[test]
+    fn maybe_rotate_active_renames_when_month_differs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let active = tmp.path().join("history.jsonl");
+        // Write one entry timestamped 2026-01-15.
+        let mut f = fs::File::create(&active).unwrap();
+        let entry = HistoryEntry {
+            ts: 1_768_564_800, // 2026-01-15 UTC
+            cmd: "git status".into(),
+            in_bytes: 100,
+            out_bytes: 20,
+            saved_pct: 80,
+            ms: 5,
+            cwd: "/tmp".into(),
+            agent: None,
+            bypass: None,
+        };
+        writeln!(f, "{}", serde_json::to_string(&entry).unwrap()).unwrap();
+        drop(f);
+        // Force mtime to be much earlier than the rotation check by
+        // setting it artificially old via filetime — not available in
+        // std. Instead, pass a now_ts in a different month so the
+        // first-line peek decides.
+        let now_in_april = 1_775_385_600; // 2026-04-02 UTC
+        maybe_rotate_active(&active, now_in_april);
+
+        // Active file should be gone, replaced by the archive named
+        // after the OLDEST entry's month.
+        assert!(!active.exists(), "active should have been renamed");
+        let archived = tmp.path().join("history.2026-01.jsonl");
+        assert!(archived.exists(), "expected {:?}", archived);
+    }
+
+    #[test]
+    fn maybe_rotate_active_is_noop_in_same_month() {
+        let tmp = tempfile::tempdir().unwrap();
+        let active = tmp.path().join("history.jsonl");
+        let ts = 1_768_564_800; // 2026-01-15
+        let entry = HistoryEntry {
+            ts,
+            cmd: "echo".into(),
+            in_bytes: 1,
+            out_bytes: 1,
+            saved_pct: 0,
+            ms: 0,
+            cwd: "/".into(),
+            agent: None,
+            bypass: None,
+        };
+        let mut f = fs::File::create(&active).unwrap();
+        writeln!(f, "{}", serde_json::to_string(&entry).unwrap()).unwrap();
+        drop(f);
+
+        // Append two days later — same month, must not rotate.
+        let later = ts + 2 * 86_400;
+        maybe_rotate_active(&active, later);
+        assert!(active.exists());
+        assert!(!tmp.path().join("history.2026-01.jsonl").exists());
+    }
 
     #[test]
     fn redact_curl_basic_auth() {

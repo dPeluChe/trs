@@ -483,7 +483,9 @@ fn today_entries(entries: &[HistoryEntry], offset: time::UtcOffset) -> Vec<&Hist
         .collect()
 }
 
-/// Print the last `limit` history entries (oldest first within the window).
+/// Print the last `limit` history entries, **newest first**. Matches
+/// the convention of `git log`, `journalctl`, `history`, and every other
+/// "recent activity" view a user expects to scroll from top.
 fn print_history(entries: &[HistoryEntry], limit: usize) {
     let start = entries.len().saturating_sub(limit);
     let recent = &entries[start..];
@@ -498,7 +500,7 @@ fn print_history(entries: &[HistoryEntry], limit: usize) {
         if today_count == 1 { "" } else { "s" }
     );
     println!("{}", "\u{2500}".repeat(64));
-    for entry in recent {
+    for entry in recent.iter().rev() {
         let saved = entry.in_bytes.saturating_sub(entry.out_bytes);
         let pct = if entry.in_bytes == 0 {
             0
@@ -613,8 +615,12 @@ fn print_json(
     if include_history {
         let offset = local_offset();
         let start = entries.len().saturating_sub(history_limit);
+        // Newest first — same ordering as the text-mode `print_history`
+        // output, so downstream consumers of `--json` see the same shape
+        // they'd see scrolling the human view.
         let recent: Vec<serde_json::Value> = entries[start..]
             .iter()
+            .rev()
             .map(|e| {
                 serde_json::json!({
                     "ts": e.ts,
