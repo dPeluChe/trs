@@ -92,6 +92,88 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ---
 
+## Phase 2.6 — Internal architecture (May 2026 feedback)
+
+Decoupling pass: "the project doesn't need more surface, it needs less internal
+coupling and better quality measurement." Command knowledge was spread across
+classifier / rewrite_decide / classifier_exec / stats_coverage.
+
+- [x] **Unify command registry** — `src/command_registry.rs` is now the single
+  source of truth for per-command facts (aliases, rewrite/known flags,
+  keep_ratio, stderr policy). keep_ratio / combine_stderr / is_rewrite_command /
+  is_known_binary all read from it. Behavior-preserving, golden-tested.
+- [ ] **Extract `ExecutionPipeline`** from `classifier_exec.rs` — pull
+  `run_command`, `combine_streams`, `parse_output`, `fallback`, `track`, `tee`
+  out of the 184-line `execute_and_parse` (5 returns each duplicating
+  track+tee+exit). Pure refactor, lowers blast radius. Next natural step now
+  that the registry lands.
+- [ ] **Quality harness** — measure more than bytes: tokens saved, errors
+  preserved, paths preserved, suggested-commands preserved, raw recoverable.
+  This is what lets us improve parsers with evidence instead of intuition.
+- [ ] **Per-command config** — `[commands.cargo-test] max_failures = 20,
+  preserve_backtraces = true`. Build on the existing `Limits`/`Hooks` config and
+  the new registry. Granularity on top of the base config.
+- [ ] **`trs diff <cmd>`** — show raw vs compact and exactly what was dropped
+  (errors / paths / lines). Most-valuable feature per feedback; additive, does
+  not touch the hot path. NOTE: competitor `chop` already ships `chop diff <cmd>`
+  — validates the demand.
+- [ ] **Fix environmental doctor tests** — `check_config_dir` /
+  `check_history_writable` depend on a writable real `$HOME` (via
+  `tracker::home_dir()`); a test must not depend on the real home. Inject a temp
+  HOME / path so the suite is hermetic.
+
+---
+
+## Phase 3.5 — Codex integration (stale, needs rework)
+
+Field finding (May 2026): the Codex integration is out of date in the code.
+
+- [ ] **Re-enable Codex PreToolUse hook for `codex >= 0.129/0.130`.** The repo
+  asserts Codex doesn't support `updatedInput`
+  (`src/init_templates.rs`, `src/init.rs`, `docs/features/init.md`), but current
+  official Codex docs say `PreToolUse` *does* accept `updatedInput.command` with
+  `permissionDecision: "allow"` (https://developers.openai.com/codex/hooks).
+  Today Codex relies on rules/manual-prefix, not a real hook.
+- [ ] **Keep AGENTS.md as fallback + output-saver only** once the hook works.
+- [ ] **`doctor`: warn when modern Codex exists without a `trs rewrite` hook.**
+  Currently doctor only flags *legacy* orphan entries; it doesn't notice a modern
+  Codex that *could* use a hook but has none.
+- [ ] **`uninstall`: don't delete valid Codex hooks** by assuming they're legacy.
+- [ ] **Output-saver dedup**: a duplicate "Output saver" section was observed in
+  `~/.codex/AGENTS.md` — installer should be idempotent / detect existing block.
+- [ ] **ChatGPT**: no direct `trs` install path for the ChatGPT desktop app (no
+  shell-hook contract). Don't promise "ChatGPT" support except via Codex / Codex
+  CLI. Audit any docs that imply otherwise.
+
+---
+
+## Phase 2.5b — Competitive landscape (May 2026)
+
+Not every competitor competes at the same layer.
+
+- Direct rivals to the core: **RTK** (PreToolUse hook, transparent rewrite,
+  `gain`/`discover`/`session`, config, tee recovery — very close to trs core,
+  https://www.rtk-ai.app/docs/) and **chop** (Claude/Gemini/Codex, 50+ filters,
+  `.chop.yml`, SQLite tracking, and `chop diff <cmd>`, https://getchop.run/).
+- `trs ingest` competes with **Repomix** (MCP, local/remote pack, grep/read,
+  Tree-sitter compression, secret scanning — https://repomix.com/guide/mcp-server),
+  not with shell-output compression.
+- **Edgee / Tamp** compete one layer up as prompt/API proxies (tool-result
+  reduction, tool-surface trimming) — https://www.edgee.ai/token-compression,
+  https://tamp.dev/whitepaper.pdf.
+
+`trs ingest` is already well-differentiated (`--changed`, `--since-last`,
+`--fresh`, `--deps`, `--symbols`, budget-aware packing, HEAD-keyed local cache).
+Improvements vs Repomix:
+
+- [ ] **`trs ingest --grep <pattern>`** over saved digests.
+- [ ] **Secret scanning before including files** in a digest.
+- [ ] **`--audit-loss` mode** — compare full vs signatures (full-vs-compact for
+  ingest; mirrors the `trs diff` idea at repo scale).
+- [ ] **Docs**: make clear `trs ingest` is *incremental*, not just a repo packer.
+
+---
+
 ## Phase 4 — Analytics & Configuration
 
 - [ ] `trs stats --graph` — ASCII bar chart (30-day view)
