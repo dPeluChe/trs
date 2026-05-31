@@ -186,8 +186,8 @@ tiers:
    `poetry run  count=769  avg_in=11186  %low=51%`.
 2. **Unrecognized binaries** — commands trs has no dedicated parser
    for. Falls through to generic ANSI / whitespace compression
-   (~30-40%). Adding the binary to `REWRITE_PREFIXES` ensures even
-   that minimum kicks in.
+   (~30-40%). Adding a row for the binary in `src/command_registry.rs`
+   (the unified command registry) ensures even that minimum kicks in.
 3. **Well-covered** — top by volume, low `%low` rate. Confirmation
    the existing parsers are doing their job.
 

@@ -103,13 +103,20 @@ impl ParseHandler {
 ### 3. Wire it up
 
 - `src/router/handlers/parse/mod.rs` — add `pub(crate) mod {tool};` and the dispatch match arm
-- `src/classifier.rs` — add the auto-detect pattern in `classify_command()`
+- `src/classifier.rs` — add the subcommand → parser dispatch in `classify_command()`
 - `src/classifier.rs` — add to `inject_file_path()`
-- `src/classifier_exec.rs` — add keep_ratio for the command
+- `src/command_registry.rs` — add **one row** to `REGISTRY` with the command's
+  flat facts: aliases, `rewrite`/`known` flags, `keep_ratio`, and stderr policy.
+  This is the single source of truth — keep_ratio, stderr handling, rewrite
+  eligibility and coverage stats all read from it, so you no longer edit four
+  files to add a command.
 
 ### 4. Handle stderr (if needed)
 
-Some tools output to stderr (clippy, tsc). Check `classifier_exec.rs` for the `is_lint` pattern — add your tool there if its output goes to stderr.
+Some tools write their primary output (errors, warnings, results) to stderr
+(clippy, eslint, gcc). Set the `stderr` field on the command's `REGISTRY` row
+in `src/command_registry.rs` — `Stderr::Always`, or `Stderr::Subcmds(&[...])`
+for subcommand-scoped cases like `cargo build` vs `cargo test`.
 
 ### 5. Add tests
 
@@ -158,7 +165,9 @@ See [AGENTS.md](AGENTS.md) for the full architecture diagram. Key directories:
 
 ```
 src/
-├── classifier.rs          # Which parser handles which command
+├── command_registry.rs    # Single source of truth: per-command facts
+│                          #   (aliases, rewrite/known, keep_ratio, stderr)
+├── classifier.rs          # Subcommand → parser dispatch
 ├── router/handlers/parse/ # All input parsers live here
 ├── router/handlers/       # Built-in tools (search, replace, json, read...)
 └── formatter/             # 6 output formats (compact, json, csv, tsv, agent, raw)

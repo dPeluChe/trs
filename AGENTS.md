@@ -68,7 +68,9 @@ src/
 ├── cli.rs                     # Cli struct, OutputFormat enum, flag precedence
 ├── commands.rs                # Commands enum, TestRunner
 ├── commands_parse.rs          # ParseCommands enum
-├── classifier.rs              # Auto-detect command → parser routing
+├── command_registry.rs        # Single source of truth: per-command facts
+│                              #   (aliases, rewrite/known, keep_ratio, stderr)
+├── classifier.rs              # Subcommand → parser dispatch (reads registry)
 ├── classifier_exec.rs         # Execute → parse → format pipeline
 ├── classifier_transfer.rs     # Compact git push/pull/fetch output
 ├── config.rs                  # Config system (~/.trs/config.toml)
