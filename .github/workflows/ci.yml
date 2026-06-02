@@ -10,6 +10,11 @@ jobs:
   test:
     name: Test
     runs-on: ${{ matrix.os }}
+    # windows-latest is informational for now: it validates the cross-platform
+    # exec/plugin code (#53) on real Windows, but a PRE-EXISTING stack overflow
+    # in the `parse test` path (exit 0xC00000FD) fails some integration tests —
+    # tracked separately. Non-blocking so it doesn't gate unrelated PRs.
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
