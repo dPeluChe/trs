@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use crate::init::{file_has_any_trs_marker, has_trs_marker, home_dir, HookSpec, InstallOpts};
 use crate::init_collision;
-use crate::init_templates::{ANTIGRAVITY_RULES_SECTION, CODEX_AGENTS_SECTION};
+use crate::init_templates::{ANTIGRAVITY_RULES_SECTION, CODEX_AGENTS_SECTION, CODEX_HOOKS};
 
 /// Install via the data-driven `HookSpec`. JSON targets merge; non-JSON
 /// targets create-only (refuse to overwrite foreign content).
@@ -38,8 +38,19 @@ pub(crate) fn install_from_spec(spec: &HookSpec, opts: InstallOpts) -> Result<St
 pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> {
     if opts.global {
         if let Ok(home) = home_dir() {
-            let hooks_path = home.join(".codex").join("hooks.json");
-            if let Err(e) = scrub_legacy_codex_hook(&hooks_path, opts.dry_run) {
+            let codex_dir = home.join(".codex");
+            let hooks_path = codex_dir.join("hooks.json");
+            if crate::codex::rewrite_hook_available() {
+                // codex >= 0.134 honors updatedInput — install the real
+                // PreToolUse rewrite hook (merge preserves the user's other
+                // hooks; idempotent).
+                match merge_json_hook(&codex_dir, &hooks_path, CODEX_HOOKS, opts) {
+                    Ok(msg) => println!("  codex hook: {}", msg),
+                    Err(e) => eprintln!("  warning: could not install codex hook: {}", e),
+                }
+            } else if let Err(e) = scrub_legacy_codex_hook(&hooks_path, opts.dry_run) {
+                // Older/undetectable codex rejects updatedInput — scrub any
+                // orphan trs entry so it doesn't error on every tool call.
                 eprintln!("  warning: could not scrub {}: {}", hooks_path.display(), e);
             }
         }

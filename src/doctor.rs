@@ -132,11 +132,11 @@ pub(crate) fn run_checks() -> Vec<Check> {
     ]
 }
 
-/// Flag legacy `trs rewrite` entries in `~/.codex/hooks.json`. Codex versions
-/// vary in `updatedInput` support — orphans from pre-v0.6.x installs cause
-/// "PreToolUse hook returned unsupported updatedInput" errors on every tool
-/// call. We no longer install Codex hooks; this surfaces the leftover so
-/// users know to run `trs uninstall codex`.
+/// Validate the `~/.codex/hooks.json` trs entry against the codex version.
+/// On codex-cli >= 0.134 the `trs rewrite` PreToolUse hook is the real,
+/// working integration (passes). On older builds `updatedInput` is rejected
+/// ("unsupported updatedInput" on every tool call), so a trs entry there is
+/// an orphan — warn and point at `trs uninstall codex`.
 fn check_codex_hooks_orphan() -> Check {
     use std::fs;
     let Ok(home) = crate::init::home_dir() else {
@@ -151,21 +151,33 @@ fn check_codex_hooks_orphan() -> Check {
         Err(_) => return Check::pass("codex hooks.json", "unreadable — skipped".to_string()),
     };
     if !content.contains("trs rewrite") {
-        return Check::pass("codex hooks.json", "no orphan trs entry".to_string());
+        return Check::pass("codex hooks.json", "no trs entry".to_string());
     }
-    let ver = crate::codex::detect_version()
-        .map(|(a, b, c)| format!(" (detected codex-cli {a}.{b}.{c})"))
-        .unwrap_or_default();
+    let version = crate::codex::detect_version();
+    let ver_label = version
+        .map(|(a, b, c)| format!("codex-cli {a}.{b}.{c}"))
+        .unwrap_or_else(|| "version unknown".to_string());
+    // On 0.134+ the trs PreToolUse hook is the real, working integration —
+    // not an orphan. Only flag it on builds that reject `updatedInput`.
+    if version.is_some_and(crate::codex::rewrite_hook_supported) {
+        return Check::pass(
+            "codex hooks.json",
+            format!("trs rewrite hook active ({ver_label})"),
+        );
+    }
     Check::warn(
         "codex hooks.json",
-        format!("legacy `trs rewrite` entry in {}{}", path.display(), ver),
+        format!(
+            "`trs rewrite` entry in {} but {}",
+            path.display(),
+            ver_label
+        ),
     )
     .with_hint(
-        "Codex's PreToolUse still rejects `updatedInput` command rewrite \
-         (\"unsupported updatedInput\" errors) — documented but not yet \
-         implemented in the runtime (openai/codex#18491), so trs stays \
-         rules-only. Run `trs uninstall codex` to scrub, or re-run \
-         `trs init codex --global` (auto-scrubs).",
+        "This codex build doesn't apply PreToolUse `updatedInput` rewrites \
+         (needs >= 0.134), so the hook errors with \"unsupported \
+         updatedInput\". Update codex, or run `trs uninstall codex` to scrub \
+         and fall back to AGENTS.md rules.",
     )
 }
 

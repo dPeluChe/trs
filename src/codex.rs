@@ -1,24 +1,27 @@
 //! Codex CLI version awareness.
 //!
 //! Codex grew a `PreToolUse`/`PostToolUse` hook framework in v0.117.0
-//! (Mar 2026), and v0.123.0 added `apply_patch` events + the `tool_name`
-//! field. The piece trs needs to route shell output through a hook —
-//! returning `updatedInput.command` from `PreToolUse` — is *documented*
-//! (<https://developers.openai.com/codex/hooks>) but **not implemented in
-//! the runtime**: it rejects the payload with "PreToolUse hook returned
-//! unsupported updatedInput". Tracking: <https://github.com/openai/codex/issues/18491>.
+//! (Mar 2026), and the `updatedInput.command` rewrite trs needs landed in
+//! PR openai/codex#20527 (merged 2026-05-12), shipping in the 0.13x line.
+//! Verified end-to-end against codex-cli 0.136.0: a `PreToolUse` hook
+//! returning `{"hookSpecificOutput":{"permissionDecision":"allow",
+//! "updatedInput":{"command":"…"}}}` rewrites the executed command.
 //!
-//! Until that lands, Codex stays rules-only (AGENTS.md prefix guidance).
-//! This module centralizes the version gate so flipping it on later is a
-//! one-line change: set [`REWRITE_HOOK_MIN_VERSION`] to the first release
-//! that implements the rewrite and the install path turns on by version.
+//! (Note: pre-0.134 builds — and `codex exec` non-interactive mode, which
+//! doesn't dispatch `PreToolUse` at all — reject/ignore the rewrite. The
+//! `permissionDecision:"allow"` field is mandatory; without it the runtime
+//! errors "unsupported updatedInput". The broader openai/codex#18491 stays
+//! open for `read_file`/`grep` dispatch, which trs doesn't use.)
+//!
+//! [`REWRITE_HOOK_MIN_VERSION`] gates the hook install on version so older
+//! installs fall back to rules-only.
 
-/// First `codex-cli` version that implements `updatedInput` command rewrite
-/// in `PreToolUse` hooks. `None` = not yet implemented in any release
-/// (tracked in openai/codex#18491). When OpenAI ships it, set
-/// `Some((major, minor, patch))` — [`rewrite_hook_supported`] then returns
-/// true for that version onward and the hook install path can engage.
-pub(crate) const REWRITE_HOOK_MIN_VERSION: Option<(u32, u32, u32)> = None;
+/// First `codex-cli` version known to implement `updatedInput` command
+/// rewrite in `PreToolUse` hooks. Conservative: PR #20527 merged 2026-05-12
+/// and 0.134.0 (2026-05-26) is the first release we can confirm postdates
+/// it; pre-0.134 builds fall back to rules-only. `None` would disable the
+/// hook entirely.
+pub(crate) const REWRITE_HOOK_MIN_VERSION: Option<(u32, u32, u32)> = Some((0, 134, 0));
 
 /// Parse a `codex --version` line into `(major, minor, patch)`.
 /// Accepts shapes like `codex-cli 0.130.0`, `codex 0.130.0`, or a bare
@@ -69,9 +72,8 @@ pub(crate) fn rewrite_hook_supported(version: (u32, u32, u32)) -> bool {
 }
 
 /// Whether the installed codex (if any) supports the rewrite hook today.
-/// Drives whether `trs init codex` could install a real hook instead of
-/// rules-only. Currently always false (see [`REWRITE_HOOK_MIN_VERSION`]).
-#[allow(dead_code)] // wired into the install path when the gate flips on.
+/// Drives whether `trs init codex` installs a real PreToolUse hook
+/// (vs rules-only). Shells out to `codex --version`.
 pub(crate) fn rewrite_hook_available() -> bool {
     detect_version().is_some_and(rewrite_hook_supported)
 }
@@ -101,19 +103,12 @@ mod tests {
     }
 
     #[test]
-    fn gate_is_off_until_min_version_set() {
-        // While REWRITE_HOOK_MIN_VERSION is None, every version is unsupported.
+    fn gate_reflects_min_version() {
+        // Pre-0.134 falls back to rules-only; 0.134+ gets the hook.
         assert!(!rewrite_hook_supported((0, 130, 0)));
-        assert!(!rewrite_hook_supported((99, 0, 0)));
-    }
-
-    #[test]
-    fn gate_compares_when_min_set() {
-        // Mirror of the prod check with a hypothetical threshold, so the
-        // comparison logic is covered even while the real gate is None.
-        let supported = |v: (u32, u32, u32), min: (u32, u32, u32)| v >= min;
-        assert!(supported((0, 140, 0), (0, 140, 0)));
-        assert!(supported((0, 141, 0), (0, 140, 0)));
-        assert!(!supported((0, 139, 9), (0, 140, 0)));
+        assert!(!rewrite_hook_supported((0, 133, 9)));
+        assert!(rewrite_hook_supported((0, 134, 0)));
+        assert!(rewrite_hook_supported((0, 136, 0)));
+        assert!(rewrite_hook_supported((1, 0, 0)));
     }
 }
