@@ -113,21 +113,21 @@ classifier / rewrite_decide / classifier_exec / stats_coverage.
 - [ ] **Per-command config** — `[commands.cargo-test] max_failures = 20,
   preserve_backtraces = true`. Build on the existing `Limits`/`Hooks` config and
   the new registry. Granularity on top of the base config.
-- [ ] **`trs diff <cmd>`** — show raw vs compact and exactly what was dropped
-  (errors / paths / lines). Most-valuable feature per feedback; additive, does
-  not touch the hot path. NOTE: competitor `chop` already ships `chop diff <cmd>`
-  — validates the demand.
+- [x] **`trs diff <cmd>`** — shipped in v0.6.12 (`src/diff.rs`). Raw vs compact
+  header (bytes/tokens), the compact output, and the lines dropped/collapsed;
+  `--json` too. Follow-up idea: feed the dropped-line analysis into a quality
+  harness (shares benchmark's raw-vs-compact capture).
 - [ ] **Fix environmental doctor tests** — `check_config_dir` /
   `check_history_writable` depend on a writable real `$HOME` (via
   `tracker::home_dir()`); a test must not depend on the real home. Inject a temp
   HOME / path so the suite is hermetic.
-- [ ] **Code-comment + file-size cleanup pass** `added: 2026-06-02` — apply the
-  new output-saver comment rule (≤3 lines / ~200 chars, reference-style) to the
-  v0.6.x additions whose doc-comments run long: `src/codex.rs`, `src/path_display.rs`,
-  `classifier::build_command`, the `command_registry` / AiTool `TOOLS` doc blocks.
-  While there, check files that drifted over ~500 LOC (`init.rs` grew with the
-  TOOLS table; `classifier.rs`, `output_saver.rs`, `audit_docs.rs`) and split the
-  reusable parts. Hygiene only — no behavior change.
+- [ ] **File-size cleanup pass** `added: 2026-06-02` — keep reusable files under
+  ~500 LOC. DONE in v0.6.12: `init.rs` 711 → 303 (AiTool registry moved to
+  `src/ai_tool.rs`). STILL OVER (pre-existing, each needs its own focused split):
+  `audit_docs.rs` (1316), `output_saver.rs` (966), `stats.rs` (703), `tracker.rs`
+  (673), `commands.rs` (601), `classifier.rs` (596), `main.rs` (555). Plus the
+  `ExecutionPipeline` extraction below. Note: the v0.6.x doc-comments were
+  reviewed and kept — they explain WHY (gotchas/decisions), not paraphrase.
 
 ---
 
