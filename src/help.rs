@@ -502,6 +502,31 @@ EXAMPLES:
     trs benchmark ls -la --repeat 5
     trs benchmark cargo test --repeat 3 --json";
 
+/// Help text for the diff command.
+#[allow(dead_code)]
+pub const DIFF_HELP: &str = "\
+Show raw vs compact output and exactly what trs dropped.
+
+Runs a command once, captures the raw output and the compacted output
+trs produces, then reports the size delta and lists the lines dropped or
+collapsed — so you can trust what the agent actually sees.
+
+USAGE:
+    trs diff <COMMAND> [ARGS]...
+
+OPTIONS:
+    --json          Output the diff + metrics as JSON
+
+OUTPUT:
+    Header          raw vs compact bytes + estimated tokens saved
+    Compact         the output the agent receives
+    Dropped         lines present in raw but not in the compact output
+
+EXAMPLES:
+    trs diff git status
+    trs diff cargo test
+    trs diff --json git log -10        (flags go before the command)";
+
 /// Help text for the ingest command.
 #[allow(dead_code)]
 pub const INGEST_HELP: &str = "\
@@ -579,6 +604,7 @@ pub fn get_command_help(command: &str) -> Option<&'static str> {
         "stats" => Some(STATS_HELP),
         "doctor" => Some(DOCTOR_HELP),
         "benchmark" => Some(BENCHMARK_HELP),
+        "diff" => Some(DIFF_HELP),
         "ingest" => Some(INGEST_HELP),
         _ => None,
     }
