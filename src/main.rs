@@ -27,6 +27,7 @@ mod classifier;
 mod classifier_exec;
 mod classifier_transfer;
 mod cli;
+mod codex;
 mod commands;
 pub(crate) mod config;
 mod debug_info;

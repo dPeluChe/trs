@@ -129,7 +129,8 @@ SAVED / AVG -% — they only contribute to CALLS and BYPASS.
 | Kilo Code | plugin template | `kilo` |
 | Factory Droid | same wire format as Claude | `claude` (limitation) |
 | Antigravity IDE / CLI (`agy`) | rules-only, no programmatic signal (see [notes](../development/antigravity-hooks-research.md)) | `(untagged)` |
-| Codex / Windsurf | no programmatic signal (rules-only) | `(untagged)` |
+| Codex | `PreToolUse` hook carries `TRS_AGENT=codex` (codex-cli ≥ 0.134) | `codex` (rules-only fallback: `(untagged)`) |
+| Windsurf | no programmatic signal (rules-only) | `(untagged)` |
 
 Direct-shell invocations (`trs git status` typed manually) also land
 under `(untagged)`. We don't invent a label where we don't have

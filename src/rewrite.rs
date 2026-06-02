@@ -70,7 +70,20 @@ impl HookEvent {
     /// attribute the run. Reads the runtime env to disambiguate Antigravity
     /// from Claude (both speak the same PreToolUse envelope).
     fn agent_label(&self) -> &'static str {
-        self.agent_label_for(std::env::var_os("ANTIGRAVITY_CONVERSATION_ID").is_some())
+        self.agent_label_from(
+            std::env::var_os("ANTIGRAVITY_CONVERSATION_ID").is_some(),
+            std::env::var("TRS_AGENT").ok().as_deref(),
+        )
+    }
+
+    /// Codex shares Claude's `PreToolUse` envelope, so we can't tell them
+    /// apart from `hook_event_name` alone. The Codex hook command sets
+    /// `TRS_AGENT=codex`, which we read here to attribute the run.
+    fn agent_label_from(&self, has_antigravity_env: bool, trs_agent: Option<&str>) -> &'static str {
+        if trs_agent == Some("codex") {
+            return "codex";
+        }
+        self.agent_label_for(has_antigravity_env)
     }
 
     /// Pure version of `agent_label` — env state passed explicitly so tests
@@ -304,6 +317,21 @@ mod tests {
         // The agent gets relabeled to "antigravity" only when the env var
         // is present at hook-invocation time.
         assert_eq!(HookEvent::ClaudePreToolUse.agent_label_for(false), "claude");
+        // Codex rides the same PreToolUse envelope; TRS_AGENT=codex (set by
+        // the codex hook command) attributes it correctly, and wins even if
+        // the antigravity env happens to be present.
+        assert_eq!(
+            HookEvent::ClaudePreToolUse.agent_label_from(false, Some("codex")),
+            "codex"
+        );
+        assert_eq!(
+            HookEvent::ClaudePreToolUse.agent_label_from(true, Some("codex")),
+            "codex"
+        );
+        assert_eq!(
+            HookEvent::ClaudePreToolUse.agent_label_from(false, None),
+            "claude"
+        );
         assert_eq!(
             HookEvent::ClaudePreToolUse.agent_label_for(true),
             "antigravity"
