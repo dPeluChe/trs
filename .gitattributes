@@ -1,0 +1,3 @@
+# Force LF on checkout for all text so byte-for-byte fixtures and parsers
+# behave identically on Windows runners (which default to autocrlf=true).
+* text=auto eol=lf
