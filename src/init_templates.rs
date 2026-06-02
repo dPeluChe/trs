@@ -157,10 +157,12 @@ pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
 
 This project uses `trs` (Token-Reducing Shell) for token-optimized terminal output.
 
-Codex's PreToolUse hook parses but does not implement `updatedInput`
-([codex docs](https://developers.openai.com/codex/hooks)), so trs cannot
-rewrite commands automatically from a hook. **Prefix every shell command
-with `trs`** to get compressed output:
+Codex has had `PreToolUse` hooks since codex-cli 0.117, but the
+`updatedInput.command` rewrite trs would need is documented yet **not
+implemented in the runtime** — Codex rejects it with "unsupported
+updatedInput" (tracking: https://github.com/openai/codex/issues/18491). So
+trs cannot transparently rewrite commands from a Codex hook today.
+**Prefix every shell command with `trs`** to get compressed output:
 
 ```bash
 # Instead of:
@@ -178,9 +180,9 @@ This reduces token consumption by 68-99% without losing signal.
 Commands without a dedicated parser still get ANSI stripping and whitespace
 collapse (~30-40% reduction "free").
 
-"#,
-    output_saver_block_literal!(),
-    r#"
+The output-saver reply-brevity rules are installed separately as their own
+sentinel-managed block (run `trs output-saver --install`, which `trs init
+codex` also triggers) — kept out of this section so the two never duplicate.
 
 ## Keeping this file lean
 

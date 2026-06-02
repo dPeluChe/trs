@@ -153,14 +153,19 @@ fn check_codex_hooks_orphan() -> Check {
     if !content.contains("trs rewrite") {
         return Check::pass("codex hooks.json", "no orphan trs entry".to_string());
     }
+    let ver = crate::codex::detect_version()
+        .map(|(a, b, c)| format!(" (detected codex-cli {a}.{b}.{c})"))
+        .unwrap_or_default();
     Check::warn(
         "codex hooks.json",
-        format!("legacy `trs rewrite` entry in {}", path.display()),
+        format!("legacy `trs rewrite` entry in {}{}", path.display(), ver),
     )
     .with_hint(
-        "Codex's PreToolUse rejects `updatedInput` on some versions \
-         (\"unsupported updatedInput\" errors). Run `trs uninstall codex` \
-         to scrub, or re-run `trs init codex --global` (auto-scrubs).",
+        "Codex's PreToolUse still rejects `updatedInput` command rewrite \
+         (\"unsupported updatedInput\" errors) — documented but not yet \
+         implemented in the runtime (openai/codex#18491), so trs stays \
+         rules-only. Run `trs uninstall codex` to scrub, or re-run \
+         `trs init codex --global` (auto-scrubs).",
     )
 }
 

@@ -51,25 +51,38 @@ pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> 
         PathBuf::from("AGENTS.md")
     };
 
-    if path.exists() {
+    let rules_msg = if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         if file_has_any_trs_marker(&content) {
-            return Ok(format!("{} (already configured)", path.display()));
+            format!("{} (already configured)", path.display())
+        } else if opts.dry_run {
+            format!("{} (would append trs rules block)", path.display())
+        } else {
+            ensure_parent(&path)?;
+            let updated = format!("{}\n{}", content, CODEX_AGENTS_SECTION);
+            fs::write(&path, updated).map_err(|e| e.to_string())?;
+            path.display().to_string()
         }
-        if opts.dry_run {
-            return Ok(format!("{} (would append trs rules block)", path.display()));
-        }
-        ensure_parent(&path)?;
-        let updated = format!("{}\n{}", content, CODEX_AGENTS_SECTION);
-        fs::write(&path, updated).map_err(|e| e.to_string())?;
+    } else if opts.dry_run {
+        format!("{} (would create with trs rules)", path.display())
     } else {
-        if opts.dry_run {
-            return Ok(format!("{} (would create with trs rules)", path.display()));
-        }
         ensure_parent(&path)?;
         fs::write(&path, CODEX_AGENTS_SECTION.trim()).map_err(|e| e.to_string())?;
+        path.display().to_string()
+    };
+
+    // Compose the output-saver reply-brevity rules as their own
+    // sentinel-managed block instead of embedding a (sentinel-less) copy in
+    // CODEX_AGENTS_SECTION. The installer is idempotent — re-runs replace the
+    // block in place — so `trs init codex` + `trs output-saver --install`
+    // can run in any order without duplicating it. Global only: the
+    // output-saver installer targets ~/.codex/AGENTS.md.
+    if opts.global && !opts.dry_run {
+        if let Err(e) = crate::output_saver::install_agent("codex") {
+            eprintln!("  note: output-saver block install failed: {}", e);
+        }
     }
-    Ok(path.display().to_string())
+    Ok(rules_msg)
 }
 
 /// Append the Antigravity rules block to `~/.gemini/GEMINI.md`. Shared by
