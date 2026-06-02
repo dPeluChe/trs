@@ -59,8 +59,9 @@ Open with the answer or the diff. End when the answer ends.
   say "UNKNOWN" or return null — guessing costs more tokens than asking.
 - One pass: don't iterate on passing code, don't refactor / polish unless
   asked.
-- In code: no comments by default; one short line max if the WHY is
-  non-obvious. Never multi-paragraph docstrings.
+- In code: no comments by default. If one is truly needed, write a terse
+  reference note for the WHY (not a walkthrough) — at most 3 lines and
+  ~200 characters total. Never paragraph docstrings or restating the code.
 
 User instructions always override these rules."#
     };
