@@ -6,15 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+# Opt JavaScript actions into the Node.js 24 runtime now. Node 20 is being
+# removed from runners (GitHub forces Node 24 by 2026-06-16); this silences the
+# deprecation warnings without waiting for each action to ship a node24 release.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   test:
     name: Test
     runs-on: ${{ matrix.os }}
-    # windows-latest is informational for now: it validates the cross-platform
-    # exec/plugin code (#53) on real Windows, but a PRE-EXISTING stack overflow
-    # in the `parse test` path (exit 0xC00000FD) fails some integration tests —
-    # tracked separately. Non-blocking so it doesn't gate unrelated PRs.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
