@@ -208,8 +208,15 @@ fn ensure_parent(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Stable marker identifying a trs-authored plugin file (OpenCode/Kilo).
+/// Present in every version of the template, so we can recognize our own
+/// file and refresh it when the bundled template changes (e.g. the #53
+/// Windows fix) instead of leaving a stale copy in place.
+const TRS_PLUGIN_MARKER: &str = "trs plugin — route commands through trs";
+
 /// Route hook installs by file type. JSON → merge with existing user hooks;
-/// non-JSON (plugin .ts) → create-only, refuse to clobber foreign content.
+/// non-JSON (plugin .ts) → create, or refresh our own file on drift; never
+/// clobber foreign content.
 fn write_hook(dir: &Path, path: &Path, content: &str, opts: InstallOpts) -> Result<String, String> {
     let is_json = path
         .extension()
@@ -222,8 +229,19 @@ fn write_hook(dir: &Path, path: &Path, content: &str, opts: InstallOpts) -> Resu
 
     if path.exists() {
         let existing = fs::read_to_string(path).unwrap_or_default();
-        if has_trs_marker(&existing) {
-            return Ok(format!("{} (already configured)", path.display()));
+        let is_ours = has_trs_marker(&existing) || existing.contains(TRS_PLUGIN_MARKER);
+        if is_ours {
+            if existing == content {
+                return Ok(format!("{} (already configured)", path.display()));
+            }
+            // Our file but stale (older template) — refresh it so fixes like
+            // the #53 Windows plugin land on re-init without --force.
+            if opts.dry_run {
+                return Ok(format!("{} (would refresh trs plugin)", path.display()));
+            }
+            fs::write(path, content)
+                .map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
+            return Ok(format!("{} (refreshed)", path.display()));
         }
         return Err(format!(
             "{} exists with other config.\n  Back up and re-run `trs init` to replace.",

@@ -3,19 +3,19 @@
 //! Handles the execute -> parse -> format pipeline for external commands
 //! and saves full output on failure for recovery.
 
-use crate::classifier::{classify_command, full_cmd, keep_ratio};
+use crate::classifier::{build_command, classify_command, full_cmd, keep_ratio};
 use crate::router::{CommandContext, Router};
 use crate::Commands;
 
 /// Execute an external command, optionally pipe through a parser, and print output.
 pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext) {
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
 
     let start = std::time::Instant::now();
 
-    // Execute the command
-    let output = match Command::new(cmd)
-        .args(args)
+    // Execute the command. build_command routes through the platform shell on
+    // Windows so .cmd/.bat shims, .ps1 scripts, and builtins resolve (issue #53).
+    let output = match build_command(cmd, args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
