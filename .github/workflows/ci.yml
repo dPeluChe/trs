@@ -16,12 +16,6 @@ jobs:
   test:
     name: Test
     runs-on: ${{ matrix.os }}
-    # windows-latest runs for signal but stays non-blocking: the #58 stack
-    # overflow is fixed and its crashes are gone, but trs still prints native
-    # `\` path separators on real-filesystem commands (search/find/ls), so a
-    # handful of path-asserting integration tests fail there. Tracked as its
-    # own path-normalization task; flip to blocking once that lands.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
