@@ -68,6 +68,25 @@ mod read_intercept;
 use router::{CommandContext, Router};
 
 fn main() {
+    // Run the real work on a worker thread with a generous stack. The binary's
+    // default main-thread stack on Windows is ~1 MB (MSVC linker default); the
+    // test-output parser can use 1-2 MB on some inputs, overflowing it there
+    // (exit 0xC00000FD) while Unix's ~8 MB default is fine — issue #58. 16 MB
+    // matches Unix headroom and is negligible to reserve.
+    let worker = std::thread::Builder::new()
+        .name("trs-main".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(run)
+        .expect("failed to spawn trs worker thread");
+    // `run` calls std::process::exit on most paths (those exit directly). A
+    // normal return means success; a panic already printed its message.
+    match worker.join() {
+        Ok(()) => {}
+        Err(_) => std::process::exit(101),
+    }
+}
+
+fn run() {
     let args: Vec<String> = std::env::args().collect();
 
     // Fast path: bypass clap for external commands (saves ~2-4ms)

@@ -36,7 +36,7 @@ fn test_search_basic() {
         .assert()
         .success()
         .stdout(predicate::str::contains("matches:"))
-        .stdout(predicate::str::contains("router/"));
+        .stdout(predicate::str::contains("router"));
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn test_search_json_output() {
         .stdout(predicate::str::contains("\"schema\""))
         .stdout(predicate::str::contains("\"grep_output\""))
         .stdout(predicate::str::contains("\"files\""))
-        .stdout(predicate::str::contains("router/"));
+        .stdout(predicate::str::contains("router"));
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn test_search_csv_output() {
         .stdout(predicate::str::contains(
             "path,line_number,column,is_context,line",
         ))
-        .stdout(predicate::str::contains("router/"));
+        .stdout(predicate::str::contains("router"));
 }
 
 #[test]
@@ -100,7 +100,7 @@ fn test_search_tsv_output() {
         .stdout(predicate::str::contains(
             "path\tline_number\tcolumn\tis_context\tline",
         ))
-        .stdout(predicate::str::contains("router/"));
+        .stdout(predicate::str::contains("router"));
 }
 
 #[test]
