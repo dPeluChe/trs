@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::time::{Duration, Instant};
 
 #[path = "process_helpers.rs"]
@@ -258,9 +258,10 @@ impl ProcessBuilder {
     pub fn run(&self) -> Result<ProcessOutput, ProcessError> {
         let start = Instant::now();
 
-        // Build the command
-        let mut cmd = Command::new(&self.command);
-        cmd.args(&self.args);
+        // Build the command. On Windows this routes through the shell so
+        // .cmd/.bat shims, .ps1 scripts, and builtins resolve (issue #53);
+        // POSIX spawns directly.
+        let mut cmd = crate::classifier::build_command(&self.command, &self.args);
 
         // Set working directory
         if let Some(ref dir) = self.current_dir {
