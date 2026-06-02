@@ -413,16 +413,39 @@ fn check_path_accessible() -> Check {
                     .with_hint("curl -fsSL https://usetrs.dev/install.sh | sh");
             }
             let primary = paths[0].clone();
-            if paths.len() == 1 {
-                Check::pass("PATH", "trs in PATH").with_sub(vec![format!("path: {}", primary)])
+            // Dedupe: `which -a` lists one hit per PATH entry, so a directory
+            // that appears N times in $PATH yields N identical lines. That's a
+            // duplicate-PATH-entry smell, not duplicate binaries.
+            let mut unique = paths.clone();
+            unique.sort();
+            unique.dedup();
+            if unique.len() == 1 {
+                if paths.len() == 1 {
+                    Check::pass("PATH", "trs in PATH").with_sub(vec![format!("path: {}", primary)])
+                } else {
+                    let dir = std::path::Path::new(&primary)
+                        .parent()
+                        .map(|d| d.display().to_string())
+                        .unwrap_or_else(|| primary.clone());
+                    Check::warn("PATH", "duplicate PATH entries")
+                        .with_sub(vec![
+                            format!("path: {}", primary),
+                            format!("{} is listed {} times in $PATH", dir, paths.len()),
+                        ])
+                        .with_hint(
+                            "one trs binary, but its directory repeats in your shell PATH \
+                             config — remove the redundant `export PATH=` lines (commonly in \
+                             ~/.zshrc / ~/.zprofile when ~/.zshenv already adds it).",
+                        )
+                }
             } else {
                 let mut sub = vec![format!("active: {}", primary)];
-                for p in paths.iter().skip(1) {
+                for p in unique.iter().filter(|p| **p != primary) {
                     sub.push(format!("shadowed: {}", p));
                 }
                 sub.push(format!(
-                    "{} trs binaries in PATH — the first one wins",
-                    paths.len()
+                    "{} distinct trs binaries in PATH — the first one wins",
+                    unique.len()
                 ));
                 Check::warn("PATH", "multiple trs binaries found")
                     .with_sub(sub)

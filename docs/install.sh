@@ -298,11 +298,14 @@ zshenv_has_path() {
         *) return 1 ;;
     esac
     [ -f "$HOME/.zshenv" ] || return 1
-    # Match either an explicit `export PATH=` referencing $INSTALL_DIR or
-    # the literal directory anywhere in the file. Avoid false positives by
-    # not matching commented lines.
+    # The dir counts as present whether referenced as the expanded path
+    # ($INSTALL_DIR), the $HOME-relative form ($HOME/.local/bin), or sourced
+    # via its `env` script (`. "$HOME/.local/bin/env"`, which prepends it).
+    # Matching the $HOME-relative substring covers the export and the env
+    # source. Ignore commented lines to avoid false positives.
+    rel="\$HOME/${INSTALL_DIR#"$HOME"/}"
     grep -E -v '^[[:space:]]*#' "$HOME/.zshenv" 2>/dev/null \
-        | grep -q -F "$INSTALL_DIR"
+        | grep -q -F -e "$INSTALL_DIR" -e "$rel"
 }
 
 if already_in_path; then
