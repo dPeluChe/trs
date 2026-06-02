@@ -21,6 +21,7 @@
 )]
 use clap::Parser;
 
+mod ai_tool;
 mod audit_docs;
 mod benchmark;
 mod classifier;
