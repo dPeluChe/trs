@@ -45,7 +45,9 @@ jobs:
         run: cargo build --release
 
       - name: Run tests
-        run: cargo test
+        # --no-fail-fast: run every test binary even if one fails, so a single
+        # run surfaces the full failure set (esp. while hardening Windows).
+        run: cargo test --no-fail-fast
 
   lint:
     name: Lint
