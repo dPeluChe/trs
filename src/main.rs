@@ -32,6 +32,7 @@ mod command_registry;
 mod commands;
 pub(crate) mod config;
 mod debug_info;
+mod diff;
 mod discover;
 mod doctor;
 mod formatter;
@@ -241,6 +242,13 @@ fn run() {
             json,
         }) => {
             benchmark::run_benchmark(command, args, *repeat, *json);
+        }
+        Some(Commands::Diff {
+            command,
+            args,
+            json,
+        }) => {
+            diff::run_diff(command, args, *json);
         }
         Some(Commands::Ingest {
             path,
@@ -522,6 +530,7 @@ fn is_external_fast_path(args: &[String]) -> bool {
             | "uninstall"
             | "doctor"
             | "benchmark"
+            | "diff"
             | "ingest"
             | "audit-docs"
             | "output-saver"

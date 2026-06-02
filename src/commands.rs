@@ -203,6 +203,22 @@ pub enum Commands {
         json: bool,
     },
 
+    /// Show raw vs compact output and exactly what trs dropped
+    #[command(long_about = help::DIFF_HELP)]
+    Diff {
+        /// Command to inspect
+        #[arg(required = true)]
+        command: String,
+
+        /// Arguments for the command
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
+    },
+
     /// Generate an LLM-ready digest of a project
     #[command(long_about = help::INGEST_HELP)]
     Ingest {
