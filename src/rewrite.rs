@@ -199,10 +199,18 @@ fn cmd_bypasses_trs(cmd: &str) -> bool {
 }
 
 /// Prefix `cmd` with `TRS_AGENT=<label>` so the downstream `trs <cmd>`
-/// execution can attribute the run. The shell strips the leading
-/// `VAR=value` assignment before exec, so it's transparent to git/cargo/etc.
+/// execution can attribute the run. POSIX shells strip the leading
+/// `VAR=value` assignment before exec; PowerShell/cmd do NOT — they treat
+/// `TRS_AGENT=opencode` as a command name (issue #53). So on Windows we emit
+/// the bare `trs <cmd>` (attribution is lost there, but the command runs).
 fn tag_with_agent(cmd: &str, agent: &str) -> String {
-    if cmd.starts_with("TRS_AGENT=") {
+    tag_with_agent_for(cmd, agent, cfg!(windows))
+}
+
+/// Pure core of `tag_with_agent` — `is_windows` passed explicitly so both
+/// branches are testable on any platform.
+fn tag_with_agent_for(cmd: &str, agent: &str, is_windows: bool) -> String {
+    if is_windows || cmd.starts_with("TRS_AGENT=") {
         return cmd.to_string();
     }
     format!("TRS_AGENT={} {}", agent, cmd)
@@ -393,6 +401,26 @@ mod tests {
         assert_eq!(
             build_hook_response(&gemini).unwrap()["hookSpecificOutput"]["tool_input"]["command"],
             serde_json::json!("TRS_AGENT=gemini cd /tmp && trs git status && trs cargo test")
+        );
+    }
+
+    #[test]
+    fn tag_with_agent_skips_posix_prefix_on_windows() {
+        // POSIX: env-var prefix (the shell strips it before exec).
+        assert_eq!(
+            tag_with_agent_for("trs git status", "claude", false),
+            "TRS_AGENT=claude trs git status"
+        );
+        // Windows: no prefix — PowerShell/cmd would treat `TRS_AGENT=claude`
+        // as a bogus command name (issue #53).
+        assert_eq!(
+            tag_with_agent_for("trs git status", "claude", true),
+            "trs git status"
+        );
+        // Already tagged → unchanged on either platform.
+        assert_eq!(
+            tag_with_agent_for("TRS_AGENT=claude trs git status", "claude", false),
+            "TRS_AGENT=claude trs git status"
         );
     }
 }
