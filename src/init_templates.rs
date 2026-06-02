@@ -122,45 +122,53 @@ pub(crate) const CURSOR_HOOKS: &str = r#"{
   }
 }"#;
 
-// OpenCode/Kilo plugin: unconditionally prefix trs, let trs decide whether
-// to compress or passthrough. Uses OpenCode's documented plugin shape:
+// OpenCode/Kilo plugin: prefix `trs`, let trs decide whether to compress or
+// passthrough. Uses OpenCode's documented plugin shape:
 //   - async function returning a hooks map
-//   - hook key `"tool.execute.before"` (string literal, not a property name)
-//   - `input.tool === "bash"` to gate shell commands
-//   - mutate `output.args.command` in-place
+//   - `"shell.env"` injects TRS_AGENT into every shell's environment so
+//     attribution works on ALL platforms (the old `TRS_AGENT=opencode trs …`
+//     command prefix is POSIX-only — PowerShell/cmd on Windows parse it as a
+//     bogus command name, see issue #53)
+//   - `"tool.execute.before"` only prepends `trs ` to the bash command
+//   - the guard skips anything already routed through trs, including the
+//     legacy `TRS_AGENT=…` prefix, so a retried command can't snowball
 // Reference: https://opencode.ai/docs/plugins/
 pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
 
 export const TrsPlugin = async () => {
   return {
+    // Cross-platform attribution: set the env var, never a shell prefix.
+    "shell.env": async (_input, output) => {
+      output.env.TRS_AGENT = "opencode";
+    },
     "tool.execute.before": async (input, output) => {
       if (input.tool !== "bash") return;
       const cmd = output.args?.command;
       if (typeof cmd !== "string") return;
-      // Skip if already routed through trs or if it's a cd (dir change).
-      if (cmd.startsWith("trs ") || cmd.startsWith("cd ")) return;
-      // TRS_AGENT=opencode tells trs history.jsonl who triggered the run.
-      // The shell strips the env-var assignment before executing.
-      output.args.command = `TRS_AGENT=opencode trs ${cmd}`;
+      // Idempotent: skip if already routed through trs (incl. the legacy
+      // `TRS_AGENT=…` prefix) or if it's a cd (dir change).
+      if (cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=")) return;
+      output.args.command = `trs ${cmd}`;
     },
   };
 };
 "#;
 
-/// Kilo plugin — identical mechanism to OpenCode but tags the
-/// downstream trs call as `TRS_AGENT=kilo` so history attribution
-/// is accurate across forks.
+/// Kilo plugin — identical mechanism to OpenCode but tags the downstream
+/// run as `kilo` so history attribution is accurate across forks.
 pub(crate) const KILO_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
 
 export const TrsPlugin = async () => {
   return {
+    "shell.env": async (_input, output) => {
+      output.env.TRS_AGENT = "kilo";
+    },
     "tool.execute.before": async (input, output) => {
       if (input.tool !== "bash") return;
       const cmd = output.args?.command;
       if (typeof cmd !== "string") return;
-      if (cmd.startsWith("trs ") || cmd.startsWith("cd ")) return;
-      // TRS_AGENT=kilo tells trs history.jsonl who triggered the run.
-      output.args.command = `TRS_AGENT=kilo trs ${cmd}`;
+      if (cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=")) return;
+      output.args.command = `trs ${cmd}`;
     },
   };
 };
@@ -310,3 +318,46 @@ token here loads on every call.
 Reference: https://github.com/dPeluChe/trs
 "#
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression for #53: OpenCode/Kilo on Windows. The POSIX `VAR=value cmd`
+    /// prefix breaks in PowerShell/cmd ("not recognized as a cmdlet"), and the
+    /// weak guard let retries snowball into
+    /// `TRS_AGENT=… trs TRS_AGENT=… trs …`.
+    #[test]
+    fn opencode_kilo_plugins_are_windows_safe_and_idempotent() {
+        for (plugin, agent) in [(OPENCODE_PLUGIN, "opencode"), (KILO_PLUGIN, "kilo")] {
+            // No POSIX env-var command prefix.
+            assert!(
+                !plugin.contains(&format!("TRS_AGENT={agent} trs")),
+                "{agent}: plugin still uses the POSIX `TRS_AGENT=… trs` prefix"
+            );
+            // Attribution moved to the cross-platform shell.env hook.
+            assert!(
+                plugin.contains("\"shell.env\""),
+                "{agent}: missing shell.env hook"
+            );
+            assert!(
+                plugin.contains(&format!("output.env.TRS_AGENT = \"{agent}\"")),
+                "{agent}: shell.env does not set TRS_AGENT"
+            );
+            // Command is just `trs ${cmd}`.
+            assert!(
+                plugin.contains("`trs ${cmd}`"),
+                "{agent}: command is not `trs ${{cmd}}`"
+            );
+            // Guard skips already-wrapped commands (anti-snowball).
+            assert!(
+                plugin.contains("cmd.startsWith(\"TRS_AGENT=\")"),
+                "{agent}: guard does not skip the legacy TRS_AGENT= prefix"
+            );
+            assert!(
+                plugin.contains("cmd.startsWith(\"trs \")"),
+                "{agent}: guard does not skip trs-prefixed commands"
+            );
+        }
+    }
+}
