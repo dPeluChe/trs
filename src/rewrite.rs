@@ -260,6 +260,16 @@ mod tests {
         serde_json::from_str(s).expect("test input must be valid JSON")
     }
 
+    /// Expected rewritten command for `agent`: POSIX gets the `TRS_AGENT=`
+    /// prefix, Windows gets none (PowerShell/cmd can't parse it — see #53).
+    fn agent_cmd(agent: &str, rest: &str) -> String {
+        if cfg!(windows) {
+            rest.to_string()
+        } else {
+            format!("TRS_AGENT={agent} {rest}")
+        }
+    }
+
     #[test]
     fn test_hook_response_claude_code_format() {
         let input = parse_input(
@@ -276,7 +286,7 @@ mod tests {
         );
         assert_eq!(
             out["hookSpecificOutput"]["updatedInput"]["command"],
-            serde_json::json!("TRS_AGENT=claude trs git status")
+            serde_json::json!(agent_cmd("claude", "trs git status"))
         );
         assert!(out["hookSpecificOutput"]["tool_input"].is_null());
         assert!(out.get("decision").is_none());
@@ -295,7 +305,7 @@ mod tests {
         assert_eq!(out["permission"], serde_json::json!("allow"));
         assert_eq!(
             out["updated_input"]["command"],
-            serde_json::json!("TRS_AGENT=cursor trs git status")
+            serde_json::json!(agent_cmd("cursor", "trs git status"))
         );
         assert!(out.get("hookSpecificOutput").is_none());
         assert!(out.get("decision").is_none());
@@ -314,7 +324,7 @@ mod tests {
         assert_eq!(out["decision"], serde_json::json!("allow"));
         assert_eq!(
             out["hookSpecificOutput"]["tool_input"]["command"],
-            serde_json::json!("TRS_AGENT=gemini trs git status")
+            serde_json::json!(agent_cmd("gemini", "trs git status"))
         );
         assert!(out["hookSpecificOutput"]["updatedInput"].is_null());
     }
@@ -356,7 +366,7 @@ mod tests {
         let out = build_hook_response(&input).expect("should rewrite");
         assert_eq!(
             out["hookSpecificOutput"]["updatedInput"]["command"],
-            serde_json::json!("TRS_AGENT=claude trs git status")
+            serde_json::json!(agent_cmd("claude", "trs git status"))
         );
         assert!(out.get("decision").is_none());
     }
@@ -396,11 +406,17 @@ mod tests {
         );
         assert_eq!(
             build_hook_response(&claude).unwrap()["hookSpecificOutput"]["updatedInput"]["command"],
-            serde_json::json!("TRS_AGENT=claude cd /tmp && trs git status && trs cargo test")
+            serde_json::json!(agent_cmd(
+                "claude",
+                "cd /tmp && trs git status && trs cargo test"
+            ))
         );
         assert_eq!(
             build_hook_response(&gemini).unwrap()["hookSpecificOutput"]["tool_input"]["command"],
-            serde_json::json!("TRS_AGENT=gemini cd /tmp && trs git status && trs cargo test")
+            serde_json::json!(agent_cmd(
+                "gemini",
+                "cd /tmp && trs git status && trs cargo test"
+            ))
         );
     }
 
