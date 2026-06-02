@@ -15,7 +15,7 @@ install scope.
 | Factory Droid | programmatic hook | ✓ | ✓ (inline block) | `claude` (see caveat) | global + project |
 | Antigravity IDE | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
 | Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
-| Codex CLI | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
+| Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Windsurf | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
 
 ## Column legend
@@ -135,14 +135,31 @@ install scope.
   mechanical revert of branch `fix/antigravity-rules-only-revert` — see
   the [research doc](../development/antigravity-hooks-research.md#what-unblocks-re-enabling-the-integration).
 
-### Codex CLI, Windsurf
+### Codex CLI
 
-- **Install mechanism:** rules file only — these agents have no
+- **Install mechanism:** version-gated. On **codex-cli ≥ 0.134**
+  (which implements `hookSpecificOutput.updatedInput.command` in its
+  `PreToolUse` hook), `trs init codex --global` merges a real
+  `PreToolUse` hook (matcher `"Bash"`, command
+  `TRS_AGENT=codex trs rewrite`) into `~/.codex/hooks.json`, preserving
+  the user's other hooks. Approve it once via Codex's `/hooks` prompt
+  and commands rewrite automatically. On older builds (or an untrusted
+  hook) it falls back to a rules block in `~/.codex/AGENTS.md`
+  recommending manual `trs <cmd>` prefixes.
+- **Caveat:** `codex exec` (non-interactive) doesn't dispatch
+  `PreToolUse`; the hook fires in interactive sessions only.
+- **Attribution:** `codex` when the hook is active (the hook command
+  carries `TRS_AGENT=codex`); the rules-only fallback shows as
+  `(untagged)`.
+
+### Windsurf
+
+- **Install mechanism:** rules file only — Windsurf has no
   programmatic hook surface. `trs init` appends a rules block
   recommending manual `trs <cmd>` prefixes; the agent reads the rules
   at session start but there's no enforcement.
-- **Attribution:** both show as `(untagged)` in stats since there's
-  no programmatic signal to tag commands with an agent.
+- **Attribution:** `(untagged)` in stats since there's no programmatic
+  signal to tag commands with an agent.
 
 ## Install commands
 

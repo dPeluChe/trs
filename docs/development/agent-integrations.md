@@ -50,9 +50,9 @@ differ.
 
 | Type | How it works | Agents | File written |
 |---|---|---|---|
-| **Hook (JSON event)** | Agent fires a PreToolUse-style event, hands us the command on stdin, applies our rewrite response | Claude Code, Gemini CLI, Cursor, Factory Droid, Antigravity IDE, Antigravity CLI | `settings.json` / `hooks.json` |
+| **Hook (JSON event)** | Agent fires a PreToolUse-style event, hands us the command on stdin, applies our rewrite response | Claude Code, Gemini CLI, Cursor, Factory Droid, Codex (codex-cli ≥ 0.134), Antigravity IDE, Antigravity CLI | `settings.json` / `hooks.json` |
 | **Plugin (TypeScript)** | Agent auto-discovers `.ts` plugin files at startup and mutates tool args in-process | OpenCode, Kilo Code | `plugins/trs.ts` |
-| **Rules file** | No programmatic interception. Agent reads a rules/instructions file and VOLUNTARILY prefixes `trs` | Codex, Windsurf | `AGENTS.md` / `.windsurfrules` |
+| **Rules file** | No programmatic interception. Agent reads a rules/instructions file and VOLUNTARILY prefixes `trs` | Windsurf, Codex (fallback on older builds) | `AGENTS.md` / `.windsurfrules` |
 
 Hook and plugin are deterministic (binary: fires or not). Rules-based is
 probabilistic — depends on the agent choosing to follow the guidance.
@@ -91,7 +91,8 @@ downstream `trs <cmd>` execution can attribute the run.
 | Kilo Code | separate plugin template bakes the label | `kilo` |
 | Factory Droid | same wire format as Claude | `claude` (indistinguishable from Claude) |
 | Antigravity IDE / CLI | rules-only as of v0.6.6 ([why](antigravity-hooks-research.md)) | `(untagged)` |
-| Codex / Windsurf | rules-only, no programmatic signal | `(untagged)` |
+| Codex | `PreToolUse` hook command carries `TRS_AGENT=codex` (codex-cli ≥ 0.134) | `codex` (rules-only fallback: `(untagged)`) |
+| Windsurf | rules-only, no programmatic signal | `(untagged)` |
 
 The shell treats leading `VAR=value` as a per-command env override
 and strips it before executing the downstream program — so the tag
@@ -216,17 +217,36 @@ hook, same auto-discovery. Our install spec treats it as an OpenCode clone.
 
 | | |
 |---|---|
-| Type | Rules file |
-| Config | `AGENTS.md` (project root) |
-| Template | `CODEX_AGENTS_SECTION` |
+| Type | Hook (codex-cli ≥ 0.134) with rules-file fallback |
+| Config | `~/.codex/hooks.json` (PreToolUse, matcher `"Bash"`) + `~/.codex/AGENTS.md` |
+| Event | `PreToolUse`; reply via `hookSpecificOutput.updatedInput.command` with `permissionDecision: "allow"` |
+| Hook command | `TRS_AGENT=codex trs rewrite` |
+| Template | `CODEX_AGENTS_SECTION` (rules block) |
+| Version gate | `REWRITE_HOOK_MIN_VERSION = Some((0,134,0))` in `src/codex.rs` |
 
-No programmatic hook available. We append a section to `AGENTS.md`
-instructing Codex to prefix `trs` when the user asks for token-optimized
-output. Codex is the most consistent rules-based agent — it picks up the
-rule and applies it voluntarily when the prompt mentions optimization.
+**Version-gated.** Codex CLI implements programmatic command rewriting
+via the `PreToolUse` hook's `hookSpecificOutput.updatedInput.command`
+field starting in **codex-cli ≥ 0.134** (PR openai/codex#20527, merged
+2026-05-12; verified end-to-end on 0.136.0). On a qualifying build,
+`trs init codex --global` merges a real `PreToolUse` hook into
+`~/.codex/hooks.json` (preserving the user's other hooks; idempotent).
+Approve it once via Codex's `/hooks` prompt and commands are rewritten
+automatically — no `trs` prefix needed.
 
-Validate with the rules-based test prompt (see `docs/agent-test-prompts.md`
-section below).
+**Rules-only fallback.** On older codex builds (or when the hook isn't
+trusted), trs falls back to the `~/.codex/AGENTS.md` block instructing
+Codex to prefix `trs`. Prefixing is always safe — trs never
+double-wraps a command already starting with `trs`.
+
+**Caveat.** `codex exec` (non-interactive) does NOT dispatch
+`PreToolUse`; the hook only fires in interactive sessions. (Issue
+openai/codex#18491 remains open but only concerns `read_file`/`grep`
+hook dispatch, which trs doesn't use — it is not an `updatedInput`
+limitation.)
+
+Validate with the hook-based test prompt on ≥ 0.134, or the rules-based
+test prompt on the fallback (see `docs/agent-test-prompts.md` section
+below).
 
 ### Antigravity IDE + Antigravity CLI
 
@@ -283,8 +303,8 @@ for the exact checklist.
 | Config | `.windsurfrules` (project root) |
 | Template | `WINDSURF_RULES` |
 
-Windsurf Cascade has no pre-execution hook. Works like Codex —
-rules-based voluntary adoption.
+Windsurf Cascade has no pre-execution hook — rules-based voluntary
+adoption only (like Codex's fallback on older builds).
 
 ## Test prompts
 

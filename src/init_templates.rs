@@ -28,6 +28,29 @@ pub(crate) const CLAUDE_HOOKS: &str = r#"{
   }
 }"#;
 
+// Codex CLI (>= 0.134): same `PreToolUse` envelope as Claude — Codex's shell
+// tool is named `Bash` and it honors `hookSpecificOutput.updatedInput.command`
+// with `permissionDecision: "allow"` (which `trs rewrite` already emits). The
+// `TRS_AGENT=codex` env prefix attributes the run to codex in history/stats.
+// Merged into the user's existing ~/.codex/hooks.json (notify hooks etc. are
+// preserved). Codex gates new hooks behind a one-time trust prompt (`/hooks`).
+pub(crate) const CODEX_HOOKS: &str = r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TRS_AGENT=codex trs rewrite"
+          }
+        ],
+        "description": "Route commands through trs for token-optimized output"
+      }
+    ]
+  }
+}"#;
+
 // Factory Droid: same envelope as Claude's PreToolUse, but Droid's shell tool
 // is named `Execute` (not `Bash`), so the matcher is widened. We use ".*" to
 // match any tool — trs rewrite internally skips commands that don't look like
@@ -157,30 +180,34 @@ pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
 
 This project uses `trs` (Token-Reducing Shell) for token-optimized terminal output.
 
-Codex's PreToolUse hook parses but does not implement `updatedInput`
-([codex docs](https://developers.openai.com/codex/hooks)), so trs cannot
-rewrite commands automatically from a hook. **Prefix every shell command
-with `trs`** to get compressed output:
+On **codex-cli >= 0.134** a `PreToolUse` hook in `~/.codex/hooks.json` routes
+shell commands through trs automatically (it honors `updatedInput.command`).
+`trs init codex --global` installs it; approve it once via `/hooks`. With the
+hook active you **don't** need to prefix anything.
+
+If you're on an older Codex build, or the hook isn't trusted yet, fall back to
+**prefixing every shell command with `trs`**:
 
 ```bash
-# Instead of:
+# Without an active hook, instead of:
 git status
 cargo test
 cargo clippy
 
-# Always use:
+# Use:
 trs git status
 trs cargo test
 trs cargo clippy
 ```
 
-This reduces token consumption by 68-99% without losing signal.
-Commands without a dedicated parser still get ANSI stripping and whitespace
-collapse (~30-40% reduction "free").
+(Prefixing is always safe — trs never double-wraps a command that already
+starts with `trs`.) This reduces token consumption by 68-99% without losing
+signal. Commands without a dedicated parser still get ANSI stripping and
+whitespace collapse (~30-40% reduction "free").
 
-"#,
-    output_saver_block_literal!(),
-    r#"
+The output-saver reply-brevity rules are installed separately as their own
+sentinel-managed block (run `trs output-saver --install`, which `trs init
+codex` also triggers) — kept out of this section so the two never duplicate.
 
 ## Keeping this file lean
 

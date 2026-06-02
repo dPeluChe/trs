@@ -28,6 +28,7 @@ pub(crate) struct InstallOpts {
 }
 
 /// Supported AI tools for hook installation.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum AiTool {
     Claude,
     Gemini,
@@ -59,76 +60,144 @@ pub(crate) struct HookSpec {
     pub content: &'static str,
 }
 
+/// Single source of truth for an AI tool's *identity*: the names it
+/// answers to, its human display name, and the one-line target label.
+///
+/// What stays OUT of this table on purpose: the per-consumer *path* logic.
+/// `spec()` (hook install), `init_collision::target_paths` (competitor
+/// scan over home+project), `uninstall::candidate_paths` (where trs wrote),
+/// and `output_saver::resolve_target` (the single canonical rules file)
+/// each resolve different path sets for different jobs and in different
+/// orders — folding them into one row would silently change scan/`--show`
+/// ordering. They stay separate; the `output_saver_agents_match_registry`
+/// test pins their display strings to this table so they can't drift.
+pub(crate) struct AiToolSpec {
+    pub variant: AiTool,
+    /// Primary CLI token shown in `all_names()` (e.g. "agy" for the
+    /// Antigravity CLI, "antigravity" for the IDE).
+    pub cli_name: &'static str,
+    /// Every `from_str`-accepted alias (lowercase), including `cli_name`.
+    pub aliases: &'static [&'static str],
+    /// Human-facing display name.
+    pub display: &'static str,
+    /// Where the integration lives — shown in `trs init --show`.
+    pub target_label: &'static str,
+}
+
+/// The tool registry. Order matters: it defines `all_tools()` iteration
+/// order (install/uninstall/doctor sweeps) — keep it stable.
+pub(crate) const TOOLS: &[AiToolSpec] = &[
+    AiToolSpec {
+        variant: AiTool::Claude,
+        cli_name: "claude",
+        aliases: &["claude"],
+        display: "Claude Code",
+        target_label: "hooks → ~/.claude/settings.json",
+    },
+    AiToolSpec {
+        variant: AiTool::Gemini,
+        cli_name: "gemini",
+        aliases: &["gemini"],
+        display: "Gemini CLI",
+        target_label: "hooks → ~/.gemini/settings.json",
+    },
+    AiToolSpec {
+        variant: AiTool::Cursor,
+        cli_name: "cursor",
+        aliases: &["cursor"],
+        display: "Cursor",
+        target_label: "hooks → ~/.cursor/hooks.json",
+    },
+    AiToolSpec {
+        variant: AiTool::Codex,
+        cli_name: "codex",
+        aliases: &["codex"],
+        display: "Codex",
+        target_label: "rules → AGENTS.md (Codex hooks don't support rewrite)",
+    },
+    AiToolSpec {
+        variant: AiTool::OpenCode,
+        cli_name: "opencode",
+        aliases: &["opencode"],
+        display: "OpenCode",
+        target_label: "plugin → .opencode/plugins/trs.ts",
+    },
+    AiToolSpec {
+        variant: AiTool::Kilo,
+        cli_name: "kilo",
+        aliases: &["kilo", "kilocode"],
+        display: "Kilo Code",
+        target_label: "plugin → .kilo/plugins/trs.ts",
+    },
+    // `antigravity` keeps mapping to the IDE for back-compat with
+    // pre-v0.6.4 users; the CLI gets its own explicit aliases.
+    AiToolSpec {
+        variant: AiTool::Antigravity,
+        cli_name: "antigravity",
+        aliases: &["antigravity", "antigravity-ide", "gravity"],
+        display: "Antigravity IDE",
+        target_label: "rules → ~/.gemini/GEMINI.md (jetski hooks not yet user-config)",
+    },
+    AiToolSpec {
+        variant: AiTool::AntigravityCLI,
+        cli_name: "agy",
+        aliases: &["antigravity-cli", "agy"],
+        display: "Antigravity CLI",
+        target_label: "rules → ~/.gemini/GEMINI.md (jetski hooks not yet user-config)",
+    },
+    AiToolSpec {
+        variant: AiTool::Droid,
+        cli_name: "droid",
+        aliases: &["droid", "factory"],
+        display: "Factory Droid",
+        target_label: "hooks → ~/.factory/settings.json",
+    },
+    AiToolSpec {
+        variant: AiTool::Windsurf,
+        cli_name: "windsurf",
+        aliases: &["windsurf", "cascade"],
+        display: "Windsurf",
+        target_label: "rules → .windsurfrules",
+    },
+];
+
 impl AiTool {
+    fn identity(&self) -> &'static AiToolSpec {
+        // Every variant has exactly one row; construction is compile-time.
+        TOOLS
+            .iter()
+            .find(|t| t.variant == *self)
+            .expect("AiTool missing from TOOLS registry")
+    }
+
     pub(crate) fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "claude" => Some(Self::Claude),
-            "gemini" => Some(Self::Gemini),
-            "cursor" => Some(Self::Cursor),
-            "codex" => Some(Self::Codex),
-            "opencode" => Some(Self::OpenCode),
-            "kilo" | "kilocode" => Some(Self::Kilo),
-            // `antigravity` keeps mapping to the IDE for back-compat with
-            // pre-v0.6.4 users; the CLI gets its own explicit aliases.
-            "antigravity" | "antigravity-ide" | "gravity" => Some(Self::Antigravity),
-            "antigravity-cli" | "agy" => Some(Self::AntigravityCLI),
-            "droid" | "factory" => Some(Self::Droid),
-            "windsurf" | "cascade" => Some(Self::Windsurf),
-            _ => None,
-        }
+        let lower = s.to_lowercase();
+        TOOLS
+            .iter()
+            .find(|t| t.aliases.contains(&lower.as_str()))
+            .map(|t| t.variant)
     }
 
     pub(crate) fn name(&self) -> &str {
-        match self {
-            Self::Claude => "Claude Code",
-            Self::Gemini => "Gemini CLI",
-            Self::Cursor => "Cursor",
-            Self::Codex => "Codex",
-            Self::OpenCode => "OpenCode",
-            Self::Kilo => "Kilo Code",
-            Self::Antigravity => "Antigravity IDE",
-            Self::AntigravityCLI => "Antigravity CLI",
-            Self::Droid => "Factory Droid",
-            Self::Windsurf => "Windsurf",
-        }
+        self.identity().display
     }
 
-    pub(crate) fn all_names() -> &'static str {
-        "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, windsurf"
+    pub(crate) fn all_names() -> String {
+        TOOLS
+            .iter()
+            .map(|t| t.cli_name)
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 
-    pub(crate) fn all_tools() -> [Self; 10] {
-        [
-            Self::Claude,
-            Self::Gemini,
-            Self::Cursor,
-            Self::Codex,
-            Self::OpenCode,
-            Self::Kilo,
-            Self::Antigravity,
-            Self::AntigravityCLI,
-            Self::Droid,
-            Self::Windsurf,
-        ]
+    pub(crate) fn all_tools() -> Vec<Self> {
+        TOOLS.iter().map(|t| t.variant).collect()
     }
 
     /// Short label describing where the integration lives, e.g. "~/.claude/settings.json"
     /// or "AGENTS.md". Used in `trs init --show` for transparency.
     pub(crate) fn target_label(&self) -> &'static str {
-        match self {
-            Self::Claude => "hooks → ~/.claude/settings.json",
-            Self::Gemini => "hooks → ~/.gemini/settings.json",
-            Self::Cursor => "hooks → ~/.cursor/hooks.json",
-            Self::Codex => "rules → AGENTS.md (Codex hooks don't support rewrite)",
-            Self::OpenCode => "plugin → .opencode/plugins/trs.ts",
-            Self::Kilo => "plugin → .kilo/plugins/trs.ts",
-            Self::Antigravity => "rules → ~/.gemini/GEMINI.md (jetski hooks not yet user-config)",
-            Self::AntigravityCLI => {
-                "rules → ~/.gemini/GEMINI.md (jetski hooks not yet user-config)"
-            }
-            Self::Droid => "hooks → ~/.factory/settings.json",
-            Self::Windsurf => "rules → .windsurfrules",
-        }
+        self.identity().target_label
     }
 
     /// Best-effort detection: is the tool installed on this system?
@@ -586,5 +655,57 @@ mod tests {
         assert!(cli_label.starts_with("rules → "));
         assert!(ide_label.contains("GEMINI.md"));
         assert!(cli_label.contains("GEMINI.md"));
+    }
+
+    #[test]
+    fn registry_covers_every_variant_and_has_no_dup_aliases() {
+        // identity() panics if a variant is missing from TOOLS.
+        for spec in TOOLS {
+            assert_eq!(spec.variant.identity().display, spec.display);
+        }
+        // No alias is claimed by two tools (would make from_str ambiguous).
+        let mut seen = std::collections::HashSet::new();
+        for spec in TOOLS {
+            for a in spec.aliases {
+                assert!(seen.insert(*a), "duplicate alias across tools: {a}");
+            }
+            // cli_name must itself be a valid alias.
+            assert!(
+                spec.aliases.contains(&spec.cli_name),
+                "{} cli_name not in aliases",
+                spec.cli_name
+            );
+        }
+        assert_eq!(AiTool::all_tools().len(), TOOLS.len());
+    }
+
+    #[test]
+    fn all_names_is_the_cli_name_list() {
+        // Pins the exact public string `trs uninstall` prints on bad input.
+        assert_eq!(
+            AiTool::all_names(),
+            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, windsurf"
+        );
+    }
+
+    #[test]
+    fn output_saver_agents_match_registry() {
+        // The output_saver AGENTS list is a separate const (it owns its own
+        // display order for `--show`/verify). This guards against its
+        // display strings drifting from the identity registry: every agent
+        // id must resolve to a known tool whose display name matches.
+        for agent in crate::output_saver::AGENTS {
+            let tool = AiTool::from_str(agent.id).unwrap_or_else(|| {
+                panic!("output_saver agent id `{}` unknown to registry", agent.id)
+            });
+            assert_eq!(
+                tool.name(),
+                agent.display,
+                "display drift for `{}`: registry={}, output_saver={}",
+                agent.id,
+                tool.name(),
+                agent.display
+            );
+        }
     }
 }
