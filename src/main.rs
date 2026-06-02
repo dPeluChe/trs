@@ -43,6 +43,7 @@ mod init_install;
 mod init_show;
 mod init_templates;
 mod output_saver;
+mod path_display;
 #[allow(dead_code)]
 mod process;
 #[allow(dead_code)]
