@@ -26,7 +26,7 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | Factory Droid | JSON hook | `~/.factory/settings.json` |
 | OpenCode | TS plugin | `~/.config/opencode/plugins/trs.ts` |
 | Kilo Code | TS plugin | `~/.config/kilo/plugins/trs.ts` |
-| Codex | Rules append | `AGENTS.md` in repo (or `~/.codex/AGENTS.md` with `--global`) |
+| Codex | JSON hook (codex-cli ≥ 0.134) + rules fallback | `~/.codex/hooks.json` (PreToolUse) + `~/.codex/AGENTS.md` |
 | Antigravity IDE | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Antigravity CLI (`agy`) | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Windsurf | Rules file | `.windsurfrules` |
@@ -35,10 +35,16 @@ Hooks fire deterministically on every shell-tool invocation. Rules
 files are probabilistic — they only work because the agent chooses to
 follow the guidance in them.
 
-Codex sits in the rules-only column on purpose: its `PreToolUse` hook
-schema accepts but doesn't implement `updatedInput`, so trs can't
-rewrite shell commands from a hook today. The AGENTS.md block tells
-the model to prefix shell commands with `trs` instead.
+Codex is version-gated. On **codex-cli ≥ 0.134** (which implements
+programmatic command rewriting via the `PreToolUse` hook's
+`hookSpecificOutput.updatedInput.command` field), `trs init codex
+--global` installs a real `PreToolUse` hook merged into
+`~/.codex/hooks.json` — approve it once via Codex's `/hooks` prompt and
+commands get rewritten automatically, no `trs` prefix needed. On older
+codex builds (or when the hook isn't trusted), trs falls back to
+rules-only: the `~/.codex/AGENTS.md` block tells the model to prefix
+shell commands with `trs`. Note `codex exec` (non-interactive) does not
+dispatch `PreToolUse`, so the hook only fires in interactive sessions.
 
 ## Preview with `--dry-run`
 
@@ -189,8 +195,11 @@ Labels per agent:
 - `cursor` — Cursor
 - `opencode` — OpenCode (baked into the plugin template)
 - `kilo` — Kilo Code (baked into its plugin template)
-- `(untagged)` — rules-only agents (Codex / Windsurf) and direct-
-  shell invocations, where no programmatic signal is available
+- `codex` — Codex when the `PreToolUse` hook is active (codex-cli
+  ≥ 0.134); the hook command carries `TRS_AGENT=codex`. Rules-only
+  fallback (older builds / untrusted hook) is still `(untagged)`.
+- `(untagged)` — rules-only agents (Windsurf, Codex fallback) and
+  direct-shell invocations, where no programmatic signal is available
 
 If you want to spoof attribution for a specific command (e.g.
 testing), prefix manually:
@@ -207,7 +216,8 @@ environment.
 Use [`trs uninstall`](uninstall.md). It's symmetric to `trs init` —
 interactive by default, or `--all` / `--tool <x>` / `--output-saver` /
 `--dry-run` for scripted removal. JSON hooks get scrubbed (user-added
-entries on the same event survive), plugin files are deleted, and the
+entries on the same event survive) — including the Codex `PreToolUse`
+entry in `~/.codex/hooks.json` — plugin files are deleted, and the
 Codex sentinel block in `AGENTS.md` is removed in place. See the
 `trs uninstall` doc for the per-surface details.
 
