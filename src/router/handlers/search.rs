@@ -175,7 +175,8 @@ impl SearchHandler {
                 }
             }
 
-            let path = entry.path().to_string_lossy().to_string();
+            // Forward-slash output for cross-platform consistency (#60).
+            let path = crate::path_display::display_path(entry.path());
 
             // Create a new searcher for each file
             let mut searcher_builder = SearcherBuilder::new();

@@ -109,7 +109,7 @@ pub(crate) fn run(args: &[&str], ctx: &CommandContext) {
             }
         }
 
-        let display = path.display().to_string();
+        let display = crate::path_display::display_path(path);
         if is_dir {
             dirs.push(display);
         } else {
@@ -157,7 +157,7 @@ fn print_compact(files: &[String], dirs: &[String], _root: &str) {
         let p = Path::new(path);
         let dir = p
             .parent()
-            .map(|d| d.display().to_string())
+            .map(crate::path_display::display_path)
             .unwrap_or_else(|| ".".to_string());
         let name = p
             .file_name()

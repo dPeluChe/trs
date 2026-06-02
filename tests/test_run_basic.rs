@@ -179,7 +179,8 @@ fn test_run_json_has_stdout_field() {
         .arg("test_output")
         .assert()
         .success()
-        .stdout(predicate::str::contains(r#""stdout":"test_output\n"#));
+        // Drop the trailing newline: Windows `echo` via cmd emits CRLF.
+        .stdout(predicate::str::contains(r#""stdout":"test_output"#));
 }
 
 #[test]
@@ -358,9 +359,11 @@ fn test_run_no_capture_duration() {
 #[test]
 fn test_run_with_working_dir_tmp() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("--json").arg("run");
+    // Print the cwd in the working dir: `pwd` on Unix (/tmp); on Windows the
+    // `cd` builtin via cmd, since /tmp doesn't exist there.
+    #[cfg(not(windows))]
     let output = cmd
-        .arg("--json")
-        .arg("run")
         .arg("pwd")
         .current_dir("/tmp")
         .assert()
@@ -368,10 +371,21 @@ fn test_run_with_working_dir_tmp() {
         .get_output()
         .stdout
         .clone();
+    #[cfg(windows)]
+    let output = cmd
+        .arg("cd")
+        .current_dir(std::env::temp_dir())
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
 
     let stdout = String::from_utf8_lossy(&output);
-    // On macOS, /tmp is a symlink to /private/tmp
+    #[cfg(not(windows))]
     assert!(stdout.contains("/tmp") || stdout.contains("private/tmp"));
+    #[cfg(windows)]
+    assert!(!stdout.trim().is_empty());
 }
 
 // ============================================================
