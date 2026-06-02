@@ -2,77 +2,6 @@
 //! command should be wrapped with `trs` and produces the rewritten string.
 //! Wire-format envelopes (Claude / Gemini / Cursor) live in `rewrite.rs`.
 
-/// Commands (prefixes) trs knows how to compress. Intentionally broad —
-/// keep loosely in sync with classifier.rs. Unknown commands still get
-/// generic compression (whitespace + ANSI).
-const REWRITE_PREFIXES: &[&str] = &[
-    "git ",
-    "ls ",
-    "ls\n",
-    "lsd ",
-    "exa ",
-    "eza ",
-    "tree ",
-    "find ",
-    "fd ",
-    "grep ",
-    "rg ",
-    "ag ",
-    "ack ",
-    "tail ",
-    "cargo ",
-    "npm ",
-    "pnpm ",
-    "bun ",
-    "yarn ",
-    "pip ",
-    "pip3 ",
-    "pytest",
-    "jest",
-    "vitest",
-    "make ",
-    "make\n",
-    "cmake ",
-    "tsc ",
-    "gcc ",
-    "g++ ",
-    "clang ",
-    "javac ",
-    "docker ",
-    "gh ",
-    "env\n",
-    "env ",
-    "printenv",
-    "wc ",
-    "wget ",
-    "curl ",
-    "eslint",
-    "biome ",
-    "ruff ",
-    "pylint",
-    "golangci-lint",
-    "ollama ",
-    "kubectl ",
-    "swift ",
-    "xcodebuild ",
-    "ping ",
-    "brew ",
-    "python ",
-    "python3 ",
-    "npx ",
-    "ps ",
-    "uv ",
-    // Inline scripts and generic CLIs — no dedicated parser, but
-    // generic ANSI/whitespace compression alone yields ~30-40% on the
-    // larger outputs (`bash -c "..."` with concatenated diagnostics,
-    // `du -h` trees, `awk` data dumps).
-    "bash ",
-    "node ",
-    "awk ",
-    "du ",
-    "jq ",
-];
-
 /// Commands that should NEVER be rewritten (internal, cd, pipes, etc.)
 const SKIP_PREFIXES: &[&str] = &[
     "trs ", "cd ", "echo ", "cat ", "head ", "tail -f", "export ", "source ", ".", "set ",
@@ -203,11 +132,14 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         std::process::exit(2);
     }
 
-    for prefix in REWRITE_PREFIXES {
-        let p = prefix.trim();
-        if trimmed.starts_with(prefix) || trimmed == p {
-            return Some(format!("trs {}", trimmed));
-        }
+    // Commands the registry recognizes as rewrite-eligible get wrapped
+    // explicitly; everything else falls through to the generic-compression
+    // catch-all below (same result). The unified command registry
+    // (command_registry.rs) is the single source of truth for which binaries
+    // trs is designed to compress — no more parallel prefix list to drift.
+    let first = trimmed.split_whitespace().next().unwrap_or("");
+    if crate::command_registry::is_rewrite_command(first) {
+        return Some(format!("trs {}", trimmed));
     }
 
     // Unknown command — generic compression (whitespace + ANSI). Skip

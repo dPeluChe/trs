@@ -5,45 +5,10 @@
 
 use crate::{ParseCommands, TestRunner};
 
-/// Benchmarked keep-ratio for estimating compressed output size per command.
-/// Returns the fraction of input that typically remains after trs compression.
-pub(crate) fn keep_ratio(cmd: &str, subcmd: &str) -> f64 {
-    match (cmd, subcmd) {
-        ("git", "status") => 0.20,
-        ("git", "diff") => 0.10,
-        ("git", "log") => 0.10,
-        ("git", "branch") => 0.11,
-        ("git", "show" | "stash") => 0.10,
-        ("git", "pull" | "fetch") => 0.15,
-        ("git", "grep") => 0.40,
-        ("ls" | "lsd" | "exa" | "eza", _) => 0.18,
-        ("tree", _) => 0.30,
-        ("find" | "fd", _) => 0.52,
-        ("grep" | "rg" | "ag", _) => 0.40,
-        ("env" | "printenv", _) => 0.32,
-        ("docker", "ps") => 0.30,
-        ("docker", "logs") => 0.50,
-        ("npm" | "pnpm" | "yarn" | "pip" | "pip3" | "cargo", "install" | "i") => 0.20,
-        ("npm" | "pip" | "pip3" | "cargo", "ls" | "list" | "tree" | "freeze") => 0.40,
-        ("poetry", "install" | "add" | "update") => 0.20,
-        ("poetry", "run") => 0.15,
-        ("cargo", "clippy") => 0.15,
-        ("cargo", "build" | "check") => 0.10,
-        ("cargo", "test") => 0.05,
-        ("go", "test") => 0.08,
-        ("make" | "gcc" | "g++", _) => 0.15,
-        ("tsc", _) => 0.15,
-        ("pytest" | "jest" | "vitest", _) => 0.10,
-        ("npm" | "pnpm" | "bun" | "yarn", "test") => 0.10,
-        ("npm" | "pnpm" | "bun" | "yarn", "run") => 0.15,
-        ("wc", _) => 0.50,
-        ("wget", _) => 0.15,
-        ("curl", _) => 0.15,
-        ("gh", "pr" | "issue" | "run") => 0.30,
-        ("eslint" | "biome" | "ruff" | "pylint" | "golangci-lint", _) => 0.15,
-        _ => 0.50,
-    }
-}
+// keep_ratio moved to the unified command registry (command_registry.rs).
+// Re-exported here so existing `crate::classifier::keep_ratio` callers keep
+// working without churn.
+pub(crate) use crate::command_registry::keep_ratio;
 
 /// Build a full command string from command name and arguments.
 pub(crate) fn full_cmd(cmd: &str, args: &[String]) -> String {

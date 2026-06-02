@@ -194,73 +194,10 @@ fn classify<'a>(
 }
 
 /// Binaries trs knows how to handle (compresses output beyond ANSI
-/// stripping). Kept in sync with `rewrite_decide::REWRITE_PREFIXES` —
-/// see `docs/features/stats.md` if you add a parser.
+/// stripping). Sourced from the unified command registry
+/// (`command_registry.rs`) — the single source of truth.
 fn is_known_binary(name: &str) -> bool {
-    matches!(
-        name,
-        "git"
-            | "ls"
-            | "lsd"
-            | "exa"
-            | "eza"
-            | "tree"
-            | "find"
-            | "fd"
-            | "grep"
-            | "rg"
-            | "ag"
-            | "ack"
-            | "tail"
-            | "cargo"
-            | "npm"
-            | "pnpm"
-            | "bun"
-            | "yarn"
-            | "pip"
-            | "pip3"
-            | "pytest"
-            | "jest"
-            | "vitest"
-            | "make"
-            | "cmake"
-            | "tsc"
-            | "gcc"
-            | "g++"
-            | "clang"
-            | "javac"
-            | "docker"
-            | "gh"
-            | "env"
-            | "printenv"
-            | "wc"
-            | "wget"
-            | "curl"
-            | "eslint"
-            | "biome"
-            | "ruff"
-            | "pylint"
-            | "golangci-lint"
-            | "ollama"
-            | "kubectl"
-            | "swift"
-            | "xcodebuild"
-            | "ping"
-            | "brew"
-            | "python"
-            | "python3"
-            | "npx"
-            | "ps"
-            | "uv"
-            | "trs"
-            | "cat"
-            | "head"
-            | "sed"
-            | "cd"
-            | "echo"
-            | "go"
-            | "poetry"
-    )
+    crate::command_registry::is_known_binary(name)
 }
 
 fn print_human(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, limit: usize) {
