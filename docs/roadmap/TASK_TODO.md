@@ -121,6 +121,13 @@ classifier / rewrite_decide / classifier_exec / stats_coverage.
   `check_history_writable` depend on a writable real `$HOME` (via
   `tracker::home_dir()`); a test must not depend on the real home. Inject a temp
   HOME / path so the suite is hermetic.
+- [ ] **Code-comment + file-size cleanup pass** `added: 2026-06-02` — apply the
+  new output-saver comment rule (≤3 lines / ~200 chars, reference-style) to the
+  v0.6.x additions whose doc-comments run long: `src/codex.rs`, `src/path_display.rs`,
+  `classifier::build_command`, the `command_registry` / AiTool `TOOLS` doc blocks.
+  While there, check files that drifted over ~500 LOC (`init.rs` grew with the
+  TOOLS table; `classifier.rs`, `output_saver.rs`, `audit_docs.rs`) and split the
+  reusable parts. Hygiene only — no behavior change.
 
 ---
 

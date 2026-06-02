@@ -276,14 +276,13 @@ fn refresh_configs() {
 
     // 2. Version bump — the new one should be greater.
     if new_version == old_version {
-        eprintln!(
-            "  ! new version ({}) matches the pre-upgrade version ({}) —",
-            new_version, old_version
+        // The installer fetches the latest release, so an unchanged version
+        // means you were already on it — not a failed update. Say so plainly.
+        println!(
+            "  ok  already on the latest version ({}) — nothing to update.",
+            new_version
         );
-        eprintln!("    install may not have actually updated. Skipping config refresh.");
-        eprintln!(
-            "    If this is expected (e.g. re-running same version), re-run with --binary-only."
-        );
+        println!("      Configs left as-is (re-run `trs init --all --global --force` to refresh templates).");
         return;
     }
     println!("  ok  version bumped: {} -> {}", old_version, new_version);
