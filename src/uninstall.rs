@@ -249,6 +249,10 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
             push_home(".config/kilo/plugins/trs.ts");
             v.push(PathBuf::from(".kilo/plugins/trs.ts"));
         }
+        AiTool::Pi => {
+            push_home(".pi/agent/extensions/trs.ts");
+            v.push(PathBuf::from(".pi/extensions/trs.ts"));
+        }
         AiTool::Codex => {
             push_home(".codex/AGENTS.md");
             // Legacy installs (pre-v0.6.x) wrote `trs rewrite` into
