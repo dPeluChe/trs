@@ -1,14 +1,14 @@
 # `trs init` — install hooks for AI agents
 
 `trs init` wires your AI coding agent's shell-execution pipeline through
-`trs rewrite` so every command gets compressed automatically. Nine
+`trs rewrite` so every command gets compressed automatically. Eleven
 agents are supported end-to-end. See [`docs/development/agent-integrations.md`](../development/agent-integrations.md)
 for the full per-agent reference.
 
 ## Quick reference
 
 ```bash
-trs init --show                      # status of all 9 agents
+trs init --show                      # status of all 11 agents
 trs init --all --global              # install for every detected agent
 trs init <agent>                     # install for one: claude, gemini, cursor, …
 trs init --all --global --dry-run    # preview every file that would change
@@ -26,6 +26,7 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | Factory Droid | JSON hook | `~/.factory/settings.json` |
 | OpenCode | TS plugin | `~/.config/opencode/plugins/trs.ts` |
 | Kilo Code | TS plugin | `~/.config/kilo/plugins/trs.ts` |
+| Pi Coding Agent | TS extension | `~/.pi/agent/extensions/trs.ts` |
 | Codex | JSON hook (codex-cli ≥ 0.134) + rules fallback | `~/.codex/hooks.json` (PreToolUse) + `~/.codex/AGENTS.md` |
 | Antigravity IDE | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Antigravity CLI (`agy`) | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
@@ -195,6 +196,8 @@ Labels per agent:
 - `cursor` — Cursor
 - `opencode` — OpenCode (baked into the plugin template)
 - `kilo` — Kilo Code (baked into its plugin template)
+- `pi` — Pi Coding Agent (set via `TRS_AGENT=pi` in the extension's
+  `spawnHook` env)
 - `codex` — Codex when the `PreToolUse` hook is active (codex-cli
   ≥ 0.134); the hook command carries `TRS_AGENT=codex`. Rules-only
   fallback (older builds / untrusted hook) is still `(untagged)`.
