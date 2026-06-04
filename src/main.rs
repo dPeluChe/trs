@@ -37,6 +37,7 @@ mod debug_info;
 mod diff;
 mod discover;
 mod doctor;
+mod doctor_checks;
 mod exec;
 mod formatter;
 mod help;

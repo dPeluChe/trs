@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::init::{check_tool, AiTool};
+
 #[test]
 fn test_check_version_passes() {
     let check = check_version();
