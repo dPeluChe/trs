@@ -16,6 +16,7 @@ mod collect_manifests;
 mod deps;
 mod deps_extract;
 mod format;
+mod format_tree;
 mod meta;
 mod ollama;
 mod remote;
