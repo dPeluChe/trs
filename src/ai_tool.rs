@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::init_templates::{
     CLAUDE_HOOKS, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN, OPENCODE_PLUGIN,
+    PI_EXTENSION,
 };
 
 /// Supported AI tools for hook installation.
@@ -17,6 +18,9 @@ pub(crate) enum AiTool {
     Codex,
     OpenCode,
     Kilo,
+    /// Pi coding agent (pi.dev). Extension-based: a bash `spawnHook` routes
+    /// commands through trs and tags them via `TRS_AGENT=pi`.
+    Pi,
     /// Google Antigravity desktop IDE (Antigravity 2.0). Currently
     /// rules-only — v0.6.6 reverted the jetski hook integration because
     /// agy v1.0.1 doesn't expose user-configurable PreTool hooks. The
@@ -140,6 +144,16 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
         display: "Windsurf",
         target_label: "rules → .windsurfrules",
     },
+    // Pi (pi.dev) — extension with a bash `spawnHook` that rewrites the
+    // command + sets TRS_AGENT via env (cross-platform). Same plugin-file
+    // shape as OpenCode/Kilo, different discovery dir.
+    AiToolSpec {
+        variant: AiTool::Pi,
+        cli_name: "pi",
+        aliases: &["pi", "pi.dev", "pidev"],
+        display: "Pi Coding Agent",
+        target_label: "extension → .pi/agent/extensions/trs.ts",
+    },
 ];
 
 impl AiTool {
@@ -213,6 +227,7 @@ impl AiTool {
             }
             Self::OpenCode => in_path("opencode") || home_has(".opencode"),
             Self::Kilo => in_path("kilo") || home_has(".kilo"),
+            Self::Pi => in_path("pi") || home_has(".pi"),
             // IDE (desktop) — installs the app + writes binary state into
             // `~/.gemini/antigravity-ide/`. Keep the legacy `.antigravity`
             // check as a soft signal for pre-Antigravity-2.0 users.
@@ -274,6 +289,15 @@ impl AiTool {
                 global_dir: Some(".config/kilo/plugins"),
                 filename: "trs.ts",
                 content: KILO_PLUGIN,
+            }),
+            // Pi auto-discovers extensions from `~/.pi/agent/extensions/`
+            // (global) and `.pi/extensions/` (project). The extension overrides
+            // the bash tool with a spawnHook (see PI_EXTENSION).
+            Self::Pi => Some(HookSpec {
+                local_dir: ".pi/extensions",
+                global_dir: Some(".pi/agent/extensions"),
+                filename: "trs.ts",
+                content: PI_EXTENSION,
             }),
             Self::Droid => Some(HookSpec {
                 local_dir: ".factory",
@@ -389,7 +413,7 @@ mod tests {
         // Pins the exact public string `trs uninstall` prints on bad input.
         assert_eq!(
             AiTool::all_names(),
-            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, windsurf"
+            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, windsurf, pi"
         );
     }
 

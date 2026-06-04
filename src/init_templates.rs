@@ -174,6 +174,34 @@ export const TrsPlugin = async () => {
 };
 "#;
 
+// Pi (pi.dev) extension: overrides the bash tool with a `spawnHook` that
+// prepends `trs` and tags the run via `TRS_AGENT=pi` (attribution lives in the
+// env, not a shell prefix — works on every platform). Auto-discovered from
+// ~/.pi/agent/extensions/ (global) or .pi/extensions/ (project); `/reload` to
+// pick up changes. Reference: https://pi.dev (earendil-works/pi).
+pub(crate) const PI_EXTENSION: &str = r#"// trs plugin — route commands through trs for token-optimized output
+import { createBashTool } from "@earendil-works/pi-coding-agent";
+
+export default function (pi) {
+  const bash = createBashTool(process.cwd(), {
+    spawnHook: ({ command, cwd, env }) => {
+      // Idempotent: skip anything already routed through trs (or a cd).
+      const skip =
+        typeof command !== "string" ||
+        command.startsWith("trs ") ||
+        command.startsWith("cd ") ||
+        command.startsWith("TRS_AGENT=");
+      return {
+        command: skip ? command : `trs ${command}`,
+        cwd,
+        env: { ...env, TRS_AGENT: "pi" },
+      };
+    },
+  });
+  pi.registerTool({ ...bash });
+}
+"#;
+
 /// Sentinel that marks the Codex AGENTS.md block on re-runs. The block's
 /// prose uses backtick-wrapped `` `trs` `` which doesn't match the plain
 /// `trs (Token-Reducing Shell)` marker — without this sentinel re-runs

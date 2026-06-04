@@ -134,6 +134,10 @@ fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
             push_home(&mut v, ".config/kilo/plugins/trs.ts");
             v.push(PathBuf::from(".kilo/plugins/trs.ts"));
         }
+        AiTool::Pi => {
+            push_home(&mut v, ".pi/agent/extensions/trs.ts");
+            v.push(PathBuf::from(".pi/extensions/trs.ts"));
+        }
         AiTool::Codex => {
             push_home(&mut v, ".codex/AGENTS.md");
             v.push(PathBuf::from("AGENTS.md"));
