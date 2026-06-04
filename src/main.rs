@@ -25,6 +25,7 @@ mod ai_tool;
 mod audit_docs;
 mod audit_docs_detect;
 mod audit_docs_report;
+mod audit_docs_symbols;
 mod benchmark;
 mod classifier;
 mod classifier_args;
