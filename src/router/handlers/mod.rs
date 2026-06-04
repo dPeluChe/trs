@@ -13,6 +13,7 @@ pub mod run;
 pub mod search;
 pub mod stats;
 pub mod stats_coverage;
+pub mod stats_render;
 pub mod tail;
 pub mod trim;
 pub mod txt2md;
