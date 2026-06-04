@@ -23,6 +23,7 @@ use clap::Parser;
 
 mod ai_tool;
 mod audit_docs;
+mod audit_docs_report;
 mod benchmark;
 mod classifier;
 mod classifier_args;
