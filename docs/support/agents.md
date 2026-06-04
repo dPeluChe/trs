@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Ten AI coding agents are supported end-to-end. Each row lists the
+Eleven AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -12,6 +12,7 @@ install scope.
 | Cursor | programmatic hook | ✓ | ✓ (`.mdc`) | `cursor` | global + project |
 | OpenCode | plugin template | ✓ | ✓ (inline block) | `opencode` | global |
 | Kilo Code | plugin template | ✓ | ✓ (inline block) | `kilo` | global |
+| Pi Coding Agent | programmatic hook (extension) | ✓ | — | `pi` | global + project |
 | Factory Droid | programmatic hook | ✓ | ✓ (inline block) | `claude` (see caveat) | global + project |
 | Antigravity IDE | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
 | Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
@@ -81,6 +82,17 @@ install scope.
 
 - **Install mechanism:** plugin template, symmetric to OpenCode.
 - **Scope:** global only.
+
+### Pi Coding Agent
+
+- **Install mechanism:** a programmatic extension (TypeScript) with a
+  bash `spawnHook` that rewrites the command and sets env before exec —
+  same tier as Claude/Cursor/OpenCode/Kilo, not rules-only.
+- **Config path:** `~/.pi/agent/extensions/trs.ts` (global) or
+  `.pi/extensions/trs.ts` (project).
+- **Attribution:** `pi` — the extension's env carries `TRS_AGENT=pi`.
+- **Typical install:** `trs init pi` (aliases: `pi`, `pi.dev`,
+  `pidev`). Upstream: pi.dev (repo `earendil-works/pi`).
 
 ### Factory Droid
 
