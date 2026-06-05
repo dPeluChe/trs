@@ -72,6 +72,18 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 - [ ] **Cody (Sourcegraph)** — VSCode extension with context-fetcher and custom commands. Check whether commands can prefix shell execution.
 - [ ] **Research pass**: decide whether VSCode-base agents warrant `trs init vscode-copilot` / `trs init continue` entries or a single `trs init vscode`.
 
+### Evaluated — no dedicated integration needed
+
+- [x] **t3code (pingdotgg)** — evaluated; **not applicable for a `trs init` entry.** t3code is a web-GUI *wrapper* that orchestrates other agent CLIs (Codex, Claude, Cursor, OpenCode), not an agent itself — it doesn't run shell or expose its own hook surface. trs attaches transitively at the backend-agent layer (all four already supported), so `trs init <backend>` covers it. Attribution shows the backend agent, not "t3code". Open validation: confirm the hook fires through t3code's Codex *app-server* (JSON-RPC stdio) path, as we validated interactive Codex.
+
+### Competitor intel — headroom (chopratejas)
+
+Context-compression layer (Python+Rust): compresses tool outputs / logs / files / RAG before the LLM, 60-95% fewer tokens. Broader scope than trs (we do terminal-command output via hooks; they do all content via library/proxy/MCP). Ideas worth a look, not adoption:
+
+- [ ] **KV-cache effect of `TRS_AGENT=` prefix** — headroom ships a "CacheAligner" that stabilizes prefixes for provider KV-cache hits. Verify our attribution prefix doesn't bust prefix-caching; if it does, move attribution off the command prefix.
+- [ ] **Reversible compression (CCR)** — store original locally, let the agent retrieve on demand. Interesting but conflicts with trs's one-shot simplicity; evaluate only if users ask for lossless recall.
+- [ ] **Proxy / MCP distribution** — headroom offers a drop-in proxy and an MCP server. Confirms others ship MCP; feeds the deferred trs-MCP value question.
+
 ### Dynamic prompt injection (deferred)
 
 - [ ] **Kilo — `experimental.chat.system.transform`** — plugin hook that mutates the assembled system prompt. `experimental.` prefix means API churn risk; useful for dynamic injection in a future feature.

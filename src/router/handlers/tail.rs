@@ -9,10 +9,22 @@ pub(crate) struct TailHandler;
 pub(crate) struct TailLine {
     /// Line number (1-indexed).
     line_number: usize,
-    /// The line content.
+    /// The line content (raw — preserved verbatim for raw/json/csv/tsv).
     line: String,
     /// Whether this line is an error line.
     is_error: bool,
+    /// Compact view for structured JSON log lines (level/msg/logger/error
+    /// extracted, the rest dropped). None for plain text — display falls
+    /// back to `line`.
+    compact: Option<String>,
+}
+
+impl TailLine {
+    /// The text shown in human/agent formats: compacted JSON when available,
+    /// otherwise the raw line.
+    fn display(&self) -> &str {
+        self.compact.as_deref().unwrap_or(&self.line)
+    }
 }
 
 /// Parsed tail output.
@@ -83,7 +95,9 @@ impl TailHandler {
         let mut line_number = start + 1; // 1-indexed
 
         for line in tail_lines {
-            let is_error = Self::is_error_line(&line);
+            let (compact, is_error) = Self::json_compact(&line)
+                .map(|(msg, err)| (Some(msg), err))
+                .unwrap_or_else(|| (None, Self::is_error_line(&line)));
 
             // If filtering for errors, skip non-error lines
             if input.errors && !is_error {
@@ -95,6 +109,7 @@ impl TailHandler {
                 line_number,
                 line,
                 is_error,
+                compact,
             });
 
             line_number += 1;
@@ -110,6 +125,20 @@ impl TailHandler {
             filtering_errors: input.errors,
             input_bytes,
         })
+    }
+
+    /// Compact a structured JSON log line to "msg (logger)" + error/level,
+    /// reusing the logs reducer's extractor. Returns `(compact, is_error)`.
+    /// The cheap `{`/`}` guard inside `try_parse_json_log_line` skips serde
+    /// for the common non-JSON line, so this stays hot-path friendly.
+    fn json_compact(line: &str) -> Option<(String, bool)> {
+        use crate::router::handlers::parse::ParseHandler;
+        use crate::router::handlers::types::LogLevel;
+        let e = ParseHandler::try_parse_json_log_line(line, 0)?;
+        Some((
+            e.message,
+            matches!(e.level, LogLevel::Error | LogLevel::Fatal),
+        ))
     }
 
     /// Check if a line is an error line.
@@ -177,7 +206,9 @@ impl TailHandler {
                 Ok(_) => {
                     // New line available
                     let line = line.trim_end_matches('\n').trim_end_matches('\r');
-                    let is_error = Self::is_error_line(line);
+                    let (compact, is_error) = Self::json_compact(line)
+                        .map(|(msg, err)| (Some(msg), err))
+                        .unwrap_or_else(|| (None, Self::is_error_line(line)));
 
                     // If filtering for errors, skip non-error lines
                     if input.errors && !is_error {
@@ -190,6 +221,7 @@ impl TailHandler {
                         line_number,
                         line: line.to_string(),
                         is_error,
+                        compact,
                     };
 
                     let formatted = Self::format_streaming_line(&tail_line, ctx.format);
@@ -232,9 +264,9 @@ impl TailHandler {
             }
             OutputFormat::Agent | OutputFormat::Compact => {
                 if line.is_error {
-                    format!("ERR {}\n", line.line)
+                    format!("ERR {}\n", line.display())
                 } else {
-                    format!("{}\n", line.line)
+                    format!("{}\n", line.display())
                 }
             }
             OutputFormat::Raw => {
@@ -316,9 +348,9 @@ impl TailHandler {
         let mut body = String::new();
         for l in &output.lines {
             if l.is_error {
-                body.push_str(&format!("ERR {}\n", l.line));
+                body.push_str(&format!("ERR {}\n", l.display()));
             } else {
-                body.push_str(&l.line);
+                body.push_str(l.display());
                 body.push('\n');
             }
         }
