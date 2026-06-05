@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.15] - 2026-06-05
+
+### Features
+
+- **release:** Automate CHANGELOG + release notes with git-cliff (#72)
+
+### Testing
+
+- **ci:** Mark live-network html2md tests as #[ignore] (#73)
+
 ## [0.6.14] - 2026-06-04
 
 ### Refactor
