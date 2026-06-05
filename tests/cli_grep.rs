@@ -162,6 +162,7 @@ fn test_html2md_basic() {
 }
 
 #[test]
+#[ignore = "network: hits httpbin.org; run with `cargo test -- --ignored`"]
 fn test_html2md_url_input() {
     // Test with a URL input
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -174,6 +175,7 @@ fn test_html2md_url_input() {
 }
 
 #[test]
+#[ignore = "network: hits httpbin.org; run with `cargo test -- --ignored`"]
 fn test_html2md_url_with_metadata() {
     // Test URL with metadata flag
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -187,6 +189,7 @@ fn test_html2md_url_with_metadata() {
 }
 
 #[test]
+#[ignore = "network: hits httpbin.org; run with `cargo test -- --ignored`"]
 fn test_html2md_url_with_json_output() {
     // Test URL with JSON output
     let mut cmd = Command::cargo_bin("trs").unwrap();
