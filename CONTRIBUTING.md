@@ -49,6 +49,8 @@ git config core.hooksPath .githooks
 - Integration tests (in `tests/`) test the CLI binary end-to-end.
 - Unit tests (in `src/`) test individual functions.
 - Don't assert on timing (`duration_ms > 0`) — fast CI runners can complete in <1ms.
+- Tests that hit the live network must be `#[ignore]`d (they're not a CI gate — a
+  flaky endpoint shouldn't redden the build). Run them with `cargo test -- --ignored`.
 - Fixture files go in `tests/fixture_data/`. Add `!tests/fixture_data/*.log` patterns to `.gitignore` if needed.
 
 ## Adding a new parser
