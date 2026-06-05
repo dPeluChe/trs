@@ -180,15 +180,38 @@ tests/
 
 ## Commit messages
 
-Format: `Brief description of what changed`
+We use [Conventional Commits](https://www.conventionalcommits.org) — the
+changelog and release notes are generated from them, so the prefix matters.
 
 ```
-Add kubectl parser for pod/service output
-Fix git status grouping for >20 files
-Update README with benchmark table
+feat(kubectl): add parser for pod/service output
+fix(git): correct status grouping for >20 files
+docs: update README with benchmark table
+refactor(classifier): split arg preprocessing into classifier_args
 ```
+
+Types that surface in the changelog: `feat`, `fix`, `perf`, `refactor`,
+`docs`, `test`, `ci`/`build`, `chore(deps)`. `chore`/`chore(release)`/`release`
+are skipped. Breaking changes: add `!` after the type (`feat!:`) or a
+`BREAKING CHANGE:` footer.
 
 Include `Co-Authored-By` if pair-programming with AI.
+
+## Releasing
+
+The changelog is automated with [git-cliff](https://git-cliff.org)
+(config: [`cliff.toml`](cliff.toml)) from the Conventional Commits above.
+
+1. Bump the version in `Cargo.toml`, `npm/package.json`, and
+   `npm/platforms/*/package.json`.
+2. Regenerate the changelog: `git cliff -o CHANGELOG.md`
+3. Commit (`chore(release): bump to vX.Y.Z`) and merge to `main`.
+4. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
+
+The tag triggers `release.yml`, which builds the binaries, **regenerates the
+GitHub Release notes for that tag with git-cliff** (grouped by type — not a
+raw PR list), and publishes the npm packages. Devs watching the repo get the
+release notification; npm and GitHub both show the same curated changelog.
 
 ## Questions?
 

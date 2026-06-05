@@ -111,7 +111,21 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # Full history + tags so git-cliff can build the changelog/notes.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Release body = git-cliff notes for just this tag (Conventional
+      # Commits grouped by type). Replaces GitHub's raw PR-list notes.
+      - name: Generate release notes (git-cliff)
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: RELEASE_NOTES.md
+          GITHUB_REPO: ${{ github.repository }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v5
@@ -143,7 +157,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md
           files: |
             artifacts/trs-linux-x64/trs-linux-x64
             artifacts/trs-linux-arm64/trs-linux-arm64
