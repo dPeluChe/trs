@@ -47,8 +47,8 @@ pub(crate) const AGENTS: &[Agent] = &[
         display: "Codex",
     },
     Agent {
-        id: "windsurf",
-        display: "Windsurf",
+        id: "devin",
+        display: "Devin Desktop",
     },
     Agent {
         id: "droid",
@@ -110,7 +110,9 @@ fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::Path>) -> T
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
             }),
-        "windsurf" => push_home(".codeium/windsurf/memories/global_rules.md")
+        // Devin Desktop (ex-Windsurf): the legacy `~/.codeium` global memory
+        // is still read by Devin, so it remains the global output-saver target.
+        "devin" => push_home(".codeium/windsurf/memories/global_rules.md")
             .map(|path| Target::InlineFile { path })
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",

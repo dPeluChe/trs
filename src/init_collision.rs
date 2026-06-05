@@ -151,8 +151,9 @@ fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
             push_home(&mut v, ".gemini/antigravity-cli/hooks.json");
             v.push(PathBuf::from(".gemini/antigravity-cli/hooks.json"));
         }
-        AiTool::Windsurf => {
+        AiTool::Devin => {
             push_home(&mut v, ".codeium/windsurf/memories/global_rules.md");
+            v.push(PathBuf::from(".devin/rules/trs.md"));
             v.push(PathBuf::from(".windsurfrules"));
         }
     }

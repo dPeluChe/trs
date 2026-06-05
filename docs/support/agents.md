@@ -17,7 +17,7 @@ install scope.
 | Antigravity IDE | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
 | Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
-| Windsurf | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
+| Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
 
 ## Column legend
 
@@ -71,6 +71,9 @@ install scope.
 - **Config path:** `~/.cursor/hooks.json`.
 - **Output-saver:** `.cursor/rules/trs.mdc` — Cursor auto-loads `.mdc`
   files from the rules dir, no explicit import needed.
+- **Why `preToolUse`:** it's the only Cursor hook that can rewrite the
+  command (via the `updated_input` field); `beforeShellExecution` can
+  only allow/deny, not modify.
 
 ### OpenCode
 
@@ -105,7 +108,7 @@ install scope.
 
 ### Antigravity IDE + Antigravity CLI (`agy`)
 
-- **Status (v0.6.6).** **Rules-only**, same as Codex/Windsurf. There is
+- **Status (v0.6.6).** **Rules-only**, same as Codex/Devin Desktop. There is
   no programmatic auto-rewriting of Bash commands until Google ships
   user-configurable PreToolHooks upstream. Full investigation:
   [`docs/development/antigravity-hooks-research.md`](../development/antigravity-hooks-research.md).
@@ -132,7 +135,7 @@ install scope.
   lists both rows separately so you can see what's detected.
 - **Attribution.** `(untagged)` in `trs stats --by-agent` — we have no
   programmatic signal (no hook ever fires for Antigravity-launched
-  commands). Same posture as Codex/Windsurf. When the user prefixes
+  commands). Same posture as Codex/Devin Desktop. When the user prefixes
   `trs git status` manually, those runs also land in `(untagged)`.
 - **Migration cleanup.** `trs init` and `trs uninstall` both sweep the
   inert artifacts from previous releases:
@@ -164,12 +167,23 @@ install scope.
   carries `TRS_AGENT=codex`); the rules-only fallback shows as
   `(untagged)`.
 
-### Windsurf
+### Devin Desktop (ex-Windsurf)
 
-- **Install mechanism:** rules file only — Windsurf has no
-  programmatic hook surface. `trs init` appends a rules block
+- **Background:** Devin Desktop is Cognition's 2026-06-02 rebrand of
+  Windsurf. Its old agent engine "Cascade" was replaced by "Devin
+  Local" (Rust rewrite, subagents, ACP support). Cascade reaches
+  end-of-life 2026-07-01.
+- **Install mechanism:** rules file only — Devin Local exposes no
+  shell hook / plugin API. `trs init` appends a rules block
   recommending manual `trs <cmd>` prefixes; the agent reads the rules
   at session start but there's no enforcement.
+- **Target file:** `.devin/rules/trs.md` (a directory-rule file with
+  YAML frontmatter `trigger: always_on`) when Devin Desktop is
+  detected; legacy `.windsurfrules` (plain file, no frontmatter)
+  otherwise. Devin reads both, so trs writes only one to avoid
+  double-loading; uninstall removes both.
+- **CLI names:** primary `devin`; aliases `devin-desktop`, `windsurf`,
+  `cascade` (the last two for back-compat).
 - **Attribution:** `(untagged)` in stats since there's no programmatic
   signal to tag commands with an agent.
 

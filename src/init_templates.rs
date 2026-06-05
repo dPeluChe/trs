@@ -347,6 +347,52 @@ Reference: https://github.com/dPeluChe/trs
 "#
 );
 
+// Devin Desktop (ex-Windsurf) directory-rule file: `.devin/rules/trs.md`.
+// `trigger: always_on` is the Windsurf-lineage frontmatter Devin reads for
+// an always-applied rule (Cursor's `.mdc` uses `alwaysApply`; AGENTS.md needs
+// none). Devin Local still has no shell hook, so this rules block — like the
+// legacy `.windsurfrules` — is the whole integration.
+pub(crate) const DEVIN_RULE: &str = concat!(
+    r#"---
+trigger: always_on
+---
+
+# trs (Token-Reducing Shell) — terminal output optimization
+
+Devin Local does not expose a pre-execution hook, so this rule is the way to
+opt into trs. When running shell commands, prefix them with `trs` to get
+compact, structured output.
+
+```bash
+# Instead of:
+git status
+cargo test
+pnpm test
+
+# Use:
+trs git status
+trs cargo test
+trs pnpm test
+```
+
+Commands without a dedicated trs parser still get whitespace / ANSI
+compression (~30-40% reduction). Pipes and chains are passed through unchanged.
+
+"#,
+    output_saver_block_literal!(),
+    r#"
+
+## Keeping this file lean
+
+Run `trs audit-docs` periodically to surface content that inflates every
+agent session — duplicate sections, embedded code/SQL blocks that belong in
+their own files, dead references. Every unnecessary token here loads on every
+call.
+
+Reference: https://github.com/dPeluChe/trs
+"#
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;

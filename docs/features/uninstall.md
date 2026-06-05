@@ -24,7 +24,7 @@ trs uninstall --dry-run              # preview without writing
 | Plugin files (OpenCode / Kilo) | delete `~/.config/<tool>/plugins/trs.ts` |
 | Codex AGENTS.md | remove the sentinel-delimited block; delete the file if it was just our block |
 | Codex `hooks.json` | scrub the `trs rewrite` `PreToolUse` entry from `~/.codex/hooks.json` (preserving the user's other hooks). On codex-cli ≥ 0.134 this is a real, valid hook; on older builds it's an inert orphan — either way it's removed cleanly |
-| Windsurf rules file | delete `.windsurfrules` when it carries the trs marker |
+| Devin Desktop rules file (id `devin`, ex-Windsurf) | delete `.devin/rules/trs.md` and legacy `.windsurfrules` when they carry the trs marker |
 | Legacy Antigravity rules | delete pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md` if present |
 | Antigravity rules block | remove the `<!-- trs:antigravity-rules:start v1 -->` … `:end -->` block from `~/.gemini/GEMINI.md` (v0.6.6+ rules-only integration) |
 | Legacy Antigravity hooks.json | remove inert `~/.gemini/antigravity-{ide,cli}/hooks.json` (v0.6.5 jetski install that never fired — see [research notes](../development/antigravity-hooks-research.md)) |

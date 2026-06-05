@@ -285,7 +285,8 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
             v.push(PathBuf::from(".gemini/settings.json"));
             v.push(PathBuf::from(".agent/rules/antigravity-trs-rules.md"));
         }
-        AiTool::Windsurf => {
+        AiTool::Devin => {
+            v.push(PathBuf::from(".devin/rules/trs.md"));
             v.push(PathBuf::from(".windsurfrules"));
         }
     }
@@ -406,7 +407,7 @@ fn remove_output_saver(agent_id: &str, dry_run: bool) -> Result<String, String> 
 
 /// Best-effort: does this agent have any output-saver artifact on disk?
 /// Imported agents (claude / gemini) store it as a sidecar `trs.md`;
-/// inline agents (codex / cursor / windsurf) wrap it with sentinels in
+/// inline agents (codex / cursor / devin) wrap it with sentinels in
 /// their primary rules file.
 fn has_output_saver_installed(agent_id: &str) -> bool {
     let Ok(home) = crate::init::home_dir() else {
@@ -425,7 +426,10 @@ fn has_output_saver_installed(agent_id: &str) -> bool {
     let inline_paths: Vec<PathBuf> = match agent_id {
         "codex" => vec![home.join(".codex/AGENTS.md"), PathBuf::from("AGENTS.md")],
         "cursor" => vec![home.join(".cursor/.cursorrules")],
-        "windsurf" => vec![PathBuf::from(".windsurfrules")],
+        "devin" => vec![
+            PathBuf::from(".devin/rules/trs.md"),
+            PathBuf::from(".windsurfrules"),
+        ],
         _ => vec![],
     };
     inline_paths.iter().any(|p| {
@@ -467,7 +471,7 @@ fn output_saver_agent_id(tool: &AiTool) -> Option<&'static str> {
         AiTool::Gemini => Some("gemini"),
         AiTool::Codex => Some("codex"),
         AiTool::Cursor => Some("cursor"),
-        AiTool::Windsurf => Some("windsurf"),
+        AiTool::Devin => Some("devin"),
         // Both Antigravity variants share Gemini's trs.md — uninstalling
         // either touches the same file. We return their respective
         // agent_ids so the per-tool report names them clearly; the

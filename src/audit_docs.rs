@@ -1,7 +1,8 @@
 //! `trs audit-docs` — audit AI-agent instruction files for bloat and drift.
 //!
 //! AI agents load a set of markdown/rules files into context on every prompt
-//! (CLAUDE.md, AGENTS.md, .windsurfrules, .cursor/rules/*, .agent/rules/*).
+//! (CLAUDE.md, AGENTS.md, .windsurfrules, .devin/rules/*, .cursor/rules/*,
+//! .agent/rules/*).
 //! Over time these files accumulate:
 //!   - content duplicated across files (same "Testing" section in 3 places)
 //!   - sections that grew past their useful size (1000-line "Architecture")
@@ -22,6 +23,8 @@ const KNOWN_PATHS: &[(&str, bool)] = &[
     ("GEMINI.md", false),
     ("CURSOR.md", false),
     (".windsurfrules", false),
+    (".devin/rules", true),
+    (".windsurf/rules", true),
     (".cursor/rules", true),
     (".agent/rules", true),
     (".agents/rules", true),
@@ -109,7 +112,7 @@ pub fn run_audit_docs(root: &Path) {
             root.display()
         );
         println!(
-            "  (looked for CLAUDE.md, AGENTS.md, .windsurfrules, .cursor/rules/*, .agent/rules/*)"
+            "  (looked for CLAUDE.md, AGENTS.md, .windsurfrules, .devin/rules/*, .cursor/rules/*, .agent/rules/*)"
         );
         return;
     }
