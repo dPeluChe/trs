@@ -74,6 +74,27 @@ impl ParseHandler {
             }
         };
 
+        // Fail-open: the formatter claiming "no tests found" on NON-empty
+        // input means the runner's format wasn't recognized (version drift,
+        // wrappers, custom reporters). Echo the raw output instead of
+        // replacing real signal — possibly failures — with a false negative.
+        // Gate on the formatter's own admission, not parsed counts: some
+        // parsers (vitest) summarize correctly while their counts lag.
+        // Structured formats keep the parsed shape (machine callers).
+        let format_is_texty = matches!(
+            ctx.format,
+            crate::OutputFormat::Compact | crate::OutputFormat::Agent | crate::OutputFormat::Raw
+        );
+        let output = if format_is_texty
+            && passed + failed + skipped == 0
+            && output.contains("no tests found")
+            && !input.trim().is_empty()
+        {
+            input.clone()
+        } else {
+            output
+        };
+
         // Print stats if requested
         if ctx.stats {
             let stats = CommandStats::new()

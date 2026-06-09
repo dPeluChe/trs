@@ -107,9 +107,17 @@ classifier / rewrite_decide / classifier_exec / stats_coverage.
   out of the 184-line `execute_and_parse` (5 returns each duplicating
   track+tee+exit). Pure refactor, lowers blast radius. Next natural step now
   that the registry lands.
-- [ ] **Quality harness** — measure more than bytes: tokens saved, errors
-  preserved, paths preserved, suggested-commands preserved, raw recoverable.
-  This is what lets us improve parsers with evidence instead of intuition.
+- [x] **Quality harness v1** — `tests/quality_harness.rs`: runs fixtures
+  through their parsers and asserts signal preservation (error codes,
+  failing-file basenames, failure marker) + reports per-case compression.
+  Adding a case = one table row. First run found 3 real bugs (bun parser ×2,
+  all-runners "no tests found" destroying unrecognized output — fixed).
+- [ ] **Quality harness v2 candidates** — suggested-commands preserved;
+  cargo-test / build / lint cases (need failure fixtures); raw recoverable.
+- [ ] **vitest parser: summary counts lost** (harness finding) — for
+  `vitest_mixed.txt` the "Tests 5 passed, 1 failed (6)" line never reaches
+  `parse_vitest_tests_summary` (error-collection state swallows it?), so
+  stats log items=0 despite correct compact output. Fix the state machine.
 - [ ] **Per-command config** — `[commands.cargo-test] max_failures = 20,
   preserve_backtraces = true`. Build on the existing `Limits`/`Hooks` config and
   the new registry. Granularity on top of the base config.
