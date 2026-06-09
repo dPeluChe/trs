@@ -118,7 +118,13 @@ pub(crate) fn check_agent_docs_health() -> Check {
     };
 
     // Keep in sync with audit_docs::KNOWN_PATHS for the single-file entries.
-    const DOC_PATHS: &[&str] = &["CLAUDE.md", "AGENTS.md", "GEMINI.md", ".windsurfrules"];
+    const DOC_PATHS: &[&str] = &[
+        "CLAUDE.md",
+        "AGENTS.md",
+        "GEMINI.md",
+        ".windsurfrules",
+        ".devin/rules/trs.md",
+    ];
     const BLOAT_TOKENS: usize = 5000;
 
     let mut found: Vec<(String, usize)> = Vec::new();

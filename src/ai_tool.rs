@@ -34,7 +34,11 @@ pub(crate) enum AiTool {
     /// integration with the IDE — same `~/.gemini/GEMINI.md` target.
     AntigravityCLI,
     Droid,
-    Windsurf,
+    /// Devin Desktop (formerly Windsurf; Cognition rebrand, 2026-06-02).
+    /// Rules-only — Devin Local exposes no shell hook/plugin API. Forward
+    /// target is `.devin/rules/trs.md`; `.windsurfrules` kept as the legacy
+    /// fallback (still read by Devin and by pre-rebrand Windsurf).
+    Devin,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -138,11 +142,11 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
         target_label: "hooks → ~/.factory/settings.json",
     },
     AiToolSpec {
-        variant: AiTool::Windsurf,
-        cli_name: "windsurf",
-        aliases: &["windsurf", "cascade"],
-        display: "Windsurf",
-        target_label: "rules → .windsurfrules",
+        variant: AiTool::Devin,
+        cli_name: "devin",
+        aliases: &["devin", "devin-desktop", "windsurf", "cascade"],
+        display: "Devin Desktop",
+        target_label: "rules → .devin/rules/trs.md (legacy: .windsurfrules)",
     },
     // Pi (pi.dev) — extension with a bash `spawnHook` that rewrites the
     // command + sets TRS_AGENT via env (cross-platform). Same plugin-file
@@ -243,8 +247,21 @@ impl AiTool {
             // PreToolUse), written by trs init.
             Self::AntigravityCLI => in_path("agy") || home_has(".gemini/antigravity-cli"),
             Self::Droid => in_path("droid") || home_has(".factory"),
-            Self::Windsurf => {
-                in_path("windsurf") || app_exists("Windsurf") || home_has(".windsurfrules")
+            // Devin Desktop (ex-Windsurf). New: Devin.app + per-OS app-data
+            // dir + project `.devin/`. Legacy: Windsurf.app + `windsurf` bin
+            // + `.windsurfrules` + the `~/.codeium`/`~/.windsurf` dirs Devin
+            // still reads.
+            Self::Devin => {
+                app_exists("Devin")
+                    || home_has("Library/Application Support/Devin")
+                    || home_has(".config/Devin")
+                    || Path::new(".devin").exists()
+                    || in_path("devin")
+                    || in_path("windsurf")
+                    || app_exists("Windsurf")
+                    || home_has(".windsurfrules")
+                    || home_has(".codeium")
+                    || home_has(".windsurf")
             }
         }
     }
@@ -317,7 +334,7 @@ impl AiTool {
             // full investigation. Until Google ships user-configurable
             // PreToolUse, Antigravity is rules-only — the output-saver
             // import in `~/.gemini/GEMINI.md` is the entire integration.
-            Self::Codex | Self::Antigravity | Self::AntigravityCLI | Self::Windsurf => None,
+            Self::Codex | Self::Antigravity | Self::AntigravityCLI | Self::Devin => None,
         }
     }
 }
@@ -413,7 +430,7 @@ mod tests {
         // Pins the exact public string `trs uninstall` prints on bad input.
         assert_eq!(
             AiTool::all_names(),
-            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, windsurf, pi"
+            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi"
         );
     }
 

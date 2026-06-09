@@ -112,7 +112,7 @@ classes of sources informed each rule:
 | Gemini CLI | Standalone file + `@import` | `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
 | Cursor | Auto-loaded rules file | `~/.cursor/rules/trs-output-saver.mdc` |
 | Codex | Inline with sentinels | `~/.codex/AGENTS.md` |
-| Windsurf | Inline with sentinels | `~/.codeium/windsurf/memories/global_rules.md` |
+| Devin Desktop (ex-Windsurf) | Inline with sentinels | `~/.codeium/windsurf/memories/global_rules.md` |
 | OpenCode | Inline with sentinels | `~/.config/opencode/AGENTS.md` |
 | Kilo Code | Inline with sentinels | `~/.config/kilo/AGENTS.md` |
 | Factory Droid | Inline with sentinels | `~/.factory/AGENTS.md` |

@@ -10,7 +10,7 @@ use crate::init_collision;
 use crate::init_install::{
     install_antigravity_rules, install_codex_agents, install_from_spec, install_rules,
 };
-use crate::init_templates::WINDSURF_RULES;
+use crate::init_templates::{DEVIN_RULE, WINDSURF_RULES};
 
 /// Options for an install run. `global` picks home-dir vs project-local;
 /// `replace` scrubs competing compressor hooks before installing trs;
@@ -79,7 +79,16 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
     let result = match tool {
         AiTool::Codex => install_codex_agents(opts),
         AiTool::Antigravity | AiTool::AntigravityCLI => install_antigravity_rules(opts),
-        AiTool::Windsurf => install_rules(".windsurfrules", WINDSURF_RULES, opts),
+        AiTool::Devin => {
+            // Forward target for Devin Desktop; legacy `.windsurfrules` for
+            // pre-rebrand Windsurf. Devin reads both — write only one to
+            // avoid loading the rule twice into context.
+            if devin_desktop_present() {
+                install_rules(".devin/rules/trs.md", DEVIN_RULE, opts)
+            } else {
+                install_rules(".windsurfrules", WINDSURF_RULES, opts)
+            }
+        }
         _ => {
             if let Some(spec) = tool.spec() {
                 install_from_spec(&spec, opts)
@@ -221,8 +230,9 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
             }
             return false;
         }
-        AiTool::Windsurf => {
-            return has_any_trs_marker_at(".windsurfrules");
+        AiTool::Devin => {
+            return has_any_trs_marker_at(".devin/rules/trs.md")
+                || has_any_trs_marker_at(".windsurfrules");
         }
         AiTool::Antigravity | AiTool::AntigravityCLI => {
             // Rules-only: trs marker lives in `~/.gemini/GEMINI.md`
@@ -279,6 +289,30 @@ pub(crate) fn file_has_any_trs_marker(content: &str) -> bool {
 
 fn has_any_trs_marker_at(path_str: &str) -> bool {
     has_any_trs_marker_at_path(Path::new(path_str))
+}
+
+/// True when this looks like a Devin Desktop install (vs pre-rebrand
+/// Windsurf) — picks the `.devin/rules/` target over legacy `.windsurfrules`.
+/// Checks the Devin.app bundle, the per-OS app-data dir, and a project
+/// `.devin/` directory.
+fn devin_desktop_present() -> bool {
+    if Path::new(".devin").exists() {
+        return true;
+    }
+    let app = |name: &str| {
+        Path::new(&format!("/Applications/{name}.app")).exists()
+            || home_dir()
+                .map(|h| h.join(format!("Applications/{name}.app")).exists())
+                .unwrap_or(false)
+    };
+    if app("Devin") {
+        return true;
+    }
+    home_dir()
+        .map(|h| {
+            h.join("Library/Application Support/Devin").exists() || h.join(".config/Devin").exists()
+        })
+        .unwrap_or(false)
 }
 
 fn has_any_trs_marker_at_path(path: &Path) -> bool {

@@ -91,8 +91,13 @@ Context-compression layer (Python+Rust): compresses tool outputs / logs / files 
 
 ### Output-saver coverage gaps
 
-- [ ] **Windsurf Cascade plugin API research** — confirm whether Cascade has a programmatic hook equivalent.
-- [ ] **Cursor user-rules programmatic path** — confirm whether Cursor exposes a programmatic API beyond the `.mdc` file drop.
+- [x] **Windsurf → Devin Desktop** — Windsurf rebranded to Devin Desktop (Cognition, 2026-06-02); Cascade replaced by Devin Local (EOL 2026-07-01). Devin Local exposes no shell hook/plugin API → stays rules-only. Done: variant renamed `Devin`, dual target `.devin/rules/trs.md` (frontmatter `trigger: always_on`) + legacy `.windsurfrules`, aliases devin/devin-desktop/windsurf/cascade.
+- [x] **Cursor hook surface** — verified against current schema: trs already uses the only rewrite-capable hook (`preToolUse` + `updated_input`). `beforeShellExecution` is allow/deny only, so no migration. No change needed.
+
+### Research before building
+
+- [ ] **trs MCP server (desktop chat apps) — value analysis FIRST** — Claude Desktop / ChatGPT-Codex / Gemini desktop don't run a shell; they only execute commands via an MCP server (e.g. Desktop Commander). The only attach surface is shipping a trs MCP with a `run` tool that returns compacted output. OPEN QUESTION (do not build until answered): is it actually valuable, given the user must register the MCP server + grant directory access in the desktop app? Weigh friction vs token savings before any implementation. Framework reference: ECC's capability-surface-selection guide — "Avoid MCP when the job is a one-shot local command" (trs is exactly that for CLI agents → CLI+hooks stays primary); MCP is justified ONLY to reach MCP-only clients (desktop GUI apps), so the whole question reduces to "is reaching desktop-GUI users worth the long-lived-server overhead?"
+- [ ] **ACP (Agent Client Protocol) tracking** — JetBrains+Zed open standard (JSON-RPC stdio), now in Devin Local, Kiro, 25+ agents. Editor mediates terminal access. Potential future universal attach surface; investigate whether trs can sit in the ACP terminal path.
 
 ---
 

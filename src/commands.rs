@@ -153,10 +153,10 @@ pub enum Commands {
     },
 
     /// Install a compact output-reduction rules block into agent configs
-    /// (Claude, Gemini, Cursor, Codex, Windsurf). trs already compresses
+    /// (Claude, Gemini, Cursor, Codex, Devin). trs already compresses
     /// what agents see — this does the symmetric job for what they emit.
     OutputSaver {
-        /// Target a specific agent (claude, gemini, cursor, codex, windsurf).
+        /// Target a specific agent (claude, gemini, cursor, codex, devin).
         /// Omit to act on every supported agent that's detected.
         #[arg(value_name = "AGENT")]
         tool: Option<String>,
@@ -503,7 +503,7 @@ pub enum Commands {
         /// Break down totals by AI agent (claude, gemini, cursor,
         /// opencode, kilo). Detected via the TRS_AGENT env var
         /// injected by hook/plugin templates; rules-based agents
-        /// (codex, antigravity, windsurf) show as "(untagged)".
+        /// (codex, antigravity, devin) show as "(untagged)".
         #[arg(long = "by-agent")]
         by_agent: bool,
         /// Aggregate by normalised command family (git diff, cargo test,
@@ -574,7 +574,7 @@ pub enum Commands {
     },
 
     /// Audit AI-agent instruction files (CLAUDE.md, AGENTS.md, .windsurfrules,
-    /// .cursor/rules/*, .agent/rules/*) for bloat, cross-file duplicates, dead
+    /// .devin/rules/*, .cursor/rules/*, .agent/rules/*) for bloat, cross-file duplicates, dead
     /// references, and staleness. Surfaces what's silently inflating every
     /// agent session's context.
     AuditDocs {

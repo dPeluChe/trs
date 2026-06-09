@@ -30,7 +30,7 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | Codex | JSON hook (codex-cli ≥ 0.134) + rules fallback | `~/.codex/hooks.json` (PreToolUse) + `~/.codex/AGENTS.md` |
 | Antigravity IDE | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Antigravity CLI (`agy`) | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
-| Windsurf | Rules file | `.windsurfrules` |
+| Devin Desktop (ex-Windsurf) | Rules file | `.devin/rules/trs.md` (legacy: `.windsurfrules`); aliases `devin` / `devin-desktop` / `windsurf` / `cascade` |
 
 Hooks fire deterministically on every shell-tool invocation. Rules
 files are probabilistic — they only work because the agent chooses to
@@ -201,7 +201,7 @@ Labels per agent:
 - `codex` — Codex when the `PreToolUse` hook is active (codex-cli
   ≥ 0.134); the hook command carries `TRS_AGENT=codex`. Rules-only
   fallback (older builds / untrusted hook) is still `(untagged)`.
-- `(untagged)` — rules-only agents (Windsurf, Codex fallback) and
+- `(untagged)` — rules-only agents (Devin Desktop, Codex fallback) and
   direct-shell invocations, where no programmatic signal is available
 
 If you want to spoof attribution for a specific command (e.g.
