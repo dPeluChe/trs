@@ -282,6 +282,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "test" => Some(ParseCommands::CargoTest { file: None }),
             "tree" => Some(ParseCommands::Deps { file: None }),
             "install" => Some(ParseCommands::Install { file: None }),
+            // Field data: 141 cmds at 89% low compression before this route.
+            "fmt" => Some(ParseCommands::Fmt { file: None }),
             _ => None,
         },
         "make" | "cmake" => Some(ParseCommands::Build { file: None }),
@@ -450,6 +452,18 @@ mod tests {
         ));
         // Structured-output flags stay passthrough.
         assert!(classify_command("git", &argv("commit --porcelain")).is_none());
+    }
+
+    #[test]
+    fn cargo_fmt_routes_to_parser() {
+        assert!(matches!(
+            classify_command("cargo", &argv("fmt --check")),
+            Some(ParseCommands::Fmt { .. })
+        ));
+        assert!(matches!(
+            classify_command("cargo", &argv("fmt")),
+            Some(ParseCommands::Fmt { .. })
+        ));
     }
 
     #[test]

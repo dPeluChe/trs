@@ -12,6 +12,7 @@ pub(crate) mod extra_env;
 pub(crate) mod extra_network;
 pub(crate) mod extra_system;
 pub(crate) mod find;
+pub(crate) mod fmt;
 pub(crate) mod gh_pr;
 pub(crate) mod gh_run;
 pub(crate) mod git_branch;
@@ -149,6 +150,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::Db { file } => Self::handle_db(file, ctx),
             ParseCommands::GitPull { file } => Self::handle_git_pull(file, ctx),
             ParseCommands::GitCommit { file } => Self::handle_git_commit(file, ctx),
+            ParseCommands::Fmt { file } => Self::handle_fmt(file, ctx),
         }
     }
 }
