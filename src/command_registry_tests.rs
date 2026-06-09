@@ -19,8 +19,9 @@ fn keep_ratio_git_subcommands() {
     assert_eq!(r("git", "pull"), 0.15);
     assert_eq!(r("git", "fetch"), 0.15);
     assert_eq!(r("git", "grep"), 0.40);
+    assert_eq!(r("git", "commit"), 0.20);
     // Unknown git subcommand → command default (was the `_ => 0.50` arm).
-    assert_eq!(r("git", "commit"), 0.50);
+    assert_eq!(r("git", "rebase"), 0.50);
 }
 
 #[test]

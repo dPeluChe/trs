@@ -22,7 +22,7 @@ pub(crate) fn full_cmd(cmd: &str, args: &[String]) -> String {
 pub(crate) use crate::exec::build_command;
 
 pub(crate) use crate::classifier_args::preprocess_tail_args;
-use crate::classifier_args::{has_structured_output_flag, strip_git_global_opts};
+use crate::classifier_args::{has_structured_output_flag, strip_git_global_opts, unwrap_shell_c};
 
 /// Classify an external command into the parser to pipe through, or None
 /// for passthrough (generic compression).
@@ -71,7 +71,12 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 }
             }
             "pull" | "fetch" => Some(ParseCommands::GitPull { file: None }),
+            // Field data: 192 cmds at 43% low compression before this route.
+            "commit" => Some(ParseCommands::GitCommit { file: None }),
             "grep" => Some(ParseCommands::Grep { file: None }),
+            // One path per line — same shape as find output (field data:
+            // 100% low compression before this route).
+            "ls-files" => Some(ParseCommands::Find { file: None }),
             _ => None,
         },
 
@@ -277,6 +282,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "test" => Some(ParseCommands::CargoTest { file: None }),
             "tree" => Some(ParseCommands::Deps { file: None }),
             "install" => Some(ParseCommands::Install { file: None }),
+            // Field data: 141 cmds at 89% low compression before this route.
+            "fmt" => Some(ParseCommands::Fmt { file: None }),
             _ => None,
         },
         "make" | "cmake" => Some(ParseCommands::Build { file: None }),
@@ -389,6 +396,14 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // agent gets the same compression as when the tool runs
         // directly. Anything not in this list falls through to the
         // generic whitespace/ANSI fallback.
+        // bash -c "<one simple command>" — classify the inner command so
+        // its output reaches the right parser (field data: 306 cmds at 90%
+        // low compression). Compound scripts fall through to generic.
+        "bash" | "sh" | "zsh" | "dash" => {
+            let inner = unwrap_shell_c(args_ref)?;
+            classify_command(&inner[0], &inner[1..])
+        }
+
         "npx" => match subcmd {
             "jest" => Some(ParseCommands::Test {
                 runner: Some(TestRunner::Jest),
@@ -410,5 +425,73 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         }
 
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn argv(s: &str) -> Vec<String> {
+        s.split_whitespace().map(String::from).collect()
+    }
+
+    #[test]
+    fn ls_files_routes_to_find() {
+        assert!(matches!(
+            classify_command("git", &argv("ls-files --others --exclude-standard")),
+            Some(ParseCommands::Find { .. })
+        ));
+    }
+
+    #[test]
+    fn commit_routes_to_parser() {
+        assert!(matches!(
+            classify_command("git", &argv("commit -m msg")),
+            Some(ParseCommands::GitCommit { .. })
+        ));
+        // Structured-output flags stay passthrough.
+        assert!(classify_command("git", &argv("commit --porcelain")).is_none());
+    }
+
+    #[test]
+    fn cargo_fmt_routes_to_parser() {
+        assert!(matches!(
+            classify_command("cargo", &argv("fmt --check")),
+            Some(ParseCommands::Fmt { .. })
+        ));
+        assert!(matches!(
+            classify_command("cargo", &argv("fmt")),
+            Some(ParseCommands::Fmt { .. })
+        ));
+    }
+
+    #[test]
+    fn bash_c_simple_command_unwraps() {
+        assert!(matches!(
+            classify_command("bash", &["-c".into(), "git status".into()]),
+            Some(ParseCommands::GitStatus { .. })
+        ));
+        assert!(matches!(
+            classify_command("sh", &["-c".into(), "cargo test --lib".into()]),
+            Some(ParseCommands::CargoTest { .. })
+        ));
+    }
+
+    #[test]
+    fn bash_c_compound_or_quoted_stays_generic() {
+        for script in [
+            "echo a; git status",
+            "git status | head",
+            "ls && pwd",
+            "echo \"hi\"",
+            "node -e 'console.log(1)'",
+            "VAR=$(date) printenv",
+        ] {
+            assert!(
+                classify_command("bash", &["-c".into(), script.into()]).is_none(),
+                "should stay generic: {script}"
+            );
+        }
     }
 }

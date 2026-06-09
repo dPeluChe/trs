@@ -88,6 +88,30 @@ pub(crate) fn strip_git_global_opts(args: &[String]) -> Vec<String> {
     result
 }
 
+/// Extract the inner command from `bash -c "<script>"` / `sh -c` / `zsh -c`
+/// when the script is a SINGLE simple command. Compound scripts (`;`, `|`,
+/// `&&`, redirects, substitutions, quotes) return None — their output is
+/// mixed, so no single parser applies and generic compression is correct.
+/// Returns the inner argv (first element = binary).
+pub(crate) fn unwrap_shell_c(args: &[String]) -> Option<Vec<String>> {
+    // Accept `-c <script>` and fused single-flag forms (`-lc`, `-ec`);
+    // nothing after the script (positional $0 args change semantics).
+    let script = match args {
+        [flag, script] if flag == "-c" || flag == "-lc" || flag == "-ec" => script,
+        _ => return None,
+    };
+    if script.contains([
+        ';', '|', '&', '<', '>', '`', '$', '(', ')', '{', '}', '\'', '"', '\\', '\n',
+    ]) {
+        return None;
+    }
+    let tokens: Vec<String> = script.split_whitespace().map(String::from).collect();
+    if tokens.is_empty() {
+        return None;
+    }
+    Some(tokens)
+}
+
 /// Check if the command args contain flags that indicate structured output.
 /// When the user explicitly requests JSON/structured output, we should passthrough.
 pub(crate) fn has_structured_output_flag(args: &[String]) -> bool {

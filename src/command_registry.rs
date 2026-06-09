@@ -104,7 +104,7 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("status", 0.20), ("diff", 0.10), ("log", 0.10), ("branch", 0.11),
             ("show", 0.10), ("stash", 0.10), ("pull", 0.15), ("fetch", 0.15),
-            ("grep", 0.40),
+            ("grep", 0.40), ("commit", 0.20),
         ]},
         stderr: Stderr::Never,
     },
@@ -138,7 +138,7 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         names: &["cargo"], rewrite: true, known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("clippy", 0.15), ("build", 0.10), ("check", 0.10), ("test", 0.05),
-            ("install", 0.20), ("i", 0.20),
+            ("install", 0.20), ("i", 0.20), ("fmt", 0.10),
             ("tree", 0.40), ("ls", 0.40), ("list", 0.40), ("freeze", 0.40),
         ]},
         stderr: Stderr::Subcmds(&["clippy", "build", "check"]),
