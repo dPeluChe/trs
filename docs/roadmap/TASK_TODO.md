@@ -67,7 +67,24 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ### VSCode ecosystem (vanilla, not the forks)
 
-- [ ] **GitHub Copilot / Copilot Chat (VSCode)** — check current public API for pre-execution hooks. Fallback: rules block in `.github/copilot-instructions.md`.
+- [ ] **GitHub Copilot (VSCode) — researched 2026-06, implementation turnkey,
+  gated on live validation.** VS Code agent hooks (preview) speak Claude's
+  format: `PreToolUse` + `hookSpecificOutput.updatedInput` +
+  `permissionDecision` — exactly what `trs rewrite` already emits. Paths:
+  user `~/.copilot/hooks/*.json`, workspace `.github/hooks/*.json`; VS Code
+  ALSO reads `~/.claude/settings.json` + project `.claude/settings.json`, so
+  users with `trs init claude --global` get de-facto coverage today
+  (attributed as `claude`). Matchers are parsed but IGNORED (hook fires on
+  every tool) — safe: trs no-ops without `tool_input.command` (pinned by
+  `test_hook_response_missing_command_returns_none`). Tool input is
+  camelCase but the shell field is `command` (unaffected).
+  TO SHIP `trs init vscode`: AiTool variant + VSCODE_HOOKS template with
+  `TRS_AGENT=vscode trs rewrite` (own attribution), detection (`code` binary /
+  `~/.vscode` / Copilot ext dir), uninstall paths, docs row.
+  BLOCKER before shipping: validate interactively in VS Code (like Codex
+  0.134) that `run_in_terminal` rewrites apply and `updatedInput` doesn't
+  drop sibling fields (`isBackground`/`explanation` — merge vs replace is
+  undocumented).
 - [ ] **Continue.dev** — has a plugin API (`config.ts`, `slashCommands`, `contextProviders`). Worth a focused research pass like we did for Kilo/OpenCode/Droid.
 - [ ] **Cody (Sourcegraph)** — VSCode extension with context-fetcher and custom commands. Check whether commands can prefix shell execution.
 - [ ] **Research pass**: decide whether VSCode-base agents warrant `trs init vscode-copilot` / `trs init continue` entries or a single `trs init vscode`.
