@@ -155,8 +155,8 @@ fn run() {
     let router = Router::new();
 
     match &cli.command {
-        Some(Commands::Rewrite) => {
-            rewrite::run_rewrite();
+        Some(Commands::Rewrite { caller }) => {
+            rewrite::run_rewrite(caller.as_deref());
         }
         Some(Commands::Discover { all, since }) => {
             discover::run_discover(*all, *since);

@@ -15,8 +15,11 @@ use std::io::Read;
 
 use crate::rewrite_decide::{looks_like_env_assignment, maybe_rewrite};
 
-/// Run the rewrite logic. Called from main.rs.
-pub(crate) fn run_rewrite() {
+/// Run the rewrite logic. Called from main.rs. `agent_flag` is the
+/// `--caller <label>` set by the installing hook template — the
+/// shell-agnostic attribution channel (the `TRS_AGENT=x` command prefix is
+/// POSIX-only; PowerShell/cmd parse it as a bogus command name).
+pub(crate) fn run_rewrite(agent_flag: Option<&str>) {
     let mut input = String::new();
     if std::io::stdin().read_to_string(&mut input).is_err() {
         return;
@@ -28,7 +31,7 @@ pub(crate) fn run_rewrite() {
     }
 
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(input) {
-        handle_json_protocol(&json);
+        handle_json_protocol(&json, agent_flag);
         return;
     }
 
@@ -38,10 +41,28 @@ pub(crate) fn run_rewrite() {
     }
 }
 
-fn handle_json_protocol(json: &serde_json::Value) {
-    if let Some(response) = build_hook_response(json) {
+fn handle_json_protocol(json: &serde_json::Value, agent_flag: Option<&str>) {
+    if let Some(response) = build_hook_response(json, agent_flag) {
         println!("{}", response);
     }
+}
+
+/// Map a user-supplied label to its canonical static form. Whitelist, not
+/// pass-through: only labels we ship templates for can attribute runs.
+fn known_agent_label(s: &str) -> Option<&'static str> {
+    Some(match s {
+        "claude" => "claude",
+        "gemini" => "gemini",
+        "cursor" => "cursor",
+        "codex" => "codex",
+        "vscode" => "vscode",
+        "droid" => "droid",
+        "antigravity" => "antigravity",
+        "opencode" => "opencode",
+        "kilo" => "kilo",
+        "pi" => "pi",
+        _ => return None,
+    })
 }
 
 /// Which client's hook protocol we're speaking. Each emits a different
@@ -85,12 +106,16 @@ impl HookEvent {
         )
     }
 
-    /// Codex shares Claude's `PreToolUse` envelope, so we can't tell them
-    /// apart from `hook_event_name` alone. The Codex hook command sets
-    /// `TRS_AGENT=codex`, which we read here to attribute the run.
+    /// Codex and VS Code Copilot share Claude's `PreToolUse` envelope, so we
+    /// can't tell them apart from `hook_event_name` alone. Their hook
+    /// commands set `TRS_AGENT=<label>`, which we read here to attribute the
+    /// run. Whitelist (not pass-through): an arbitrary inherited TRS_AGENT
+    /// value must not silently relabel runs.
     fn agent_label_from(&self, has_antigravity_env: bool, trs_agent: Option<&str>) -> &'static str {
-        if trs_agent == Some("codex") {
-            return "codex";
+        match trs_agent {
+            Some("codex") => return "codex",
+            Some("vscode") => return "vscode",
+            _ => {}
         }
         self.agent_label_for(has_antigravity_env)
     }
@@ -121,11 +146,16 @@ impl HookEvent {
 ///   Claude Code → hookSpecificOutput.updatedInput.command
 ///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
 ///   Cursor      → top-level `permission` + top-level `updated_input.command`
-fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
+fn build_hook_response(
+    json: &serde_json::Value,
+    agent_flag: Option<&str>,
+) -> Option<serde_json::Value> {
     let cmd = json
         .get("tool_input")
         .and_then(|ti| ti.get("command"))
         .and_then(|c| c.as_str())?;
+    // `--caller` from the hook template wins over envelope/env inference.
+    let flag_label = agent_flag.and_then(known_agent_label);
 
     let event_name = json
         .get("hook_event_name")
@@ -150,12 +180,15 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
     // Bypass telemetry — log the agent-attributed observation before the
     // short-circuit so `stats --by-agent` can surface per-agent rates.
     if cmd_bypasses_trs(cmd) {
-        crate::tracker::log_bypass(cmd, Some(event.agent_label()));
+        crate::tracker::log_bypass(cmd, Some(flag_label.unwrap_or_else(|| event.agent_label())));
         return None;
     }
 
     let rewritten = maybe_rewrite(cmd)?;
-    let rewritten = tag_with_agent(&rewritten, event.agent_label());
+    let rewritten = tag_with_agent(
+        &rewritten,
+        flag_label.unwrap_or_else(|| event.agent_label()),
+    );
 
     let response = match event {
         // Handled above; kept here so the match stays exhaustive if the
@@ -237,10 +270,28 @@ fn tag_with_agent(cmd: &str, agent: &str) -> String {
 /// Pure core of `tag_with_agent` — `is_windows` passed explicitly so both
 /// branches are testable on any platform.
 fn tag_with_agent_for(cmd: &str, agent: &str, is_windows: bool) -> String {
-    if is_windows || cmd.starts_with("TRS_AGENT=") {
+    if is_windows {
         return cmd.to_string();
     }
-    format!("TRS_AGENT={} {}", agent, cmd)
+    // Chains: an env prefix on the FIRST segment never reaches the later
+    // ones (`VAR=x cd a && trs b` runs trs without VAR — observed as
+    // untagged history entries), so tag every segment that invokes trs.
+    // The " && " delimiter matches what maybe_rewrite joins with.
+    // Transparent wrappers (time/nohup/…) propagate env, so front-of-
+    // segment stays right for `time trs …`. A literal " trs " inside e.g.
+    // an echo argument would gain a harmless env prefix.
+    cmd.split(" && ")
+        .map(|seg| {
+            let t = seg.trim_start();
+            let invokes_trs = t.starts_with("trs ") || t.contains(" trs ");
+            if invokes_trs && !t.starts_with("TRS_AGENT=") {
+                format!("TRS_AGENT={} {}", agent, t)
+            } else {
+                seg.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" && ")
 }
 
 #[cfg(test)]
@@ -306,7 +357,7 @@ mod tests {
                 "tool_input":{"command":"git status"}
             }"#,
         );
-        let out = build_hook_response(&input).expect("should rewrite");
+        let out = build_hook_response(&input, None).expect("should rewrite");
         assert_eq!(
             out["hookSpecificOutput"]["hookEventName"],
             serde_json::json!("PreToolUse")
@@ -328,7 +379,7 @@ mod tests {
                 "tool_input":{"command":"git status"}
             }"#,
         );
-        let out = build_hook_response(&input).expect("should rewrite");
+        let out = build_hook_response(&input, None).expect("should rewrite");
         assert_eq!(out["permission"], serde_json::json!("allow"));
         assert_eq!(
             out["updated_input"]["command"],
@@ -336,6 +387,29 @@ mod tests {
         );
         assert!(out.get("hookSpecificOutput").is_none());
         assert!(out.get("decision").is_none());
+    }
+
+    #[test]
+    fn test_agent_flag_attributes_rewrite() {
+        // `--caller droid` from the hook template must label the rewritten
+        // command (Windows-safe channel; same envelope as Claude).
+        let input = parse_input(
+            r#"{
+                "hook_event_name":"PreToolUse",
+                "tool_input":{"command":"git status"}
+            }"#,
+        );
+        let out = build_hook_response(&input, Some("droid")).expect("should rewrite");
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["command"],
+            serde_json::json!(agent_cmd("droid", "trs git status"))
+        );
+        // Unknown flag values are ignored (whitelist) — envelope label wins.
+        let out = build_hook_response(&input, Some("not-a-real-agent")).expect("should rewrite");
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["command"],
+            serde_json::json!(agent_cmd("claude", "trs git status"))
+        );
     }
 
     #[test]
@@ -348,7 +422,7 @@ mod tests {
                 "tool_input":{"command":"git status"}
             }"#,
         );
-        assert!(build_hook_response(&input).is_none());
+        assert!(build_hook_response(&input, None).is_none());
     }
 
     #[test]
@@ -384,7 +458,7 @@ mod tests {
                 "tool_input":{"command":"git status"}
             }"#,
         );
-        let out = build_hook_response(&input).expect("should rewrite");
+        let out = build_hook_response(&input, None).expect("should rewrite");
         assert_eq!(out["decision"], serde_json::json!("allow"));
         assert_eq!(
             out["hookSpecificOutput"]["tool_input"]["command"],
@@ -414,6 +488,16 @@ mod tests {
             HookEvent::ClaudePreToolUse.agent_label_from(false, None),
             "claude"
         );
+        // VS Code Copilot also speaks PreToolUse; its hook sets
+        // TRS_AGENT=vscode. Unknown env values must NOT relabel.
+        assert_eq!(
+            HookEvent::ClaudePreToolUse.agent_label_from(false, Some("vscode")),
+            "vscode"
+        );
+        assert_eq!(
+            HookEvent::ClaudePreToolUse.agent_label_from(false, Some("something-else")),
+            "claude"
+        );
         assert_eq!(
             HookEvent::ClaudePreToolUse.agent_label_for(true),
             "antigravity"
@@ -427,7 +511,7 @@ mod tests {
     fn test_hook_response_default_is_claude_format() {
         // Missing / unknown hook_event_name defaults to Claude's shape.
         let input = parse_input(r#"{"tool_input":{"command":"git status"}}"#);
-        let out = build_hook_response(&input).expect("should rewrite");
+        let out = build_hook_response(&input, None).expect("should rewrite");
         assert_eq!(
             out["hookSpecificOutput"]["updatedInput"]["command"],
             serde_json::json!(agent_cmd("claude", "trs git status"))
@@ -443,19 +527,21 @@ mod tests {
                 "tool_input":{"command":"echo hello"}
             }"#,
         );
-        assert!(build_hook_response(&input).is_none());
+        assert!(build_hook_response(&input, None).is_none());
     }
 
     #[test]
     fn test_hook_response_missing_command_returns_none() {
         let input = parse_input(r#"{"hook_event_name":"BeforeTool"}"#);
-        assert!(build_hook_response(&input).is_none());
+        assert!(build_hook_response(&input, None).is_none());
     }
 
     #[test]
     fn test_hook_response_chain_preserved_across_formats() {
-        // Chain-aware rewrite applies in every format; build_hook_response
-        // prefixes the whole result with TRS_AGENT= once.
+        // Chain-aware rewrite applies in every format. Each trs-invoking
+        // segment carries its own TRS_AGENT= prefix — an env assignment on
+        // the first segment never reaches the later ones (`VAR=x cd a &&
+        // trs b` runs trs untagged), and `cd` needs no tag at all.
         let claude = parse_input(
             r#"{
                 "hook_event_name":"PreToolUse",
@@ -468,19 +554,29 @@ mod tests {
                 "tool_input":{"command":"cd /tmp && git status && cargo test"}
             }"#,
         );
+        // Per-segment expectation, platform-aware (Windows emits no prefix).
+        let chain = |agent: &str| {
+            ["cd /tmp", "trs git status", "trs cargo test"]
+                .iter()
+                .map(|s| {
+                    if s.starts_with("trs ") {
+                        agent_cmd(agent, s)
+                    } else {
+                        s.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" && ")
+        };
         assert_eq!(
-            build_hook_response(&claude).unwrap()["hookSpecificOutput"]["updatedInput"]["command"],
-            serde_json::json!(agent_cmd(
-                "claude",
-                "cd /tmp && trs git status && trs cargo test"
-            ))
+            build_hook_response(&claude, None).unwrap()["hookSpecificOutput"]["updatedInput"]
+                ["command"],
+            serde_json::json!(chain("claude"))
         );
         assert_eq!(
-            build_hook_response(&gemini).unwrap()["hookSpecificOutput"]["tool_input"]["command"],
-            serde_json::json!(agent_cmd(
-                "gemini",
-                "cd /tmp && trs git status && trs cargo test"
-            ))
+            build_hook_response(&gemini, None).unwrap()["hookSpecificOutput"]["tool_input"]
+                ["command"],
+            serde_json::json!(chain("gemini"))
         );
     }
 

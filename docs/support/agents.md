@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Eleven AI coding agents are supported end-to-end. Each row lists the
+Twelve AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -13,11 +13,12 @@ install scope.
 | OpenCode | plugin template | ✓ | ✓ (inline block) | `opencode` | global |
 | Kilo Code | plugin template | ✓ | ✓ (inline block) | `kilo` | global |
 | Pi Coding Agent | programmatic hook (extension) | ✓ | — | `pi` | global + project |
-| Factory Droid | programmatic hook | ✓ | ✓ (inline block) | `claude` (see caveat) | global + project |
-| Antigravity IDE | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
-| Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
+| Factory Droid | programmatic hook | ✓ | ✓ (inline block) | `droid` | global + project |
+| Antigravity IDE | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `antigravity` (env fallback) | global |
+| Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `antigravity` (env fallback) | global |
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
+| VS Code Copilot | programmatic hook | ✓ | — | `vscode` | global + project |
 
 ## Column legend
 
@@ -99,12 +100,11 @@ install scope.
 
 ### Factory Droid
 
-- **Caveat — shared Claude envelope.** Droid reuses Claude's
-  `hook_event_name: PreToolUse` wire format verbatim, so trs can't
-  distinguish the two at rewrite time. Both show up as `claude` in
-  `trs stats --by-agent`. To separate them you currently need to
-  eyeball the `cwd` paths or the time of day. A disambiguation flag
-  is tracked on the roadmap.
+- **Attribution.** Droid reuses Claude's `hook_event_name: PreToolUse`
+  wire format verbatim; the hook command carries `--caller droid` so
+  runs show up as `droid` in `trs stats --by-agent`. Installs from
+  before v0.6.16 shared Claude's label — re-run `trs init droid` to
+  pick up the labeled hook.
 
 ### Antigravity IDE + Antigravity CLI (`agy`)
 
@@ -156,7 +156,7 @@ install scope.
   (which implements `hookSpecificOutput.updatedInput.command` in its
   `PreToolUse` hook), `trs init codex --global` merges a real
   `PreToolUse` hook (matcher `"Bash"`, command
-  `TRS_AGENT=codex trs rewrite`) into `~/.codex/hooks.json`, preserving
+  `trs rewrite --caller codex`) into `~/.codex/hooks.json`, preserving
   the user's other hooks. Approve it once via Codex's `/hooks` prompt
   and commands rewrite automatically. On older builds (or an untrusted
   hook) it falls back to a rules block in `~/.codex/AGENTS.md`
@@ -186,6 +186,38 @@ install scope.
   `cascade` (the last two for back-compat).
 - **Attribution:** `(untagged)` in stats since there's no programmatic
   signal to tag commands with an agent.
+
+### VS Code Copilot
+
+- **Status:** programmatic hook via VS Code's **agent hooks
+  (preview)**, which speak Claude Code's `PreToolUse` envelope —
+  including the `hookSpecificOutput.updatedInput` rewrite that trs
+  relies on. Validated live 2026-06-09.
+- **Config path:** `trs init vscode` writes `.github/hooks/trs.json`
+  (project) or `~/.copilot/hooks/trs.json` (`--global`). The hook
+  command is `trs rewrite --caller vscode`.
+- **Prerequisite:** enable VS Code's agent hooks (preview feature)
+  for the hook to fire.
+- **Claude-settings interplay:** the related setting **"Chat: Use
+  Claude Hooks"** makes VS Code *also* load `~/.claude/settings.json`
+  hooks — users with `trs init claude --global` get de-facto coverage
+  that way, but runs are attributed as `claude`. The dedicated
+  `trs init vscode` gives correct `vscode` attribution and works
+  without Claude Code installed. If both surfaces fire, the
+  double-fire is harmless — `trs rewrite` is idempotent.
+- **Matcher caveat:** VS Code parses but **ignores** hook matchers,
+  so the hook fires on every tool. Safe in practice: trs no-ops on
+  tools without a `command` field, and unknown event names fail open.
+- **Fail-closed caveat (version skew):** VS Code **blocks the terminal
+  tool** when a hook command errors ("blocked by prehook"). The
+  `--caller` flag requires **trs ≥ 0.6.16** — an older binary exits
+  with a clap usage error and every shell run gets blocked. Relevant
+  when `.github/hooks/trs.json` is committed to a shared repo:
+  teammates need trs ≥ 0.6.16, or the hook should use plain
+  `trs rewrite` until everyone upgrades.
+- **Output-saver:** not yet wired (same posture as Pi).
+- **Aliases:** `vscode` (primary), `vs-code`, `copilot`,
+  `vscode-copilot`, `code`.
 
 ## Install commands
 

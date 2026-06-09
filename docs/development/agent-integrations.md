@@ -220,7 +220,7 @@ hook, same auto-discovery. Our install spec treats it as an OpenCode clone.
 | Type | Hook (codex-cli ≥ 0.134) with rules-file fallback |
 | Config | `~/.codex/hooks.json` (PreToolUse, matcher `"Bash"`) + `~/.codex/AGENTS.md` |
 | Event | `PreToolUse`; reply via `hookSpecificOutput.updatedInput.command` with `permissionDecision: "allow"` |
-| Hook command | `TRS_AGENT=codex trs rewrite` |
+| Hook command | `trs rewrite --caller codex` |
 | Template | `CODEX_AGENTS_SECTION` (rules block) |
 | Version gate | `REWRITE_HOOK_MIN_VERSION = Some((0,134,0))` in `src/codex.rs` |
 

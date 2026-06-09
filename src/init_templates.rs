@@ -30,8 +30,10 @@ pub(crate) const CLAUDE_HOOKS: &str = r#"{
 
 // Codex CLI (>= 0.134): same `PreToolUse` envelope as Claude — Codex's shell
 // tool is named `Bash` and it honors `hookSpecificOutput.updatedInput.command`
-// with `permissionDecision: "allow"` (which `trs rewrite` already emits). The
-// `TRS_AGENT=codex` env prefix attributes the run to codex in history/stats.
+// with `permissionDecision: "allow"` (which `trs rewrite` already emits).
+// `--caller codex` attributes the run in history/stats (shell-agnostic; the
+// old `TRS_AGENT=codex` env prefix was POSIX-only and stays whitelisted for
+// already-installed hooks).
 // Merged into the user's existing ~/.codex/hooks.json (notify hooks etc. are
 // preserved). Codex gates new hooks behind a one-time trust prompt (`/hooks`).
 pub(crate) const CODEX_HOOKS: &str = r#"{
@@ -42,7 +44,7 @@ pub(crate) const CODEX_HOOKS: &str = r#"{
         "hooks": [
           {
             "type": "command",
-            "command": "TRS_AGENT=codex trs rewrite"
+            "command": "trs rewrite --caller codex"
           }
         ],
         "description": "Route commands through trs for token-optimized output"
@@ -55,6 +57,8 @@ pub(crate) const CODEX_HOOKS: &str = r#"{
 // is named `Execute` (not `Bash`), so the matcher is widened. We use ".*" to
 // match any tool — trs rewrite internally skips commands that don't look like
 // shell invocations, so the overhead of a per-tool check is negligible.
+// `--caller droid` attributes runs correctly in stats (previously they were
+// indistinguishable from Claude — same envelope, no label).
 pub(crate) const DROID_HOOKS: &str = r#"{
   "hooks": {
     "PreToolUse": [
@@ -63,7 +67,7 @@ pub(crate) const DROID_HOOKS: &str = r#"{
         "hooks": [
           {
             "type": "command",
-            "command": "trs rewrite"
+            "command": "trs rewrite --caller droid"
           }
         ],
         "description": "Route commands through trs for token-optimized output"
@@ -103,6 +107,32 @@ pub(crate) const GEMINI_HOOKS: &str = r#"{
 // Full investigation: docs/development/antigravity-hooks-research.md.
 // Until Google ships user-configurable PreToolHook for Bash, Antigravity
 // (IDE + CLI) is rules-only — see ANTIGRAVITY_RULES_SECTION below.
+
+// VS Code Copilot agent hooks (preview, validated live 2026-06-09): VS Code
+// speaks Claude's PreToolUse envelope and honors
+// `hookSpecificOutput.updatedInput.command`. Native path `~/.copilot/hooks/`
+// (project: `.github/hooks/`). Matchers are parsed but ignored — the hook
+// fires on every tool; trs no-ops without `tool_input.command`, and unknown
+// event names fail open. `--caller vscode` attributes runs distinctly from
+// Claude Code (VS Code can ALSO load `~/.claude/settings.json` hooks when
+// the "Use Claude Hooks" setting is on; rewrite is idempotent so a double
+// fire is harmless — first one wins).
+pub(crate) const VSCODE_HOOKS: &str = r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "trs rewrite --caller vscode"
+          }
+        ],
+        "description": "Route commands through trs for token-optimized output"
+      }
+    ]
+  }
+}"#;
 
 // Cursor's `beforeShellExecution` hook can only allow/deny — it cannot
 // rewrite the command. The only hook with `updated_input` support is
