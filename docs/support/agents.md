@@ -208,6 +208,13 @@ install scope.
 - **Matcher caveat:** VS Code parses but **ignores** hook matchers,
   so the hook fires on every tool. Safe in practice: trs no-ops on
   tools without a `command` field, and unknown event names fail open.
+- **Fail-closed caveat (version skew):** VS Code **blocks the terminal
+  tool** when a hook command errors ("blocked by prehook"). The
+  `--caller` flag requires **trs ≥ 0.6.16** — an older binary exits
+  with a clap usage error and every shell run gets blocked. Relevant
+  when `.github/hooks/trs.json` is committed to a shared repo:
+  teammates need trs ≥ 0.6.16, or the hook should use plain
+  `trs rewrite` until everyone upgrades.
 - **Output-saver:** not yet wired (same posture as Pi).
 - **Aliases:** `vscode` (primary), `vs-code`, `copilot`,
   `vscode-copilot`, `code`.
