@@ -15,8 +15,11 @@ use std::io::Read;
 
 use crate::rewrite_decide::{looks_like_env_assignment, maybe_rewrite};
 
-/// Run the rewrite logic. Called from main.rs.
-pub(crate) fn run_rewrite() {
+/// Run the rewrite logic. Called from main.rs. `agent_flag` is the
+/// `--caller <label>` set by the installing hook template — the
+/// shell-agnostic attribution channel (the `TRS_AGENT=x` command prefix is
+/// POSIX-only; PowerShell/cmd parse it as a bogus command name).
+pub(crate) fn run_rewrite(agent_flag: Option<&str>) {
     let mut input = String::new();
     if std::io::stdin().read_to_string(&mut input).is_err() {
         return;
@@ -28,7 +31,7 @@ pub(crate) fn run_rewrite() {
     }
 
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(input) {
-        handle_json_protocol(&json);
+        handle_json_protocol(&json, agent_flag);
         return;
     }
 
@@ -38,10 +41,28 @@ pub(crate) fn run_rewrite() {
     }
 }
 
-fn handle_json_protocol(json: &serde_json::Value) {
-    if let Some(response) = build_hook_response(json) {
+fn handle_json_protocol(json: &serde_json::Value, agent_flag: Option<&str>) {
+    if let Some(response) = build_hook_response(json, agent_flag) {
         println!("{}", response);
     }
+}
+
+/// Map a user-supplied label to its canonical static form. Whitelist, not
+/// pass-through: only labels we ship templates for can attribute runs.
+fn known_agent_label(s: &str) -> Option<&'static str> {
+    Some(match s {
+        "claude" => "claude",
+        "gemini" => "gemini",
+        "cursor" => "cursor",
+        "codex" => "codex",
+        "vscode" => "vscode",
+        "droid" => "droid",
+        "antigravity" => "antigravity",
+        "opencode" => "opencode",
+        "kilo" => "kilo",
+        "pi" => "pi",
+        _ => return None,
+    })
 }
 
 /// Which client's hook protocol we're speaking. Each emits a different
@@ -125,11 +146,16 @@ impl HookEvent {
 ///   Claude Code → hookSpecificOutput.updatedInput.command
 ///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
 ///   Cursor      → top-level `permission` + top-level `updated_input.command`
-fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
+fn build_hook_response(
+    json: &serde_json::Value,
+    agent_flag: Option<&str>,
+) -> Option<serde_json::Value> {
     let cmd = json
         .get("tool_input")
         .and_then(|ti| ti.get("command"))
         .and_then(|c| c.as_str())?;
+    // `--caller` from the hook template wins over envelope/env inference.
+    let flag_label = agent_flag.and_then(known_agent_label);
 
     let event_name = json
         .get("hook_event_name")
@@ -154,12 +180,15 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
     // Bypass telemetry — log the agent-attributed observation before the
     // short-circuit so `stats --by-agent` can surface per-agent rates.
     if cmd_bypasses_trs(cmd) {
-        crate::tracker::log_bypass(cmd, Some(event.agent_label()));
+        crate::tracker::log_bypass(cmd, Some(flag_label.unwrap_or_else(|| event.agent_label())));
         return None;
     }
 
     let rewritten = maybe_rewrite(cmd)?;
-    let rewritten = tag_with_agent(&rewritten, event.agent_label());
+    let rewritten = tag_with_agent(
+        &rewritten,
+        flag_label.unwrap_or_else(|| event.agent_label()),
+    );
 
     let response = match event {
         // Handled above; kept here so the match stays exhaustive if the
@@ -310,7 +339,7 @@ mod tests {
                 "tool_input":{"command":"git status"}
             }"#,
         );
-        let out = build_hook_response(&input).expect("should rewrite");
+        let out = build_hook_response(&input, None).expect("should rewrite");
         assert_eq!(
             out["hookSpecificOutput"]["hookEventName"],
             serde_json::json!("PreToolUse")
@@ -332,7 +361,7 @@ mod tests {
                 "tool_input":{"command":"git status"}
             }"#,
         );
-        let out = build_hook_response(&input).expect("should rewrite");
+        let out = build_hook_response(&input, None).expect("should rewrite");
         assert_eq!(out["permission"], serde_json::json!("allow"));
         assert_eq!(
             out["updated_input"]["command"],
@@ -340,6 +369,29 @@ mod tests {
         );
         assert!(out.get("hookSpecificOutput").is_none());
         assert!(out.get("decision").is_none());
+    }
+
+    #[test]
+    fn test_agent_flag_attributes_rewrite() {
+        // `--caller droid` from the hook template must label the rewritten
+        // command (Windows-safe channel; same envelope as Claude).
+        let input = parse_input(
+            r#"{
+                "hook_event_name":"PreToolUse",
+                "tool_input":{"command":"git status"}
+            }"#,
+        );
+        let out = build_hook_response(&input, Some("droid")).expect("should rewrite");
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["command"],
+            serde_json::json!(agent_cmd("droid", "trs git status"))
+        );
+        // Unknown flag values are ignored (whitelist) — envelope label wins.
+        let out = build_hook_response(&input, Some("not-a-real-agent")).expect("should rewrite");
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["command"],
+            serde_json::json!(agent_cmd("claude", "trs git status"))
+        );
     }
 
     #[test]
@@ -352,7 +404,7 @@ mod tests {
                 "tool_input":{"command":"git status"}
             }"#,
         );
-        assert!(build_hook_response(&input).is_none());
+        assert!(build_hook_response(&input, None).is_none());
     }
 
     #[test]
@@ -388,7 +440,7 @@ mod tests {
                 "tool_input":{"command":"git status"}
             }"#,
         );
-        let out = build_hook_response(&input).expect("should rewrite");
+        let out = build_hook_response(&input, None).expect("should rewrite");
         assert_eq!(out["decision"], serde_json::json!("allow"));
         assert_eq!(
             out["hookSpecificOutput"]["tool_input"]["command"],
@@ -441,7 +493,7 @@ mod tests {
     fn test_hook_response_default_is_claude_format() {
         // Missing / unknown hook_event_name defaults to Claude's shape.
         let input = parse_input(r#"{"tool_input":{"command":"git status"}}"#);
-        let out = build_hook_response(&input).expect("should rewrite");
+        let out = build_hook_response(&input, None).expect("should rewrite");
         assert_eq!(
             out["hookSpecificOutput"]["updatedInput"]["command"],
             serde_json::json!(agent_cmd("claude", "trs git status"))
@@ -457,13 +509,13 @@ mod tests {
                 "tool_input":{"command":"echo hello"}
             }"#,
         );
-        assert!(build_hook_response(&input).is_none());
+        assert!(build_hook_response(&input, None).is_none());
     }
 
     #[test]
     fn test_hook_response_missing_command_returns_none() {
         let input = parse_input(r#"{"hook_event_name":"BeforeTool"}"#);
-        assert!(build_hook_response(&input).is_none());
+        assert!(build_hook_response(&input, None).is_none());
     }
 
     #[test]
@@ -483,14 +535,16 @@ mod tests {
             }"#,
         );
         assert_eq!(
-            build_hook_response(&claude).unwrap()["hookSpecificOutput"]["updatedInput"]["command"],
+            build_hook_response(&claude, None).unwrap()["hookSpecificOutput"]["updatedInput"]
+                ["command"],
             serde_json::json!(agent_cmd(
                 "claude",
                 "cd /tmp && trs git status && trs cargo test"
             ))
         );
         assert_eq!(
-            build_hook_response(&gemini).unwrap()["hookSpecificOutput"]["tool_input"]["command"],
+            build_hook_response(&gemini, None).unwrap()["hookSpecificOutput"]["tool_input"]
+                ["command"],
             serde_json::json!(agent_cmd(
                 "gemini",
                 "cd /tmp && trs git status && trs cargo test"

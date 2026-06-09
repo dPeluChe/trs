@@ -13,9 +13,9 @@ install scope.
 | OpenCode | plugin template | ✓ | ✓ (inline block) | `opencode` | global |
 | Kilo Code | plugin template | ✓ | ✓ (inline block) | `kilo` | global |
 | Pi Coding Agent | programmatic hook (extension) | ✓ | — | `pi` | global + project |
-| Factory Droid | programmatic hook | ✓ | ✓ (inline block) | `claude` (see caveat) | global + project |
-| Antigravity IDE | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
-| Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
+| Factory Droid | programmatic hook | ✓ | ✓ (inline block) | `droid` | global + project |
+| Antigravity IDE | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `antigravity` (env fallback) | global |
+| Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `antigravity` (env fallback) | global |
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
 | VS Code Copilot | programmatic hook | ✓ | — | `vscode` | global + project |
@@ -100,12 +100,11 @@ install scope.
 
 ### Factory Droid
 
-- **Caveat — shared Claude envelope.** Droid reuses Claude's
-  `hook_event_name: PreToolUse` wire format verbatim, so trs can't
-  distinguish the two at rewrite time. Both show up as `claude` in
-  `trs stats --by-agent`. To separate them you currently need to
-  eyeball the `cwd` paths or the time of day. A disambiguation flag
-  is tracked on the roadmap.
+- **Attribution.** Droid reuses Claude's `hook_event_name: PreToolUse`
+  wire format verbatim; the hook command carries `--caller droid` so
+  runs show up as `droid` in `trs stats --by-agent`. Installs from
+  before v0.6.16 shared Claude's label — re-run `trs init droid` to
+  pick up the labeled hook.
 
 ### Antigravity IDE + Antigravity CLI (`agy`)
 
@@ -157,7 +156,7 @@ install scope.
   (which implements `hookSpecificOutput.updatedInput.command` in its
   `PreToolUse` hook), `trs init codex --global` merges a real
   `PreToolUse` hook (matcher `"Bash"`, command
-  `TRS_AGENT=codex trs rewrite`) into `~/.codex/hooks.json`, preserving
+  `trs rewrite --caller codex`) into `~/.codex/hooks.json`, preserving
   the user's other hooks. Approve it once via Codex's `/hooks` prompt
   and commands rewrite automatically. On older builds (or an untrusted
   hook) it falls back to a rules block in `~/.codex/AGENTS.md`
@@ -196,7 +195,7 @@ install scope.
   relies on. Validated live 2026-06-09.
 - **Config path:** `trs init vscode` writes `.github/hooks/trs.json`
   (project) or `~/.copilot/hooks/trs.json` (`--global`). The hook
-  command is `TRS_AGENT=vscode trs rewrite`.
+  command is `trs rewrite --caller vscode`.
 - **Prerequisite:** enable VS Code's agent hooks (preview feature)
   for the hook to fire.
 - **Claude-settings interplay:** the related setting **"Chat: Use

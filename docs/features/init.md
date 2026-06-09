@@ -187,12 +187,13 @@ breakdown.
 
 Labels per agent:
 
-- `claude` — Claude Code (and Factory Droid, which shares the same
-  wire format)
+- `claude` — Claude Code
+- `droid` — Factory Droid (the hook command carries `--caller droid`;
+  pre-v0.6.16 installs shared Claude's label — re-run `trs init droid`)
 - `gemini` — Gemini CLI
-- `(untagged)` covers Antigravity IDE and Antigravity CLI (`agy`)
-  too — as of v0.6.6 they are rules-only because agy v1.0.1 doesn't
-  expose user-configurable PreTool hooks. See
+- `antigravity` — Antigravity IDE / CLI (`agy`): rules-only (no hook),
+  but direct `trs <cmd>` runs inside agy are attributed via the
+  `ANTIGRAVITY_CONVERSATION_ID` env var agy exports. See
   [research notes](../development/antigravity-hooks-research.md).
 - `cursor` — Cursor
 - `opencode` — OpenCode (baked into the plugin template)
@@ -200,10 +201,10 @@ Labels per agent:
 - `pi` — Pi Coding Agent (set via `TRS_AGENT=pi` in the extension's
   `spawnHook` env)
 - `codex` — Codex when the `PreToolUse` hook is active (codex-cli
-  ≥ 0.134); the hook command carries `TRS_AGENT=codex`. Rules-only
+  ≥ 0.134); the hook command carries `--caller codex`. Rules-only
   fallback (older builds / untrusted hook) is still `(untagged)`.
 - `vscode` — VS Code Copilot via the agent hooks (preview); the hook
-  command carries `TRS_AGENT=vscode`. (Runs that arrive through
+  command carries `--caller vscode`. (Runs that arrive through
   VS Code's "Chat: Use Claude Hooks" setting instead show as `claude`.)
 - `(untagged)` — rules-only agents (Devin Desktop, Codex fallback) and
   direct-shell invocations, where no programmatic signal is available

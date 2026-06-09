@@ -39,7 +39,15 @@ pub enum Commands {
     },
 
     /// Rewrite a command for hook integration (called by AI tool hooks)
-    Rewrite,
+    Rewrite {
+        /// Attribution label set by the installing hook template (e.g.
+        /// `--caller droid`). Shell-agnostic alternative to the POSIX-only
+        /// `TRS_AGENT=x` prefix, which PowerShell/cmd can't parse. Named
+        /// `--caller` because the global `--agent` output-format flag is
+        /// already taken.
+        #[arg(long)]
+        caller: Option<String>,
+    },
 
     /// Find missed token savings opportunities in Claude Code history
     Discover {

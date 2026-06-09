@@ -198,7 +198,15 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
     // Agent attribution: when trs rewrite or a plugin template
     // injected TRS_AGENT=<name>, the env var is live in this process.
     // An empty value is treated as absent so we don't record "".
-    let agent = std::env::var("TRS_AGENT").ok().filter(|v| !v.is_empty());
+    // Rules-only Antigravity has no hook to set TRS_AGENT, but agy exports
+    // ANTIGRAVITY_CONVERSATION_ID into its shells — use it as the fallback
+    // signal so direct `trs <cmd>` runs inside agy stop showing untagged.
+    let agent = std::env::var("TRS_AGENT")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .or_else(|| {
+            std::env::var_os("ANTIGRAVITY_CONVERSATION_ID").map(|_| "antigravity".to_string())
+        });
 
     append_history_entry(&HistoryEntry {
         ts,

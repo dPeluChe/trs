@@ -226,7 +226,7 @@ impl Router {
             | Commands::Raw { .. }
             | Commands::Init { .. }
             | Commands::Uninstall { .. }
-            | Commands::Rewrite
+            | Commands::Rewrite { .. }
             | Commands::Discover { .. }
             | Commands::Doctor { .. }
             | Commands::AuditDocs { .. }
