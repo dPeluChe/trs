@@ -5,6 +5,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.16] - 2026-06-09
+
+### Features
+
+- **rewrite:** Fail open on unrecognized hook_event_name (#77)
+- **coverage:** Close field-data compression gaps (git commit/ls-files, cargo fmt, bash -c) (#78)
+- **quality:** Signal-preservation harness + 3 parser bugs it caught (#79)
+- **logs:** JSON structured-log field extraction (reducer + builtin tail) (#76)
+- **devin:** Rename Windsurf agent to Devin Desktop + dual rules target (#75)
+- **vscode:** VS Code Copilot agent support — 12th agent (#81)
+
+### Documentation
+
+- **roadmap:** VS Code Copilot research — turnkey spec, gated on live validation (#80)
+
 ## [0.6.15] - 2026-06-05
 
 ### Features
