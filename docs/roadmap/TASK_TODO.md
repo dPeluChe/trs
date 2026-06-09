@@ -13,7 +13,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] Homebrew tap (low priority — npm + curl|sh covers 99% of users)
 - [ ] Publish to crates.io (`cargo install trs-cli` — currently source-only)
 - [ ] Shell completions (bash, zsh, fish)
-- [ ] Copilot hook — see Phase 3 "VSCode ecosystem"
+- [x] Copilot hook — see Phase 3 "VSCode ecosystem"
 - [ ] `trs self-update` command — re-download latest binary from GitHub Releases
 
 ---
@@ -67,7 +67,7 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ### VSCode ecosystem (vanilla, not the forks)
 
-- [ ] **GitHub Copilot (VSCode) — researched 2026-06, implementation turnkey,
+- [x] **GitHub Copilot (VSCode) — researched 2026-06, implementation turnkey,
   gated on live validation.** VS Code agent hooks (preview) speak Claude's
   format: `PreToolUse` + `hookSpecificOutput.updatedInput` +
   `permissionDecision` — exactly what `trs rewrite` already emits. Paths:
@@ -85,6 +85,8 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
   0.134) that `run_in_terminal` rewrites apply and `updatedInput` doesn't
   drop sibling fields (`isBackground`/`explanation` — merge vs replace is
   undocumented).
+  SHIPPED: validated live 2026-06-09 (updatedInput applies cleanly to
+  run_in_terminal); `trs init vscode` + TRS_AGENT=vscode attribution landed.
 - [ ] **Continue.dev** — has a plugin API (`config.ts`, `slashCommands`, `contextProviders`). Worth a focused research pass like we did for Kilo/OpenCode/Droid.
 - [ ] **Cody (Sourcegraph)** — VSCode extension with context-fetcher and custom commands. Check whether commands can prefix shell execution.
 - [ ] **Research pass**: decide whether VSCode-base agents warrant `trs init vscode-copilot` / `trs init continue` entries or a single `trs init vscode`.

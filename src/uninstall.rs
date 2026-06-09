@@ -289,6 +289,10 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
             v.push(PathBuf::from(".devin/rules/trs.md"));
             v.push(PathBuf::from(".windsurfrules"));
         }
+        AiTool::VsCode => {
+            push_home(".copilot/hooks/trs.json");
+            v.push(PathBuf::from(".github/hooks/trs.json"));
+        }
     }
     v.sort();
     v.dedup();

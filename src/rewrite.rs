@@ -85,12 +85,16 @@ impl HookEvent {
         )
     }
 
-    /// Codex shares Claude's `PreToolUse` envelope, so we can't tell them
-    /// apart from `hook_event_name` alone. The Codex hook command sets
-    /// `TRS_AGENT=codex`, which we read here to attribute the run.
+    /// Codex and VS Code Copilot share Claude's `PreToolUse` envelope, so we
+    /// can't tell them apart from `hook_event_name` alone. Their hook
+    /// commands set `TRS_AGENT=<label>`, which we read here to attribute the
+    /// run. Whitelist (not pass-through): an arbitrary inherited TRS_AGENT
+    /// value must not silently relabel runs.
     fn agent_label_from(&self, has_antigravity_env: bool, trs_agent: Option<&str>) -> &'static str {
-        if trs_agent == Some("codex") {
-            return "codex";
+        match trs_agent {
+            Some("codex") => return "codex",
+            Some("vscode") => return "vscode",
+            _ => {}
         }
         self.agent_label_for(has_antigravity_env)
     }
@@ -412,6 +416,16 @@ mod tests {
         );
         assert_eq!(
             HookEvent::ClaudePreToolUse.agent_label_from(false, None),
+            "claude"
+        );
+        // VS Code Copilot also speaks PreToolUse; its hook sets
+        // TRS_AGENT=vscode. Unknown env values must NOT relabel.
+        assert_eq!(
+            HookEvent::ClaudePreToolUse.agent_label_from(false, Some("vscode")),
+            "vscode"
+        );
+        assert_eq!(
+            HookEvent::ClaudePreToolUse.agent_label_from(false, Some("something-else")),
             "claude"
         );
         assert_eq!(

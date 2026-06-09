@@ -104,6 +104,32 @@ pub(crate) const GEMINI_HOOKS: &str = r#"{
 // Until Google ships user-configurable PreToolHook for Bash, Antigravity
 // (IDE + CLI) is rules-only — see ANTIGRAVITY_RULES_SECTION below.
 
+// VS Code Copilot agent hooks (preview, validated live 2026-06-09): VS Code
+// speaks Claude's PreToolUse envelope and honors
+// `hookSpecificOutput.updatedInput.command`. Native path `~/.copilot/hooks/`
+// (project: `.github/hooks/`). Matchers are parsed but ignored — the hook
+// fires on every tool; trs no-ops without `tool_input.command`, and unknown
+// event names fail open. `TRS_AGENT=vscode` attributes runs distinctly from
+// Claude Code (VS Code can ALSO load `~/.claude/settings.json` hooks when
+// the "Use Claude Hooks" setting is on; rewrite is idempotent so a double
+// fire is harmless — first one wins).
+pub(crate) const VSCODE_HOOKS: &str = r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TRS_AGENT=vscode trs rewrite"
+          }
+        ],
+        "description": "Route commands through trs for token-optimized output"
+      }
+    ]
+  }
+}"#;
+
 // Cursor's `beforeShellExecution` hook can only allow/deny — it cannot
 // rewrite the command. The only hook with `updated_input` support is
 // `preToolUse`. `matcher: "Shell"` limits the hook to actual shell tool

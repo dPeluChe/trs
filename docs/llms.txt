@@ -2,12 +2,12 @@
 
 > trs is a CLI proxy that compresses terminal output for AI coding agents — 60–99% fewer tokens, no loss of signal.
 > Install once, run `trs init` to wire it to your agent, and every shell command gets automatically summarized.
-> Supports Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Codex CLI, Devin Desktop (ex-Windsurf), and more. Single native binary, zero runtime deps.
+> Supports Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Codex CLI, VS Code Copilot, Devin Desktop (ex-Windsurf), and more. Single native binary, zero runtime deps.
 
 ## Getting started
 
 - [Install trs](https://usetrs.dev/support/install.md): curl|sh, PowerShell, npm, cargo, or prebuilt binary
-- [Supported agents](https://usetrs.dev/support/agents.md): Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, Antigravity IDE, Antigravity CLI (`agy`), Codex CLI, Devin Desktop (ex-Windsurf)
+- [Supported agents](https://usetrs.dev/support/agents.md): Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, Antigravity IDE, Antigravity CLI (`agy`), Codex CLI, Devin Desktop (ex-Windsurf), VS Code Copilot (`vscode`)
 - [Supported commands](https://usetrs.dev/support/commands.md): git, cargo, npm/pnpm/bun/yarn, Python tools, curl, docker, gh CLI, and more
 
 ## Features

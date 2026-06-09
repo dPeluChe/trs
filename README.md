@@ -108,7 +108,7 @@ trs uninstall --all --yes          # scripted
 
 ## Supported AI agents
 
-Eleven agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, Antigravity IDE, Antigravity CLI. Rules file only for Codex CLI, Devin Desktop (ex-Windsurf).
+Twelve agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot, Antigravity IDE, Antigravity CLI. Rules file only for Codex CLI, Devin Desktop (ex-Windsurf).
 
 | Agent | Install method | Input hook | Output-saver | Attribution |
 |---|---|---|---|---|
@@ -116,6 +116,7 @@ Eleven agents supported end-to-end. Programmatic hook for Claude Code, Gemini CL
 | OpenCode · Kilo Code | plugin template | ✓ | ✓ | `opencode` / `kilo` |
 | Pi Coding Agent | programmatic hook (extension) | ✓ | — | `pi` |
 | Factory Droid | programmatic hook | ✓ | ✓ | `claude` (shares envelope) |
+| VS Code Copilot | programmatic hook | ✓ | — | `vscode` |
 | Antigravity IDE · Antigravity CLI (`agy`) | rules file ([see notes](docs/development/antigravity-hooks-research.md)) | — | ✓ | `(untagged)` |
 | Codex CLI · Devin Desktop (ex-Windsurf) | rules file only | — | ✓ | `(untagged)` |
 

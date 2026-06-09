@@ -1,14 +1,14 @@
 # `trs init` — install hooks for AI agents
 
 `trs init` wires your AI coding agent's shell-execution pipeline through
-`trs rewrite` so every command gets compressed automatically. Eleven
+`trs rewrite` so every command gets compressed automatically. Twelve
 agents are supported end-to-end. See [`docs/development/agent-integrations.md`](../development/agent-integrations.md)
 for the full per-agent reference.
 
 ## Quick reference
 
 ```bash
-trs init --show                      # status of all 11 agents
+trs init --show                      # status of all 12 agents
 trs init --all --global              # install for every detected agent
 trs init <agent>                     # install for one: claude, gemini, cursor, …
 trs init --all --global --dry-run    # preview every file that would change
@@ -31,6 +31,7 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | Antigravity IDE | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Antigravity CLI (`agy`) | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Devin Desktop (ex-Windsurf) | Rules file | `.devin/rules/trs.md` (legacy: `.windsurfrules`); aliases `devin` / `devin-desktop` / `windsurf` / `cascade` |
+| VS Code Copilot | JSON hook (agent hooks preview) | `.github/hooks/trs.json` (project) / `~/.copilot/hooks/trs.json` (`--global`); aliases `vscode` / `vs-code` / `copilot` / `vscode-copilot` / `code` |
 
 Hooks fire deterministically on every shell-tool invocation. Rules
 files are probabilistic — they only work because the agent chooses to
@@ -201,6 +202,9 @@ Labels per agent:
 - `codex` — Codex when the `PreToolUse` hook is active (codex-cli
   ≥ 0.134); the hook command carries `TRS_AGENT=codex`. Rules-only
   fallback (older builds / untrusted hook) is still `(untagged)`.
+- `vscode` — VS Code Copilot via the agent hooks (preview); the hook
+  command carries `TRS_AGENT=vscode`. (Runs that arrive through
+  VS Code's "Chat: Use Claude Hooks" setting instead show as `claude`.)
 - `(untagged)` — rules-only agents (Devin Desktop, Codex fallback) and
   direct-shell invocations, where no programmatic signal is available
 

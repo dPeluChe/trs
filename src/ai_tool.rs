@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::init_templates::{
     CLAUDE_HOOKS, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN, OPENCODE_PLUGIN,
-    PI_EXTENSION,
+    PI_EXTENSION, VSCODE_HOOKS,
 };
 
 /// Supported AI tools for hook installation.
@@ -39,6 +39,10 @@ pub(crate) enum AiTool {
     /// target is `.devin/rules/trs.md`; `.windsurfrules` kept as the legacy
     /// fallback (still read by Devin and by pre-rebrand Windsurf).
     Devin,
+    /// VS Code Copilot agent mode. Agent hooks (preview) speak Claude's
+    /// PreToolUse envelope incl. `updatedInput` rewrite — validated live
+    /// 2026-06-09. Native hook dir `~/.copilot/hooks/` + `.github/hooks/`.
+    VsCode,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -158,6 +162,13 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
         display: "Pi Coding Agent",
         target_label: "extension → .pi/agent/extensions/trs.ts",
     },
+    AiToolSpec {
+        variant: AiTool::VsCode,
+        cli_name: "vscode",
+        aliases: &["vscode", "vs-code", "copilot", "vscode-copilot", "code"],
+        display: "VS Code Copilot",
+        target_label: "hooks → ~/.copilot/hooks/trs.json",
+    },
 ];
 
 impl AiTool {
@@ -263,6 +274,9 @@ impl AiTool {
                     || home_has(".codeium")
                     || home_has(".windsurf")
             }
+            Self::VsCode => {
+                in_path("code") || app_exists("Visual Studio Code") || home_has(".copilot")
+            }
         }
     }
 
@@ -321,6 +335,14 @@ impl AiTool {
                 global_dir: Some(".factory"),
                 filename: "settings.json",
                 content: DROID_HOOKS,
+            }),
+            // VS Code Copilot agent hooks: any *.json under the hooks dir is
+            // loaded; we own trs.json entirely.
+            Self::VsCode => Some(HookSpec {
+                local_dir: ".github/hooks",
+                global_dir: Some(".copilot/hooks"),
+                filename: "trs.json",
+                content: VSCODE_HOOKS,
             }),
             // Antigravity 2.0 (IDE + CLI/`agy`) — v0.6.6 reverted the
             // jetski PreToolUse integration shipped in v0.6.5. Empirically
@@ -430,7 +452,7 @@ mod tests {
         // Pins the exact public string `trs uninstall` prints on bad input.
         assert_eq!(
             AiTool::all_names(),
-            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi"
+            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode"
         );
     }
 

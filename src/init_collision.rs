@@ -126,6 +126,10 @@ fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
             push_home(&mut v, ".factory/settings.json");
             v.push(PathBuf::from(".factory/settings.json"));
         }
+        AiTool::VsCode => {
+            push_home(&mut v, ".copilot/hooks/trs.json");
+            v.push(PathBuf::from(".github/hooks/trs.json"));
+        }
         AiTool::OpenCode => {
             push_home(&mut v, ".config/opencode/plugins/trs.ts");
             v.push(PathBuf::from(".opencode/plugins/trs.ts"));

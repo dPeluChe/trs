@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Eleven AI coding agents are supported end-to-end. Each row lists the
+Twelve AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -18,6 +18,7 @@ install scope.
 | Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `(untagged)` | global |
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
+| VS Code Copilot | programmatic hook | ✓ | — | `vscode` | global + project |
 
 ## Column legend
 
@@ -186,6 +187,31 @@ install scope.
   `cascade` (the last two for back-compat).
 - **Attribution:** `(untagged)` in stats since there's no programmatic
   signal to tag commands with an agent.
+
+### VS Code Copilot
+
+- **Status:** programmatic hook via VS Code's **agent hooks
+  (preview)**, which speak Claude Code's `PreToolUse` envelope —
+  including the `hookSpecificOutput.updatedInput` rewrite that trs
+  relies on. Validated live 2026-06-09.
+- **Config path:** `trs init vscode` writes `.github/hooks/trs.json`
+  (project) or `~/.copilot/hooks/trs.json` (`--global`). The hook
+  command is `TRS_AGENT=vscode trs rewrite`.
+- **Prerequisite:** enable VS Code's agent hooks (preview feature)
+  for the hook to fire.
+- **Claude-settings interplay:** the related setting **"Chat: Use
+  Claude Hooks"** makes VS Code *also* load `~/.claude/settings.json`
+  hooks — users with `trs init claude --global` get de-facto coverage
+  that way, but runs are attributed as `claude`. The dedicated
+  `trs init vscode` gives correct `vscode` attribution and works
+  without Claude Code installed. If both surfaces fire, the
+  double-fire is harmless — `trs rewrite` is idempotent.
+- **Matcher caveat:** VS Code parses but **ignores** hook matchers,
+  so the hook fires on every tool. Safe in practice: trs no-ops on
+  tools without a `command` field, and unknown event names fail open.
+- **Output-saver:** not yet wired (same posture as Pi).
+- **Aliases:** `vscode` (primary), `vs-code`, `copilot`,
+  `vscode-copilot`, `code`.
 
 ## Install commands
 
