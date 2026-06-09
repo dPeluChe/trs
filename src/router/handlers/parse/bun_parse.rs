@@ -82,10 +82,17 @@ impl ParseHandler {
                 continue;
             }
 
-            // Check for test file header: "test/file.test.ts:" (ends with colon)
-            if trimmed.ends_with(':')
-                && !trimmed.starts_with(|c| c == '✓' || c == '✗' || c == '×' || c == '(')
-            {
+            // Check for test file header: "test/file.test.ts:" (ends with
+            // colon) or the failure-recap form "FAIL  test/file.test.js"
+            // (bun re-lists failed files at the end without the colon —
+            // missing it would drop the failing file + its ✗ tests).
+            let is_colon_header = trimmed.ends_with(':')
+                && !trimmed.starts_with(|c| c == '✓' || c == '✗' || c == '×' || c == '(');
+            let fail_recap_file = trimmed
+                .strip_prefix("FAIL")
+                .map(str::trim)
+                .filter(|rest| !rest.is_empty() && !rest.contains(' ') && rest.contains('/'));
+            if is_colon_header || fail_recap_file.is_some() {
                 // Save any pending test
                 if let Some(test) = current_test.take() {
                     if let Some(ref mut suite) = current_suite {
@@ -106,7 +113,10 @@ impl ParseHandler {
                     output.test_suites.push(suite_to_save);
                 }
 
-                let file = trimmed.trim_end_matches(':').to_string();
+                let file = match fail_recap_file {
+                    Some(f) => f.to_string(),
+                    None => trimmed.trim_end_matches(':').to_string(),
+                };
                 current_suite = Some(BunTestSuite {
                     file,
                     passed: true,
@@ -199,12 +209,20 @@ impl ParseHandler {
             output.test_suites.push(suite_to_save);
         }
 
-        // Set output properties
-        output.is_empty = output.test_suites.is_empty();
-        output.success = output.test_suites.iter().all(|s| s.passed);
-
         // Update summary counts from parsed tests
         Self::update_bun_summary_from_tests(&mut output);
+
+        // Derived AFTER the summary merge: a suite-less parse can still carry
+        // counts from the " N pass / N fail" lines (per-test lines from some
+        // bun versions don't match the suite grammar). "No tests" must mean
+        // truly nothing parsed, and success must respect the failed count.
+        let counted = output.summary.tests_total
+            + output.summary.tests_passed
+            + output.summary.tests_failed
+            + output.summary.tests_skipped;
+        output.is_empty = output.test_suites.is_empty() && counted == 0;
+        output.success =
+            output.summary.tests_failed == 0 && output.test_suites.iter().all(|s| s.passed);
 
         Ok(output)
     }

@@ -1,0 +1,24 @@
+   Compiling myapp v0.1.0 (/work/myapp)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.24s
+     Running unittests src/lib.rs (target/debug/deps/myapp-abc123)
+
+running 5 tests
+test tests::test_parse_ok ... ok
+test tests::test_add ... FAILED
+test tests::test_sub ... ok
+test tests::test_render ... ok
+test tests::test_round_trip ... ignored
+
+failures:
+
+---- tests::test_add stdout ----
+thread 'tests::test_add' panicked at src/math.rs:42:9:
+assertion `left == right` failed
+  left: 4
+ right: 5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+failures:
+    tests::test_add
+
+test result: FAILED. 3 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.02s

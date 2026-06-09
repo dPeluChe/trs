@@ -107,9 +107,17 @@ classifier / rewrite_decide / classifier_exec / stats_coverage.
   out of the 184-line `execute_and_parse` (5 returns each duplicating
   track+tee+exit). Pure refactor, lowers blast radius. Next natural step now
   that the registry lands.
-- [ ] **Quality harness** — measure more than bytes: tokens saved, errors
-  preserved, paths preserved, suggested-commands preserved, raw recoverable.
-  This is what lets us improve parsers with evidence instead of intuition.
+- [x] **Quality harness v1** — `tests/quality_harness.rs`: runs fixtures
+  through their parsers (15 cases) and asserts signal preservation (error
+  codes, failing-file basenames, failure marker) + reports per-case
+  compression. Adding a case = one table row. First runs found and fixed 6
+  real bugs: all-runners "no tests found" destroying unrecognized output;
+  bun is_empty/success ignoring summary counts; bun FAIL-recap header
+  dropped; vitest ❯ suites/tests unparsed + summary swallowed by the
+  failure-details accumulator; cargo-test dropping panic location/message;
+  build dropping rustc `--> file:line` locations.
+- [ ] **Quality harness v2 candidates** — suggested-commands preserved;
+  xcodebuild / gradle failure cases; raw recoverable.
 - [ ] **Per-command config** — `[commands.cargo-test] max_failures = 20,
   preserve_backtraces = true`. Build on the existing `Limits`/`Hooks` config and
   the new registry. Granularity on top of the base config.

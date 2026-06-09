@@ -1,0 +1,9 @@
+src/app.ts(12,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/lib.ts(8,1): error TS2304: Cannot find name 'foo'.
+src/app.ts(30,2): error TS2322: Type 'null' is not assignable to type 'string'.
+
+Found 3 errors in 2 files.
+
+Errors  Files
+     2  src/app.ts:12
+     1  src/lib.ts:8
