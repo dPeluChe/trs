@@ -270,10 +270,28 @@ fn tag_with_agent(cmd: &str, agent: &str) -> String {
 /// Pure core of `tag_with_agent` — `is_windows` passed explicitly so both
 /// branches are testable on any platform.
 fn tag_with_agent_for(cmd: &str, agent: &str, is_windows: bool) -> String {
-    if is_windows || cmd.starts_with("TRS_AGENT=") {
+    if is_windows {
         return cmd.to_string();
     }
-    format!("TRS_AGENT={} {}", agent, cmd)
+    // Chains: an env prefix on the FIRST segment never reaches the later
+    // ones (`VAR=x cd a && trs b` runs trs without VAR — observed as
+    // untagged history entries), so tag every segment that invokes trs.
+    // The " && " delimiter matches what maybe_rewrite joins with.
+    // Transparent wrappers (time/nohup/…) propagate env, so front-of-
+    // segment stays right for `time trs …`. A literal " trs " inside e.g.
+    // an echo argument would gain a harmless env prefix.
+    cmd.split(" && ")
+        .map(|seg| {
+            let t = seg.trim_start();
+            let invokes_trs = t.starts_with("trs ") || t.contains(" trs ");
+            if invokes_trs && !t.starts_with("TRS_AGENT=") {
+                format!("TRS_AGENT={} {}", agent, t)
+            } else {
+                seg.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" && ")
 }
 
 #[cfg(test)]
@@ -520,8 +538,10 @@ mod tests {
 
     #[test]
     fn test_hook_response_chain_preserved_across_formats() {
-        // Chain-aware rewrite applies in every format; build_hook_response
-        // prefixes the whole result with TRS_AGENT= once.
+        // Chain-aware rewrite applies in every format. Each trs-invoking
+        // segment carries its own TRS_AGENT= prefix — an env assignment on
+        // the first segment never reaches the later ones (`VAR=x cd a &&
+        // trs b` runs trs untagged), and `cd` needs no tag at all.
         let claude = parse_input(
             r#"{
                 "hook_event_name":"PreToolUse",
@@ -537,18 +557,16 @@ mod tests {
         assert_eq!(
             build_hook_response(&claude, None).unwrap()["hookSpecificOutput"]["updatedInput"]
                 ["command"],
-            serde_json::json!(agent_cmd(
-                "claude",
-                "cd /tmp && trs git status && trs cargo test"
-            ))
+            serde_json::json!(
+                "cd /tmp && TRS_AGENT=claude trs git status && TRS_AGENT=claude trs cargo test"
+            )
         );
         assert_eq!(
             build_hook_response(&gemini, None).unwrap()["hookSpecificOutput"]["tool_input"]
                 ["command"],
-            serde_json::json!(agent_cmd(
-                "gemini",
-                "cd /tmp && trs git status && trs cargo test"
-            ))
+            serde_json::json!(
+                "cd /tmp && TRS_AGENT=gemini trs git status && TRS_AGENT=gemini trs cargo test"
+            )
         );
     }
 
