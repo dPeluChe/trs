@@ -45,24 +45,33 @@ fn handle_json_protocol(json: &serde_json::Value) {
 }
 
 /// Which client's hook protocol we're speaking. Each emits a different
-/// envelope; `hook_event_name` identifies the client. Claude Code is the
-/// default when the field is missing/unknown — by far the most common.
-#[derive(Clone, Copy)]
+/// envelope; `hook_event_name` identifies the client. A *missing* field
+/// defaults to Claude Code (back-compat — by far the most common), but an
+/// explicit name we don't recognize maps to `Unknown` so a new client's
+/// envelope is never answered in a shape it may not understand.
+#[derive(Clone, Copy, PartialEq)]
 enum HookEvent {
     /// Claude Code — `hook_event_name: "PreToolUse"` (capitalized).
+    /// Also spoken by Droid, Codex ≥0.134, Antigravity (jetski), and
+    /// VS Code Copilot agent hooks.
     ClaudePreToolUse,
     /// Gemini CLI — `hook_event_name: "BeforeTool"`.
     GeminiBeforeTool,
     /// Cursor — `hook_event_name: "preToolUse"` (lowercase first letter).
     CursorPreToolUse,
+    /// An explicit `hook_event_name` we don't recognize — a client with
+    /// its own envelope. Fail open: no rewrite, original command runs.
+    Unknown,
 }
 
 impl HookEvent {
     fn parse(name: &str) -> Self {
         match name {
+            // "" = field absent: legacy/Claude-compatible callers.
+            "PreToolUse" | "" => Self::ClaudePreToolUse,
             "BeforeTool" => Self::GeminiBeforeTool,
             "preToolUse" => Self::CursorPreToolUse,
-            _ => Self::ClaudePreToolUse,
+            _ => Self::Unknown,
         }
     }
 
@@ -100,6 +109,7 @@ impl HookEvent {
             Self::CursorPreToolUse => "cursor",
             Self::ClaudePreToolUse if has_antigravity_env => "antigravity",
             Self::ClaudePreToolUse => "claude",
+            Self::Unknown => "unknown",
         }
     }
 }
@@ -117,11 +127,25 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
         .and_then(|ti| ti.get("command"))
         .and_then(|c| c.as_str())?;
 
-    let event = HookEvent::parse(
-        json.get("hook_event_name")
-            .and_then(|v| v.as_str())
-            .unwrap_or(""),
-    );
+    let event_name = json
+        .get("hook_event_name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let event = HookEvent::parse(event_name);
+
+    // Unrecognized client envelope: fail open instead of guessing Claude's
+    // response shape — a client that doesn't understand it can hard-fail the
+    // tool call (seen with pre-0.134 Codex "unsupported updatedInput"). The
+    // original command runs unchanged; the zero-cost history entry surfaces
+    // the new client in `stats --by-agent` so we can add real support.
+    if event == HookEvent::Unknown {
+        // cfg-gated so unit tests exercising this path don't append to the
+        // user's real history.jsonl.
+        #[cfg(not(test))]
+        crate::tracker::log_bypass(cmd, Some("unknown"));
+        eprintln!("trs rewrite: unrecognized hook_event_name \"{event_name}\" — passing through");
+        return None;
+    }
 
     // Bypass telemetry — log the agent-attributed observation before the
     // short-circuit so `stats --by-agent` can surface per-agent rates.
@@ -134,6 +158,9 @@ fn build_hook_response(json: &serde_json::Value) -> Option<serde_json::Value> {
     let rewritten = tag_with_agent(&rewritten, event.agent_label());
 
     let response = match event {
+        // Handled above; kept here so the match stays exhaustive if the
+        // early return ever moves.
+        HookEvent::Unknown => return None,
         HookEvent::GeminiBeforeTool => serde_json::json!({
             "systemMessage": "trs auto-rewrite",
             "decision": "allow",
@@ -309,6 +336,43 @@ mod tests {
         );
         assert!(out.get("hookSpecificOutput").is_none());
         assert!(out.get("decision").is_none());
+    }
+
+    #[test]
+    fn test_hook_response_unknown_event_fails_open() {
+        // A 4th client with its own envelope must get NO response (the
+        // original command runs unchanged), never a Claude-shaped guess.
+        let input = parse_input(
+            r#"{
+                "hook_event_name":"beforeShellExecution",
+                "tool_input":{"command":"git status"}
+            }"#,
+        );
+        assert!(build_hook_response(&input).is_none());
+    }
+
+    #[test]
+    fn test_hook_event_parse_mapping() {
+        assert!(matches!(
+            HookEvent::parse("PreToolUse"),
+            HookEvent::ClaudePreToolUse
+        ));
+        // Missing field stays Claude for back-compat.
+        assert!(matches!(HookEvent::parse(""), HookEvent::ClaudePreToolUse));
+        assert!(matches!(
+            HookEvent::parse("BeforeTool"),
+            HookEvent::GeminiBeforeTool
+        ));
+        assert!(matches!(
+            HookEvent::parse("preToolUse"),
+            HookEvent::CursorPreToolUse
+        ));
+        // Anything explicitly different is a new client, not Claude.
+        assert!(matches!(
+            HookEvent::parse("PostToolUse"),
+            HookEvent::Unknown
+        ));
+        assert!(matches!(HookEvent::parse("pretooluse"), HookEvent::Unknown));
     }
 
     #[test]
