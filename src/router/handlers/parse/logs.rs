@@ -115,6 +115,11 @@ impl ParseHandler {
 
     /// Parse a single log line.
     pub(crate) fn parse_log_line(line: &str, line_number: usize) -> LogEntry {
+        // Structured JSON logs first: extract level/msg/ts and drop the rest.
+        if let Some(entry) = Self::try_parse_json_log_line(line, line_number) {
+            return entry;
+        }
+
         let mut entry = LogEntry {
             line: line.to_string(),
             level: LogLevel::Unknown,

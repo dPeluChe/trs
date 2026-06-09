@@ -24,6 +24,24 @@ fn test_tail_basic() {
 }
 
 #[test]
+fn test_tail_json_logs_compacted() {
+    // Structured JSON log lines are field-extracted: message + logger shown,
+    // trace_id/span_id/hostname noise dropped, JSON level → error marker.
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("tail")
+        .arg("-n")
+        .arg("10")
+        .arg(fixture_path("tail_json.log"))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("db query failed"))
+        .stdout(predicate::str::contains("ERR "))
+        .stdout(predicate::str::contains("err: connection timeout"))
+        .stdout(predicate::str::contains("trace_id").not())
+        .stdout(predicate::str::contains("span_id").not());
+}
+
+#[test]
 fn test_tail_returns_lines() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("tail")

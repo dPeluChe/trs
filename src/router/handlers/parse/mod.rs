@@ -32,6 +32,7 @@ pub(crate) mod lint;
 pub(crate) mod logs;
 pub(crate) mod logs_format;
 pub(crate) mod logs_helpers;
+pub(crate) mod logs_json;
 pub(crate) mod ls;
 pub(crate) mod npm_format;
 pub(crate) mod npm_parse;

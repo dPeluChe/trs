@@ -1,0 +1,4 @@
+{"level":30,"time":1700000000000,"pid":42317,"hostname":"prod-api-7d9f","reqId":"req-001","msg":"server listening","logger":"http","trace_id":"8a607854d8f00ad7","span_id":"7e59bb40"}
+{"level":30,"time":1700000000100,"pid":42317,"hostname":"prod-api-7d9f","reqId":"req-002","msg":"request completed","logger":"http","durationMs":12,"trace_id":"b1c2d3e4f5a6b7c8","span_id":"11aa22bb"}
+{"level":50,"time":1700000000200,"pid":42317,"hostname":"prod-api-7d9f","reqId":"req-003","msg":"db query failed","logger":"db","error":"connection timeout after 30000ms","trace_id":"deadbeefdeadbeef","span_id":"99cc88dd"}
+{"level":40,"time":1700000000300,"pid":42317,"hostname":"prod-api-7d9f","reqId":"req-004","msg":"slow response","logger":"http","durationMs":820,"trace_id":"0f0f0f0f0f0f0f0f","span_id":"abcdef01"}
