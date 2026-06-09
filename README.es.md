@@ -108,7 +108,7 @@ trs uninstall --all --yes          # scriptable
 
 ## Agentes de IA soportados
 
-Doce agentes cubiertos de extremo a extremo. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot, Antigravity IDE y Antigravity CLI. Solo archivo de reglas para Codex CLI y Devin Desktop (ex-Windsurf).
+Doce agentes cubiertos de extremo a extremo. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot y Codex CLI (≥ 0.134, con fallback de reglas). Solo archivo de reglas para Antigravity IDE, Antigravity CLI y Devin Desktop (ex-Windsurf).
 
 | Agente | Método de instalación | Hook de entrada | Output-saver | Etiqueta en stats |
 |---|---|---|---|---|
@@ -117,8 +117,9 @@ Doce agentes cubiertos de extremo a extremo. Hook programático para Claude Code
 | Pi Coding Agent | hook programático (extensión) | ✓ | — | `pi` |
 | Factory Droid | hook programático | ✓ | ✓ | `droid` |
 | VS Code Copilot | hook programático | ✓ | — | `vscode` |
-| Antigravity IDE · Antigravity CLI (`agy`) | archivo de reglas ([notas](docs/development/antigravity-hooks-research.md)) | — | ✓ | `(untagged)` |
-| Codex CLI · Devin Desktop (ex-Windsurf) | solo archivo de reglas | — | ✓ | `(untagged)` |
+| Codex CLI | hook programático (≥ 0.134), fallback de reglas | ✓ | ✓ | `codex` (fallback `(untagged)`) |
+| Antigravity IDE · Antigravity CLI (`agy`) | archivo de reglas ([notas](docs/development/antigravity-hooks-research.md)) | — | ✓ | `antigravity` (fallback por env) |
+| Devin Desktop (ex-Windsurf) | solo archivo de reglas | — | ✓ | `(untagged)` |
 
 [Matriz completa, detalles y rutas de configuración por agente →](docs/support/agents.md)
 
