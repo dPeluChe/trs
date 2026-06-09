@@ -15,6 +15,7 @@ pub(crate) mod find;
 pub(crate) mod gh_pr;
 pub(crate) mod gh_run;
 pub(crate) mod git_branch;
+pub(crate) mod git_commit;
 pub(crate) mod git_diff;
 pub(crate) mod git_diff_format;
 pub(crate) mod git_log;
@@ -147,6 +148,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::Lint { file } => Self::handle_lint(file, ctx),
             ParseCommands::Db { file } => Self::handle_db(file, ctx),
             ParseCommands::GitPull { file } => Self::handle_git_pull(file, ctx),
+            ParseCommands::GitCommit { file } => Self::handle_git_commit(file, ctx),
         }
     }
 }

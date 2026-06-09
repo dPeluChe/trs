@@ -71,6 +71,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 }
             }
             "pull" | "fetch" => Some(ParseCommands::GitPull { file: None }),
+            // Field data: 192 cmds at 43% low compression before this route.
+            "commit" => Some(ParseCommands::GitCommit { file: None }),
             "grep" => Some(ParseCommands::Grep { file: None }),
             // One path per line — same shape as find output (field data:
             // 100% low compression before this route).
@@ -438,6 +440,16 @@ mod tests {
             classify_command("git", &argv("ls-files --others --exclude-standard")),
             Some(ParseCommands::Find { .. })
         ));
+    }
+
+    #[test]
+    fn commit_routes_to_parser() {
+        assert!(matches!(
+            classify_command("git", &argv("commit -m msg")),
+            Some(ParseCommands::GitCommit { .. })
+        ));
+        // Structured-output flags stay passthrough.
+        assert!(classify_command("git", &argv("commit --porcelain")).is_none());
     }
 
     #[test]

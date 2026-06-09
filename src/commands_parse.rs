@@ -354,6 +354,16 @@ pub enum ParseCommands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+
+    /// Parse git commit output — keeps the header and summary line,
+    /// collapses per-file create/delete/rename mode lines into counts.
+    ///
+    /// Example: git commit -m "msg" | trs parse git-commit
+    GitCommit {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
 }
 
 impl ParseCommands {
@@ -402,6 +412,7 @@ impl ParseCommands {
             Self::Lint { .. } => Self::Lint { file: Some(path) },
             Self::Db { .. } => Self::Db { file: Some(path) },
             Self::GitPull { .. } => Self::GitPull { file: Some(path) },
+            Self::GitCommit { .. } => Self::GitCommit { file: Some(path) },
         }
     }
 }
