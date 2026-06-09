@@ -554,19 +554,29 @@ mod tests {
                 "tool_input":{"command":"cd /tmp && git status && cargo test"}
             }"#,
         );
+        // Per-segment expectation, platform-aware (Windows emits no prefix).
+        let chain = |agent: &str| {
+            ["cd /tmp", "trs git status", "trs cargo test"]
+                .iter()
+                .map(|s| {
+                    if s.starts_with("trs ") {
+                        agent_cmd(agent, s)
+                    } else {
+                        s.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" && ")
+        };
         assert_eq!(
             build_hook_response(&claude, None).unwrap()["hookSpecificOutput"]["updatedInput"]
                 ["command"],
-            serde_json::json!(
-                "cd /tmp && TRS_AGENT=claude trs git status && TRS_AGENT=claude trs cargo test"
-            )
+            serde_json::json!(chain("claude"))
         );
         assert_eq!(
             build_hook_response(&gemini, None).unwrap()["hookSpecificOutput"]["tool_input"]
                 ["command"],
-            serde_json::json!(
-                "cd /tmp && TRS_AGENT=gemini trs git status && TRS_AGENT=gemini trs cargo test"
-            )
+            serde_json::json!(chain("gemini"))
         );
     }
 
