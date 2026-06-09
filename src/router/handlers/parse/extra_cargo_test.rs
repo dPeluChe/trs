@@ -19,9 +19,45 @@ impl ParseHandler {
         let mut duration = String::new();
         let mut compile_errors: Vec<String> = Vec::new();
         let mut suites = 0usize;
+        // Per-failure panic summary: "<file:line:col>: <message>" captured
+        // from the `---- name stdout ----` block — the location and reason
+        // are the actionable signal, not just the test name.
+        let mut panic_info: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+        let mut panic_test: Option<String> = None;
+        let mut awaiting_panic_msg = false;
 
         for line in input.lines() {
             let trimmed = line.trim();
+
+            // "---- tests::test_add stdout ----" opens a failure detail block.
+            if let Some(rest) = trimmed.strip_prefix("---- ") {
+                if let Some(name) = rest.strip_suffix(" stdout ----") {
+                    panic_test = Some(name.to_string());
+                    awaiting_panic_msg = false;
+                    continue;
+                }
+            }
+            if let Some(name) = &panic_test {
+                // "thread 'X' panicked at src/math.rs:42:9:"
+                if let Some(pos) = trimmed.find("panicked at ") {
+                    let loc = trimmed[pos + "panicked at ".len()..]
+                        .trim_end_matches(':')
+                        .to_string();
+                    panic_info.insert(name.clone(), loc);
+                    awaiting_panic_msg = true;
+                    continue;
+                }
+                // First line after "panicked at" is the panic message.
+                if awaiting_panic_msg && !trimmed.is_empty() && !trimmed.starts_with("note:") {
+                    if let Some(entry) = panic_info.get_mut(name) {
+                        entry.push_str(": ");
+                        entry.push_str(trimmed);
+                    }
+                    awaiting_panic_msg = false;
+                    continue;
+                }
+            }
 
             // Summary line: "test result: ok. X passed; Y failed; Z ignored; ..."
             if trimmed.starts_with("test result:") {
@@ -105,6 +141,7 @@ impl ParseHandler {
                 "suites": suites,
                 "duration": duration,
                 "failed_tests": failed_names,
+                "panics": panic_info,
                 "compile_errors": compile_errors,
             })
             .to_string(),
@@ -141,7 +178,10 @@ impl ParseHandler {
                 if !failed_names.is_empty() {
                     out.push_str(&format!("failures ({}):\n", failed_names.len()));
                     for name in &failed_names {
-                        out.push_str(&format!("  {}\n", name));
+                        match panic_info.get(name) {
+                            Some(info) => out.push_str(&format!("  {} — {}\n", name, info)),
+                            None => out.push_str(&format!("  {}\n", name)),
+                        }
                     }
                 }
                 out

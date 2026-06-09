@@ -95,19 +95,10 @@ impl ParseHandler {
                 continue;
             }
 
-            // Accumulate failure details
-            if in_failure_details
-                && (trimmed.starts_with("at ")
-                    || trimmed.starts_with("expected")
-                    || trimmed.contains("to be")
-                    || failure_buffer.len() > 0)
-            {
-                failure_buffer.push_str(line);
-                failure_buffer.push('\n');
-                continue;
-            }
-
-            // Detect summary section
+            // Detect summary section BEFORE accumulating failure details —
+            // the `failure_buffer.len() > 0` arm below otherwise swallows
+            // every remaining line, including these (harness finding: the
+            // "Tests N passed, N failed" counts never parsed in mixed runs).
             // " Test Files  4 passed (4)"
             if trimmed.starts_with("Test Files") {
                 let summary = Self::parse_vitest_test_files_summary(trimmed);
@@ -135,6 +126,18 @@ impl ParseHandler {
             if trimmed.starts_with("Duration") {
                 let duration_str = trimmed.strip_prefix("Duration").unwrap_or("").trim();
                 output.summary.duration = Self::parse_vitest_duration(duration_str);
+                continue;
+            }
+
+            // Accumulate failure details (after the summary checks above).
+            if in_failure_details
+                && (trimmed.starts_with("at ")
+                    || trimmed.starts_with("expected")
+                    || trimmed.contains("to be")
+                    || !failure_buffer.is_empty())
+            {
+                failure_buffer.push_str(line);
+                failure_buffer.push('\n');
                 continue;
             }
         }
@@ -186,6 +189,11 @@ impl ParseHandler {
             (false, line.strip_prefix("FAIL")?.trim_start())
         } else if line.starts_with("PASS") {
             (true, line.strip_prefix("PASS")?.trim_start())
+        } else if line.starts_with('❯') {
+            // ❯ marks a suite containing failures in the run tree. The
+            // failure-recap section reuses ❯ for `file:line:col` refs, which
+            // the "(N tests" paren requirement below rejects.
+            (false, line.strip_prefix('❯')?.trim_start())
         } else {
             return None;
         };
@@ -262,6 +270,11 @@ impl ParseHandler {
             (
                 VitestTestStatus::Failed,
                 line.strip_prefix('×')?.trim_start(),
+            )
+        } else if line.starts_with('❯') {
+            (
+                VitestTestStatus::Failed,
+                line.strip_prefix('❯')?.trim_start(),
             )
         } else if line.starts_with('↩') {
             (

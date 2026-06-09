@@ -108,16 +108,16 @@ classifier / rewrite_decide / classifier_exec / stats_coverage.
   track+tee+exit). Pure refactor, lowers blast radius. Next natural step now
   that the registry lands.
 - [x] **Quality harness v1** — `tests/quality_harness.rs`: runs fixtures
-  through their parsers and asserts signal preservation (error codes,
-  failing-file basenames, failure marker) + reports per-case compression.
-  Adding a case = one table row. First run found 3 real bugs (bun parser ×2,
-  all-runners "no tests found" destroying unrecognized output — fixed).
+  through their parsers (15 cases) and asserts signal preservation (error
+  codes, failing-file basenames, failure marker) + reports per-case
+  compression. Adding a case = one table row. First runs found and fixed 6
+  real bugs: all-runners "no tests found" destroying unrecognized output;
+  bun is_empty/success ignoring summary counts; bun FAIL-recap header
+  dropped; vitest ❯ suites/tests unparsed + summary swallowed by the
+  failure-details accumulator; cargo-test dropping panic location/message;
+  build dropping rustc `--> file:line` locations.
 - [ ] **Quality harness v2 candidates** — suggested-commands preserved;
-  cargo-test / build / lint cases (need failure fixtures); raw recoverable.
-- [ ] **vitest parser: summary counts lost** (harness finding) — for
-  `vitest_mixed.txt` the "Tests 5 passed, 1 failed (6)" line never reaches
-  `parse_vitest_tests_summary` (error-collection state swallows it?), so
-  stats log items=0 despite correct compact output. Fix the state machine.
+  xcodebuild / gradle failure cases; raw recoverable.
 - [ ] **Per-command config** — `[commands.cargo-test] max_failures = 20,
   preserve_backtraces = true`. Build on the existing `Limits`/`Hooks` config and
   the new registry. Granularity on top of the base config.

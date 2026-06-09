@@ -77,6 +77,24 @@ const CASES: &[Case] = &[
         checks: ALL,
     },
     Case {
+        name: "cargo test failures",
+        args: &["parse", "cargo-test"],
+        fixture: "cargo_test_failures.txt",
+        checks: ALL,
+    },
+    Case {
+        name: "cargo build errors",
+        args: &["parse", "build"],
+        fixture: "build_cargo_errors.txt",
+        checks: ALL,
+    },
+    Case {
+        name: "tsc errors",
+        args: &["parse", "lint"],
+        fixture: "lint_tsc_errors.txt",
+        checks: ALL,
+    },
+    Case {
         name: "logs with exceptions",
         args: &["parse", "logs"],
         fixture: "logs_with_exceptions.txt",
@@ -171,9 +189,24 @@ fn error_codes(raw: &str) -> BTreeSet<String> {
 }
 
 /// File basenames mentioned on failure lines (path-looking tokens only).
+/// rustc `--> file:line:col` location lines count only when the enclosing
+/// block is an error (not a warning) — warning paths are nice-to-have.
 fn signal_file_basenames(raw: &str) -> BTreeSet<String> {
+    let mut signal_lines: Vec<&str> = Vec::new();
+    let mut in_error_block = false;
+    for line in raw.lines() {
+        let t = line.trim_start();
+        if t.starts_with("error") {
+            in_error_block = true;
+        } else if t.starts_with("warning") {
+            in_error_block = false;
+        }
+        if is_signal_line(line) || (in_error_block && t.starts_with("--> ")) {
+            signal_lines.push(line);
+        }
+    }
     let mut out = BTreeSet::new();
-    for line in raw.lines().filter(|l| is_signal_line(l)) {
+    for line in signal_lines {
         for token in line.split_whitespace() {
             let token = token.trim_matches(|c: char| "()[]<>\"',;".contains(c));
             // `path::test_name` (pytest) → keep the path part.

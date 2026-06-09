@@ -286,6 +286,15 @@ impl ParseHandler {
         let mut creds: Vec<String> = Vec::new();
         let mut info_last = String::new();
         let mut success = true;
+        // Which list got the previous line — rustc prints the location on a
+        // separate ` --> src/file.rs:7:18` line right after the diagnostic;
+        // dropping it loses the file:line an agent needs to act.
+        enum Prev {
+            Err,
+            Warn,
+            Other,
+        }
+        let mut prev = Prev::Other;
 
         for line in input.lines() {
             let t = line.trim();
@@ -297,15 +306,34 @@ impl ParseHandler {
             if super::super::common::contains_credential(t) {
                 creds.push(t.to_string());
             }
+            if let Some(loc) = t.strip_prefix("--> ") {
+                match prev {
+                    Prev::Err => {
+                        if let Some(e) = errors.last_mut() {
+                            e.push_str(&format!(" ({})", loc.trim()));
+                        }
+                    }
+                    Prev::Warn => {
+                        if let Some(w) = warnings.last_mut() {
+                            w.push_str(&format!(" ({})", loc.trim()));
+                        }
+                    }
+                    Prev::Other => {}
+                }
+                continue;
+            }
             if super::super::common::is_error_line(t) {
                 errors.push(t.to_string());
                 success = false;
+                prev = Prev::Err;
             } else if super::super::common::is_warning_line(t) {
                 warnings.push(t.to_string());
+                prev = Prev::Warn;
             } else {
                 let lower = t.to_ascii_lowercase();
                 if lower.starts_with("compiling ") || lower.starts_with("finished ") {
                     info_last = t.to_string();
+                    prev = Prev::Other;
                 } else if lower.starts_with("build complete!")
                     || lower.starts_with("** build succeeded **")
                     || lower.starts_with("** build failed **")
