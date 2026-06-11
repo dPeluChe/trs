@@ -63,3 +63,4 @@ npm/platforms/*/trs.exe
 # Promo-video working directory (in-progress assets not yet ready to
 # ship with the main repo).
 /docs/promo-video/
+docs/launch/
