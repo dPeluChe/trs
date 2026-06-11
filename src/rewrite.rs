@@ -62,6 +62,7 @@ fn known_agent_label(s: &str) -> Option<&'static str> {
         "kilo" => "kilo",
         "pi" => "pi",
         "openclaw" => "openclaw",
+        "hermes" => "hermes",
         _ => return None,
     })
 }

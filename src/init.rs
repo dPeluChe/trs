@@ -10,7 +10,7 @@ use crate::init_collision;
 use crate::init_install::{
     install_antigravity_rules, install_codex_agents, install_from_spec, install_rules,
 };
-use crate::init_install_plugins::install_openclaw_plugin;
+use crate::init_install_plugins::{install_hermes_plugin, install_openclaw_plugin};
 use crate::init_templates::{DEVIN_RULE, WINDSURF_RULES};
 
 /// Options for an install run. `global` picks home-dir vs project-local;
@@ -81,6 +81,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
         AiTool::Codex => install_codex_agents(opts),
         AiTool::Antigravity | AiTool::AntigravityCLI => install_antigravity_rules(opts),
         AiTool::OpenClaw => install_openclaw_plugin(opts),
+        AiTool::Hermes => install_hermes_plugin(opts),
         AiTool::Devin => {
             // Forward target for Devin Desktop; legacy `.windsurfrules` for
             // pre-rebrand Windsurf. Devin reads both — write only one to
@@ -249,6 +250,11 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
         AiTool::OpenClaw => {
             return home_dir()
                 .map(|h| h.join(".openclaw/plugins/trs/index.js").exists())
+                .unwrap_or(false);
+        }
+        AiTool::Hermes => {
+            return crate::init_install_plugins::hermes_home()
+                .map(|h| h.join("plugins/trs-rewrite/__init__.py").exists())
                 .unwrap_or(false);
         }
         _ => {}

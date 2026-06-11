@@ -203,13 +203,18 @@ fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
     if actions.is_empty() && errors.is_empty() {
         return;
     }
-    // v1 leaves the OpenClaw config enable entries alone — they point at
-    // removed files harmlessly. Tell the user how to finish.
-    if matches!(tool, AiTool::OpenClaw) {
-        actions.push(
+    // v1 leaves the OpenClaw/Hermes config enable entries alone — they
+    // point at removed files harmlessly. Tell the user how to finish.
+    match tool {
+        AiTool::OpenClaw => actions.push(
             "note: remove `plugins.entries.trs` from ~/.openclaw/openclaw.json manually if desired"
                 .to_string(),
-        );
+        ),
+        AiTool::Hermes => actions.push(
+            "note: remove `trs-rewrite` from plugins.enabled in ~/.hermes/config.yaml manually if desired"
+                .to_string(),
+        ),
+        _ => {}
     }
     let verb = if opts.dry_run {
         "would remove from"
@@ -309,6 +314,13 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
         AiTool::OpenClaw => {
             push_home(".openclaw/plugins/trs/openclaw.plugin.json");
             push_home(".openclaw/plugins/trs/index.js");
+        }
+        AiTool::Hermes => {
+            // Honors HERMES_HOME the same way the installer does.
+            if let Ok(h) = crate::init_install_plugins::hermes_home() {
+                v.push(h.join("plugins/trs-rewrite/__init__.py"));
+                v.push(h.join("plugins/trs-rewrite/plugin.yaml"));
+            }
         }
     }
     v.sort();

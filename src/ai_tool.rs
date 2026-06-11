@@ -47,6 +47,10 @@ pub(crate) enum AiTool {
     /// `resolve_exec_env` injects TRS_AGENT. Validated 2026-06-11 docs
     /// research; live validation pending.
     OpenClaw,
+    /// NousResearch hermes-agent. Python plugin (`pre_tool_call` hook) under
+    /// `~/.hermes/plugins/` + a `config.yaml` enable entry. Validated
+    /// 2026-06-11 docs research; live validation pending.
+    Hermes,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -180,6 +184,13 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
         display: "OpenClaw",
         target_label: "plugin → ~/.openclaw/plugins/trs/ (+ config enable)",
     },
+    AiToolSpec {
+        variant: AiTool::Hermes,
+        cli_name: "hermes",
+        aliases: &["hermes", "hermes-agent"],
+        display: "Hermes",
+        target_label: "plugin → ~/.hermes/plugins/trs-rewrite/ (+ config enable)",
+    },
 ];
 
 impl AiTool {
@@ -289,6 +300,7 @@ impl AiTool {
                 in_path("code") || app_exists("Visual Studio Code") || home_has(".copilot")
             }
             Self::OpenClaw => in_path("openclaw") || home_has(".openclaw"),
+            Self::Hermes => in_path("hermes") || home_has(".hermes"),
         }
     }
 
@@ -368,13 +380,14 @@ impl AiTool {
             // full investigation. Until Google ships user-configurable
             // PreToolUse, Antigravity is rules-only — the output-saver
             // import in `~/.gemini/GEMINI.md` is the entire integration.
-            // OpenClaw uses a custom installer (plugin dir + config
+            // OpenClaw/Hermes use custom installers (plugin dir + config
             // enable) — too stateful for the data-driven HookSpec.
             Self::Codex
             | Self::Antigravity
             | Self::AntigravityCLI
             | Self::Devin
-            | Self::OpenClaw => None,
+            | Self::OpenClaw
+            | Self::Hermes => None,
         }
     }
 }
@@ -470,7 +483,7 @@ mod tests {
         // Pins the exact public string `trs uninstall` prints on bad input.
         assert_eq!(
             AiTool::all_names(),
-            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw"
+            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes"
         );
     }
 

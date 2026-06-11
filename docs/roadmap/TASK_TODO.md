@@ -105,7 +105,10 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
   install also supported via npm/local dir) and whether config registration
   in `plugins.entries.<id>` is needed. Validate live before shipping
   (install OpenClaw, confirm rewrite + attribution).
-- [ ] **Hermes (NousResearch/hermes-agent) — implementation turnkey.** Python
+- [x] **Hermes (NousResearch/hermes-agent) — implemented, pending live
+  validation** (`trs init hermes` — plugin at
+  `~/.hermes/plugins/trs-rewrite/` + `plugins.enabled` patch in
+  `~/.hermes/config.yaml`, `HERMES_HOME` honored). Python
   plugin at `~/.hermes/plugins/<name>/` (`__init__.py` + `plugin.yaml`
   manifest listing `pre_tool_call`), registered via `register(ctx)` →
   `ctx.register_hook("pre_tool_call", fn)`; mutate `args` when

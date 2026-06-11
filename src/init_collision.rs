@@ -164,6 +164,10 @@ fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
             push_home(&mut v, ".openclaw/plugins/trs/openclaw.plugin.json");
             push_home(&mut v, ".openclaw/plugins/trs/index.js");
         }
+        AiTool::Hermes => {
+            push_home(&mut v, ".hermes/plugins/trs-rewrite/__init__.py");
+            push_home(&mut v, ".hermes/plugins/trs-rewrite/plugin.yaml");
+        }
     }
     // Dedup: when cwd coincidentally equals $HOME the same path gets
     // pushed twice — keeps the report clean.

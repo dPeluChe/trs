@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Twelve AI coding agents are supported end-to-end. Each row lists the
+Fourteen AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -19,6 +19,8 @@ install scope.
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
 | VS Code Copilot | programmatic hook | ✓ | — | `vscode` | global + project |
+| OpenClaw | plugin template | ✓ | — | `openclaw` | global |
+| Hermes | plugin template | ✓ | — | `hermes` | global |
 
 ## Column legend
 
@@ -33,8 +35,9 @@ install scope.
   status`). Rules-only agents cannot do this; the model ends up
   running raw commands unless the user prefixes `trs` manually.
 - **Output-saver.** Whether `trs output-saver --install` can inject
-  the anti-preamble / result-first rules block. All ten agents are
-  supported. Antigravity 2.0 (IDE + CLI) shares Gemini's
+  the anti-preamble / result-first rules block (Pi, VS Code Copilot,
+  OpenClaw, and Hermes are not yet wired). Antigravity 2.0 (IDE + CLI)
+  shares Gemini's
   `~/.gemini/GEMINI.md` and `~/.gemini/trs.md` for the output-saver
   side; only the *hooks* are jetski-specific (see Antigravity section
   below).
@@ -218,6 +221,48 @@ install scope.
 - **Output-saver:** not yet wired (same posture as Pi).
 - **Aliases:** `vscode` (primary), `vs-code`, `copilot`,
   `vscode-copilot`, `code`.
+
+### OpenClaw
+
+- **Status:** shipped pending live validation — install and run
+  `git status`, then check `trs stats --by-agent`.
+- **Install mechanism:** JS plugin at `~/.openclaw/plugins/trs/`
+  (`openclaw.plugin.json` manifest + `index.js`). The plugin's
+  `before_tool_call` hook prepends `trs ` to `exec` commands
+  (idempotent), and `resolve_exec_env` injects `TRS_AGENT=openclaw`
+  into the exec environment — cross-platform attribution, no shell
+  prefix.
+- **Config enable:** `trs init openclaw` also merges
+  `plugins.entries.trs.enabled = true` and the plugin dir into
+  `plugins.load.paths` in `~/.openclaw/openclaw.json` (everything
+  else preserved; idempotent).
+- **Scope:** global only — OpenClaw plugins live under the gateway's
+  home dir. Restart the gateway after install:
+  `openclaw gateway restart`.
+- **Uninstall:** removes the plugin files; the now-inert
+  `plugins.entries.trs` config entry can be removed manually.
+- **Aliases:** `openclaw` (primary), `claw`.
+
+### Hermes
+
+- **Status:** shipped pending live validation — install and run
+  `git status`, then check `trs stats --by-agent`.
+- **Install mechanism:** Python plugin at
+  `~/.hermes/plugins/trs-rewrite/` (`__init__.py` + `plugin.yaml`
+  manifest) for NousResearch's hermes-agent. The `pre_tool_call`
+  hook prepends `trs ` to `terminal` tool commands (idempotent,
+  fails open) and exports `TRS_AGENT=hermes` for attribution.
+- **Config enable:** `trs init hermes` adds `trs-rewrite` to
+  `plugins.enabled` in `~/.hermes/config.yaml`. The YAML patch is
+  conservative — block-style lists are patched in place; exotic
+  layouts (inline arrays, `plugins` without `enabled`) get a manual
+  instruction instead.
+- **Home override:** the `HERMES_HOME` env var relocates the Hermes
+  home dir (default `~/.hermes`) for both install and uninstall.
+- **Scope:** global only. Restart Hermes after install.
+- **Uninstall:** removes the plugin files; the `trs-rewrite` entry
+  in `plugins.enabled` can be removed manually.
+- **Aliases:** `hermes` (primary), `hermes-agent`.
 
 ## Install commands
 

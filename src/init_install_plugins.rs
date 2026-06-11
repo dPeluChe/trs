@@ -1,10 +1,10 @@
-//! Custom installers for the plugin-dir agents (OpenClaw). Global-only:
-//! plugin files under the agent's home dir plus a config-file enable
-//! entry. Shipped from 2026-06-11 docs research — live validation
+//! Custom installers for the plugin-dir agents (OpenClaw, Hermes). Both are
+//! global-only: plugin files under the agent's home dir plus a config-file
+//! enable entry. Shipped from 2026-06-11 docs research — live validation
 //! pending (see docs/support/agents.md per-agent status).
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::init::{home_dir, InstallOpts};
 
@@ -37,6 +37,60 @@ export default {
   },
 };
 "#;
+
+// Validate live: hook signature + plugin.yaml manifest keys (docs verified
+// 2026-06-11: register(ctx) → ctx.register_hook("pre_tool_call", fn)).
+const HERMES_PLUGIN_INIT: &str = r#""""trs plugin — route Hermes terminal commands through trs.
+
+Prepends `trs ` to terminal tool commands (idempotent) and tags child
+processes via TRS_AGENT for attribution. Fails open on any error.
+"""
+
+import os
+
+
+def register(ctx):
+    # Cross-platform attribution: children inherit the env var.
+    os.environ.setdefault("TRS_AGENT", "hermes")
+    ctx.register_hook("pre_tool_call", _pre_tool_call)
+
+
+def _pre_tool_call(tool_name=None, args=None, **_kwargs):
+    try:
+        if tool_name != "terminal" or not isinstance(args, dict):
+            return
+        command = args.get("command")
+        if not isinstance(command, str):
+            return
+        stripped = command.strip()
+        if not stripped or stripped.startswith(("trs ", "cd ", "TRS_AGENT=")):
+            return
+        args["command"] = f"trs {stripped}"
+    except Exception:
+        return
+"#;
+
+const HERMES_PLUGIN_YAML: &str = r#"name: trs-rewrite
+version: "0.1.0"
+description: Rewrite Hermes terminal commands through trs before execution.
+author: trs
+hooks:
+  - pre_tool_call
+provides_hooks:
+  - pre_tool_call
+"#;
+
+const HERMES_ITEM: &str = "- trs-rewrite";
+
+/// Hermes home dir — `HERMES_HOME` env override, default `~/.hermes`.
+pub(crate) fn hermes_home() -> Result<PathBuf, String> {
+    if let Ok(custom) = std::env::var("HERMES_HOME") {
+        if !custom.trim().is_empty() {
+            return Ok(PathBuf::from(custom));
+        }
+    }
+    Ok(home_dir()?.join(".hermes"))
+}
 
 pub(crate) fn install_openclaw_plugin(opts: InstallOpts) -> Result<String, String> {
     if !opts.global {
@@ -77,6 +131,66 @@ pub(crate) fn install_openclaw_plugin(opts: InstallOpts) -> Result<String, Strin
 
     if !opts.dry_run {
         println!("  restart the OpenClaw gateway to load the plugin: openclaw gateway restart");
+    }
+    if changed {
+        Ok(plugin_dir.display().to_string())
+    } else {
+        Ok(format!("{} (already configured)", plugin_dir.display()))
+    }
+}
+
+pub(crate) fn install_hermes_plugin(opts: InstallOpts) -> Result<String, String> {
+    if !opts.global {
+        eprintln!("note: Hermes plugins are global — installing to the Hermes home dir");
+    }
+    let home = hermes_home()?;
+    let plugin_dir = home.join("plugins").join("trs-rewrite");
+    let mut changed = false;
+    changed |= write_plugin_file(&plugin_dir.join("__init__.py"), HERMES_PLUGIN_INIT, opts)?;
+    changed |= write_plugin_file(&plugin_dir.join("plugin.yaml"), HERMES_PLUGIN_YAML, opts)?;
+
+    let config_path = home.join("config.yaml");
+    let existing = if config_path.exists() {
+        fs::read_to_string(&config_path)
+            .map_err(|e| format!("Cannot read {}: {}", config_path.display(), e))?
+    } else {
+        String::new()
+    };
+    match patch_hermes_config(&existing) {
+        HermesConfigPatch::AlreadyPresent => {
+            println!("  {} (already configured)", config_path.display());
+        }
+        HermesConfigPatch::Patched(new_config) => {
+            if opts.dry_run {
+                println!(
+                    "  would add trs-rewrite to plugins.enabled in {}",
+                    config_path.display()
+                );
+            } else {
+                ensure_parent(&config_path)?;
+                fs::write(&config_path, new_config)
+                    .map_err(|e| format!("Cannot write {}: {}", config_path.display(), e))?;
+                println!(
+                    "  added trs-rewrite to plugins.enabled in {}",
+                    config_path.display()
+                );
+            }
+            changed = true;
+        }
+        HermesConfigPatch::Manual => {
+            // Conservative on purpose: no YAML lib, so exotic layouts
+            // (inline arrays, plugins without enabled) get a manual note
+            // instead of a risky rewrite. Plugin files are still installed.
+            eprintln!(
+                "  note: {} has a plugins layout this installer doesn't rewrite.\n\
+                 \x20 Add `trs-rewrite` to the `plugins.enabled` list manually.",
+                config_path.display()
+            );
+        }
+    }
+
+    if !opts.dry_run {
+        println!("  restart Hermes to load the plugin");
     }
     if changed {
         Ok(plugin_dir.display().to_string())
@@ -195,6 +309,94 @@ pub(crate) fn merge_openclaw_config(
     Ok(changed)
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum HermesConfigPatch {
+    AlreadyPresent,
+    Patched(String),
+    /// Layout we won't rewrite without a YAML parser — tell the user to
+    /// add `trs-rewrite` to `plugins.enabled` themselves.
+    Manual,
+}
+
+/// Conservative line-based patch of Hermes' `config.yaml`: only the
+/// `plugins:` / `enabled:` block-list shape is rewritten; anything exotic
+/// falls back to `Manual`.
+pub(crate) fn patch_hermes_config(existing: &str) -> HermesConfigPatch {
+    if existing.trim().is_empty() {
+        return HermesConfigPatch::Patched("plugins:\n  enabled:\n    - trs-rewrite\n".to_string());
+    }
+    let lines: Vec<&str> = existing.lines().collect();
+    let Some(plugins_idx) = lines.iter().position(|l| l.trim_end() == "plugins:") else {
+        if lines.iter().any(|l| l.trim_start().starts_with("plugins:")) {
+            // Inline (`plugins: {…}`) or nested key — don't guess.
+            return HermesConfigPatch::Manual;
+        }
+        // No plugins key at all — appending a fresh top-level block is safe.
+        let mut out = existing.trim_end().to_string();
+        out.push_str("\nplugins:\n  enabled:\n    - trs-rewrite\n");
+        return HermesConfigPatch::Patched(out);
+    };
+
+    // The plugins block: indented lines until the next top-level key.
+    let mut enabled_idx = None;
+    let mut block_end = lines.len();
+    for (i, line) in lines.iter().enumerate().skip(plugins_idx + 1) {
+        if !line.trim().is_empty() && !line.starts_with(' ') && !line.starts_with('\t') {
+            block_end = i;
+            break;
+        }
+        let trimmed = line.trim();
+        if trimmed == "enabled:" {
+            enabled_idx = Some(i);
+        } else if trimmed.starts_with("enabled:") && enabled_idx.is_none() {
+            // Inline array form (`enabled: [a, b]`).
+            return HermesConfigPatch::Manual;
+        }
+    }
+    let Some(enabled_idx) = enabled_idx else {
+        return HermesConfigPatch::Manual;
+    };
+
+    let enabled_indent = indent_of(lines[enabled_idx]);
+    let mut item_indent = None;
+    let mut insert_after = enabled_idx;
+    for (i, line) in lines
+        .iter()
+        .enumerate()
+        .take(block_end)
+        .skip(enabled_idx + 1)
+    {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let indent = indent_of(line);
+        if indent <= enabled_indent || !trimmed.starts_with('-') {
+            break;
+        }
+        if trimmed == HERMES_ITEM || trimmed == "- \"trs-rewrite\"" || trimmed == "- 'trs-rewrite'"
+        {
+            return HermesConfigPatch::AlreadyPresent;
+        }
+        item_indent = Some(indent);
+        insert_after = i;
+    }
+
+    let indent = item_indent.unwrap_or(enabled_indent + 2);
+    let new_line = format!("{}{}", " ".repeat(indent), HERMES_ITEM);
+    let mut out_lines: Vec<String> = lines.iter().map(|s| s.to_string()).collect();
+    out_lines.insert(insert_after + 1, new_line);
+    let mut out = out_lines.join("\n");
+    if existing.ends_with('\n') {
+        out.push('\n');
+    }
+    HermesConfigPatch::Patched(out)
+}
+
+fn indent_of(line: &str) -> usize {
+    line.len() - line.trim_start().len()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,5 +445,91 @@ mod tests {
     fn openclaw_merge_rejects_non_object_plugins() {
         let mut root = serde_json::json!({ "plugins": [] });
         assert!(merge_openclaw_config(&mut root, "/h/p/trs").is_err());
+    }
+
+    #[test]
+    fn hermes_patch_empty_file_writes_full_block() {
+        assert_eq!(
+            patch_hermes_config(""),
+            HermesConfigPatch::Patched("plugins:\n  enabled:\n    - trs-rewrite\n".to_string())
+        );
+    }
+
+    #[test]
+    fn hermes_patch_appends_to_existing_enabled_list() {
+        let existing = "model: hermes-4\nplugins:\n  enabled:\n    - web-search\nlogging: true\n";
+        match patch_hermes_config(existing) {
+            HermesConfigPatch::Patched(out) => {
+                assert_eq!(
+                    out,
+                    "model: hermes-4\nplugins:\n  enabled:\n    - web-search\n    - trs-rewrite\nlogging: true\n"
+                );
+            }
+            other => panic!("expected Patched, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn hermes_patch_matches_sibling_indentation() {
+        let existing = "plugins:\n    enabled:\n        - web-search\n";
+        match patch_hermes_config(existing) {
+            HermesConfigPatch::Patched(out) => {
+                assert!(out.contains("\n        - trs-rewrite\n"), "got: {out}");
+            }
+            other => panic!("expected Patched, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn hermes_patch_already_present_is_noop() {
+        let existing = "plugins:\n  enabled:\n    - trs-rewrite\n";
+        assert_eq!(
+            patch_hermes_config(existing),
+            HermesConfigPatch::AlreadyPresent
+        );
+    }
+
+    #[test]
+    fn hermes_patch_empty_enabled_list_gets_first_item() {
+        let existing = "plugins:\n  enabled:\n";
+        match patch_hermes_config(existing) {
+            HermesConfigPatch::Patched(out) => {
+                assert_eq!(out, "plugins:\n  enabled:\n    - trs-rewrite\n");
+            }
+            other => panic!("expected Patched, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn hermes_patch_appends_block_when_plugins_key_absent() {
+        let existing = "model: hermes-4\n";
+        match patch_hermes_config(existing) {
+            HermesConfigPatch::Patched(out) => {
+                assert_eq!(
+                    out,
+                    "model: hermes-4\nplugins:\n  enabled:\n    - trs-rewrite\n"
+                );
+            }
+            other => panic!("expected Patched, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn hermes_patch_exotic_layouts_fall_back_to_manual() {
+        // Inline array.
+        assert_eq!(
+            patch_hermes_config("plugins:\n  enabled: [web-search]\n"),
+            HermesConfigPatch::Manual
+        );
+        // Inline plugins object.
+        assert_eq!(
+            patch_hermes_config("plugins: {enabled: [web-search]}\n"),
+            HermesConfigPatch::Manual
+        );
+        // plugins key without an enabled list.
+        assert_eq!(
+            patch_hermes_config("plugins:\n  dirs:\n    - /opt\n"),
+            HermesConfigPatch::Manual
+        );
     }
 }
