@@ -1,0 +1,24 @@
+name: Feature request
+description: New parser, new agent, or improvement
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      options:
+        - New command parser
+        - New agent integration
+        - Improvement to existing behavior
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What and why
+      description: |
+        For parsers: which command, and a sample of its verbose output.
+        For agents: link to the agent's hook/plugin docs if you know them.
+    validations:
+      required: true
