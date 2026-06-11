@@ -93,7 +93,9 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ### Next agents — researched 2026-06-11, turnkey, gated on live validation
 
-- [ ] **OpenClaw — implementation turnkey.** Plugin SDK (TypeScript):
+- [x] **OpenClaw — implemented, pending live validation** (`trs init
+  openclaw` — plugin at `~/.openclaw/plugins/trs/` + config enable in
+  `~/.openclaw/openclaw.json`). Plugin SDK (TypeScript):
   `before_tool_call` hook rewrites tool `params` (prepend `trs ` to the exec
   command, idempotency guard like OpenCode), and `resolve_exec_env` injects
   `TRS_AGENT=openclaw` into the exec environment — the cleanest cross-platform

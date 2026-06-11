@@ -153,7 +153,12 @@ fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
     let mut actions: Vec<String> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     for path in candidate_paths(tool) {
-        let result = if is_json(&path) {
+        let result = if is_trs_plugin_dir_file(&path) {
+            // Files under a dir named trs/trs-rewrite are ours by
+            // location — delete, never scrub (the OpenClaw manifest is
+            // .json but has no `hooks` key to scrub).
+            delete_plugin_file(&path, opts.dry_run)
+        } else if is_json(&path) {
             scrub_trs_from_json(&path, opts.dry_run)
         } else if path.ends_with("AGENTS.md") {
             remove_between_sentinels(
@@ -197,6 +202,14 @@ fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
 
     if actions.is_empty() && errors.is_empty() {
         return;
+    }
+    // v1 leaves the OpenClaw config enable entries alone — they point at
+    // removed files harmlessly. Tell the user how to finish.
+    if matches!(tool, AiTool::OpenClaw) {
+        actions.push(
+            "note: remove `plugins.entries.trs` from ~/.openclaw/openclaw.json manually if desired"
+                .to_string(),
+        );
     }
     let verb = if opts.dry_run {
         "would remove from"
@@ -292,6 +305,10 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
         AiTool::VsCode => {
             push_home(".copilot/hooks/trs.json");
             v.push(PathBuf::from(".github/hooks/trs.json"));
+        }
+        AiTool::OpenClaw => {
+            push_home(".openclaw/plugins/trs/openclaw.plugin.json");
+            push_home(".openclaw/plugins/trs/index.js");
         }
     }
     v.sort();
@@ -459,8 +476,9 @@ fn has_trs_artifacts(tool: &AiTool) -> bool {
         if !p.exists() {
             return false;
         }
-        // Plugin files (`.ts`) are 100% ours by name — existence is enough.
-        if p.extension().and_then(|e| e.to_str()) == Some("ts") {
+        // Plugin files (`.ts`, or anything in a trs/trs-rewrite plugin
+        // dir) are 100% ours by name — existence is enough.
+        if p.extension().and_then(|e| e.to_str()) == Some("ts") || is_trs_plugin_dir_file(p) {
             return true;
         }
         fs::read_to_string(p)
@@ -484,6 +502,22 @@ fn output_saver_agent_id(tool: &AiTool) -> Option<&'static str> {
         AiTool::AntigravityCLI => Some("antigravity-cli"),
         _ => None,
     }
+}
+
+/// True when the file lives in one of our dedicated plugin dirs
+/// (`…/plugins/trs/` for OpenClaw, `…/plugins/trs-rewrite/` for Hermes).
+fn is_trs_plugin_dir_file(path: &Path) -> bool {
+    let parent_name = path
+        .parent()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str());
+    matches!(parent_name, Some("trs") | Some("trs-rewrite"))
+        && path
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            == Some("plugins")
 }
 
 fn is_json(path: &Path) -> bool {

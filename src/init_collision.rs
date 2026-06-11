@@ -160,6 +160,10 @@ fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
             v.push(PathBuf::from(".devin/rules/trs.md"));
             v.push(PathBuf::from(".windsurfrules"));
         }
+        AiTool::OpenClaw => {
+            push_home(&mut v, ".openclaw/plugins/trs/openclaw.plugin.json");
+            push_home(&mut v, ".openclaw/plugins/trs/index.js");
+        }
     }
     // Dedup: when cwd coincidentally equals $HOME the same path gets
     // pushed twice — keeps the report clean.

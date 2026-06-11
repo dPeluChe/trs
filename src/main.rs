@@ -48,6 +48,7 @@ mod ingest;
 mod init;
 mod init_collision;
 mod init_install;
+mod init_install_plugins;
 mod init_show;
 mod init_templates;
 mod output_saver;

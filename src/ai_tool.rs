@@ -43,6 +43,10 @@ pub(crate) enum AiTool {
     /// PreToolUse envelope incl. `updatedInput` rewrite — validated live
     /// 2026-06-09. Native hook dir `~/.copilot/hooks/` + `.github/hooks/`.
     VsCode,
+    /// OpenClaw gateway. JS plugin: `before_tool_call` rewrites exec params,
+    /// `resolve_exec_env` injects TRS_AGENT. Validated 2026-06-11 docs
+    /// research; live validation pending.
+    OpenClaw,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -169,6 +173,13 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
         display: "VS Code Copilot",
         target_label: "hooks → ~/.copilot/hooks/trs.json",
     },
+    AiToolSpec {
+        variant: AiTool::OpenClaw,
+        cli_name: "openclaw",
+        aliases: &["openclaw", "claw"],
+        display: "OpenClaw",
+        target_label: "plugin → ~/.openclaw/plugins/trs/ (+ config enable)",
+    },
 ];
 
 impl AiTool {
@@ -277,6 +288,7 @@ impl AiTool {
             Self::VsCode => {
                 in_path("code") || app_exists("Visual Studio Code") || home_has(".copilot")
             }
+            Self::OpenClaw => in_path("openclaw") || home_has(".openclaw"),
         }
     }
 
@@ -356,7 +368,13 @@ impl AiTool {
             // full investigation. Until Google ships user-configurable
             // PreToolUse, Antigravity is rules-only — the output-saver
             // import in `~/.gemini/GEMINI.md` is the entire integration.
-            Self::Codex | Self::Antigravity | Self::AntigravityCLI | Self::Devin => None,
+            // OpenClaw uses a custom installer (plugin dir + config
+            // enable) — too stateful for the data-driven HookSpec.
+            Self::Codex
+            | Self::Antigravity
+            | Self::AntigravityCLI
+            | Self::Devin
+            | Self::OpenClaw => None,
         }
     }
 }
@@ -452,7 +470,7 @@ mod tests {
         // Pins the exact public string `trs uninstall` prints on bad input.
         assert_eq!(
             AiTool::all_names(),
-            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode"
+            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw"
         );
     }
 
