@@ -1,0 +1,42 @@
+name: Bug report
+description: Something broke — wrong output, crash, hook not firing
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: trs version
+      description: Output of `trs --version`
+      placeholder: "0.6.16"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options: [macOS, Linux, Windows]
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent (if hook-related)
+      placeholder: "Claude Code / Codex / Cursor / VS Code Copilot / …"
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and what happened
+      description: |
+        The command you ran and what went wrong. If output looks wrong,
+        `trs diff <cmd>` shows raw vs compact — paste that if possible.
+      placeholder: |
+        trs git status
+        → expected X, got Y
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: trs doctor output
+      description: Paste `trs doctor` (helps rule out install/PATH issues)
+      render: text
