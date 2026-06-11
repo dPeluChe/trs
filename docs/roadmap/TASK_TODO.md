@@ -91,6 +91,27 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 - [ ] **Cody (Sourcegraph)** — VSCode extension with context-fetcher and custom commands. Check whether commands can prefix shell execution.
 - [ ] **Research pass**: decide whether VSCode-base agents warrant `trs init vscode-copilot` / `trs init continue` entries or a single `trs init vscode`.
 
+### Next agents — researched 2026-06-11, turnkey, gated on live validation
+
+- [ ] **OpenClaw — implementation turnkey.** Plugin SDK (TypeScript):
+  `before_tool_call` hook rewrites tool `params` (prepend `trs ` to the exec
+  command, idempotency guard like OpenCode), and `resolve_exec_env` injects
+  `TRS_AGENT=openclaw` into the exec environment — the cleanest cross-platform
+  attribution surface in the catalog. Entry file via
+  `definePluginEntry({ id, register(api) { api.on(...) } })`. TO RESOLVE at
+  implementation: exact install path (workspace vs managed plugin dirs;
+  install also supported via npm/local dir) and whether config registration
+  in `plugins.entries.<id>` is needed. Validate live before shipping
+  (install OpenClaw, confirm rewrite + attribution).
+- [ ] **Hermes (NousResearch/hermes-agent) — implementation turnkey.** Python
+  plugin at `~/.hermes/plugins/<name>/` (`__init__.py` + `plugin.yaml`
+  manifest listing `pre_tool_call`), registered via `register(ctx)` →
+  `ctx.register_hook("pre_tool_call", fn)`; mutate `args` when
+  `tool_name == "terminal"`, fail open otherwise. May require a `config.yaml`
+  merge (rtk's integration does — reference: their
+  `hooks/hermes/rtk-rewrite/__init__.py`, cloned under _repos_2_learn).
+  Validate live before shipping.
+
 ### Evaluated — no dedicated integration needed
 
 - [x] **t3code (pingdotgg)** — evaluated; **not applicable for a `trs init` entry.** t3code is a web-GUI *wrapper* that orchestrates other agent CLIs (Codex, Claude, Cursor, OpenCode), not an agent itself — it doesn't run shell or expose its own hook surface. trs attaches transitively at the backend-agent layer (all four already supported), so `trs init <backend>` covers it. Attribution shows the backend agent, not "t3code". Open validation: confirm the hook fires through t3code's Codex *app-server* (JSON-RPC stdio) path, as we validated interactive Codex.
