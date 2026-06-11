@@ -51,6 +51,7 @@ mod init_install;
 mod init_install_plugins;
 mod init_show;
 mod init_templates;
+mod init_templates_plugins;
 mod output_saver;
 mod output_saver_core;
 mod path_display;
