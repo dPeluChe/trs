@@ -90,7 +90,7 @@ jobs:
           cp target/${{ matrix.target }}/release/${{ matrix.binary }} ${{ matrix.artifact }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
@@ -101,7 +101,7 @@ jobs:
           cp target/${{ matrix.target }}/release/${{ matrix.binary }} npm/platforms/${{ matrix.npm_dir }}/${{ matrix.npm_bin }}
 
       - name: Upload npm package artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: npm-${{ matrix.npm_dir }}
           path: npm/platforms/${{ matrix.npm_dir }}/
