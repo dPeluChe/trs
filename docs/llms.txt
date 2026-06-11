@@ -16,6 +16,7 @@
 - [trs uninstall](https://usetrs.dev/features/uninstall.md): symmetric removal — interactive menu or `--all` / `--tool` / `--output-saver` / `--dry-run` flags
 - [trs stats](https://usetrs.dev/features/stats.md): token savings analytics, per-command and per-agent breakdowns
 - [trs diff](https://usetrs.dev/features/diff.md): run any command raw vs compressed — see the savings and audit exactly which lines were dropped
+- [trs diff](https://usetrs.dev/features/diff.md): run any command raw vs compressed — see the savings and audit exactly which lines were dropped
 - [trs ingest](https://usetrs.dev/features/ingest.md): compress local files or URLs before reading them into context
 - [trs output-saver](https://usetrs.dev/features/output-saver.md): installs Markdown rules blocks that keep agent replies concise
 - [trs doctor](https://usetrs.dev/features/doctor.md): diagnose hook and PATH issues
