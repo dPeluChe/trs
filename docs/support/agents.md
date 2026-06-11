@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Fourteen AI coding agents are supported end-to-end. Each row lists the
+Fifteen AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -21,6 +21,7 @@ install scope.
 | VS Code Copilot | programmatic hook | ✓ | — | `vscode` | global + project |
 | OpenClaw | plugin template | ✓ | — | `openclaw` | global |
 | Hermes | plugin template | ✓ | — | `hermes` | global |
+| Zed (Agent Panel) | rules file only (AGENTS.md) | — | — | `(untagged)`; ACP external agents show their own label | project |
 
 ## Column legend
 
@@ -263,6 +264,29 @@ install scope.
 - **Uninstall:** removes the plugin files; the `trs-rewrite` entry
   in `plugins.enabled` can be removed manually.
 - **Aliases:** `hermes` (primary), `hermes-agent`.
+
+### Zed (Agent Panel)
+
+- **Status:** rules-only. Zed's native agent exposes no tool hooks —
+  the feature request is open upstream
+  ([zed-industries/zed#52688](https://github.com/zed-industries/zed/issues/52688)).
+  Until it ships, there is no programmatic rewrite surface.
+- **Install mechanism:** Zed's native agent reads the project
+  `AGENTS.md` as always-on instructions, so `trs init zed` writes the
+  same trs sentinel block Codex uses (shared template, shared
+  sentinel scrub on uninstall). Project scope only — `--global`
+  prints a note and writes nothing (Zed's global personal-instructions
+  location is not yet verified).
+- **IMPORTANT — external agents via ACP:** running Claude Code,
+  Codex CLI, Gemini CLI, or OpenCode inside Zed's Agent Panel (from
+  the ACP registry) runs the real CLIs as ACP servers. Those agents'
+  existing trs hooks fire transitively — no extra setup — and
+  `trs stats --by-agent` attributes runs to the backend agent
+  (`claude`, `codex`, `gemini`, `opencode`), not to Zed.
+- **Roadmap:** ACP-level interception (covering the native agent
+  programmatically) is tracked separately under Research in
+  [`docs/roadmap/TASK_TODO.md`](../roadmap/TASK_TODO.md).
+- **Aliases:** `zed` (primary), `zed-ide`.
 
 ## Install commands
 

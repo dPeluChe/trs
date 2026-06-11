@@ -116,6 +116,9 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
   merge (rtk's integration does — reference: their
   `hooks/hermes/rtk-rewrite/__init__.py`, cloned under _repos_2_learn).
   Validate live before shipping.
+- [x] **Zed (Agent Panel)** — rules-only via AGENTS.md (native agent has no
+  tool hooks, zed#52688); ACP external agents covered transitively. ACP
+  interception tracked separately under Research.
 
 ### Evaluated — no dedicated integration needed
 

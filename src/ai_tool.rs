@@ -51,6 +51,12 @@ pub(crate) enum AiTool {
     /// `~/.hermes/plugins/` + a `config.yaml` enable entry. Validated
     /// 2026-06-11 docs research; live validation pending.
     Hermes,
+    /// Zed Agent Panel. Rules-only — the native agent has no tool hooks
+    /// (zed-industries/zed#52688); it reads the project `AGENTS.md`, so the
+    /// existing sentinel block is the integration. External agents run via
+    /// ACP (Claude Code, Codex, Gemini CLI, OpenCode) are the real CLIs —
+    /// their own trs hooks apply transitively.
+    Zed,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -191,6 +197,13 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
         display: "Hermes",
         target_label: "plugin → ~/.hermes/plugins/trs-rewrite/ (+ config enable)",
     },
+    AiToolSpec {
+        variant: AiTool::Zed,
+        cli_name: "zed",
+        aliases: &["zed", "zed-ide"],
+        display: "Zed (Agent Panel)",
+        target_label: "rules → AGENTS.md (native agent; ACP external agents use their own hooks)",
+    },
 ];
 
 impl AiTool {
@@ -301,6 +314,7 @@ impl AiTool {
             }
             Self::OpenClaw => in_path("openclaw") || home_has(".openclaw"),
             Self::Hermes => in_path("hermes") || home_has(".hermes"),
+            Self::Zed => in_path("zed") || app_exists("Zed") || home_has(".config/zed"),
         }
     }
 
@@ -387,7 +401,8 @@ impl AiTool {
             | Self::AntigravityCLI
             | Self::Devin
             | Self::OpenClaw
-            | Self::Hermes => None,
+            | Self::Hermes
+            | Self::Zed => None,
         }
     }
 }
@@ -483,7 +498,7 @@ mod tests {
         // Pins the exact public string `trs uninstall` prints on bad input.
         assert_eq!(
             AiTool::all_names(),
-            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes"
+            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, zed"
         );
     }
 

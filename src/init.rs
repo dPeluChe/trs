@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use crate::init_collision;
 use crate::init_install::{
     install_antigravity_rules, install_codex_agents, install_from_spec, install_rules,
+    install_zed_agents,
 };
 use crate::init_install_plugins::{install_hermes_plugin, install_openclaw_plugin};
 use crate::init_templates::{DEVIN_RULE, WINDSURF_RULES};
@@ -79,6 +80,17 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
 
     let result = match tool {
         AiTool::Codex => install_codex_agents(opts),
+        AiTool::Zed => {
+            if opts.global {
+                eprintln!(
+                    "Zed reads the project AGENTS.md — global personal-instructions location \
+                     not yet verified; installing would be a no-op. Run without --global in \
+                     each project."
+                );
+                return;
+            }
+            install_zed_agents(opts)
+        }
         AiTool::Antigravity | AiTool::AntigravityCLI => install_antigravity_rules(opts),
         AiTool::OpenClaw => install_openclaw_plugin(opts),
         AiTool::Hermes => install_hermes_plugin(opts),
@@ -237,6 +249,8 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
             return has_any_trs_marker_at(".devin/rules/trs.md")
                 || has_any_trs_marker_at(".windsurfrules");
         }
+        // Zed's native agent reads the project AGENTS.md only.
+        AiTool::Zed => return has_any_trs_marker_at("AGENTS.md"),
         AiTool::Antigravity | AiTool::AntigravityCLI => {
             // Rules-only: trs marker lives in `~/.gemini/GEMINI.md`
             // (the @trs.md import line or the antigravity rules block).

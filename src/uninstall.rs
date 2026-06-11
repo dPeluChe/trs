@@ -322,6 +322,8 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
                 v.push(h.join("plugins/trs-rewrite/plugin.yaml"));
             }
         }
+        // Same project AGENTS.md as Codex — sentinel scrub is shared.
+        AiTool::Zed => v.push(PathBuf::from("AGENTS.md")),
     }
     v.sort();
     v.dedup();
