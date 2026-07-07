@@ -5,6 +5,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.17] - 2026-07-07
+
+### Features
+
+- **openclaw:** OpenClaw plugin integration — 13th agent (#100)
+- **hermes:** Hermes plugin integration — 14th agent (#100)
+- **zed:** Zed Agent Panel rules-only integration — 15th agent (#100)
+- **devin-cli:** Devin CLI programmatic hook — 16th agent (#100)
+- **classifier:** Route by basename, bare py linters/formatters, timeout unwrap (#101)
+
+### Fixes
+
+- **devin-cli:** Whitelist `devin-cli` caller so runs attribute correctly instead of falling back to `claude` (#100)
+
+### Documentation
+
+- **diff:** Feature page for trs diff + llms.txt entry (#92)
+- **roadmap:** OpenClaw + Hermes agent research — turnkey, gated on live validation (#93)
+
+### Dependencies
+
+- **deps:** Batch dependabot updates — actions + cargo (#94)
+
+> **Note:** OpenClaw and Hermes (13th/14th) shipped docs-validated; live validation is still pending. Devin CLI's `updatedInput` rewrite was validated live 2026-07-07.
+
 ## [0.6.16] - 2026-06-09
 
 ### Features
