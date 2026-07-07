@@ -123,6 +123,7 @@ pub(crate) fn run_checks() -> Vec<Check> {
         check_stdin_pipeline(),
         check_hooks_installed(),
         check_codex_hooks_orphan(),
+        check_devin_cli_hook(),
         check_output_saver_installed(),
         check_agent_docs_health(),
     ]

@@ -61,26 +61,7 @@ pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> 
     } else {
         PathBuf::from("AGENTS.md")
     };
-
-    let rules_msg = if path.exists() {
-        let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        if file_has_any_trs_marker(&content) {
-            format!("{} (already configured)", path.display())
-        } else if opts.dry_run {
-            format!("{} (would append trs rules block)", path.display())
-        } else {
-            ensure_parent(&path)?;
-            let updated = format!("{}\n{}", content, CODEX_AGENTS_SECTION);
-            fs::write(&path, updated).map_err(|e| e.to_string())?;
-            path.display().to_string()
-        }
-    } else if opts.dry_run {
-        format!("{} (would create with trs rules)", path.display())
-    } else {
-        ensure_parent(&path)?;
-        fs::write(&path, CODEX_AGENTS_SECTION.trim()).map_err(|e| e.to_string())?;
-        path.display().to_string()
-    };
+    let rules_msg = write_agents_md_block(&path, opts)?;
 
     // Compose the output-saver reply-brevity rules as their own
     // sentinel-managed block instead of embedding a (sentinel-less) copy in
@@ -94,6 +75,38 @@ pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> 
         }
     }
     Ok(rules_msg)
+}
+
+/// Append the trs sentinel block to an `AGENTS.md`. Shared write path for
+/// Codex (project + global) and Zed (project only) — one template, no copies.
+fn write_agents_md_block(path: &Path, opts: InstallOpts) -> Result<String, String> {
+    if path.exists() {
+        let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+        if file_has_any_trs_marker(&content) {
+            return Ok(format!("{} (already configured)", path.display()));
+        }
+        if opts.dry_run {
+            return Ok(format!("{} (would append trs rules block)", path.display()));
+        }
+        ensure_parent(path)?;
+        let updated = format!("{}\n{}", content, CODEX_AGENTS_SECTION);
+        fs::write(path, updated).map_err(|e| e.to_string())?;
+        return Ok(path.display().to_string());
+    }
+    if opts.dry_run {
+        return Ok(format!("{} (would create with trs rules)", path.display()));
+    }
+    ensure_parent(path)?;
+    fs::write(path, CODEX_AGENTS_SECTION.trim()).map_err(|e| e.to_string())?;
+    Ok(path.display().to_string())
+}
+
+/// Zed Agent Panel — rules-only. The native agent reads the project
+/// `AGENTS.md` as always-on instructions (no tool hooks: zed#52688), so the
+/// sentinel block IS the integration. ACP external agents (Claude Code,
+/// Codex, Gemini CLI, OpenCode) are covered by their own trs hooks.
+pub(crate) fn install_zed_agents(opts: InstallOpts) -> Result<String, String> {
+    write_agents_md_block(Path::new("AGENTS.md"), opts)
 }
 
 /// Append the Antigravity rules block to `~/.gemini/GEMINI.md`. Shared by

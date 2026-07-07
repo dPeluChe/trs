@@ -11,6 +11,10 @@
 
 use crate::output_saver_block_literal;
 
+// Plugin/extension templates (TS/Python) live in their own module; re-export
+// so existing callers keep importing from init_templates.
+pub(crate) use crate::init_templates_plugins::*;
+
 pub(crate) const CLAUDE_HOOKS: &str = r#"{
   "hooks": {
     "PreToolUse": [
@@ -134,6 +138,40 @@ pub(crate) const VSCODE_HOOKS: &str = r#"{
   }
 }"#;
 
+// Devin CLI ("Devin for Terminal", binary `devin` — distinct from the
+// rules-only Devin Desktop / ex-Windsurf). Its hooks speak Claude's
+// PreToolUse envelope and it reads `.claude/settings.json` by default, but
+// its shell tool is named `exec` (not `Bash`), so the Claude hook's
+// `matcher: "Bash"` never fires under Devin — hence a dedicated install.
+// Target is `config.json` (global `~/.config/devin/`, project `.devin/`)
+// under the `hooks` key; the standalone `.devin/hooks.v1.json` puts events
+// at the root with no `hooks` wrapper, which the merge path can't share.
+// `--caller devin-cli` attributes runs distinctly in history/stats.
+//
+// updatedInput: validated live 2026-07-07 — Devin honors
+// `hookSpecificOutput.updatedInput` (commands run rewritten as `trs …`),
+// even though its docs only mention `decision`/`additionalContext`.
+// Attribution requires `devin-cli` in rewrite.rs `known_agent_label`, else
+// `--caller devin-cli` falls back to `claude`. Devin also reads `.claude`
+// hooks by default (`read_config_from.claude`); set it false so this hook
+// wins over the transitive Claude one.
+pub(crate) const DEVIN_CLI_HOOKS: &str = r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "exec",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "trs rewrite --caller devin-cli"
+          }
+        ],
+        "description": "Route commands through trs for token-optimized output"
+      }
+    ]
+  }
+}"#;
+
 // Cursor's `beforeShellExecution` hook can only allow/deny — it cannot
 // rewrite the command. The only hook with `updated_input` support is
 // `preToolUse`. `matcher: "Shell"` limits the hook to actual shell tool
@@ -151,86 +189,6 @@ pub(crate) const CURSOR_HOOKS: &str = r#"{
     ]
   }
 }"#;
-
-// OpenCode/Kilo plugin: prefix `trs`, let trs decide whether to compress or
-// passthrough. Uses OpenCode's documented plugin shape:
-//   - async function returning a hooks map
-//   - `"shell.env"` injects TRS_AGENT into every shell's environment so
-//     attribution works on ALL platforms (the old `TRS_AGENT=opencode trs …`
-//     command prefix is POSIX-only — PowerShell/cmd on Windows parse it as a
-//     bogus command name, see issue #53)
-//   - `"tool.execute.before"` only prepends `trs ` to the bash command
-//   - the guard skips anything already routed through trs, including the
-//     legacy `TRS_AGENT=…` prefix, so a retried command can't snowball
-// Reference: https://opencode.ai/docs/plugins/
-pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
-
-export const TrsPlugin = async () => {
-  return {
-    // Cross-platform attribution: set the env var, never a shell prefix.
-    "shell.env": async (_input, output) => {
-      output.env.TRS_AGENT = "opencode";
-    },
-    "tool.execute.before": async (input, output) => {
-      if (input.tool !== "bash") return;
-      const cmd = output.args?.command;
-      if (typeof cmd !== "string") return;
-      // Idempotent: skip if already routed through trs (incl. the legacy
-      // `TRS_AGENT=…` prefix) or if it's a cd (dir change).
-      if (cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=")) return;
-      output.args.command = `trs ${cmd}`;
-    },
-  };
-};
-"#;
-
-/// Kilo plugin — identical mechanism to OpenCode but tags the downstream
-/// run as `kilo` so history attribution is accurate across forks.
-pub(crate) const KILO_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
-
-export const TrsPlugin = async () => {
-  return {
-    "shell.env": async (_input, output) => {
-      output.env.TRS_AGENT = "kilo";
-    },
-    "tool.execute.before": async (input, output) => {
-      if (input.tool !== "bash") return;
-      const cmd = output.args?.command;
-      if (typeof cmd !== "string") return;
-      if (cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=")) return;
-      output.args.command = `trs ${cmd}`;
-    },
-  };
-};
-"#;
-
-// Pi (pi.dev) extension: overrides the bash tool with a `spawnHook` that
-// prepends `trs` and tags the run via `TRS_AGENT=pi` (attribution lives in the
-// env, not a shell prefix — works on every platform). Auto-discovered from
-// ~/.pi/agent/extensions/ (global) or .pi/extensions/ (project); `/reload` to
-// pick up changes. Reference: https://pi.dev (earendil-works/pi).
-pub(crate) const PI_EXTENSION: &str = r#"// trs plugin — route commands through trs for token-optimized output
-import { createBashTool } from "@earendil-works/pi-coding-agent";
-
-export default function (pi) {
-  const bash = createBashTool(process.cwd(), {
-    spawnHook: ({ command, cwd, env }) => {
-      // Idempotent: skip anything already routed through trs (or a cd).
-      const skip =
-        typeof command !== "string" ||
-        command.startsWith("trs ") ||
-        command.startsWith("cd ") ||
-        command.startsWith("TRS_AGENT=");
-      return {
-        command: skip ? command : `trs ${command}`,
-        cwd,
-        env: { ...env, TRS_AGENT: "pi" },
-      };
-    },
-  });
-  pi.registerTool({ ...bash });
-}
-"#;
 
 /// Sentinel that marks the Codex AGENTS.md block on re-runs. The block's
 /// prose uses backtick-wrapped `` `trs` `` which doesn't match the plain

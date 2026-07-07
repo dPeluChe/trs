@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Twelve AI coding agents are supported end-to-end. Each row lists the
+Sixteen AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -18,7 +18,11 @@ install scope.
 | Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `antigravity` (env fallback) | global |
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
+| Devin CLI | programmatic hook | ✓ | — | `devin-cli` | global + project |
 | VS Code Copilot | programmatic hook | ✓ | — | `vscode` | global + project |
+| OpenClaw | plugin template | ✓ | — | `openclaw` | global |
+| Hermes | plugin template | ✓ | — | `hermes` | global |
+| Zed (Agent Panel) | rules file only (AGENTS.md) | — | — | `(untagged)`; ACP external agents show their own label | project |
 
 ## Column legend
 
@@ -33,8 +37,9 @@ install scope.
   status`). Rules-only agents cannot do this; the model ends up
   running raw commands unless the user prefixes `trs` manually.
 - **Output-saver.** Whether `trs output-saver --install` can inject
-  the anti-preamble / result-first rules block. All ten agents are
-  supported. Antigravity 2.0 (IDE + CLI) shares Gemini's
+  the anti-preamble / result-first rules block (Pi, VS Code Copilot,
+  OpenClaw, and Hermes are not yet wired). Antigravity 2.0 (IDE + CLI)
+  shares Gemini's
   `~/.gemini/GEMINI.md` and `~/.gemini/trs.md` for the output-saver
   side; only the *hooks* are jetski-specific (see Antigravity section
   below).
@@ -187,6 +192,37 @@ install scope.
 - **Attribution:** `(untagged)` in stats since there's no programmatic
   signal to tag commands with an agent.
 
+### Devin CLI
+
+- **Background:** "Devin for Terminal" (Devin CLI, binary `devin`, by
+  Cognition) — a distinct product from Devin Desktop. Unlike the
+  Desktop rules-only integration, the CLI exposes real programmatic
+  `PreToolUse` hooks, so trs wires a deterministic rewrite hook here.
+- **Install mechanism:** `trs init devin-cli --global` merges a hook
+  into `~/.config/devin/config.json` under the `hooks` key, preserving
+  the user's existing config (model, org_id, theme). Devin's shell tool
+  is named `exec` (not `Bash`), so the hook matcher is `exec` and the
+  hook command is `trs rewrite --caller devin-cli`.
+- **Target file:** `~/.config/devin/config.json` (global) or
+  `.devin/config.json` (project).
+- **CLI names:** primary `devin-cli`; aliases `devin-terminal`, `dcli`.
+- **Attribution:** `devin-cli` — the hook command carries
+  `--caller devin-cli`.
+- **updatedInput — validated live (2026-07-07):** Devin honors
+  `hookSpecificOutput.updatedInput`; commands execute rewritten as
+  `trs …`. (Devin's docs only document `decision` + `additionalContext`,
+  but the rewrite works in practice.)
+- **Attribution gotcha:** `--caller devin-cli` only tags correctly when
+  `devin-cli` is whitelisted in `known_agent_label` (rewrite.rs);
+  otherwise it silently falls back to `claude`. Regression-guarded by a
+  test in rewrite.rs.
+- **`.claude` interplay:** Devin reads `.claude/settings.json` hooks by
+  default (`read_config_from.claude: true`). With `trs init claude`
+  present, that transitive Claude hook fires and tags runs `claude` — the
+  same de-facto-coverage pattern as VS Code. Set
+  `read_config_from.claude: false` in `~/.config/devin/config.json` so the
+  dedicated `devin-cli` hook wins and attribution is correct.
+
 ### VS Code Copilot
 
 - **Status:** programmatic hook via VS Code's **agent hooks
@@ -218,6 +254,71 @@ install scope.
 - **Output-saver:** not yet wired (same posture as Pi).
 - **Aliases:** `vscode` (primary), `vs-code`, `copilot`,
   `vscode-copilot`, `code`.
+
+### OpenClaw
+
+- **Status:** shipped pending live validation — install and run
+  `git status`, then check `trs stats --by-agent`.
+- **Install mechanism:** JS plugin at `~/.openclaw/plugins/trs/`
+  (`openclaw.plugin.json` manifest + `index.js`). The plugin's
+  `before_tool_call` hook prepends `trs ` to `exec` commands
+  (idempotent), and `resolve_exec_env` injects `TRS_AGENT=openclaw`
+  into the exec environment — cross-platform attribution, no shell
+  prefix.
+- **Config enable:** `trs init openclaw` also merges
+  `plugins.entries.trs.enabled = true` and the plugin dir into
+  `plugins.load.paths` in `~/.openclaw/openclaw.json` (everything
+  else preserved; idempotent).
+- **Scope:** global only — OpenClaw plugins live under the gateway's
+  home dir. Restart the gateway after install:
+  `openclaw gateway restart`.
+- **Uninstall:** removes the plugin files; the now-inert
+  `plugins.entries.trs` config entry can be removed manually.
+- **Aliases:** `openclaw` (primary), `claw`.
+
+### Hermes
+
+- **Status:** shipped pending live validation — install and run
+  `git status`, then check `trs stats --by-agent`.
+- **Install mechanism:** Python plugin at
+  `~/.hermes/plugins/trs-rewrite/` (`__init__.py` + `plugin.yaml`
+  manifest) for NousResearch's hermes-agent. The `pre_tool_call`
+  hook prepends `trs ` to `terminal` tool commands (idempotent,
+  fails open) and exports `TRS_AGENT=hermes` for attribution.
+- **Config enable:** `trs init hermes` adds `trs-rewrite` to
+  `plugins.enabled` in `~/.hermes/config.yaml`. The YAML patch is
+  conservative — block-style lists are patched in place; exotic
+  layouts (inline arrays, `plugins` without `enabled`) get a manual
+  instruction instead.
+- **Home override:** the `HERMES_HOME` env var relocates the Hermes
+  home dir (default `~/.hermes`) for both install and uninstall.
+- **Scope:** global only. Restart Hermes after install.
+- **Uninstall:** removes the plugin files; the `trs-rewrite` entry
+  in `plugins.enabled` can be removed manually.
+- **Aliases:** `hermes` (primary), `hermes-agent`.
+
+### Zed (Agent Panel)
+
+- **Status:** rules-only. Zed's native agent exposes no tool hooks —
+  the feature request is open upstream
+  ([zed-industries/zed#52688](https://github.com/zed-industries/zed/issues/52688)).
+  Until it ships, there is no programmatic rewrite surface.
+- **Install mechanism:** Zed's native agent reads the project
+  `AGENTS.md` as always-on instructions, so `trs init zed` writes the
+  same trs sentinel block Codex uses (shared template, shared
+  sentinel scrub on uninstall). Project scope only — `--global`
+  prints a note and writes nothing (Zed's global personal-instructions
+  location is not yet verified).
+- **IMPORTANT — external agents via ACP:** running Claude Code,
+  Codex CLI, Gemini CLI, or OpenCode inside Zed's Agent Panel (from
+  the ACP registry) runs the real CLIs as ACP servers. Those agents'
+  existing trs hooks fire transitively — no extra setup — and
+  `trs stats --by-agent` attributes runs to the backend agent
+  (`claude`, `codex`, `gemini`, `opencode`), not to Zed.
+- **Roadmap:** ACP-level interception (covering the native agent
+  programmatically) is tracked separately under Research in
+  [`docs/roadmap/TASK_TODO.md`](../roadmap/TASK_TODO.md).
+- **Aliases:** `zed` (primary), `zed-ide`.
 
 ## Install commands
 

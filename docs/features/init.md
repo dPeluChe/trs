@@ -1,14 +1,14 @@
 # `trs init` — install hooks for AI agents
 
 `trs init` wires your AI coding agent's shell-execution pipeline through
-`trs rewrite` so every command gets compressed automatically. Twelve
+`trs rewrite` so every command gets compressed automatically. Sixteen
 agents are supported end-to-end. See [`docs/development/agent-integrations.md`](../development/agent-integrations.md)
 for the full per-agent reference.
 
 ## Quick reference
 
 ```bash
-trs init --show                      # status of all 12 agents
+trs init --show                      # status of all 16 agents
 trs init --all --global              # install for every detected agent
 trs init <agent>                     # install for one: claude, gemini, cursor, …
 trs init --all --global --dry-run    # preview every file that would change
@@ -31,11 +31,21 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | Antigravity IDE | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Antigravity CLI (`agy`) | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Devin Desktop (ex-Windsurf) | Rules file | `.devin/rules/trs.md` (legacy: `.windsurfrules`); aliases `devin` / `devin-desktop` / `windsurf` / `cascade` |
+| Devin CLI | JSON hook | `~/.config/devin/config.json` (`--global`) / `.devin/config.json` (project), merged under `hooks` (matcher `exec`); aliases `devin-cli` / `devin-terminal` / `dcli` |
 | VS Code Copilot | JSON hook (agent hooks preview) | `.github/hooks/trs.json` (project) / `~/.copilot/hooks/trs.json` (`--global`); aliases `vscode` / `vs-code` / `copilot` / `vscode-copilot` / `code` |
+| OpenClaw | JS plugin + config enable | `~/.openclaw/plugins/trs/` (`openclaw.plugin.json` + `index.js`) + enable entry in `~/.openclaw/openclaw.json`; aliases `openclaw` / `claw`; global only |
+| Hermes | Python plugin + config enable | `~/.hermes/plugins/trs-rewrite/` (`__init__.py` + `plugin.yaml`) + `plugins.enabled` entry in `~/.hermes/config.yaml` (`HERMES_HOME` overrides the home dir); aliases `hermes` / `hermes-agent`; global only |
+| Zed (Agent Panel) | Rules append (sentinel block) | `./AGENTS.md` (project only — native agent has no tool hooks, zed#52688; `--global` is a no-op with a note); aliases `zed` / `zed-ide` |
 
 Hooks fire deterministically on every shell-tool invocation. Rules
 files are probabilistic — they only work because the agent chooses to
 follow the guidance in them.
+
+Zed attribution note: the native Zed agent is rules-only, so its runs
+show as `(untagged)` in `trs stats --by-agent`. External agents run
+inside Zed via ACP (Claude Code, Codex CLI, Gemini CLI, OpenCode) are
+the real CLIs — their own trs hooks fire transitively and runs are
+attributed to the backend agent's label, not Zed.
 
 Codex is version-gated. On **codex-cli ≥ 0.134** (which implements
 programmatic command rewriting via the `PreToolUse` hook's
@@ -206,6 +216,10 @@ Labels per agent:
 - `vscode` — VS Code Copilot via the agent hooks (preview); the hook
   command carries `--caller vscode`. (Runs that arrive through
   VS Code's "Chat: Use Claude Hooks" setting instead show as `claude`.)
+- `openclaw` — OpenClaw (set via `TRS_AGENT=openclaw` from the
+  plugin's `resolve_exec_env` hook)
+- `hermes` — Hermes / hermes-agent (set via `TRS_AGENT=hermes` exported
+  by the Python plugin)
 - `(untagged)` — rules-only agents (Devin Desktop, Codex fallback) and
   direct-shell invocations, where no programmatic signal is available
 

@@ -93,7 +93,9 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 ### Next agents — researched 2026-06-11, turnkey, gated on live validation
 
-- [ ] **OpenClaw — implementation turnkey.** Plugin SDK (TypeScript):
+- [x] **OpenClaw — implemented, pending live validation** (`trs init
+  openclaw` — plugin at `~/.openclaw/plugins/trs/` + config enable in
+  `~/.openclaw/openclaw.json`). Plugin SDK (TypeScript):
   `before_tool_call` hook rewrites tool `params` (prepend `trs ` to the exec
   command, idempotency guard like OpenCode), and `resolve_exec_env` injects
   `TRS_AGENT=openclaw` into the exec environment — the cleanest cross-platform
@@ -103,7 +105,10 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
   install also supported via npm/local dir) and whether config registration
   in `plugins.entries.<id>` is needed. Validate live before shipping
   (install OpenClaw, confirm rewrite + attribution).
-- [ ] **Hermes (NousResearch/hermes-agent) — implementation turnkey.** Python
+- [x] **Hermes (NousResearch/hermes-agent) — implemented, pending live
+  validation** (`trs init hermes` — plugin at
+  `~/.hermes/plugins/trs-rewrite/` + `plugins.enabled` patch in
+  `~/.hermes/config.yaml`, `HERMES_HOME` honored). Python
   plugin at `~/.hermes/plugins/<name>/` (`__init__.py` + `plugin.yaml`
   manifest listing `pre_tool_call`), registered via `register(ctx)` →
   `ctx.register_hook("pre_tool_call", fn)`; mutate `args` when
@@ -111,6 +116,20 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
   merge (rtk's integration does — reference: their
   `hooks/hermes/rtk-rewrite/__init__.py`, cloned under _repos_2_learn).
   Validate live before shipping.
+- [x] **Zed (Agent Panel)** — rules-only via AGENTS.md (native agent has no
+  tool hooks, zed#52688); ACP external agents covered transitively. ACP
+  interception tracked separately under Research.
+- [x] **Devin CLI ("Devin for Terminal", Cognition) — 16th agent, real
+  programmatic hook** (`trs init devin-cli` — hook merged under the `hooks`
+  key of `~/.config/devin/config.json` global / `.devin/config.json` project,
+  matcher `exec`, command `trs rewrite --caller devin-cli`; preserves existing
+  config; aliases `devin-terminal` / `dcli`). Distinct product from Devin
+  Desktop (rules-only). **updatedInput live-validation pending:** docs confirm
+  `decision`/`permissionDecision`+`additionalContext` but not
+  `hookSpecificOutput.updatedInput`; shipped optimistically (2026-07 research),
+  harmless no-op if ignored. Dedicated install needed because Devin's
+  `.claude/settings.json` fallback uses matcher `Bash`, which never matches
+  Devin's `exec` tool.
 
 ### Evaluated — no dedicated integration needed
 
