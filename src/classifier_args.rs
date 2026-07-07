@@ -112,6 +112,37 @@ pub(crate) fn unwrap_shell_c(args: &[String]) -> Option<Vec<String>> {
     Some(tokens)
 }
 
+/// Unwrap `timeout [OPTS] DURATION CMD [ARGS…]` to the inner command argv
+/// so it reaches the right parser, like `bash -c`. Skips leading flags (and
+/// the value of `-s/--signal/-k/--kill-after` when given as a separate
+/// token), then the DURATION, returning `[CMD, ARGS…]`. Returns None when
+/// the shape doesn't match (no digit-leading duration, or no inner command).
+pub(crate) fn unwrap_timeout(args: &[String]) -> Option<Vec<String>> {
+    let mut i = 0;
+    while let Some(a) = args.get(i).map(|s| s.as_str()) {
+        if !a.starts_with('-') {
+            break;
+        }
+        // Options that take a separate value token.
+        i += if matches!(a, "-s" | "--signal" | "-k" | "--kill-after") {
+            2
+        } else {
+            1
+        };
+    }
+    // args[i] is DURATION (e.g. `10`, `5s`, `1.5m`); guard on a leading
+    // digit so `timeout --help` and friends stay passthrough.
+    let dur = args.get(i)?;
+    if !dur.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    let inner = args.get(i + 1..)?;
+    if inner.is_empty() {
+        return None;
+    }
+    Some(inner.to_vec())
+}
+
 /// Check if the command args contain flags that indicate structured output.
 /// When the user explicitly requests JSON/structured output, we should passthrough.
 pub(crate) fn has_structured_output_flag(args: &[String]) -> bool {

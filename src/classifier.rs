@@ -22,7 +22,9 @@ pub(crate) fn full_cmd(cmd: &str, args: &[String]) -> String {
 pub(crate) use crate::exec::build_command;
 
 pub(crate) use crate::classifier_args::preprocess_tail_args;
-use crate::classifier_args::{has_structured_output_flag, strip_git_global_opts, unwrap_shell_c};
+use crate::classifier_args::{
+    has_structured_output_flag, strip_git_global_opts, unwrap_shell_c, unwrap_timeout,
+};
 
 /// Classify an external command into the parser to pipe through, or None
 /// for passthrough (generic compression).
@@ -31,6 +33,12 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
     if has_structured_output_flag(args) {
         return None;
     }
+
+    // Route by basename so absolute/relative-path invocations
+    // (`/opt/homebrew/bin/gh`, `./node_modules/.bin/eslint`) reach the same
+    // parser as the bare name. Field data: `gh` invoked by absolute path
+    // averaged 40 KB/cmd uncompressed before this.
+    let cmd = cmd.rsplit(['/', '\\']).next().unwrap_or(cmd);
 
     // For git commands, strip global options before detecting subcommand
     let effective_args;
@@ -404,6 +412,14 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             classify_command(&inner[0], &inner[1..])
         }
 
+        // `timeout [opts] DURATION cmd…` — unwrap and classify the inner
+        // command (agents wrap long-running commands in it). Field data:
+        // 9.9 KB/cmd uncompressed before this. `gtimeout` = coreutils on mac.
+        "timeout" | "gtimeout" => {
+            let inner = unwrap_timeout(args_ref)?;
+            classify_command(&inner[0], &inner[1..])
+        }
+
         "npx" => match subcmd {
             "jest" => Some(ParseCommands::Test {
                 runner: Some(TestRunner::Jest),
@@ -419,8 +435,16 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             _ => None,
         },
 
-        // Linters
-        "eslint" | "biome" | "ruff" | "pylint" | "golangci-lint" => {
+        // Formatters run directly — same "reformatted N files" shape the
+        // Fmt parser already handles for `cargo fmt`. Field data: black
+        // 23×, isort present, both uncovered before this.
+        "black" | "isort" | "autopep8" | "yapf" | "gofmt" => {
+            Some(ParseCommands::Fmt { file: None })
+        }
+
+        // Linters run directly. flake8/mypy field data: 24× / present,
+        // previously only routed via `python -m` / `poetry run`.
+        "eslint" | "biome" | "ruff" | "pylint" | "golangci-lint" | "flake8" | "mypy" => {
             Some(ParseCommands::Lint { file: None })
         }
 
@@ -476,6 +500,62 @@ mod tests {
             classify_command("sh", &["-c".into(), "cargo test --lib".into()]),
             Some(ParseCommands::CargoTest { .. })
         ));
+    }
+
+    #[test]
+    fn absolute_path_routes_by_basename() {
+        // Field data: `/opt/homebrew/bin/gh` averaged 40 KB/cmd uncompressed
+        // because the classifier matched the full path, not `gh`.
+        assert!(matches!(
+            classify_command("/opt/homebrew/bin/gh", &argv("pr list")),
+            Some(ParseCommands::GhPr { .. })
+        ));
+        assert!(matches!(
+            classify_command("/usr/bin/git", &argv("status")),
+            Some(ParseCommands::GitStatus { .. })
+        ));
+        assert!(matches!(
+            classify_command("./node_modules/.bin/eslint", &argv("src")),
+            Some(ParseCommands::Lint { .. })
+        ));
+    }
+
+    #[test]
+    fn bare_python_linters_and_formatters_route() {
+        for c in ["flake8", "mypy"] {
+            assert!(
+                matches!(
+                    classify_command(c, &argv("src")),
+                    Some(ParseCommands::Lint { .. })
+                ),
+                "{c} should route to Lint"
+            );
+        }
+        for c in ["black", "isort"] {
+            assert!(
+                matches!(
+                    classify_command(c, &argv(".")),
+                    Some(ParseCommands::Fmt { .. })
+                ),
+                "{c} should route to Fmt"
+            );
+        }
+    }
+
+    #[test]
+    fn timeout_unwraps_inner_command() {
+        assert!(matches!(
+            classify_command("timeout", &argv("30 cargo test")),
+            Some(ParseCommands::CargoTest { .. })
+        ));
+        // Option with a separate value, then duration with a unit suffix.
+        assert!(matches!(
+            classify_command("timeout", &argv("-s KILL 5s git status")),
+            Some(ParseCommands::GitStatus { .. })
+        ));
+        // No duration / no inner command → passthrough.
+        assert!(classify_command("timeout", &argv("--help")).is_none());
+        assert!(classify_command("timeout", &argv("30")).is_none());
     }
 
     #[test]
