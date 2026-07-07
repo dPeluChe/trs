@@ -92,9 +92,9 @@ pub(crate) fn check_devin_cli_hook() -> Check {
         "trs rewrite hook wired (exec matcher)".to_string(),
     )
     .with_hint(
-        "Devin's `updatedInput` rewrite support is unconfirmed upstream — if \
-         output isn't compacting, the hook is a harmless no-op; report back so \
-         we can confirm or fall back to rules-only.",
+        "Validated live 2026-07-07. If runs show up as `claude` in `trs stats`, \
+         set `read_config_from.claude: false` in ~/.config/devin/config.json so \
+         the devin-cli hook wins over the transitive Claude hook.",
     )
 }
 

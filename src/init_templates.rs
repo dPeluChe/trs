@@ -148,11 +148,13 @@ pub(crate) const VSCODE_HOOKS: &str = r#"{
 // at the root with no `hooks` wrapper, which the merge path can't share.
 // `--caller devin-cli` attributes runs distinctly in history/stats.
 //
-// updatedInput caveat: the Devin docs document `decision`/`permissionDecision`
-// + `additionalContext` but do not confirm `hookSpecificOutput.updatedInput`
-// (the field trs's rewrite depends on). Shipped optimistically — live
-// validation pending, same posture Codex had pre-0.134. If Devin ignores
-// updatedInput the hook is a harmless no-op (block/approve only).
+// updatedInput: validated live 2026-07-07 — Devin honors
+// `hookSpecificOutput.updatedInput` (commands run rewritten as `trs …`),
+// even though its docs only mention `decision`/`additionalContext`.
+// Attribution requires `devin-cli` in rewrite.rs `known_agent_label`, else
+// `--caller devin-cli` falls back to `claude`. Devin also reads `.claude`
+// hooks by default (`read_config_from.claude`); set it false so this hook
+// wins over the transitive Claude one.
 pub(crate) const DEVIN_CLI_HOOKS: &str = r#"{
   "hooks": {
     "PreToolUse": [

@@ -61,10 +61,12 @@ pub(crate) enum AiTool {
     /// integration, distinct from the rules-only `Devin` (Desktop /
     /// ex-Windsurf). Speaks Claude's PreToolUse envelope; shell tool is
     /// `exec`, config target is `config.json` under `hooks` (global
-    /// `~/.config/devin/`, project `.devin/`). Ships optimistically —
-    /// `hookSpecificOutput.updatedInput` support is documented for Claude
-    /// but unconfirmed for Devin; live validation pending (2026-07 docs
-    /// research). No-op if updatedInput is ignored.
+    /// `~/.config/devin/`, project `.devin/`). Validated live 2026-07-07:
+    /// Devin honors `hookSpecificOutput.updatedInput` (commands run as
+    /// `trs …`). Attribution needs `devin-cli` in `known_agent_label`
+    /// (rewrite.rs) or `--caller devin-cli` silently falls back to `claude`.
+    /// Note: Devin reads `.claude` hooks by default (`read_config_from.claude`)
+    /// — set it false so this hook wins instead of the transitive Claude one.
     DevinCLI,
 }
 

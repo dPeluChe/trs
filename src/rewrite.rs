@@ -63,6 +63,7 @@ fn known_agent_label(s: &str) -> Option<&'static str> {
         "pi" => "pi",
         "openclaw" => "openclaw",
         "hermes" => "hermes",
+        "devin-cli" => "devin-cli",
         _ => return None,
     })
 }
@@ -411,6 +412,14 @@ mod tests {
         assert_eq!(
             out["hookSpecificOutput"]["updatedInput"]["command"],
             serde_json::json!(agent_cmd("claude", "trs git status"))
+        );
+        // Devin CLI must be whitelisted — else `--caller devin-cli` silently
+        // falls back to `claude` (the bug found in live validation). Regression
+        // guard: keep `devin-cli` in `known_agent_label`.
+        let out = build_hook_response(&input, Some("devin-cli")).expect("should rewrite");
+        assert_eq!(
+            out["hookSpecificOutput"]["updatedInput"]["command"],
+            serde_json::json!(agent_cmd("devin-cli", "trs git status"))
         );
     }
 

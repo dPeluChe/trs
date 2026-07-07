@@ -208,15 +208,20 @@ install scope.
 - **CLI names:** primary `devin-cli`; aliases `devin-terminal`, `dcli`.
 - **Attribution:** `devin-cli` — the hook command carries
   `--caller devin-cli`.
-- **updatedInput caveat / live-validation pending:** Devin's docs
-  confirm `decision` / `permissionDecision` + `additionalContext` for
-  PreToolUse hooks, but `hookSpecificOutput.updatedInput` (the field
-  trs's rewrite depends on) is **not** confirmed upstream. Shipped
-  optimistically (2026-07 docs research); live validation pending. If
-  Devin ignores `updatedInput` the hook is a harmless no-op.
-- **Why a dedicated install:** Devin CLI also reads `.claude/settings.json`
-  hooks by default, but the Claude hook's `matcher:"Bash"` never matches
-  Devin's `exec` tool, so a dedicated `devin-cli` install is required.
+- **updatedInput — validated live (2026-07-07):** Devin honors
+  `hookSpecificOutput.updatedInput`; commands execute rewritten as
+  `trs …`. (Devin's docs only document `decision` + `additionalContext`,
+  but the rewrite works in practice.)
+- **Attribution gotcha:** `--caller devin-cli` only tags correctly when
+  `devin-cli` is whitelisted in `known_agent_label` (rewrite.rs);
+  otherwise it silently falls back to `claude`. Regression-guarded by a
+  test in rewrite.rs.
+- **`.claude` interplay:** Devin reads `.claude/settings.json` hooks by
+  default (`read_config_from.claude: true`). With `trs init claude`
+  present, that transitive Claude hook fires and tags runs `claude` — the
+  same de-facto-coverage pattern as VS Code. Set
+  `read_config_from.claude: false` in `~/.config/devin/config.json` so the
+  dedicated `devin-cli` hook wins and attribution is correct.
 
 ### VS Code Copilot
 
