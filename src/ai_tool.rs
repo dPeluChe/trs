@@ -5,8 +5,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::init_templates::{
-    CLAUDE_HOOKS, CURSOR_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN, OPENCODE_PLUGIN,
-    PI_EXTENSION, VSCODE_HOOKS,
+    CLAUDE_HOOKS, CURSOR_HOOKS, DEVIN_CLI_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN,
+    OPENCODE_PLUGIN, PI_EXTENSION, VSCODE_HOOKS,
 };
 
 /// Supported AI tools for hook installation.
@@ -57,6 +57,15 @@ pub(crate) enum AiTool {
     /// ACP (Claude Code, Codex, Gemini CLI, OpenCode) are the real CLIs —
     /// their own trs hooks apply transitively.
     Zed,
+    /// Devin CLI ("Devin for Terminal", binary `devin`) — a real hook
+    /// integration, distinct from the rules-only `Devin` (Desktop /
+    /// ex-Windsurf). Speaks Claude's PreToolUse envelope; shell tool is
+    /// `exec`, config target is `config.json` under `hooks` (global
+    /// `~/.config/devin/`, project `.devin/`). Ships optimistically —
+    /// `hookSpecificOutput.updatedInput` support is documented for Claude
+    /// but unconfirmed for Devin; live validation pending (2026-07 docs
+    /// research). No-op if updatedInput is ignored.
+    DevinCLI,
 }
 
 /// Hook installation spec — data-driven to avoid per-tool code duplication.
@@ -204,6 +213,16 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
         display: "Zed (Agent Panel)",
         target_label: "rules → AGENTS.md (native agent; ACP external agents use their own hooks)",
     },
+    // Devin CLI ("Devin for Terminal") — real PreToolUse hook, `exec` tool.
+    // Desktop keeps `devin`; the CLI takes explicit `devin-cli` aliases,
+    // mirroring the Antigravity IDE/CLI split.
+    AiToolSpec {
+        variant: AiTool::DevinCLI,
+        cli_name: "devin-cli",
+        aliases: &["devin-cli", "devin-terminal", "dcli"],
+        display: "Devin CLI",
+        target_label: "hooks → ~/.config/devin/config.json (project: .devin/config.json)",
+    },
 ];
 
 impl AiTool {
@@ -315,6 +334,10 @@ impl AiTool {
             Self::OpenClaw => in_path("openclaw") || home_has(".openclaw"),
             Self::Hermes => in_path("hermes") || home_has(".hermes"),
             Self::Zed => in_path("zed") || app_exists("Zed") || home_has(".config/zed"),
+            // Devin CLI writes `~/.config/devin/` (config.json + cli/). The
+            // `devin` binary is shared with Devin Desktop, so both variants
+            // may report installed — the user disambiguates via `devin-cli`.
+            Self::DevinCLI => in_path("devin") || home_has(".config/devin"),
         }
     }
 
@@ -381,6 +404,15 @@ impl AiTool {
                 global_dir: Some(".copilot/hooks"),
                 filename: "trs.json",
                 content: VSCODE_HOOKS,
+            }),
+            // Devin CLI merges into `config.json` (project `.devin/`, global
+            // `~/.config/devin/`) under the `hooks` key — the merge path
+            // preserves the user's other config (model, org_id, theme).
+            Self::DevinCLI => Some(HookSpec {
+                local_dir: ".devin",
+                global_dir: Some(".config/devin"),
+                filename: "config.json",
+                content: DEVIN_CLI_HOOKS,
             }),
             // Antigravity 2.0 (IDE + CLI/`agy`) — v0.6.6 reverted the
             // jetski PreToolUse integration shipped in v0.6.5. Empirically
@@ -498,8 +530,28 @@ mod tests {
         // Pins the exact public string `trs uninstall` prints on bad input.
         assert_eq!(
             AiTool::all_names(),
-            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, zed"
+            "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, zed, devin-cli"
         );
+    }
+
+    #[test]
+    fn devin_cli_is_a_hook_not_rules_only() {
+        // Regression guard: the CLI is a real PreToolUse hook (unlike the
+        // rules-only Devin Desktop). Its `exec` matcher + `--caller devin-cli`
+        // must survive template edits.
+        assert!(matches!(
+            AiTool::from_str("devin-cli"),
+            Some(AiTool::DevinCLI)
+        ));
+        assert!(matches!(AiTool::from_str("dcli"), Some(AiTool::DevinCLI)));
+        // Desktop stays rules-only and keeps the bare `devin` alias.
+        assert!(matches!(AiTool::from_str("devin"), Some(AiTool::Devin)));
+        let spec = AiTool::DevinCLI
+            .spec()
+            .expect("Devin CLI must have a HookSpec");
+        assert_eq!(spec.filename, "config.json");
+        assert!(spec.content.contains("\"exec\""));
+        assert!(spec.content.contains("trs rewrite --caller devin-cli"));
     }
 
     #[test]

@@ -138,6 +138,38 @@ pub(crate) const VSCODE_HOOKS: &str = r#"{
   }
 }"#;
 
+// Devin CLI ("Devin for Terminal", binary `devin` — distinct from the
+// rules-only Devin Desktop / ex-Windsurf). Its hooks speak Claude's
+// PreToolUse envelope and it reads `.claude/settings.json` by default, but
+// its shell tool is named `exec` (not `Bash`), so the Claude hook's
+// `matcher: "Bash"` never fires under Devin — hence a dedicated install.
+// Target is `config.json` (global `~/.config/devin/`, project `.devin/`)
+// under the `hooks` key; the standalone `.devin/hooks.v1.json` puts events
+// at the root with no `hooks` wrapper, which the merge path can't share.
+// `--caller devin-cli` attributes runs distinctly in history/stats.
+//
+// updatedInput caveat: the Devin docs document `decision`/`permissionDecision`
+// + `additionalContext` but do not confirm `hookSpecificOutput.updatedInput`
+// (the field trs's rewrite depends on). Shipped optimistically — live
+// validation pending, same posture Codex had pre-0.134. If Devin ignores
+// updatedInput the hook is a harmless no-op (block/approve only).
+pub(crate) const DEVIN_CLI_HOOKS: &str = r#"{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "exec",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "trs rewrite --caller devin-cli"
+          }
+        ],
+        "description": "Route commands through trs for token-optimized output"
+      }
+    ]
+  }
+}"#;
+
 // Cursor's `beforeShellExecution` hook can only allow/deny — it cannot
 // rewrite the command. The only hook with `updated_input` support is
 // `preToolUse`. `matcher: "Shell"` limits the hook to actual shell tool

@@ -324,6 +324,12 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
         }
         // Same project AGENTS.md as Codex — sentinel scrub is shared.
         AiTool::Zed => v.push(PathBuf::from("AGENTS.md")),
+        AiTool::DevinCLI => {
+            // JSON merge target — scrub_trs_from_json drops the `trs rewrite`
+            // entry and preserves the user's model/org_id/theme config.
+            push_home(".config/devin/config.json");
+            v.push(PathBuf::from(".devin/config.json"));
+        }
     }
     v.sort();
     v.dedup();

@@ -108,7 +108,7 @@ trs uninstall --all --yes          # scripted
 
 ## Supported AI agents
 
-Fifteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot, and Codex CLI (≥ 0.134, rules fallback below); plugin template for OpenClaw and Hermes. Rules file only for Antigravity IDE, Antigravity CLI, Devin Desktop (ex-Windsurf), and Zed (Agent Panel).
+Sixteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot, Devin CLI, and Codex CLI (≥ 0.134, rules fallback below); plugin template for OpenClaw and Hermes. Rules file only for Antigravity IDE, Antigravity CLI, Devin Desktop (ex-Windsurf), and Zed (Agent Panel).
 
 | Agent | Install method | Input hook | Output-saver | Attribution |
 |---|---|---|---|---|
@@ -121,6 +121,7 @@ Fifteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini C
 | Codex CLI | programmatic hook (≥ 0.134), rules fallback | ✓ | ✓ | `codex` (fallback `(untagged)`) |
 | Antigravity IDE · Antigravity CLI (`agy`) | rules file ([see notes](docs/development/antigravity-hooks-research.md)) | — | ✓ | `antigravity` (env fallback) |
 | Devin Desktop (ex-Windsurf) | rules file only | — | ✓ | `(untagged)` |
+| Devin CLI | programmatic hook | ✓ | — | `devin-cli` |
 | Zed (Agent Panel) | rules file only (`AGENTS.md`) | — | — | `(untagged)`; ACP external agents show their own label |
 
 [Full compatibility matrix, caveats, and per-agent config paths →](docs/support/agents.md)

@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Fifteen AI coding agents are supported end-to-end. Each row lists the
+Sixteen AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -18,6 +18,7 @@ install scope.
 | Antigravity CLI (`agy`) | rules file only (see [research notes](../development/antigravity-hooks-research.md)) | — | ✓ (`@import`) | `antigravity` (env fallback) | global |
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
+| Devin CLI | programmatic hook | ✓ | — | `devin-cli` | global + project |
 | VS Code Copilot | programmatic hook | ✓ | — | `vscode` | global + project |
 | OpenClaw | plugin template | ✓ | — | `openclaw` | global |
 | Hermes | plugin template | ✓ | — | `hermes` | global |
@@ -190,6 +191,32 @@ install scope.
   `cascade` (the last two for back-compat).
 - **Attribution:** `(untagged)` in stats since there's no programmatic
   signal to tag commands with an agent.
+
+### Devin CLI
+
+- **Background:** "Devin for Terminal" (Devin CLI, binary `devin`, by
+  Cognition) — a distinct product from Devin Desktop. Unlike the
+  Desktop rules-only integration, the CLI exposes real programmatic
+  `PreToolUse` hooks, so trs wires a deterministic rewrite hook here.
+- **Install mechanism:** `trs init devin-cli --global` merges a hook
+  into `~/.config/devin/config.json` under the `hooks` key, preserving
+  the user's existing config (model, org_id, theme). Devin's shell tool
+  is named `exec` (not `Bash`), so the hook matcher is `exec` and the
+  hook command is `trs rewrite --caller devin-cli`.
+- **Target file:** `~/.config/devin/config.json` (global) or
+  `.devin/config.json` (project).
+- **CLI names:** primary `devin-cli`; aliases `devin-terminal`, `dcli`.
+- **Attribution:** `devin-cli` — the hook command carries
+  `--caller devin-cli`.
+- **updatedInput caveat / live-validation pending:** Devin's docs
+  confirm `decision` / `permissionDecision` + `additionalContext` for
+  PreToolUse hooks, but `hookSpecificOutput.updatedInput` (the field
+  trs's rewrite depends on) is **not** confirmed upstream. Shipped
+  optimistically (2026-07 docs research); live validation pending. If
+  Devin ignores `updatedInput` the hook is a harmless no-op.
+- **Why a dedicated install:** Devin CLI also reads `.claude/settings.json`
+  hooks by default, but the Claude hook's `matcher:"Bash"` never matches
+  Devin's `exec` tool, so a dedicated `devin-cli` install is required.
 
 ### VS Code Copilot
 

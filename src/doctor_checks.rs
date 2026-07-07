@@ -57,6 +57,47 @@ pub(crate) fn check_codex_hooks_orphan() -> Check {
     )
 }
 
+/// Report the Devin CLI trs hook. Unlike Codex there's no version→feature
+/// map to gate on, so this can't confirm the runtime honors
+/// `updatedInput` — it only surfaces that the hook is wired and flags that
+/// live validation is still pending (2026-07 docs research). Passes when
+/// the `trs rewrite` entry is present in `~/.config/devin/config.json` or a
+/// project `.devin/config.json`; silent-pass when Devin CLI isn't detected.
+pub(crate) fn check_devin_cli_hook() -> Check {
+    use std::fs;
+    if !AiTool::DevinCLI.detect_installed() {
+        return Check::pass(
+            "devin-cli hook",
+            "Devin CLI not detected — skipped".to_string(),
+        );
+    }
+    let mut paths: Vec<PathBuf> = vec![PathBuf::from(".devin/config.json")];
+    if let Ok(home) = crate::init::home_dir() {
+        paths.insert(0, home.join(".config/devin/config.json"));
+    }
+    let wired = paths.iter().any(|p| {
+        fs::read_to_string(p)
+            .map(|c| c.contains("trs rewrite"))
+            .unwrap_or(false)
+    });
+    if !wired {
+        return Check::warn(
+            "devin-cli hook",
+            "Devin CLI detected but trs hook not installed",
+        )
+        .with_hint("trs init devin-cli --global");
+    }
+    Check::pass(
+        "devin-cli hook",
+        "trs rewrite hook wired (exec matcher)".to_string(),
+    )
+    .with_hint(
+        "Devin's `updatedInput` rewrite support is unconfirmed upstream — if \
+         output isn't compacting, the hook is a harmless no-op; report back so \
+         we can confirm or fall back to rules-only.",
+    )
+}
+
 /// Count how many of the supported agents have the trs output-saver
 /// block installed AND whether the content matches the current canonical
 /// template. Drift (manual edits, stale content from older installs)

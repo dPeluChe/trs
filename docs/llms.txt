@@ -7,7 +7,7 @@
 ## Getting started
 
 - [Install trs](https://usetrs.dev/support/install.md): curl|sh, PowerShell, npm, cargo, or prebuilt binary
-- [Supported agents](https://usetrs.dev/support/agents.md): Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, Antigravity IDE, Antigravity CLI (`agy`), Codex CLI, Devin Desktop (ex-Windsurf), VS Code Copilot (`vscode`), OpenClaw, Hermes (`hermes-agent`), Zed (Agent Panel, rules-only via `AGENTS.md`)
+- [Supported agents](https://usetrs.dev/support/agents.md): Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, Antigravity IDE, Antigravity CLI (`agy`), Codex CLI, Devin Desktop (ex-Windsurf), Devin CLI (`devin-cli`), VS Code Copilot (`vscode`), OpenClaw, Hermes (`hermes-agent`), Zed (Agent Panel, rules-only via `AGENTS.md`)
 - [Supported commands](https://usetrs.dev/support/commands.md): git, cargo, npm/pnpm/bun/yarn, Python tools, curl, docker, gh CLI, and more
 
 ## Features

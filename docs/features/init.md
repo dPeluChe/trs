@@ -1,14 +1,14 @@
 # `trs init` — install hooks for AI agents
 
 `trs init` wires your AI coding agent's shell-execution pipeline through
-`trs rewrite` so every command gets compressed automatically. Fifteen
+`trs rewrite` so every command gets compressed automatically. Sixteen
 agents are supported end-to-end. See [`docs/development/agent-integrations.md`](../development/agent-integrations.md)
 for the full per-agent reference.
 
 ## Quick reference
 
 ```bash
-trs init --show                      # status of all 14 agents
+trs init --show                      # status of all 16 agents
 trs init --all --global              # install for every detected agent
 trs init <agent>                     # install for one: claude, gemini, cursor, …
 trs init --all --global --dry-run    # preview every file that would change
@@ -31,6 +31,7 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | Antigravity IDE | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Antigravity CLI (`agy`) | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Devin Desktop (ex-Windsurf) | Rules file | `.devin/rules/trs.md` (legacy: `.windsurfrules`); aliases `devin` / `devin-desktop` / `windsurf` / `cascade` |
+| Devin CLI | JSON hook | `~/.config/devin/config.json` (`--global`) / `.devin/config.json` (project), merged under `hooks` (matcher `exec`); aliases `devin-cli` / `devin-terminal` / `dcli` |
 | VS Code Copilot | JSON hook (agent hooks preview) | `.github/hooks/trs.json` (project) / `~/.copilot/hooks/trs.json` (`--global`); aliases `vscode` / `vs-code` / `copilot` / `vscode-copilot` / `code` |
 | OpenClaw | JS plugin + config enable | `~/.openclaw/plugins/trs/` (`openclaw.plugin.json` + `index.js`) + enable entry in `~/.openclaw/openclaw.json`; aliases `openclaw` / `claw`; global only |
 | Hermes | Python plugin + config enable | `~/.hermes/plugins/trs-rewrite/` (`__init__.py` + `plugin.yaml`) + `plugins.enabled` entry in `~/.hermes/config.yaml` (`HERMES_HOME` overrides the home dir); aliases `hermes` / `hermes-agent`; global only |

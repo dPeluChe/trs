@@ -119,6 +119,17 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 - [x] **Zed (Agent Panel)** — rules-only via AGENTS.md (native agent has no
   tool hooks, zed#52688); ACP external agents covered transitively. ACP
   interception tracked separately under Research.
+- [x] **Devin CLI ("Devin for Terminal", Cognition) — 16th agent, real
+  programmatic hook** (`trs init devin-cli` — hook merged under the `hooks`
+  key of `~/.config/devin/config.json` global / `.devin/config.json` project,
+  matcher `exec`, command `trs rewrite --caller devin-cli`; preserves existing
+  config; aliases `devin-terminal` / `dcli`). Distinct product from Devin
+  Desktop (rules-only). **updatedInput live-validation pending:** docs confirm
+  `decision`/`permissionDecision`+`additionalContext` but not
+  `hookSpecificOutput.updatedInput`; shipped optimistically (2026-07 research),
+  harmless no-op if ignored. Dedicated install needed because Devin's
+  `.claude/settings.json` fallback uses matcher `Bash`, which never matches
+  Devin's `exec` tool.
 
 ### Evaluated — no dedicated integration needed
 

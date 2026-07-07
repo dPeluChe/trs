@@ -171,6 +171,10 @@ fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
         AiTool::Zed => {
             v.push(PathBuf::from("AGENTS.md"));
         }
+        AiTool::DevinCLI => {
+            push_home(&mut v, ".config/devin/config.json");
+            v.push(PathBuf::from(".devin/config.json"));
+        }
     }
     // Dedup: when cwd coincidentally equals $HOME the same path gets
     // pushed twice — keeps the report clean.
