@@ -133,8 +133,14 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
             let shown = crate::path_display::tilde(&path);
             if batch {
                 // One aligned row; the summary line + restart note are printed
-                // once by install_all.
-                agent_row('+', tool.name(), &shown);
+                // once by install_all, which also prints the write root — so
+                // drop the shared `~/` prefix here to avoid repeating it.
+                let row = if opts.global {
+                    shown.strip_prefix("~/").unwrap_or(&shown)
+                } else {
+                    &shown
+                };
+                agent_row('+', tool.name(), row);
                 if !opts.dry_run {
                     install_trs_md_for(tool, true);
                 }
@@ -204,7 +210,14 @@ pub(crate) fn install_all(opts: InstallOpts) {
     let mut configured = 0;
     let mut skipped = 0;
 
-    println!("trs init — {} agents\n", tools.len());
+    // Announce the write root once so per-agent rows don't repeat the
+    // shared `~/` (global) or `./` (project) prefix on every line.
+    println!("trs init — {} agents", tools.len());
+    if opts.global {
+        println!("  writing to ~/  (global)\n");
+    } else {
+        println!("  writing to ./  (this project)\n");
+    }
 
     for tool in &tools {
         if check_tool(tool) {
