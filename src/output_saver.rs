@@ -137,9 +137,16 @@ pub(crate) use crate::output_saver_core::{
 };
 
 /// Entry point called from main.rs. Modes are mutually exclusive —
-/// `--print` wins, then `--remove`, then `--refresh`, then
-/// `--install`; default is a read-only scan.
-pub(crate) fn run(agent: Option<&str>, install: bool, remove: bool, print: bool, refresh: bool) {
+/// `--print` wins, then `--verify`, `--remove`, `--refresh`, `--install`;
+/// default is a read-only scan.
+pub(crate) fn run(
+    agent: Option<&str>,
+    install: bool,
+    remove: bool,
+    print: bool,
+    refresh: bool,
+    verify: bool,
+) {
     if print {
         println!("{}", BLOCK);
         return;
@@ -149,6 +156,11 @@ pub(crate) fn run(agent: Option<&str>, install: bool, remove: bool, print: bool,
         Some(a) => vec![a],
         None => AGENTS.iter().map(|a| a.id).collect(),
     };
+
+    if verify {
+        run_verify(&targets);
+        return;
+    }
 
     if remove {
         run_remove(&targets);
@@ -166,6 +178,67 @@ pub(crate) fn run(agent: Option<&str>, install: bool, remove: bool, print: bool,
     }
 
     run_scan(&targets);
+}
+
+/// `--verify`: per-agent, does the installed block byte-match the current
+/// canonical text? This is the "did every agent pick up the skill?" check —
+/// stronger than the scan, which only asks "is *something* installed". Exits
+/// non-zero when any agent has **drifted** (stale block) so it can gate a
+/// post-upgrade check in scripts/CI. Not-installed / not-detected are not
+/// failures — the user simply hasn't opted in there.
+fn run_verify(targets: &[&str]) {
+    use crate::output_saver_core::{verify_agent, VerifyStatus};
+    println!("trs output-saver — verify\n");
+    let (mut loaded, mut drifted, mut not_installed, mut other) = (0, 0, 0, 0);
+
+    for id in targets {
+        let display = agent_display(id);
+        match verify_agent(id) {
+            VerifyStatus::Ok => {
+                println!("  + {:<18}  loaded (matches canonical)", display);
+                loaded += 1;
+            }
+            VerifyStatus::Drifted => {
+                println!(
+                    "  ~ {:<18}  drifted — run `trs output-saver --refresh`",
+                    display
+                );
+                drifted += 1;
+            }
+            VerifyStatus::NotInstalled => {
+                println!("  . {:<18}  not installed", display);
+                not_installed += 1;
+            }
+            VerifyStatus::NotDetected => {
+                println!("  - {:<18}  not detected", display);
+                other += 1;
+            }
+            VerifyStatus::Unsupported => {
+                println!("  ~ {:<18}  unsupported (no global rules target)", display);
+                other += 1;
+            }
+        }
+    }
+
+    println!();
+    println!(
+        "  {} loaded · {} drifted · {} not installed · {} n/a",
+        loaded, drifted, not_installed, other
+    );
+    if drifted > 0 {
+        println!();
+        println!(
+            "  {} agent(s) have a stale block. Run `trs output-saver --refresh` \
+             to update them to the current rules.",
+            drifted
+        );
+        // Non-zero so post-upgrade scripts can catch drift.
+        std::process::exit(1);
+    }
+    if loaded == 0 {
+        println!();
+        println!("  Nothing loaded yet. `trs output-saver --install` adds the block.");
+    }
 }
 
 fn agent_display(id: &str) -> &'static str {

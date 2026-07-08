@@ -11,12 +11,21 @@ agent's global config so those replies come back tighter.
 ## Quick reference
 
 ```bash
-trs output-saver                 # read-only scan of all 9 agents
+trs output-saver                 # read-only scan of all agents
 trs output-saver --install       # write to every detected agent
 trs output-saver <agent> --install  # scope to one
+trs output-saver --verify        # per-agent: block matches current canonical?
+trs output-saver --refresh       # re-write the block where it's already present
 trs output-saver --remove        # clean uninstall
 trs output-saver --print         # dump the block to stdout (pipe-friendly)
 ```
+
+`--verify` is the post-upgrade check: it confirms each agent's installed
+block **byte-matches the current canonical text**, so you know every agent
+picked up new rules after `trs upgrade`. It prints per-agent
+`loaded` / `drifted` / `not installed` and **exits non-zero if any agent
+drifted** (stale block — run `--refresh`), so it can gate a script or CI
+step. `trs doctor` surfaces the same drift signal inline.
 
 ## What the block says
 

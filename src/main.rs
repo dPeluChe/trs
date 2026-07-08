@@ -232,8 +232,16 @@ fn run() {
             remove,
             print,
             refresh,
+            verify,
         }) => {
-            output_saver::run(tool.as_deref(), *install, *remove, *print, *refresh);
+            output_saver::run(
+                tool.as_deref(),
+                *install,
+                *remove,
+                *print,
+                *refresh,
+                *verify,
+            );
         }
         Some(Commands::Upgrade {
             check,

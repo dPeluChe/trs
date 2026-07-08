@@ -189,6 +189,13 @@ pub enum Commands {
         /// surprising users who haven't opted in.
         #[arg(long)]
         refresh: bool,
+
+        /// Verify each agent's installed block byte-matches the current
+        /// canonical text. Reports per-agent: loaded / drifted (stale —
+        /// run --refresh) / not installed. Use after `trs upgrade` to
+        /// confirm every agent picked up the new rules.
+        #[arg(long)]
+        verify: bool,
     },
 
     /// Benchmark a command showing compression metrics

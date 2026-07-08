@@ -138,3 +138,36 @@ fn install_inline_file_is_idempotent() {
     );
     fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn verify_agent_reports_loaded_drifted_and_not_installed() {
+    // Backs `trs output-saver --verify`: Ok when the installed block matches
+    // the current canonical, Drifted when it's stale, NotInstalled otherwise.
+    let dir = std::env::temp_dir().join("trs_os_verify_states");
+    let _ = fs::remove_dir_all(&dir);
+    let home = dir.join("home");
+    fs::create_dir_all(&home).unwrap();
+
+    // Nothing installed yet.
+    assert!(matches!(
+        verify_agent_with_home("claude", Some(&home)),
+        VerifyStatus::NotInstalled | VerifyStatus::NotDetected
+    ));
+
+    // Fresh install matches canonical → Ok.
+    install_agent_with_home("claude", Some(&home)).unwrap();
+    assert!(matches!(
+        verify_agent_with_home("claude", Some(&home)),
+        VerifyStatus::Ok
+    ));
+
+    // Corrupt the trs.md so it no longer matches → Drifted.
+    let saver = home.join(".claude/trs.md");
+    fs::write(&saver, "stale hand-edited content\n").unwrap();
+    assert!(matches!(
+        verify_agent_with_home("claude", Some(&home)),
+        VerifyStatus::Drifted
+    ));
+
+    fs::remove_dir_all(&dir).ok();
+}
