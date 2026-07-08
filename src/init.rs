@@ -28,15 +28,28 @@ pub(crate) struct InstallOpts {
 
 pub(crate) use crate::ai_tool::{AiTool, HookSpec};
 
-/// Install hooks for the specified tool.
-pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
+/// Column width for the agent-name field in aligned `--all` / refresh output.
+const AGENT_COL: usize = 20;
+
+/// Print one aligned status row: `  <sym> <name>        <detail>`. Keeps the
+/// batch install/refresh output scannable — one line per agent, columns lined
+/// up, no repeated boilerplate.
+fn agent_row(sym: char, name: &str, detail: &str) {
+    println!("  {} {:<width$}  {}", sym, name, detail, width = AGENT_COL);
+}
+
+/// Install hooks for the specified tool. `batch` = true when called from
+/// `install_all`: emits a single aligned row and suppresses the per-agent
+/// "restart" note (printed once at the end) so `trs init --all` stays
+/// readable. Returns whether the hook was installed/refreshed successfully.
+pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> bool {
     // Pre-install: detect competing compressor hooks (rtk, token-optimizer).
     // Default is to abort — --replace scrubs known competitors before the
     // install proceeds, --force installs anyway and eats the risk.
     let collisions = init_collision::detect(tool, opts.global);
     if !collisions.is_empty() && !opts.force && !opts.replace {
         eprintln!("{}", init_collision::format_report(tool, &collisions));
-        return;
+        return false;
     }
     if !collisions.is_empty() && opts.replace && !init_collision::any_hook_collisions(&collisions) {
         // --replace has no automatic cleanup for text-file rules collisions;
@@ -46,7 +59,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
             "note: --replace only scrubs JSON hook entries automatically.\n\
              The rules-file collisions above need manual edits."
         );
-        return;
+        return false;
     }
 
     // With --replace, scrub every distinct JSON location we flagged. Our
@@ -82,12 +95,14 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
         AiTool::Codex => install_codex_agents(opts),
         AiTool::Zed => {
             if opts.global {
+                // Standalone `trs init zed --global` lands here; the batch path
+                // (install_all) short-circuits Zed+global to a compact row.
                 eprintln!(
                     "Zed reads the project AGENTS.md — global personal-instructions location \
                      not yet verified; installing would be a no-op. Run without --global in \
                      each project."
                 );
-                return;
+                return false;
             }
             install_zed_agents(opts)
         }
@@ -115,45 +130,75 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts) {
 
     match result {
         Ok(path) => {
-            let verb = if opts.dry_run {
-                "would install"
-            } else {
-                "installed"
-            };
-            println!("trs hook {} for {} at {}", verb, tool.name(), path);
-            if !opts.dry_run {
-                eprintln!(
-                    "note: restart any open {} sessions for the hook to take effect",
-                    tool.name()
-                );
-                // Warn if trs is not in PATH
-                if !is_trs_in_path() {
-                    eprintln!(
-                        "warning: 'trs' not found in PATH. The hook may fail silently.\n\
-                         Make sure trs is installed: npm install -g @dpeluche/trs\n\
-                         (or cargo install trs-cli, or curl-sh script — see README)"
-                    );
+            let shown = crate::path_display::tilde(&path);
+            if batch {
+                // One aligned row; the summary line + restart note are printed
+                // once by install_all, which also prints the write root — so
+                // drop the shared `~/` prefix here to avoid repeating it.
+                let row = if opts.global {
+                    shown.strip_prefix("~/").unwrap_or(&shown)
+                } else {
+                    &shown
+                };
+                agent_row('+', tool.name(), row);
+                if !opts.dry_run {
+                    install_trs_md_for(tool, true);
                 }
-                // For Imported agents (Claude, Gemini): also write trs.md so the
-                // agent config gets both the hook and the output-saver/input-rewrite rules.
-                install_trs_md_for(tool);
+            } else {
+                let verb = if opts.dry_run {
+                    "would install"
+                } else {
+                    "installed"
+                };
+                println!("trs hook {} for {} at {}", verb, tool.name(), shown);
+                if !opts.dry_run {
+                    eprintln!(
+                        "note: restart any open {} sessions for the hook to take effect",
+                        tool.name()
+                    );
+                    // Warn if trs is not in PATH
+                    if !is_trs_in_path() {
+                        eprintln!(
+                            "warning: 'trs' not found in PATH. The hook may fail silently.\n\
+                             Make sure trs is installed: npm install -g @dpeluche/trs\n\
+                             (or cargo install trs-cli, or curl-sh script — see README)"
+                        );
+                    }
+                    // For Imported agents (Claude, Gemini): also write trs.md so the
+                    // agent config gets both the hook and the output-saver/input-rewrite rules.
+                    install_trs_md_for(tool, false);
+                }
             }
+            true
         }
-        Err(e) => eprintln!("Failed to install hook for {}: {}", tool.name(), e),
+        Err(e) => {
+            if batch {
+                agent_row('!', tool.name(), &format!("error: {}", e));
+            } else {
+                eprintln!("Failed to install hook for {}: {}", tool.name(), e);
+            }
+            false
+        }
     }
 }
 
 /// Write `trs.md` (output-saver + input-rewrite rules) for agents that load
 /// it via an `@import` line (Claude Code, Gemini CLI). No-op for other agents.
-fn install_trs_md_for(tool: &AiTool) {
+fn install_trs_md_for(tool: &AiTool, quiet: bool) {
     let agent_id = match tool {
         AiTool::Claude => "claude",
         AiTool::Gemini => "gemini",
         _ => return,
     };
     match crate::output_saver::install_agent(agent_id) {
-        Ok(msg) => println!("  trs.md: {}", msg),
-        Err(e) => eprintln!("  note: trs.md install failed: {}", e),
+        // In batch mode the agent already has its own aligned row; the trs.md
+        // write is an implementation detail, so stay silent unless it fails.
+        Ok(msg) => {
+            if !quiet {
+                println!("  trs.md: {}", msg);
+            }
+        }
+        Err(e) => eprintln!("  note: trs.md install failed for {}: {}", tool.name(), e),
     }
 }
 
@@ -162,47 +207,60 @@ fn install_trs_md_for(tool: &AiTool) {
 pub(crate) fn install_all(opts: InstallOpts) {
     let tools = AiTool::all_tools();
     let mut installed = 0;
+    let mut configured = 0;
     let mut skipped = 0;
-    let mut undetected = 0;
+
+    // Announce the write root once so per-agent rows don't repeat the
+    // shared `~/` (global) or `./` (project) prefix on every line.
+    println!("trs init — {} agents", tools.len());
+    if opts.global {
+        println!("  writing to ~/  (global)\n");
+    } else {
+        println!("  writing to ./  (this project)\n");
+    }
 
     for tool in &tools {
         if check_tool(tool) {
-            println!("  + {} (already configured)", tool.name());
-            skipped += 1;
+            agent_row('+', tool.name(), "already configured");
+            configured += 1;
             // Ensure trs.md is present even when hooks are already wired up.
-            install_trs_md_for(tool);
+            install_trs_md_for(tool, true);
         } else if !tool.detect_installed() {
-            println!("  - {} (not detected on system, skipping)", tool.name());
-            undetected += 1;
-        } else {
-            install_hook(tool, opts);
+            agent_row('-', tool.name(), "not detected");
+            skipped += 1;
+        } else if matches!(tool, AiTool::Zed) && opts.global {
+            // Zed has no verified global target — a compact skip instead of
+            // the verbose per-tool message install_hook would otherwise print.
+            agent_row('~', tool.name(), "per-project only (run without --global)");
+            skipped += 1;
+        } else if install_hook(tool, opts, true) {
             installed += 1;
         }
     }
 
-    let installed_label = if opts.dry_run {
+    let verb = if opts.dry_run {
         "would install"
     } else {
         "installed"
     };
     println!(
-        "\n{} {}, {} already configured, {} skipped (not detected), {} total",
+        "\n  {} {} · {} already configured · {} skipped · {} total",
         installed,
-        installed_label,
+        verb,
+        configured,
         skipped,
-        undetected,
         tools.len()
     );
     if installed > 0 && !opts.dry_run {
-        eprintln!("note: restart any open AI tool sessions for hooks to take effect");
+        println!("  ↻ restart open agent sessions to load the new hooks");
     }
     if opts.dry_run {
-        eprintln!("note: dry-run — nothing was written. Re-run without --dry-run to apply.");
+        println!("  note: dry-run — nothing written. Re-run without --dry-run to apply.");
     }
     // When everything is already wired up, remind the user how to force
     // a refresh — template content can change between releases even
     // when the install marker ("trs rewrite") is already present.
-    if installed == 0 && skipped > 0 {
+    if installed == 0 && configured > 0 {
         println!();
         println!("All detected agents are already configured. If a new trs release");
         println!("ships hook template improvements, re-run with --force to overwrite");

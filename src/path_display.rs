@@ -17,6 +17,24 @@ pub(crate) fn display_path(path: &Path) -> String {
     normalize(&path.to_string_lossy())
 }
 
+/// Shorten a displayed path by collapsing the `$HOME` prefix to `~`, then
+/// normalizing separators. Presentation only — for user-facing CLI output
+/// (install/upgrade/doctor) where repeated `/Users/<name>/…` prefixes are
+/// pure noise. No-op when the path isn't under HOME.
+pub(crate) fn tilde(s: &str) -> String {
+    let s = normalize(s);
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .ok()
+        .map(|h| normalize(&h));
+    match home {
+        Some(h) if !h.is_empty() && s.starts_with(&h) => {
+            format!("~{}", &s[h.len()..])
+        }
+        _ => s,
+    }
+}
+
 /// Normalize an already-stringified path's separators to `/`.
 pub(crate) fn normalize(s: &str) -> String {
     #[cfg(windows)]
@@ -44,5 +62,21 @@ mod tests {
         assert_eq!(out, r"src\router\handlers");
         // Forward slashes are untouched on every platform.
         assert_eq!(normalize("src/router/handlers"), "src/router/handlers");
+    }
+
+    #[test]
+    fn tilde_collapses_home_prefix() {
+        use super::tilde;
+        let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"));
+        if let Ok(h) = home {
+            if !h.is_empty() {
+                assert_eq!(
+                    tilde(&format!("{h}/.gemini/settings.json")),
+                    "~/.gemini/settings.json"
+                );
+            }
+        }
+        // A path outside HOME is returned unchanged (separator-normalized).
+        assert_eq!(tilde("/etc/hosts"), "/etc/hosts");
     }
 }

@@ -144,14 +144,14 @@ pub(crate) fn print_report(checks: &[Check]) {
             CheckStatus::Fail => "\u{2717}", // ✗
         };
 
-        if check.hint.is_empty() {
-            println!("  {} {}", marker, check.detail);
-        } else {
-            println!("  {} {}  \u{2192} {}", marker, check.detail, check.hint);
-        }
-
+        // Status line stays short and scannable; the hint (often long) drops
+        // to its own indented `→` line below rather than trailing off-screen.
+        println!("  {} {}", marker, check.detail);
         for line in &check.sub {
-            println!("    {}", line);
+            println!("      {}", line);
+        }
+        if !check.hint.is_empty() {
+            println!("      \u{2192} {}", check.hint);
         }
     }
 

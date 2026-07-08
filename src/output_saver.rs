@@ -179,19 +179,19 @@ fn run_scan(targets: &[&str]) {
         let display = agent_display(id);
         match scan_agent(id) {
             Status::AlreadyInstalled => {
-                println!("  + {}  already installed", display);
+                println!("  + {:<18}  already installed", display);
                 already += 1;
             }
             Status::NotInstalled => {
-                println!("  . {}  not yet installed", display);
+                println!("  . {:<18}  not yet installed", display);
                 installable.push(*id);
             }
             Status::NotDetected => {
-                println!("  - {}  not detected on this system", display);
+                println!("  - {:<18}  not detected", display);
                 not_detected += 1;
             }
             Status::Unsupported { reason } => {
-                println!("  ~ {}  skipped ({})", display, reason);
+                println!("  ~ {:<18}  skipped ({})", display, reason);
                 unsupported += 1;
             }
         }
@@ -233,12 +233,12 @@ fn run_install(targets: &[&str]) {
         let display = agent_display(id);
         match scan_agent(id) {
             Status::NotDetected => {
-                println!("  - {}  skipped (not detected)", display);
+                println!("  - {:<18}  skipped (not detected)", display);
                 skipped += 1;
                 continue;
             }
             Status::Unsupported { reason } => {
-                println!("  ~ {}  skipped ({})", display, reason);
+                println!("  ~ {:<18}  skipped ({})", display, reason);
                 skipped += 1;
                 continue;
             }
@@ -246,7 +246,7 @@ fn run_install(targets: &[&str]) {
         }
         match install_agent(id) {
             Ok(msg) => {
-                println!("  + {}  {}", display, msg);
+                println!("  + {:<18}  {}", display, msg);
                 wrote += 1;
             }
             Err(e) => {
@@ -279,7 +279,7 @@ fn run_refresh(targets: &[&str]) {
         match scan_agent(id) {
             Status::AlreadyInstalled => match install_agent(id) {
                 Ok(msg) => {
-                    println!("  + {}  {}", display, msg);
+                    println!("  + {:<18}  {}", display, msg);
                     refreshed += 1;
                 }
                 Err(e) => {
@@ -318,13 +318,13 @@ fn run_remove(targets: &[&str]) {
         // Skip unsupported agents quietly — nothing to remove means no
         // failure. Only report real I/O errors via the Err arm.
         if let Status::Unsupported { reason } = scan_agent(id) {
-            println!("  ~ {}  skipped ({})", display, reason);
+            println!("  ~ {:<18}  skipped ({})", display, reason);
             skipped += 1;
             continue;
         }
         match remove_agent(id) {
             Ok(msg) => {
-                println!("  + {}  {}", display, msg);
+                println!("  + {:<18}  {}", display, msg);
                 removed += 1;
             }
             Err(e) => {

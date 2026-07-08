@@ -64,7 +64,9 @@ fn install_and_remove_imported_agent_roundtrip() {
     fs::create_dir_all(&home).unwrap();
 
     let res = install_agent_with_home("claude", Some(&home)).unwrap();
-    assert!(res.contains("CLAUDE.md"));
+    // Message now names just the trs.md it wrote (the @import into CLAUDE.md
+    // is verified behaviorally below); it no longer echoes the root config.
+    assert!(res.contains("trs.md"));
     let claude_md = home.join(".claude/CLAUDE.md");
     let saver = home.join(".claude/trs.md");
     assert!(claude_md.exists());
