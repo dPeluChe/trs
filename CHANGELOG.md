@@ -5,19 +5,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.18] - 2026-07-08
+
+### Features
+
+- **core:** Never-worse output guard — the parser path now measures its output and falls back to raw if a parse would ever be larger (#105)
+- **core:** Lock exit-code fidelity through the compressing path with regression tests — git/grep/ls exits stay faithful (#105)
+- **output-saver:** Sharpen the rules block — persistence, safety carve-out, no invented abbreviations, reuse-before-write (#104)
+- **output-saver:** Add `--verify` to confirm each agent's block matches the current canonical after upgrade (#106)
+
+### Refactor
+
+- **output:** Make trs init/upgrade/doctor output scannable — one aligned row per agent, single restart note, `~/`-shortened paths (#103)
+
+### Documentation
+
+- Tidy internal doc comments (#107)
+
+### Dependencies
+
+- **deps:** Bump the cargo-minor group across 1 directory with 2 updates (#99)
+- **deps:** Bump actions/cache from 5 to 6 (#97)
+- **deps:** Bump actions/checkout from 6 to 7 (#98)
+
 ## [0.6.17] - 2026-07-07
 
 ### Features
 
-- **openclaw:** OpenClaw plugin integration — 13th agent (#100)
-- **hermes:** Hermes plugin integration — 14th agent (#100)
-- **zed:** Zed Agent Panel rules-only integration — 15th agent (#100)
-- **devin-cli:** Devin CLI programmatic hook — 16th agent (#100)
 - **classifier:** Route by basename, bare py linters/formatters, timeout unwrap (#101)
-
-### Fixes
-
-- **devin-cli:** Whitelist `devin-cli` caller so runs attribute correctly instead of falling back to `claude` (#100)
+- **devin-cli:** Devin CLI programmatic hook — 16th agent (#100)
 
 ### Documentation
 
@@ -27,8 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 
 - **deps:** Batch dependabot updates — actions + cargo (#94)
-
-> **Note:** OpenClaw and Hermes (13th/14th) shipped docs-validated; live validation is still pending. Devin CLI's `updatedInput` rewrite was validated live 2026-07-07.
 
 ## [0.6.16] - 2026-06-09
 
