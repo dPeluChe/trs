@@ -1,6 +1,7 @@
 //! Output sink for parse handlers, so the compressing path can measure what a
 //! parser produced and enforce a **never-worse guard**: trs must never emit
-//! more bytes than the raw command output (rtk 0.43.0 `af81b08`). The parser
+//! more bytes than the raw command output (a guarantee similar output-
+//! compression tools also make). The parser
 //! handlers print through [`emit`]; normally that goes straight to stdout, but
 //! `execute_and_parse` wraps the parse in [`capture`] to get the formatted
 //! string, compare it against the raw output, and print whichever is smaller.

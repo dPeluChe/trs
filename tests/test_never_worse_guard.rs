@@ -1,5 +1,6 @@
-//! Never-worse output guard (rtk 0.43.0 `af81b08`): the compressing path must
-//! never emit MORE bytes than the raw command output. Generic compression
+//! Never-worse output guard (a guarantee similar output-compression tools
+//! also make): the compressing path must never emit MORE bytes than the raw
+//! command output. Generic compression
 //! already self-guards; these tests cover the *parser* path, where a dedicated
 //! parser can add summary/header overhead that exceeds a tiny raw output.
 
