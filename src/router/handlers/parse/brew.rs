@@ -23,7 +23,7 @@ impl ParseHandler {
         // Fail-open: brew crashes leak useful recovery info we don't want
         // to compress away (e.g. "Permission denied", Ruby stack traces).
         if super::super::common::output_has_failure_signal(&input) {
-            print!("{}", input);
+            crate::parse_out::emit(&input);
             if ctx.stats {
                 CommandStats::new()
                     .with_reducer("brew-passthrough")
@@ -80,7 +80,7 @@ impl ParseHandler {
             _ => format_brew_compact(&installed, &errors, &warnings),
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("brew")

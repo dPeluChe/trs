@@ -26,7 +26,7 @@ impl ParseHandler {
             _ => format_fmt_compact(&files, &input),
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("fmt")

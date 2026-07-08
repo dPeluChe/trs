@@ -59,7 +59,7 @@ impl ParseHandler {
                 out
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("tree")
@@ -114,7 +114,7 @@ impl ParseHandler {
                 out
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("docker-ps")
@@ -191,7 +191,7 @@ impl ParseHandler {
                 out
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("deps")
@@ -248,7 +248,7 @@ impl ParseHandler {
                 out
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("install")
@@ -270,7 +270,7 @@ impl ParseHandler {
         // fatal), don't let our signature/error extraction drop context the
         // user needs to debug. Pass through verbatim.
         if super::super::common::output_has_failure_signal(&input) {
-            print!("{}", input);
+            crate::parse_out::emit(&input);
             if ctx.stats {
                 CommandStats::new()
                     .with_reducer("build-passthrough")
@@ -400,7 +400,7 @@ impl ParseHandler {
                 out
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("build")
@@ -492,7 +492,7 @@ impl ParseHandler {
                 out
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("wc")

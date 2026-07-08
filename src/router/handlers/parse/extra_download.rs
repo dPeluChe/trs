@@ -16,7 +16,7 @@ impl ParseHandler {
         // to the body-content compressor and return early.
         if !looks_like_http_trace(&input) {
             let output = compress_http_body(&input);
-            print!("{}", output);
+            crate::parse_out::emit(&output);
             if ctx.stats {
                 let reducer = if output.len() == input.len() {
                     "curl-passthrough"
@@ -295,7 +295,7 @@ impl ParseHandler {
                 }
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("download")

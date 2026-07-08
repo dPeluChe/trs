@@ -32,7 +32,7 @@ impl ParseHandler {
             stats.print();
         }
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
 
         Ok(())
     }

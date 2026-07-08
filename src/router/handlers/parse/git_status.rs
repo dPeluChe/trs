@@ -41,7 +41,7 @@ impl ParseHandler {
                     .with_extra("Category", category.clone());
                 stats.print();
             }
-            print!("{}", output);
+            crate::parse_out::emit(&output);
         } else {
             // Format output based on the requested format
             let output = Self::format_git_status(&status, ctx.format);
@@ -62,7 +62,7 @@ impl ParseHandler {
                     .with_extra("Unmerged", status.unmerged_count.to_string());
                 stats.print();
             }
-            print!("{}", output);
+            crate::parse_out::emit(&output);
         }
 
         Ok(())
