@@ -384,10 +384,13 @@ fn install_agent_with_home(
                 fs::write(&root_path, updated)
                     .map_err(|e| format!("{}: {}", root_path.display(), e))?;
             }
+            // The `@import` line into the root config is an implementation
+            // detail — showing just the trs.md path keeps refresh output
+            // scannable (this same message repeats for every import-based
+            // agent, several of which share ~/.gemini/trs.md).
             Ok(format!(
-                "wrote {} and ensured {} imports it",
-                saver_path.display(),
-                root_path.display()
+                "wrote {}",
+                crate::path_display::tilde(&saver_path.display().to_string())
             ))
         }
         Target::RulesDir { path } => {
@@ -396,7 +399,10 @@ fn install_agent_with_home(
             }
             fs::write(&path, standalone_file())
                 .map_err(|e| format!("{}: {}", path.display(), e))?;
-            Ok(format!("wrote {}", path.display()))
+            Ok(format!(
+                "wrote {}",
+                crate::path_display::tilde(&path.display().to_string())
+            ))
         }
         Target::InlineFile { path } => {
             if let Some(parent) = path.parent() {
@@ -411,7 +417,10 @@ fn install_agent_with_home(
                 format!("{}{}", existing.trim_end(), sentinel_wrapped())
             };
             fs::write(&path, updated).map_err(|e| format!("{}: {}", path.display(), e))?;
-            Ok(format!("updated {}", path.display()))
+            Ok(format!(
+                "updated {}",
+                crate::path_display::tilde(&path.display().to_string())
+            ))
         }
     }
 }

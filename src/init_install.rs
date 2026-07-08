@@ -443,9 +443,9 @@ pub(crate) fn scrub_legacy_codex_hook(
     let pretty = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
     fs::write(path, format!("{}\n", pretty)).map_err(|e| e.to_string())?;
     println!(
-        "  scrubbed {} legacy trs hook entry/entries from {}",
+        "    scrubbed {} legacy trs entry/entries from {}",
         removed,
-        path.display()
+        crate::path_display::tilde(&path.display().to_string())
     );
     Ok(Some(format!(
         "scrubbed {} from {}",
