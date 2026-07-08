@@ -54,6 +54,7 @@ mod init_templates;
 mod init_templates_plugins;
 mod output_saver;
 mod output_saver_core;
+mod parse_out;
 mod path_display;
 #[allow(dead_code)]
 mod process;

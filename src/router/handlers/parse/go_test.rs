@@ -25,7 +25,7 @@ impl ParseHandler {
             _ => format_go_test_compact(&result),
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("go-test")

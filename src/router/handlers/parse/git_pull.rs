@@ -19,7 +19,7 @@ impl ParseHandler {
             || trimmed_input.eq_ignore_ascii_case("already up-to-date.")
         {
             let output = "already up to date\n".to_string();
-            print!("{}", output);
+            crate::parse_out::emit(&output);
             if ctx.stats {
                 CommandStats::new()
                     .with_reducer("git-pull")
@@ -125,7 +125,7 @@ impl ParseHandler {
             }
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("git-pull")

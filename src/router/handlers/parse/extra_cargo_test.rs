@@ -188,7 +188,7 @@ impl ParseHandler {
             }
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("cargo-test")

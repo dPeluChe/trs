@@ -39,7 +39,7 @@ impl ParseHandler {
             None => {
                 // Unrecognized header → passthrough. Keeps the handler
                 // honest on `ps -o pid,cmd` / non-BSD output / etc.
-                print!("{}", input);
+                crate::parse_out::emit(&input);
                 if ctx.stats {
                     CommandStats::new()
                         .with_reducer("ps-passthrough")
@@ -57,7 +57,7 @@ impl ParseHandler {
             _ => render_compact(&procs),
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
 
         if ctx.stats {
             CommandStats::new()

@@ -58,7 +58,7 @@ impl ParseHandler {
         // when there's nothing stack-shaped to fold, we stay out of
         // the way.
         if !input.contains("Traceback (most recent call last):") {
-            print!("{}", input);
+            crate::parse_out::emit(&input);
             if ctx.stats {
                 CommandStats::new()
                     .with_reducer("python-passthrough")
@@ -76,7 +76,7 @@ impl ParseHandler {
             _ => render_compact(&parsed),
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
 
         if ctx.stats {
             CommandStats::new()

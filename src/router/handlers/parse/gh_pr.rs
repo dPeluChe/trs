@@ -87,7 +87,7 @@ impl ParseHandler {
                 }
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("gh-pr")
@@ -159,7 +159,7 @@ impl ParseHandler {
                 }
             }
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("gh-issue")
@@ -258,7 +258,7 @@ impl ParseHandler {
             }
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("gh-pr-view")
@@ -383,7 +383,7 @@ impl ParseHandler {
             }
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("gh-pr-checks")

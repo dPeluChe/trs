@@ -52,7 +52,7 @@ impl ParseHandler {
             .to_string(),
             _ => render_compact(&current, &local, &remote),
         };
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("git-branch")

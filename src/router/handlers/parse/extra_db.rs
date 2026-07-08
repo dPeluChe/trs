@@ -385,7 +385,7 @@ impl ParseHandler {
             _ => Self::format_db_compact(&result),
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("db")

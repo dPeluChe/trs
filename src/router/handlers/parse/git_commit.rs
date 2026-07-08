@@ -23,7 +23,7 @@ impl ParseHandler {
             _ => format_git_commit_compact(&result, &input),
         };
 
-        print!("{}", output);
+        crate::parse_out::emit(&output);
         if ctx.stats {
             CommandStats::new()
                 .with_reducer("git-commit")

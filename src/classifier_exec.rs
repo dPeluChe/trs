@@ -115,12 +115,12 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             return;
         }
 
-        out_bytes = (in_bytes as f64 * ratio).max(1.0) as usize;
-
-        // Tier 1: Try parser
+        // Tier 1: Try parser. Its output is captured (not streamed) so we can
+        // measure it and enforce the never-worse guard below.
         let router = Router::new();
         let tmpdir = std::env::temp_dir();
         let tmpfile = tmpdir.join(format!("trs_pipe_{}.tmp", std::process::id()));
+        let mut parsed = String::new();
         let parse_ok = if std::fs::write(&tmpfile, stdout_ref.as_bytes()).is_ok() {
             let parser_with_file = parser.with_file(tmpfile.clone());
             let parse_cmd = Commands::Parse {
@@ -128,23 +128,34 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             };
 
             // Capture parser panics/errors — fallback to passthrough
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                router.route(&parse_cmd, ctx)
-            }));
+            let mut ok = false;
+            parsed = crate::parse_out::capture(|| {
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    router.route(&parse_cmd, ctx)
+                }));
+                ok = matches!(result, Ok(Ok(())));
+            });
 
             let _ = std::fs::remove_file(&tmpfile);
-
-            match result {
-                Ok(Ok(())) => true,  // Tier 1: Full — parser succeeded
-                Ok(Err(_)) => false, // Tier 3: Parser returned error
-                Err(_) => false,     // Tier 3: Parser panicked
-            }
+            ok
         } else {
             false
         };
 
-        // Tier 3: Passthrough with truncation (parser failed)
-        if !parse_ok {
+        if parse_ok {
+            // Never-worse guard: a parser must never make output larger than
+            // the raw command output. If it somehow did (degenerate/tiny
+            // input, header overhead), emit the raw instead. Ties go to raw —
+            // no point spending a parse when it didn't save anything.
+            if parsed.len() < stdout_ref.len() {
+                print!("{}", parsed);
+                out_bytes = parsed.len();
+            } else {
+                print!("{}", stdout_ref);
+                out_bytes = stdout_ref.len();
+            }
+        } else {
+            // Tier 3: Passthrough with truncation (parser failed)
             let passthrough_max = crate::config::config().limits.passthrough_max_chars;
             let truncated = if stdout_ref.len() > passthrough_max {
                 let cut = &stdout_ref[..passthrough_max];
