@@ -40,6 +40,9 @@ macro_rules! output_saver_block_literal {
     () => {
         r#"## Output saver — keep replies cheap
 
+These hold for every reply, not just the first — don't drift back to
+preambles and filler over a long session.
+
 Keep replies under ~100 words unless the task needs more. Between tool
 calls, stay under ~25 words. Match shape to task — a one-line question
 gets a one-line answer, no headers.
@@ -52,10 +55,15 @@ Open with the answer or the diff. End when the answer ends.
   already shows.
 - Structured output when the data is structured: bullets, tables, JSON.
   Prose only when the reader is human and the content is narrative.
+- Don't invent abbreviations (cfg/impl/req/res) or causal arrows (→): the
+  tokenizer splits them like the full word — nothing saved, clarity lost.
 - Never invent file paths, function names, or API fields. If unknown,
   say "UNKNOWN" or return null — guessing costs more tokens than asking.
-- One pass: don't iterate on passing code, don't refactor / polish unless
-  asked.
+- Full clarity, never compressed, for security warnings, irreversible or
+  destructive confirmations, and any multi-step order a misread would break.
+- In code: reuse what's already here — a helper, type, or pattern a few
+  files over beats re-implementing it. One pass: don't iterate on passing
+  code, don't refactor / polish unless asked.
 - In code: no comments by default. If one is truly needed, write a terse
   reference note for the WHY (not a walkthrough) — at most 3 lines and
   ~200 characters total. Never paragraph docstrings or restating the code.

@@ -35,9 +35,19 @@ Eight directives, roughly 250 tokens total. The exact text:
 - **Structured output when the data is structured.** Bullets, tables,
   JSON — prose only when the reader is human and the content is
   narrative.
+- **Persistence.** The rules hold for every reply, not just the first —
+  agents drift back to preambles over a long session unless reminded.
+- **No invented abbreviations or causal arrows.** `cfg/impl/req/res` and
+  `→` split into the same tokens as the full word, so they save nothing
+  and cost clarity.
 - **Never invent file paths, function names, or API fields.** If
   unknown, return `UNKNOWN` or `null` — guessing costs more tokens
   than asking.
+- **Full clarity, never compressed, on safety.** Security warnings,
+  irreversible/destructive confirmations, and any multi-step order a
+  misread would break stay verbatim-clear.
+- **Reuse before re-implementing.** A helper, type, or pattern already
+  a few files over beats writing a new one.
 - **One pass.** Don't iterate on passing code, don't refactor or
   polish unless asked.
 - **Code comments: none by default.** One short line max if the WHY
@@ -83,8 +93,15 @@ classes of sources informed each rule:
 | Tool output speaks for itself | Pink-elephant rewrite | Positive form of old "No narration" |
 | Structured when data is structured | Carryover from v0.5 | Internal opinion |
 | Never invent | Carryover from v0.5 | Common LLM hallucination guard |
+| Persistence | [caveman][cav] SKILL ("ACTIVE EVERY RESPONSE, no filler drift") | Counters verbosity regression over long sessions |
+| No invented abbreviations / arrows | [caveman][cav] SKILL | Non-obvious tokenizer insight — `cfg/impl` split like the full word |
+| Full clarity on safety | [caveman][cav] auto-clarity + [ponytail][pony] "when NOT to be lazy" | Guards against dangerous over-compression |
+| Reuse before re-implementing | [ponytail][pony] ladder rung 2 ("the most common slop") | Code-quality lift |
 | One pass | Carryover from v0.5 | Internal opinion |
 | Code comments: none by default | Claude Code system prompt | Direct lift; addresses a known bloat source agents emit |
+
+[cav]: https://github.com/juliusbrussee/caveman
+[pony]: https://github.com/DietrichGebert/ponytail
 
 ### What was deliberately NOT added
 
