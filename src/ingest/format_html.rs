@@ -580,6 +580,28 @@ pub(super) fn format_html(
     };
     let dead_count = if flagged_ratio > 0.40 { 0 } else { dead.len() };
 
+    // --- near-duplicate functions (MinHash+LSH over token shingles) ---
+    let dupes = super::dupes::find_dupes(&real);
+    let dup_count = dupes.len();
+    let dup_rows = if dupes.is_empty() {
+        r#"<div class="rows"><div class="row"><span class="p">No near-duplicate functions found.</span></div></div>"#.to_string()
+    } else {
+        let rows = dupes
+            .iter()
+            .take(16)
+            .map(|d| {
+                format!(
+                    r#"<div class="row"><span class="p">{} <span style="color:var(--faint)">≈</span> {}</span><span class="loc">{:.0}%</span></div>"#,
+                    esc(&d.a),
+                    esc(&d.b),
+                    d.sim * 100.0
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!(r#"<div class="rows">{}</div>"#, rows)
+    };
+
     // --- oversized files ---
     let mut over: Vec<&&DigestFile> = real.iter().filter(|f| f.loc > max_loc).collect();
     over.sort_by_key(|f| std::cmp::Reverse(f.loc));
@@ -636,6 +658,12 @@ pub(super) fn format_html(
         format!(r#"<span class="pill warn">{} modules</span>"#, dead_count)
     } else {
         r#"<span class="pill good">clean</span>"#.to_string()
+    };
+    let dup_class = if dup_count > 0 { "warn" } else { "" };
+    let dup_pill = if dup_count > 0 {
+        format!(r#"<span class="pill warn">{} pairs</span>"#, dup_count)
+    } else {
+        r#"<span class="pill good">none</span>"#.to_string()
     };
 
     let body = format!(
@@ -702,6 +730,15 @@ pub(super) fn format_html(
   </section>
 
   <section>
+    <div class="h"><h2>Duplicate functions</h2><span class="tag">MinHash · ≥80% similar</span></div>
+    <p class="lead">Function pairs whose structure is near-identical after masking names, strings and numbers — copy-paste candidates to unify. Structural fingerprint, so renamed clones still match.</p>
+    <div class="card {dupclass}">
+      <h3><span class="dot warn"></span>Near-duplicate pairs {duppill}</h3>
+{duphtml}
+    </div>
+  </section>
+
+  <section>
     <div class="h"><h2>Assets &amp; binaries</h2><span class="tag">{acount} files · {abytes}</span></div>
     <p class="lead">Images, media, fonts and other binaries — skipped by the code digest but real weight in the repo. Heaviest files listed.</p>
     <div class="card">
@@ -732,6 +769,9 @@ pub(super) fn format_html(
         deadclass = dead_class,
         deadpill = dead_pill,
         deadhtml = dead_html,
+        dupclass = dup_class,
+        duppill = dup_pill,
+        duphtml = dup_rows,
         acount = asset_count,
         abytes = human_bytes(asset_bytes),
         assets = assets_html,

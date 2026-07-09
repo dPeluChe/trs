@@ -15,6 +15,7 @@ mod collect_index;
 mod collect_manifests;
 mod deps;
 mod deps_extract;
+mod dupes;
 mod format;
 mod format_html;
 mod format_tree;
