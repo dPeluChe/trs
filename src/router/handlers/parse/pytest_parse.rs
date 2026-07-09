@@ -320,10 +320,8 @@ impl ParseHandler {
                 ("XFAIL", &line[..pos])
             } else if let Some(pos) = line.find(" XPASS [") {
                 ("XPASS", &line[..pos])
-            } else if let Some(pos) = line.find(" ERROR [") {
-                ("ERROR", &line[..pos])
             } else {
-                return None;
+                ("ERROR", &line[..line.find(" ERROR [")?])
             }
         };
 
