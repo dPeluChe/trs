@@ -282,13 +282,13 @@ already build** — no new deps.
   directory so multi-root layouts don't collapse the graph).
 
 **Next — copy from codebase-memory-mcp (all on the existing graph, zero AST):**
-- [ ] **Purpose layer (do first — biggest win).** Port `classify_layer`
+- [x] **Purpose layer.** Port `classify_layer`
   (`store.c:4485`): label each module `entry / api / core / leaf / internal`
   from fan-in/fan-out, with an auto reason ("high fan-in: 42 in, 3 out"). Add
   fan-in **hotspots** and optional **Louvain clustering** (natural subsystems).
   Plus an **"About" block** (README H1 + first para, manifest `description`,
   `//!`/docstring module purpose). Surface in BOTH the md digest and `--html`.
-- [ ] **Module-level dead code, done right (no more 105 false positives).**
+- [x] **Module-level dead code, done right (no more 105 false positives).**
   Apply their trust rules at directory/module granularity: **behavioral root**
   (no inbound imports + has outbound = entry point, keep) → only *no-in + no-out
   = candidate*; whitelist tests/`main`/`lib`/exports first; fail-safe
@@ -296,7 +296,7 @@ already build** — no new deps.
 - [ ] **Symbol/function-level dead code = defer to language tools.** Don't fake
   it without AST. Optionally shell out to `cargo`/`knip`/`vulture` and surface
   their result, or just print a one-liner pointing the user there.
-- [ ] **Duplicate-function detection (nice-to-have).** MinHash+LSH over
+- [x] **Duplicate-function detection.** MinHash+LSH over
   **token-shingles** (normalize identifiers/strings/numbers → placeholders),
   per function; needs only a function-boundary scanner, not a grammar. Threshold
   ~0.8 to catch diverged clones (the npm/pnpm/bun parsers). `SIMILAR_TO` list.
