@@ -329,7 +329,13 @@ fn extract_signatures(content: &str, ext: &str) -> String {
                             || t.contains("= defineTable("))
             }
             "rs" => {
+                // `pub(` catches visibility-qualified items — `pub(crate) fn`,
+                // `pub(super) struct`, `pub(in …)` — which a plain `pub ` prefix
+                // check misses. This codebase is heavily `pub(crate)`, so without
+                // it ~500 real symbols (incl. `execute_and_parse`) never make the
+                // digest.
                 t.starts_with("pub ")
+                    || t.starts_with("pub(")
                     || t.starts_with("fn ")
                     || is_class
                     || t.starts_with("mod ")
@@ -358,6 +364,7 @@ fn extract_signatures(content: &str, ext: &str) -> String {
             _ => {
                 t.starts_with("export ")
                     || t.starts_with("pub ")
+                    || t.starts_with("pub(")
                     || t.starts_with("fn ")
                     || t.starts_with("def ")
                     || t.starts_with("class ")
@@ -476,8 +483,8 @@ fn clean_signature(line: &str) -> String {
         }
     }
 
-    // Strip struct field declarations (pub id: String, etc.)
-    if s.starts_with("pub ")
+    // Strip struct field declarations (pub id: String, pub(crate) id: …, etc.)
+    if (s.starts_with("pub ") || s.starts_with("pub("))
         && s.contains(": ")
         && !s.contains("fn ")
         && !s.contains("async ")
