@@ -147,6 +147,50 @@ fn truncate(s: &str, max: usize) -> String {
     }
 }
 
+/// Source-code extensions — the orphan/isolated heuristic only considers code
+/// (a stray `.md`/`.json` module isn't "dead code").
+fn is_code(rel: &str) -> bool {
+    let ext = Path::new(rel)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    matches!(
+        ext.as_str(),
+        "rs" | "py"
+            | "ts"
+            | "tsx"
+            | "js"
+            | "jsx"
+            | "mjs"
+            | "cjs"
+            | "go"
+            | "rb"
+            | "java"
+            | "kt"
+            | "swift"
+            | "c"
+            | "cc"
+            | "cpp"
+            | "h"
+            | "hpp"
+            | "cs"
+            | "php"
+            | "vue"
+            | "svelte"
+            | "scala"
+    )
+}
+
+/// A module's leaf name is a conventional entry point (legitimately un-imported).
+fn is_entry_module(m: &str) -> bool {
+    let last = m.rsplit('/').next().unwrap_or(m);
+    matches!(
+        last,
+        "main" | "lib" | "index" | "cli" | "app" | "bin" | "server" | "cmd"
+    )
+}
+
 fn esc(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -477,6 +521,65 @@ pub(super) fn format_html(
         .collect::<Vec<_>>()
         .join("");
 
+    // --- isolated / possibly-dead modules (module-level, import-edge based) ---
+    // A CODE module with zero import edges (neither imports nor is imported) is
+    // unreachable via imports → likely dead or standalone. This is trustworthy
+    // at DIRECTORY granularity (unlike symbol-level, which needs AST): entry
+    // points and single-file roots are excluded, and if an implausible share is
+    // flagged the resolver likely failed for this language, so we suppress.
+    let mut code_mods: HashMap<String, (usize, usize)> = HashMap::new();
+    for f in &real {
+        if is_code(&f.rel_path) {
+            let e = code_mods.entry(module_of(&f.rel_path)).or_default();
+            e.0 += 1;
+            e.1 += f.loc;
+        }
+    }
+    let connected: std::collections::HashSet<&str> = in_deg
+        .keys()
+        .chain(out_deg.keys())
+        .map(|s| s.as_str())
+        .collect();
+    let mut dead: Vec<(&String, usize, usize)> = code_mods
+        .iter()
+        .filter(|(m, _)| {
+            !connected.contains(m.as_str())
+                && !is_entry_module(m)
+                && !m.to_lowercase().contains("test")
+        })
+        .map(|(m, (fc, loc))| (m, *fc, *loc))
+        .collect();
+    dead.sort_by_key(|(_, _, loc)| std::cmp::Reverse(*loc));
+    let code_mod_total = code_mods.len().max(1);
+    let flagged_ratio = dead.len() as f64 / code_mod_total as f64;
+    // Confidence gate: >40% flagged means import resolution didn't work for this
+    // language (aliases, dynamic imports, mod-wiring) — don't cry wolf.
+    let dead_html = if flagged_ratio > 0.40 {
+        format!(
+            r#"<p class="note">Import resolution looks incomplete for this project ({} of {} code modules had no resolved edges) — skipping to avoid false positives. This heuristic is reliable where imports resolve cleanly (e.g. Rust/Go).</p>"#,
+            dead.len(),
+            code_mod_total
+        )
+    } else if dead.is_empty() {
+        r#"<div class="rows"><div class="row"><span class="p">Every code module is connected — nothing isolated.</span></div></div>"#.to_string()
+    } else {
+        let rows = dead
+            .iter()
+            .take(14)
+            .map(|(m, fc, loc)| {
+                format!(
+                    r#"<div class="row"><span class="p">{}</span><span class="loc">{} files · {} LOC</span></div>"#,
+                    esc(m),
+                    fc,
+                    loc
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!(r#"<div class="rows">{}</div>"#, rows)
+    };
+    let dead_count = if flagged_ratio > 0.40 { 0 } else { dead.len() };
+
     // --- oversized files ---
     let mut over: Vec<&&DigestFile> = real.iter().filter(|f| f.loc > max_loc).collect();
     over.sort_by_key(|f| std::cmp::Reverse(f.loc));
@@ -525,6 +628,12 @@ pub(super) fn format_html(
     let over_class = if over_count > 0 { "warn" } else { "" };
     let over_pill = if over_count > 0 {
         format!(r#"<span class="pill warn">{} files</span>"#, over_count)
+    } else {
+        r#"<span class="pill good">clean</span>"#.to_string()
+    };
+    let dead_class = if dead_count > 0 { "warn" } else { "" };
+    let dead_pill = if dead_count > 0 {
+        format!(r#"<span class="pill warn">{} modules</span>"#, dead_count)
     } else {
         r#"<span class="pill good">clean</span>"#.to_string()
     };
@@ -584,6 +693,15 @@ pub(super) fn format_html(
   </section>
 
   <section>
+    <div class="h"><h2>Isolated modules</h2><span class="tag">module-level · import graph</span></div>
+    <p class="lead">Code folders with no import edge in or out — unreachable via imports, so likely dead or standalone. This is a <b style="color:var(--ink)">module-level</b> heuristic. <b style="color:var(--ink)">Symbol/function-level</b> dead code needs the language's own tool (<code style="font-family:var(--mono)">cargo</code>/<code style="font-family:var(--mono)">knip</code>/<code style="font-family:var(--mono)">vulture</code>) — import edges can't see method calls, trait impls or macros.</p>
+    <div class="card {deadclass}">
+      <h3><span class="dot warn"></span>Unreachable-via-imports {deadpill}</h3>
+{deadhtml}
+    </div>
+  </section>
+
+  <section>
     <div class="h"><h2>Assets &amp; binaries</h2><span class="tag">{acount} files · {abytes}</span></div>
     <p class="lead">Images, media, fonts and other binaries — skipped by the code digest but real weight in the repo. Heaviest files listed.</p>
     <div class="card">
@@ -611,6 +729,9 @@ pub(super) fn format_html(
         overclass = over_class,
         overpill = over_pill,
         overrows = over_rows,
+        deadclass = dead_class,
+        deadpill = dead_pill,
+        deadhtml = dead_html,
         acount = asset_count,
         abytes = human_bytes(asset_bytes),
         assets = assets_html,

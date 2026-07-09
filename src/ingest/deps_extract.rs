@@ -22,63 +22,61 @@ fn extract_rust(content: &str) -> Vec<String> {
     let mut out = Vec::new();
     for line in content.lines() {
         let t = line.trim();
-        // mod foo; — submodule declaration
-        if let Some(rest) = t.strip_prefix("mod ") {
-            let name = rest.trim_end_matches(';').trim();
-            if !name.is_empty()
-                && !name.starts_with('{')
-                && name.chars().all(|c| c.is_alphanumeric() || c == '_')
-            {
-                out.push(name.to_string());
-            }
-            continue;
+        // Submodule wiring, incl. visibility: `mod X;` / `pub mod X;` /
+        // `pub(crate) mod X;`. (Plain-`mod`-only missed most of a crate.)
+        if let Some(name) = rust_mod_name(t) {
+            out.push(name);
         }
-        // use crate::X or use crate::X::Y
-        if let Some(rest) = t.strip_prefix("use crate::") {
-            if let Some(first) = rest.split("::").next() {
-                let name = first
-                    .split('{')
-                    .next()
-                    .unwrap_or("")
-                    .trim()
-                    .trim_end_matches(';');
-                if !name.is_empty() {
-                    out.push(name.to_string());
-                }
-            }
-            continue;
-        }
-        // use super::X
-        if let Some(rest) = t.strip_prefix("use super::") {
-            if let Some(first) = rest.split("::").next() {
-                let name = first
-                    .split('{')
-                    .next()
-                    .unwrap_or("")
-                    .trim()
-                    .trim_end_matches(';');
-                if !name.is_empty() {
-                    out.push(name.to_string());
-                }
-            }
-        }
-        // Stop scanning after the import block (first non-import line that isn't a comment/attr)
-        // This keeps it fast on large files
-        if !t.is_empty()
-            && !t.starts_with("use ")
-            && !t.starts_with("mod ")
-            && !t.starts_with("//")
-            && !t.starts_with("#[")
-            && !t.starts_with("pub mod")
-            && !t.starts_with("extern crate")
-        {
-            // Give up early — imports are at the top in Rust
-            if out.len() > 0 {
-                break;
-            }
-        }
+        // Every `crate::X` / `super::X` reference ANYWHERE on the line — not
+        // just the top-of-file `use` block. Rust uses inline qualified paths
+        // (`crate::config::config()`) far more than top imports; scanning only
+        // the header left half the graph edgeless (config/tracker looked
+        // "isolated" though everything calls them). Over-connecting from a
+        // string/comment is far cheaper than a missing edge.
+        collect_path_refs(t, "crate::", &mut out);
+        collect_path_refs(t, "super::", &mut out);
     }
     out
+}
+
+/// Extract the module name from a `mod` declaration, tolerating a leading
+/// `pub` / `pub(crate)` / `pub(super)` / `pub(in …)` visibility.
+fn rust_mod_name(t: &str) -> Option<String> {
+    let t = if let Some(rest) = t.strip_prefix("pub(") {
+        rest.find(')').map(|i| rest[i + 1..].trim_start())?
+    } else {
+        t.strip_prefix("pub ").unwrap_or(t)
+    };
+    let rest = t.strip_prefix("mod ")?;
+    let name = rest.trim().trim_end_matches(';').trim();
+    if !name.is_empty()
+        && !name.starts_with('{')
+        && name.chars().all(|c| c.is_alphanumeric() || c == '_')
+    {
+        Some(name.to_string())
+    } else {
+        None
+    }
+}
+
+/// Push the module name following each `prefix` (`crate::` / `super::`) on a
+/// line: the identifier right after the prefix. Handles multiple per line.
+fn collect_path_refs(line: &str, prefix: &str, out: &mut Vec<String>) {
+    let mut rest = line;
+    while let Some(i) = rest.find(prefix) {
+        let after = &rest[i + prefix.len()..];
+        let name: String = after
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect();
+        let name_len = name.len();
+        if !name.is_empty() {
+            out.push(name);
+        }
+        // Advance past this match (>=1 char) to avoid re-matching / looping.
+        let step = (i + prefix.len() + name_len).max(i + 1);
+        rest = &rest[step..];
+    }
 }
 
 fn extract_ts(content: &str) -> Vec<String> {

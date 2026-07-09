@@ -88,6 +88,7 @@ section{margin-bottom:38px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
 .card.warn{border-color:color-mix(in oklab,var(--warn),var(--border) 55%)}
 .card h3{margin:0 0 12px;font-size:15.5px;display:flex;align-items:center;gap:9px}
+.card .note{color:var(--muted);font-size:13px;margin:0;line-height:1.5}
 .dot{width:9px;height:9px;border-radius:50%;flex:none}.dot.warn{background:var(--warn)}
 .rows{display:flex;flex-direction:column;gap:2px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);
