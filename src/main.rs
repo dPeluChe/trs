@@ -44,6 +44,8 @@ mod doctor_checks;
 mod exec;
 mod formatter;
 mod help;
+mod help_text;
+mod help_text_more;
 mod ingest;
 mod init;
 mod init_collision;
