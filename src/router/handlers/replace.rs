@@ -1,4 +1,4 @@
-use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
+use super::common::{escape_csv_field, CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -242,8 +242,8 @@ impl ReplaceHandler {
 
         for (path, reps) in replacements {
             for rep in reps {
-                let original_escaped = Self::escape_csv_field(&rep.original);
-                let replaced_escaped = Self::escape_csv_field(&rep.replaced);
+                let original_escaped = escape_csv_field(&rep.original);
+                let replaced_escaped = escape_csv_field(&rep.replaced);
                 result.push_str(&format!(
                     "{},{},{},{}\n",
                     path, rep.line_number, original_escaped, replaced_escaped
@@ -382,19 +382,6 @@ impl ReplaceHandler {
     /// Truncate a line to a maximum length. UTF-8 safe.
     pub(crate) fn truncate_line(line: &str, max_len: usize) -> String {
         crate::formatter::helpers::truncate(line, max_len)
-    }
-
-    /// Escape a field for CSV format.
-    pub(crate) fn escape_csv_field(field: &str) -> String {
-        if field.contains(',')
-            || field.contains('"')
-            || field.contains('\n')
-            || field.contains('\r')
-        {
-            format!("\"{}\"", field.replace('"', "\"\""))
-        } else {
-            field.to_string()
-        }
     }
 
     /// Escape a field for TSV format.

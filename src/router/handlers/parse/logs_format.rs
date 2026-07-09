@@ -2,6 +2,7 @@
 //!
 //! Contains format_logs and all format-specific variants (JSON, compact, CSV, TSV, raw, agent).
 
+use super::super::common::escape_csv_field;
 use super::super::run::RunHandler;
 use super::super::types::*;
 use super::ParseHandler;
@@ -85,7 +86,7 @@ impl ParseHandler {
                 LogLevel::Unknown => "unknown",
             };
             let timestamp = entry.timestamp.as_deref().unwrap_or("");
-            let message_escaped = RunHandler::escape_csv_field(&entry.message);
+            let message_escaped = escape_csv_field(&entry.message);
             result.push_str(&format!(
                 "{},{},{},{}\n",
                 entry.line_number, level_str, timestamp, message_escaped

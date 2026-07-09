@@ -1,4 +1,4 @@
-use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
+use super::common::{escape_csv_field, CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -252,7 +252,7 @@ impl TailHandler {
                     + "\n"
             }
             OutputFormat::Csv => {
-                let line_escaped = Self::escape_csv_field(&line.line);
+                let line_escaped = escape_csv_field(&line.line);
                 format!("{},{},{}\n", line.line_number, line_escaped, line.is_error)
             }
             OutputFormat::Tsv => {
@@ -317,7 +317,7 @@ impl TailHandler {
         result.push_str("line_number,line,is_error\n");
 
         for l in &output.lines {
-            let line_escaped = Self::escape_csv_field(&l.line);
+            let line_escaped = escape_csv_field(&l.line);
             result.push_str(&format!(
                 "{},{},{}\n",
                 l.line_number, line_escaped, l.is_error
@@ -417,19 +417,6 @@ impl TailHandler {
         }
 
         result
-    }
-
-    /// Escape a field for CSV format.
-    pub(crate) fn escape_csv_field(field: &str) -> String {
-        if field.contains(',')
-            || field.contains('"')
-            || field.contains('\n')
-            || field.contains('\r')
-        {
-            format!("\"{}\"", field.replace('"', "\"\""))
-        } else {
-            field.to_string()
-        }
     }
 
     /// Escape a field for TSV format.

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::audit_docs::{InlineBloat, SymbolMatch};
+use crate::text_util::first_ident;
 
 pub(crate) fn extract_fence_symbols(lang: &str, body: &str) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
@@ -234,24 +235,6 @@ fn extract_swift_symbol(line: &str) -> Option<String> {
         }
     }
     None
-}
-
-fn first_ident(s: &str) -> Option<String> {
-    let mut chars = s.char_indices();
-    let start = chars.position(|(_, c)| c.is_ascii_alphabetic() || c == '_')?;
-    let mut end = start;
-    for (i, c) in s[start..].char_indices() {
-        if c.is_ascii_alphanumeric() || c == '_' {
-            end = start + i + c.len_utf8();
-        } else {
-            break;
-        }
-    }
-    if end > start {
-        Some(s[start..end].to_string())
-    } else {
-        None
-    }
 }
 
 pub(crate) fn resolve_symbol_matches(bloat: &mut [InlineBloat], root: &Path) {

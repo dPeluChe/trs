@@ -1,4 +1,4 @@
-use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
+use super::common::{escape_csv_field, CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
 use crate::process::{ProcessBuilder, ProcessError, ProcessOutput};
 use crate::OutputFormat;
@@ -27,8 +27,8 @@ impl RunHandler {
                 let mut result = String::new();
                 result.push_str("command,args,stdout,stderr,exit_code,duration_ms,timed_out\n");
                 let args_str = output.args.join(" ");
-                let stdout_escaped = Self::escape_csv_field(&output.stdout);
-                let stderr_escaped = Self::escape_csv_field(&output.stderr);
+                let stdout_escaped = escape_csv_field(&output.stdout);
+                let stderr_escaped = escape_csv_field(&output.stderr);
                 result.push_str(&format!(
                     "{},{},{},{},{},{},{}\n",
                     output.command,
@@ -83,19 +83,6 @@ impl RunHandler {
                 }
                 result
             }
-        }
-    }
-
-    /// Escape a field for CSV format.
-    pub(crate) fn escape_csv_field(field: &str) -> String {
-        if field.contains(',')
-            || field.contains('"')
-            || field.contains('\n')
-            || field.contains('\r')
-        {
-            format!("\"{}\"", field.replace('"', "\"\""))
-        } else {
-            field.to_string()
         }
     }
 

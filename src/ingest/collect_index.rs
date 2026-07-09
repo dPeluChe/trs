@@ -4,6 +4,8 @@
 //! each DigestFile. The ingest formatter consumes the metadata later to
 //! render the Structure tree and the optional Symbols section.
 
+use crate::text_util::first_ident;
+
 /// Files whose module-level doc we promote to a directory annotation.
 pub(super) const MODULE_ANCHOR_NAMES: &[&str] = &[
     "mod.rs",
@@ -336,25 +338,6 @@ fn symbol_from_java(line: &str) -> Option<String> {
         }
     }
     None
-}
-
-/// Pick the first identifier-like token from a string.
-fn first_ident(s: &str) -> Option<String> {
-    let mut chars = s.char_indices();
-    let start = chars.position(|(_, c)| c.is_ascii_alphabetic() || c == '_')?;
-    let mut end = start;
-    for (i, c) in s[start..].char_indices() {
-        if c.is_ascii_alphanumeric() || c == '_' {
-            end = start + i + c.len_utf8();
-        } else {
-            break;
-        }
-    }
-    if end > start {
-        Some(s[start..end].to_string())
-    } else {
-        None
-    }
 }
 
 #[cfg(test)]
