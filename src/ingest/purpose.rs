@@ -33,33 +33,41 @@ pub(super) fn module_of(rel: &str) -> String {
     }
 }
 
-/// The project's own one-line purpose: manifest `description` first (the most
-/// deliberate statement), else the README's first prose paragraph.
+/// The project's own one-line purpose. Preference, whole-repo signal first:
+/// root manifest `description` → root README paragraph → any manifest
+/// `description` → any README paragraph. So a workspace with no root
+/// `description` falls to its root README rather than an arbitrary sub-crate's
+/// (`crates/wire/Cargo.toml` ≠ the whole repo).
 pub(super) fn about(files: &[DigestFile]) -> Option<String> {
-    let named = |f: &DigestFile, want: &str| {
+    let named = |f: &&DigestFile, want: &str| {
         Path::new(&f.rel_path)
             .file_name()
             .and_then(|n| n.to_str())
             .map(|n| n.eq_ignore_ascii_case(want))
             .unwrap_or(false)
     };
-    for f in files {
+    let manifest_desc = |f: &&DigestFile| -> Option<String> {
         if named(f, "Cargo.toml") || named(f, "pyproject.toml") {
-            if let Some(d) = kv_value(&f.content, "description") {
-                return Some(d);
-            }
+            kv_value(&f.content, "description")
+        } else if named(f, "package.json") {
+            json_value(&f.content, "description")
+        } else {
+            None
         }
-        if named(f, "package.json") {
-            if let Some(d) = json_value(&f.content, "description") {
-                return Some(d);
-            }
+    };
+    // Two tiers: root-level files (no `/` in path) first, then everything.
+    for root_only in [true, false] {
+        let pick = |f: &&DigestFile| !root_only || !f.rel_path.contains('/');
+        if let Some(d) = files.iter().filter(pick).find_map(|f| manifest_desc(&f)) {
+            return Some(d);
         }
-    }
-    for f in files {
-        if named(f, "README.md") {
-            if let Some(p) = readme_first_para(&f.content) {
-                return Some(p);
-            }
+        if let Some(p) = files
+            .iter()
+            .filter(pick)
+            .filter(|f| named(f, "README.md"))
+            .find_map(|f| readme_first_para(&f.content))
+        {
+            return Some(p);
         }
     }
     None
@@ -106,6 +114,10 @@ fn readme_first_para(content: &str) -> Option<String> {
             || t.starts_with('>')
             || t.starts_with("---")
             || t.starts_with("```")
+            || t.starts_with("- ") // list items aren't the project's thesis
+            || t.starts_with("* ")
+            || t.starts_with("+ ")
+            || is_ordered_item(t)
             || t.contains('|')
             || t.contains("://") && t.split_whitespace().count() <= 2
         {
@@ -117,6 +129,14 @@ fn readme_first_para(content: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// A `1. ` / `2) ` style ordered-list marker.
+fn is_ordered_item(t: &str) -> bool {
+    let digits: String = t.chars().take_while(|c| c.is_ascii_digit()).collect();
+    !digits.is_empty()
+        && matches!(t[digits.len()..].chars().next(), Some('.') | Some(')'))
+        && t[digits.len() + 1..].starts_with(' ')
 }
 
 pub(super) fn truncate(s: &str, max: usize) -> String {
@@ -226,6 +246,54 @@ pub(super) fn roles(files: &[DigestFile], top: usize) -> Vec<RoleInfo> {
 mod tests {
     use super::*;
 
+    fn df(rel: &str, content: &str) -> DigestFile {
+        DigestFile {
+            rel_path: rel.into(),
+            content: content.into(),
+            tokens: 0,
+            loc: 0,
+            is_changed: false,
+            raw_imports: vec![],
+            module_doc: None,
+            symbols: vec![],
+        }
+    }
+
+    #[test]
+    fn readme_para_skips_lists_and_blockquotes() {
+        // A workspace-container README: only headings, blockquotes and lists.
+        assert_eq!(
+            readme_first_para("# X\n\n> NOTE\n\n- item one\n1. step one\n* bullet\n"),
+            None
+        );
+        // First real prose wins, list items above it are skipped.
+        assert_eq!(
+            readme_first_para("# X\n\n- skip me\n\nReal prose describing the thing.\n").as_deref(),
+            Some("Real prose describing the thing.")
+        );
+    }
+
+    #[test]
+    fn about_prefers_root_readme_over_nested_manifest() {
+        // A workspace root with no description, a real root README, and a
+        // sub-package manifest — the root README should win over the sub-crate.
+        let files = vec![
+            df("Cargo.toml", "[workspace]\nmembers = [\"crates/wire\"]\n"),
+            df(
+                "README.md",
+                "# Repo\n\nThe whole project, in one sentence.\n",
+            ),
+            df(
+                "crates/wire/Cargo.toml",
+                "[package]\ndescription = \"just the wire types\"\n",
+            ),
+        ];
+        assert_eq!(
+            about(&files).as_deref(),
+            Some("The whole project, in one sentence.")
+        );
+    }
+
     #[test]
     fn module_of_strips_source_root_and_uses_stem() {
         assert_eq!(module_of("src/main.rs"), "main");
@@ -249,16 +317,6 @@ mod tests {
 
     #[test]
     fn about_prefers_manifest_description() {
-        let df = |rel: &str, content: &str| DigestFile {
-            rel_path: rel.into(),
-            content: content.into(),
-            tokens: 0,
-            loc: 0,
-            is_changed: false,
-            raw_imports: vec![],
-            module_doc: None,
-            symbols: vec![],
-        };
         let files = vec![
             df(
                 "Cargo.toml",
@@ -274,16 +332,10 @@ mod tests {
 
     #[test]
     fn about_falls_back_to_readme_paragraph() {
-        let files = vec![DigestFile {
-            rel_path: "README.md".into(),
-            content: "# Title\n\n![badge](x)\n\nThe first real prose paragraph here.\n".into(),
-            tokens: 0,
-            loc: 0,
-            is_changed: false,
-            raw_imports: vec![],
-            module_doc: None,
-            symbols: vec![],
-        }];
+        let files = vec![df(
+            "README.md",
+            "# Title\n\n![badge](x)\n\nThe first real prose paragraph here.\n",
+        )];
         assert_eq!(
             about(&files).as_deref(),
             Some("The first real prose paragraph here.")
