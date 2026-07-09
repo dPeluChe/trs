@@ -419,7 +419,8 @@ pub fn run_ingest(config: &IngestConfig) {
 
     // --html mode: emit a self-contained visual report instead of markdown.
     if config.html {
-        let output = format_html::format_html(&files, project_name, config.max_loc);
+        let root_display = config.root.display().to_string();
+        let output = format_html::format_html(&files, project_name, &root_display, config.max_loc);
         let out_path = config.output_file.clone().unwrap_or_else(|| {
             let safe: String = project_name
                 .chars()
