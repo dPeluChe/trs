@@ -266,11 +266,39 @@ pub(super) fn format_html(
             }
         }
     }
-    let mut deg: HashMap<String, usize> = HashMap::new();
+    // Fan-in (how many distinct modules import me) and fan-out (how many I
+    // import). Edges are already deduped to unique (src, dst) pairs.
+    let mut in_deg: HashMap<String, usize> = HashMap::new();
+    let mut out_deg: HashMap<String, usize> = HashMap::new();
     for (s, t) in medges.keys() {
-        *deg.entry(s.clone()).or_default() += 1;
-        *deg.entry(t.clone()).or_default() += 1;
+        *out_deg.entry(s.clone()).or_default() += 1;
+        *in_deg.entry(t.clone()).or_default() += 1;
     }
+    let mut deg: HashMap<String, usize> = HashMap::new();
+    for m in in_deg.keys().chain(out_deg.keys()) {
+        deg.entry(m.clone()).or_insert_with(|| {
+            in_deg.get(m).copied().unwrap_or(0) + out_deg.get(m).copied().unwrap_or(0)
+        });
+    }
+    // Role by pure fan-in/fan-out topology (classify_layer, no AST):
+    //   entry  — nothing imports it, it imports others (a root / CLI / main)
+    //   leaf   — used by others, imports nothing (a utility / type module)
+    //   core   — high fan-in: many modules route through it
+    //   internal — everything else (mid of the graph)
+    let core_floor = in_deg.values().copied().max().unwrap_or(0).max(6) / 2;
+    let role_of = |m: &str| -> &'static str {
+        let i = in_deg.get(m).copied().unwrap_or(0);
+        let o = out_deg.get(m).copied().unwrap_or(0);
+        if i == 0 && o > 0 {
+            "entry"
+        } else if o == 0 && i > 0 {
+            "leaf"
+        } else if i >= core_floor.max(3) {
+            "core"
+        } else {
+            "internal"
+        }
+    };
     let mut ranked: Vec<String> = deg.keys().cloned().collect();
     ranked.sort_by(|a, b| {
         deg[b]
@@ -283,11 +311,14 @@ pub(super) fn format_html(
         .iter()
         .map(|m| {
             format!(
-                r#"{{"id":{},"loc":{},"deg":{},"files":{}}}"#,
+                r#"{{"id":{},"loc":{},"deg":{},"files":{},"role":{},"in":{},"out":{}}}"#,
                 json_str(m),
                 mod_loc.get(m).copied().unwrap_or(0),
                 deg.get(m).copied().unwrap_or(0),
-                mod_files.get(m).copied().unwrap_or(0)
+                mod_files.get(m).copied().unwrap_or(0),
+                json_str(role_of(m)),
+                in_deg.get(m).copied().unwrap_or(0),
+                out_deg.get(m).copied().unwrap_or(0),
             )
         })
         .collect::<Vec<_>>()
@@ -302,6 +333,41 @@ pub(super) fn format_html(
         .collect::<Vec<_>>()
         .join(",");
     let edge_count = kept_edges.len();
+
+    // roles breakdown among graphed modules (classify_layer summary)
+    let mut role_groups: HashMap<&str, Vec<&str>> = HashMap::new();
+    for m in &keep {
+        role_groups.entry(role_of(m)).or_default().push(m.as_str());
+    }
+    let role_desc: &[(&str, &str)] = &[
+        ("entry", "roots — nothing imports them (main, CLI)"),
+        ("core", "high fan-in — everything routes through"),
+        ("leaf", "used by many, import nothing (utils, types)"),
+        ("internal", "mid-graph plumbing"),
+    ];
+    let roles_html = role_desc
+        .iter()
+        .filter_map(|(r, desc)| {
+            role_groups.get(r).map(|mods| {
+                let mut ms = mods.to_vec();
+                ms.sort_unstable();
+                let sample = ms.iter().take(5).copied().collect::<Vec<_>>().join(", ");
+                let more = if ms.len() > 5 {
+                    format!(" +{}", ms.len() - 5)
+                } else {
+                    String::new()
+                };
+                format!(
+                    r#"<div class="rolerow"><span class="rolebadge {r}">{r}</span><span class="roled">{d}</span><span class="rolem mono">{s}{m}</span></div>"#,
+                    r = r,
+                    d = desc,
+                    s = esc(&sample),
+                    m = more
+                )
+            })
+        })
+        .collect::<Vec<_>>()
+        .join("");
 
     // --- oversized files ---
     let mut over: Vec<&&DigestFile> = real.iter().filter(|f| f.loc > max_loc).collect();
@@ -382,17 +448,19 @@ pub(super) fn format_html(
 
   <section>
     <div class="h"><h2>How it connects</h2><span class="tag">module graph · {nnodes} nodes · {nedges} edges</span></div>
-    <p class="lead">Real internal <code style="font-family:var(--mono)">import / use</code> dependencies between modules. <b style="color:var(--ink)">Circle size = lines of code</b>; <b style="color:var(--ink)">color = connectivity</b> (teal = hub). Hover to preview, <b style="color:var(--ink)">click a node to pin</b> its links; drag to rearrange.</p>
+    <p class="lead">Real internal <code style="font-family:var(--mono)">import / use</code> dependencies between modules. <b style="color:var(--ink)">Circle size = lines of code</b>; <b style="color:var(--ink)">color = role</b>, derived from fan-in / fan-out (below). Hover to preview, <b style="color:var(--ink)">click a node to pin</b> its links; drag to rearrange.</p>
     <div class="graph-wrap">
       <canvas id="graph"></canvas>
       <div class="glegend">
         <div class="k" style="color:var(--faint);font-size:10px;letter-spacing:.08em">COLOR = ROLE</div>
-        <div class="k"><span class="sw" style="background:var(--accent)"></span>hub (highly connected)</div>
-        <div class="k"><span class="sw" style="background:var(--muted)"></span>module</div>
-        <div class="k" style="color:var(--faint);font-size:10px;letter-spacing:.08em;margin-top:3px">SIZE = LOC</div>
+        <div class="k"><span class="sw" style="background:var(--accent2)"></span>entry</div>
+        <div class="k"><span class="sw" style="background:var(--accent)"></span>core</div>
+        <div class="k"><span class="sw" style="background:var(--muted)"></span>leaf</div>
+        <div class="k"><span class="sw" style="background:var(--faint)"></span>internal</div>
       </div>
       <div class="ghint" id="ghint">hover a node · click to pin</div>
     </div>
+    <div class="roles">{roles}</div>
   </section>
 
   <section>
@@ -428,6 +496,7 @@ pub(super) fn format_html(
         exts = ext_html,
         nnodes = keep.len(),
         nedges = edge_count,
+        roles = roles_html,
         maxloc = max_loc,
         overclass = over_class,
         overpill = over_pill,
