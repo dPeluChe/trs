@@ -53,9 +53,18 @@ section{margin-bottom:38px}
 .h h2{font-size:19px;margin:0;letter-spacing:-.01em}
 .h .tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .lead{color:var(--muted);font-size:14px;margin:0 0 18px;max-width:70ch}
-.bars{display:flex;flex-direction:column;gap:9px}
-.bar{display:grid;grid-template-columns:230px 1fr 74px;align-items:center;gap:14px}
+.bars{display:flex;flex-direction:column;gap:5px}
+.barwrap{display:flex;flex-direction:column}
+.bar{display:grid;grid-template-columns:230px 1fr 74px;align-items:center;gap:14px;cursor:pointer;padding:2px 0}
+.bar:hover .name{color:var(--accent-ink)}
 .bar .name{font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .name::before{content:"▸ ";color:var(--faint)}
+.bar.open .name::before{content:"▾ "}
+.detail{display:none;margin:3px 0 8px;padding:8px 13px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px}
+.detail.open{display:block}
+.frow{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:12px;padding:3px 0;color:var(--muted)}
+.frow .fp{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 .track{height:22px;background:var(--surface-2);border-radius:6px;overflow:hidden;border:1px solid var(--border)}
 .fill{height:100%;border-radius:5px 0 0 5px;background:linear-gradient(90deg,var(--accent),color-mix(in oklab,var(--accent),#fff 22%))}
 .bar .v{font-family:var(--mono);font-size:12.5px;text-align:right;color:var(--muted)}.bar .v b{color:var(--ink);font-weight:600}
@@ -91,10 +100,16 @@ pub(super) const GRAPH_JS: &str = r####"
 (function(){
   var fmt=function(n){return n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'k':''+n;};
   var bc=document.getElementById('bars');
-  if(bc){bc.innerHTML=BARS.map(function(m){
-    return '<div class="bar"><span class="name" title="'+m.name+'">'+m.name+' <s>· '+m.files+'f</s></span>'+
+  var he=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  if(bc){bc.innerHTML=BARS.map(function(m,i){
+    var det=(m.list||[]).map(function(f){
+      return '<div class="frow"><span class="fp" title="'+he(f.p)+'">'+he(f.p)+'</span><span>'+fmt(f.loc)+' LOC</span></div>';}).join('');
+    return '<div class="barwrap"><div class="bar" data-d="det'+i+'"><span class="name" title="'+he(m.name)+'">'+he(m.name)+' <s>· '+m.fc+'f</s></span>'+
       '<div class="track"><div class="fill" style="width:'+Math.max(4,m.loc/BAR_MAX*100)+'%"></div></div>'+
-      '<span class="v"><b>'+fmt(m.loc)+'</b></span></div>';}).join('');}
+      '<span class="v"><b>'+fmt(m.loc)+'</b></span></div>'+
+      '<div class="detail" id="det'+i+'">'+det+'</div></div>';}).join('');
+    bc.addEventListener('click',function(e){var b=e.target.closest('.bar');if(!b)return;
+      var d=document.getElementById(b.getAttribute('data-d'));if(d){d.classList.toggle('open');b.classList.toggle('open');}});}
 
   var cv=document.getElementById('graph');if(!cv||!GN.length)return;
   var ctx=cv.getContext('2d'),hint=document.getElementById('ghint');

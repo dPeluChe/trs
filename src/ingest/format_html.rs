@@ -59,6 +59,132 @@ fn human(n: usize) -> String {
     }
 }
 
+fn human_bytes(b: u64) -> String {
+    const U: &[&str] = &["B", "KB", "MB", "GB"];
+    let mut v = b as f64;
+    let mut i = 0;
+    while v >= 1024.0 && i < U.len() - 1 {
+        v /= 1024.0;
+        i += 1;
+    }
+    if i == 0 {
+        format!("{} B", b)
+    } else {
+        format!("{:.1} {}", v, U[i])
+    }
+}
+
+/// Image / media / binary assets are skipped by the digest (they aren't
+/// code), but they carry real weight in a repo. A second, gitignore-aware
+/// walk tallies them by category + size and surfaces the heaviest files.
+/// Returns `(section_html, total_count, total_bytes)`.
+fn scan_assets(root: &Path) -> (String, usize, u64) {
+    const CATS: &[(&str, &[&str])] = &[
+        (
+            "images",
+            &[
+                "png", "jpg", "jpeg", "gif", "webp", "svg", "ico", "bmp", "avif", "heic",
+            ],
+        ),
+        (
+            "media",
+            &[
+                "mp4", "mov", "mp3", "wav", "avi", "mkv", "webm", "m4a", "flac",
+            ],
+        ),
+        ("fonts", &["woff", "woff2", "ttf", "eot", "otf"]),
+        ("archives", &["zip", "tar", "gz", "bz2", "xz", "7z", "rar"]),
+        (
+            "pdf/office",
+            &["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"],
+        ),
+        (
+            "data/bin",
+            &["sqlite", "sqlite3", "db", "parquet", "bin", "wasm"],
+        ),
+    ];
+    let mut count: HashMap<&str, usize> = HashMap::new();
+    let mut bytes: HashMap<&str, u64> = HashMap::new();
+    let mut heavy: Vec<(String, u64)> = Vec::new();
+    let mut builder = ignore::WalkBuilder::new(root);
+    builder
+        .hidden(false)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true);
+    for entry in builder.build().flatten() {
+        let path = entry.path();
+        if entry.file_type().map(|t| t.is_dir()).unwrap_or(true) {
+            continue;
+        }
+        if path.components().any(|c| {
+            super::SKIP_DIRS
+                .iter()
+                .any(|d| c.as_os_str().to_str() == Some(*d))
+        }) {
+            continue;
+        }
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        for (cat, exts) in CATS {
+            if exts.contains(&ext.as_str()) {
+                let sz = entry.metadata().ok().map(|m| m.len()).unwrap_or(0);
+                *count.entry(cat).or_default() += 1;
+                *bytes.entry(cat).or_default() += sz;
+                let rel = path
+                    .strip_prefix(root)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .to_string();
+                heavy.push((rel, sz));
+                break;
+            }
+        }
+    }
+    let total_count: usize = count.values().sum();
+    let total_bytes: u64 = bytes.values().sum();
+    let mut cats: Vec<&str> = count.keys().copied().collect();
+    cats.sort_by_key(|c| std::cmp::Reverse(bytes.get(c).copied().unwrap_or(0)));
+    let chips = cats
+        .iter()
+        .map(|c| {
+            format!(
+                r#"<span class="chip">{} <b>{}</b> · {}</span>"#,
+                c,
+                count[c],
+                human_bytes(bytes[c])
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("");
+    heavy.sort_by_key(|(_, b)| std::cmp::Reverse(*b));
+    let rows = if heavy.is_empty() {
+        r#"<div class="row"><span class="p">No image / media / binary assets.</span></div>"#
+            .to_string()
+    } else {
+        heavy
+            .iter()
+            .take(12)
+            .map(|(p, b)| {
+                format!(
+                    r#"<div class="row"><span class="p">{}</span><span class="loc">{}</span></div>"#,
+                    esc(p),
+                    human_bytes(*b)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let html = format!(
+        r#"<div class="chips" style="margin-bottom:16px">{}</div><div class="rows">{}</div>"#,
+        chips, rows
+    );
+    (html, total_count, total_bytes)
+}
+
 /// Render the full report page.
 pub(super) fn format_html(
     files: &[DigestFile],
@@ -71,16 +197,18 @@ pub(super) fn format_html(
     let file_count = real.len();
     let symbol_count: usize = real.iter().map(|f| f.symbols.len()).sum();
 
-    // --- per-module LOC + file count ---
+    // --- per-module aggregation (LOC, file count, file list) ---
     let mut mod_loc: HashMap<String, usize> = HashMap::new();
     let mut mod_files: HashMap<String, usize> = HashMap::new();
+    let mut mod_list: HashMap<String, Vec<(&str, usize)>> = HashMap::new();
     for f in &real {
         let m = module_of(&f.rel_path);
         *mod_loc.entry(m.clone()).or_default() += f.loc;
-        *mod_files.entry(m).or_default() += 1;
+        *mod_files.entry(m.clone()).or_default() += 1;
+        mod_list.entry(m).or_default().push((&f.rel_path, f.loc));
     }
 
-    // --- LOC-by-module bars (top 11) ---
+    // --- LOC-by-module bars (top 11), each carrying its own files ---
     let mut bars: Vec<(&String, usize)> = mod_loc.iter().map(|(m, l)| (m, *l)).collect();
     bars.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
     bars.truncate(11);
@@ -88,11 +216,20 @@ pub(super) fn format_html(
     let bars_json = bars
         .iter()
         .map(|(name, loc)| {
+            let mut list = mod_list.get(*name).cloned().unwrap_or_default();
+            list.sort_by_key(|(_, l)| std::cmp::Reverse(*l));
+            let items = list
+                .iter()
+                .take(16)
+                .map(|(p, l)| format!(r#"{{"p":{},"loc":{}}}"#, json_str(p), l))
+                .collect::<Vec<_>>()
+                .join(",");
             format!(
-                r#"{{"name":{},"loc":{},"files":{}}}"#,
+                r#"{{"name":{},"loc":{},"fc":{},"list":[{}]}}"#,
                 json_str(name),
                 loc,
-                mod_files.get(*name).copied().unwrap_or(0)
+                mod_files.get(*name).copied().unwrap_or(0),
+                items
             )
         })
         .collect::<Vec<_>>()
@@ -189,6 +326,9 @@ pub(super) fn format_html(
             .join("\n")
     };
 
+    // --- assets / binaries (images, media, fonts…) the digest skips ---
+    let (assets_html, asset_count, asset_bytes) = scan_assets(Path::new(root));
+
     // Note: a proper "unreferenced / dead code" section needs real
     // reachability (mod-wiring, method calls, trait impls, macros) — import
     // edges alone flag ~half a Rust crate as false orphans. Deferred to a
@@ -266,6 +406,15 @@ pub(super) fn format_html(
     </div>
   </section>
 
+  <section>
+    <div class="h"><h2>Assets &amp; binaries</h2><span class="tag">{acount} files · {abytes}</span></div>
+    <p class="lead">Images, media, fonts and other binaries — skipped by the code digest but real weight in the repo. Heaviest files listed.</p>
+    <div class="card">
+      <h3><span class="dot warn"></span>What's taking space</h3>
+{assets}
+    </div>
+  </section>
+
   <footer>
     <span>Snapshot of <b style="color:var(--ink)">{name}</b> · {files} files ingested</span>
     <span>generated by <code>trs ingest --html</code></span>
@@ -283,6 +432,9 @@ pub(super) fn format_html(
         overclass = over_class,
         overpill = over_pill,
         overrows = over_rows,
+        acount = asset_count,
+        abytes = human_bytes(asset_bytes),
+        assets = assets_html,
     );
 
     let script = format!(
