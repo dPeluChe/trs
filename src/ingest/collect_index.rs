@@ -234,8 +234,15 @@ pub(super) fn extract_symbols(content: &str, ext: &str) -> Vec<String> {
 }
 
 fn symbol_from_rust(line: &str) -> Option<String> {
-    // pub fn foo / pub struct Foo / pub enum / pub trait / pub type / pub const / pub static
-    let rest = line.strip_prefix("pub ")?;
+    // pub fn foo / pub struct Foo / pub enum / pub trait / pub type / pub const / pub static,
+    // plus visibility-qualified forms `pub(crate)` / `pub(super)` / `pub(in …)`.
+    // A binary crate's real API surface is `pub(crate)`, so restricting to a
+    // bare `pub ` prefix drops nearly everything (e.g. `execute_and_parse`).
+    let rest = line.strip_prefix("pub ").or_else(|| {
+        let after = line.strip_prefix("pub(")?;
+        let close = after.find(')')?;
+        after[close + 1..].strip_prefix(' ')
+    })?;
     let rest = rest
         .strip_prefix("async ")
         .or_else(|| rest.strip_prefix("unsafe "))
@@ -349,5 +356,34 @@ fn first_ident(s: &str) -> Option<String> {
         Some(s[start..end].to_string())
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::symbol_from_rust;
+
+    #[test]
+    fn captures_visibility_qualified_items() {
+        // Regression: the digest dropped every `pub(crate)` symbol because the
+        // extractor only stripped a bare `pub ` prefix — ~500 real symbols
+        // (incl. `execute_and_parse`) never made the index.
+        assert_eq!(
+            symbol_from_rust("pub(crate) fn execute_and_parse(cmd: &str) {").as_deref(),
+            Some("execute_and_parse")
+        );
+        assert_eq!(
+            symbol_from_rust("pub(super) struct Foo {").as_deref(),
+            Some("Foo")
+        );
+        assert_eq!(
+            symbol_from_rust("pub(in crate::ingest) fn helper() {").as_deref(),
+            Some("helper")
+        );
+        // Plain `pub` still works.
+        assert_eq!(symbol_from_rust("pub fn bar() {").as_deref(), Some("bar"));
+        // Private items and non-defs are still skipped (index = API surface).
+        assert_eq!(symbol_from_rust("fn private_helper() {"), None);
+        assert_eq!(symbol_from_rust("let x = 5;"), None);
     }
 }
