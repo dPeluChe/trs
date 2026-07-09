@@ -10,6 +10,7 @@ Markdown digest of the codebase — structure + key files + signatures
 trs ingest                      # write digest, print path to stdout
 trs ingest --budget 128k        # fit to token budget (signatures first)
 trs ingest --deps               # dependency graph only, no content
+trs ingest --symbols            # add a flat symbol → file index
 trs ingest --changed            # only files with uncommitted changes
 trs ingest --since-last         # only files changed since last ingest
 trs ingest --fresh              # reuse cached digest if HEAD unchanged
@@ -18,6 +19,8 @@ trs ingest --print              # emit content to stdout instead of path
 trs ingest --warn-at 40k        # stderr warning if digest exceeds N tokens
 trs ingest --list               # list saved digests + HEAD sha + stale markers
 trs ingest --read myproject     # read a saved digest by name
+trs ingest --html               # self-contained visual report (see below)
+trs ingest --html --max-loc 400 # tune the oversized-file threshold
 ```
 
 ## What the digest contains
@@ -25,11 +28,16 @@ trs ingest --read myproject     # read a saved digest by name
 ```
 # <project name>
 
+> <one-line purpose — manifest description or README first paragraph>
+
 ## Structure
   <file tree, gitignore-aware>
 
 ## Dependencies
   <from Cargo.toml / package.json / pyproject.toml / go.mod>
+
+## Architecture (module roles)
+  <top modules grouped by import-graph role — see below>
 
 ## Files (highlights)
   <content of priority files — README, main.rs, etc.>
@@ -42,6 +50,23 @@ Priority is roughly: manifest / README / entry points → business-logic
 files → everything else. When the budget is tight, later files drop
 to **signatures-only** (function/class/struct names, no bodies) so
 the agent still sees the shape of the codebase.
+
+### About line + module roles (the "purpose layer")
+
+Right after the title, the digest states the project's **intent** — the
+manifest `description`, or the README's first prose paragraph — so the
+reading agent gets *what this is*, not just *what files exist*.
+
+The **Architecture** section classifies the most-connected modules by
+pure import-graph topology (fan-in ↓ / fan-out ↑), no AST required:
+
+- **entry** — roots nothing imports (main, CLI).
+- **core** — high fan-in, everything routes through them.
+- **leaf** — imported by many, import nothing (utils, types).
+- **internal** — mid-graph plumbing.
+
+This is the same signal the `--html` report draws as a colored graph,
+rendered as a compact list so it costs almost nothing in tokens.
 
 ## Budget-aware truncation
 
@@ -86,6 +111,41 @@ old-client       v0.5.6     2026-03-10 09:12    stale (HEAD moved)
   sessions.
 - `--deps` — dependency graph only, no file contents. Useful as a
   lightweight primer when the full digest would exceed budget.
+
+## Visual HTML report (`--html`)
+
+`trs ingest --html` swaps the Markdown digest for a **self-contained
+HTML report** — a single file with all CSS/JS inlined (no CDN, survives
+a strict CSP), light/dark theme aware. It's for humans skimming a repo,
+where the Markdown digest is for agents reading one.
+
+```bash
+trs ingest --html                    # writes <project>-report.html
+trs ingest --html -o report.html     # custom path
+trs ingest --html --max-loc 400      # flag files over 400 LOC (default 500)
+```
+
+The report renders, from the same ingest data:
+
+- **KPIs** — lines, files, symbols indexed, oversized-file count.
+- **File mix** — distribution by extension.
+- **Where the code lives** — LOC-by-module bars; click a bar to expand
+  its files.
+- **How it connects** — an interactive force-directed module graph.
+  Circle size = LOC; **color = role** (entry / core / leaf / internal,
+  the same purpose layer as the Markdown digest). Hover to preview,
+  click a node to pin its links, drag to rearrange.
+- **Oversized files** — anything over `--max-loc`, split candidates.
+- **Isolated modules** — code folders with **no import edge in or
+  out** — unreachable via imports, so likely dead or standalone. This
+  is a *module-level* heuristic; it self-suppresses when import
+  resolution looks incomplete for the language (>40% flagged), and
+  symbol/function-level dead code is deferred to the language's own
+  tool (`cargo`, `knip`, `vulture`).
+- **Duplicate functions** — near-duplicate function pairs found with
+  MinHash + LSH over token shingles (copy-paste candidates to unify).
+- **Assets & binaries** — images, media, fonts skipped by the digest
+  but real weight in the repo, heaviest first.
 
 ## Ollama post-processing
 

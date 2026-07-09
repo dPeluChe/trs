@@ -265,6 +265,47 @@ Improvements vs Repomix:
 
 ---
 
+## Phase 2.7 — Ingest upgrade: codebase intelligence (2026-07)
+
+Design study + rationale in `INGEST_RESEARCH.md` (temp doc, gitignored). Key
+learning from studying **DeusData/codebase-memory-mcp** (arXiv:2603.27277):
+symbol-level dead code needs AST/LSP (they hand-wrote ~15k LOC of per-language
+type resolution); but the highest-value pieces run on the **import graph we
+already build** — no new deps.
+
+**Shipped this cycle** (PR #109/#111, draft):
+- [x] `ingest` captures `pub(crate)`/`pub(super)` symbols (was dropping ~500).
+- [x] `trs ingest --html` — self-contained visual report: KPIs, LOC-by-module
+  bars (expandable to files), force-directed module dependency graph
+  (click-to-pin), oversized files, assets/binaries. `--max-loc N`.
+- [x] Validated across Rust / TS / Python / monorepo (module_of groups by
+  directory so multi-root layouts don't collapse the graph).
+
+**Next — copy from codebase-memory-mcp (all on the existing graph, zero AST):**
+- [x] **Purpose layer.** Port `classify_layer`
+  (`store.c:4485`): label each module `entry / api / core / leaf / internal`
+  from fan-in/fan-out, with an auto reason ("high fan-in: 42 in, 3 out"). Add
+  fan-in **hotspots** and optional **Louvain clustering** (natural subsystems).
+  Plus an **"About" block** (README H1 + first para, manifest `description`,
+  `//!`/docstring module purpose). Surface in BOTH the md digest and `--html`.
+- [x] **Module-level dead code, done right (no more 105 false positives).**
+  Apply their trust rules at directory/module granularity: **behavioral root**
+  (no inbound imports + has outbound = entry point, keep) → only *no-in + no-out
+  = candidate*; whitelist tests/`main`/`lib`/exports first; fail-safe
+  (query error ⇒ non-dead). Label clearly as **module-level**.
+- [ ] **Symbol/function-level dead code = defer to language tools.** Don't fake
+  it without AST. Optionally shell out to `cargo`/`knip`/`vulture` and surface
+  their result, or just print a one-liner pointing the user there.
+- [x] **Duplicate-function detection.** MinHash+LSH over
+  **token-shingles** (normalize identifiers/strings/numbers → placeholders),
+  per function; needs only a function-boundary scanner, not a grammar. Threshold
+  ~0.8 to catch diverged clones (the npm/pnpm/bun parsers). `SIMILAR_TO` list.
+- [ ] **Confidence-weighted dep edges (later).** Adopt their registry model
+  (`import_map 0.95 → same_module 0.90 → unique_name 0.75 → …`) to improve graph
+  fidelity for multi-language repos.
+
+---
+
 ## Phase 4 — Analytics & Configuration
 
 - [ ] `trs stats --graph` — ASCII bar chart (30-day view)

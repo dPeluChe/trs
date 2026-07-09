@@ -289,6 +289,8 @@ fn run() {
             print,
             warn_at,
             symbols,
+            html,
+            max_loc,
             tmp,
         }) => {
             if *list {
@@ -351,6 +353,8 @@ fn run() {
                         }
                     },
                     symbols_index: *symbols,
+                    html: *html,
+                    max_loc: max_loc.unwrap_or(500),
                 };
                 ingest::run_ingest(&config);
             }

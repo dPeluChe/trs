@@ -137,10 +137,8 @@ fn first_python_docstring(content: &str) -> Option<String> {
     let first = lines.next()?.trim();
     let (quote, rest) = if let Some(r) = first.strip_prefix("\"\"\"") {
         ("\"\"\"", r)
-    } else if let Some(r) = first.strip_prefix("'''") {
-        ("'''", r)
     } else {
-        return None;
+        ("'''", first.strip_prefix("'''")?)
     };
     // Single-line docstring.
     if let Some(end) = rest.find(quote) {
