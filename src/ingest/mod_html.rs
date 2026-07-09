@@ -34,7 +34,8 @@ header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 24px;justify-co
 .brand{display:flex;flex-direction:column;gap:6px}
 .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink)}
 h1{margin:0;font-size:clamp(26px,5vw,40px);letter-spacing:-.02em;font-weight:700;text-wrap:balance;font-family:var(--mono)}
-.sub{color:var(--muted);font-size:15px;max-width:56ch}
+.sub{color:var(--ink);font-size:15.5px;max-width:60ch;margin:2px 0 0;line-height:1.45}
+.gen{color:var(--faint);font-size:12px;font-family:var(--mono);margin:2px 0 0}
 .ver{font-family:var(--mono);font-size:13px;color:var(--muted);border:1px solid var(--border);
   border-radius:999px;padding:5px 12px;background:var(--surface);white-space:nowrap}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:34px}
