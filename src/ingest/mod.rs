@@ -18,18 +18,20 @@ mod deps_extract;
 mod dupes;
 mod format;
 mod format_html;
+mod format_html_util;
 mod format_tree;
 mod meta;
 mod mod_html;
 mod ollama;
 mod purpose;
 mod remote;
+mod resolve;
 mod store;
 
 pub use remote::{is_remote_ref, resolve_remote, TmpMode};
+pub use resolve::resolve_project_root;
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::PathBuf;
 
 use collect::{apply_budget, collect_files, get_changed_files};
 use deps::{build_dep_graph, format_dep_full, format_dep_summary};
@@ -200,123 +202,6 @@ pub(crate) struct DigestFile {
     pub(crate) module_doc: Option<String>,
     /// Public / exported symbol names declared in this file.
     pub(crate) symbols: Vec<String>,
-}
-
-/// Resolve the project root: find git root or use the given path.
-pub fn resolve_project_root(path: &Path) -> Result<PathBuf, String> {
-    let abs_path = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        std::env::current_dir()
-            .map_err(|e| format!("cannot get current dir: {}", e))?
-            .join(path)
-    };
-
-    // If path is "." or doesn't exist as-is, try to find git root
-    let check_path = if abs_path.to_str() == Some(".") || path.to_str() == Some(".") {
-        std::env::current_dir().unwrap_or(abs_path.clone())
-    } else {
-        abs_path.clone()
-    };
-
-    // Try to find git root from the given path
-    let git_root = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(&check_path)
-        .output()
-        .ok()
-        .and_then(|o| {
-            if o.status.success() {
-                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
-            } else {
-                None
-            }
-        });
-
-    if let Some(root) = git_root {
-        let root_path = PathBuf::from(&root);
-
-        // Even if this is a git repo, check if it contains many sub-repos
-        // (common pattern: workspace directory with .git tracking many projects)
-        let sub_repos: Vec<String> = std::fs::read_dir(&root_path)
-            .ok()
-            .map(|entries| {
-                entries
-                    .flatten()
-                    .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-                    .filter(|e| e.path().join(".git").exists())
-                    .map(|e| e.file_name().to_string_lossy().to_string())
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        if sub_repos.len() > 5 {
-            let mut msg = format!(
-                "{} contains {} sub-repositories. Specify one:\n",
-                root_path.display(),
-                sub_repos.len()
-            );
-            for repo in sub_repos.iter().take(10) {
-                msg.push_str(&format!("  trs ingest {}/{}\n", root_path.display(), repo));
-            }
-            if sub_repos.len() > 10 {
-                msg.push_str(&format!("  ... and {} more\n", sub_repos.len() - 10));
-            }
-            return Err(msg);
-        }
-
-        Ok(root_path)
-    } else if abs_path.is_dir() {
-        // Check if this is a folder containing multiple repos
-        let sub_repos: Vec<String> = std::fs::read_dir(&abs_path)
-            .ok()
-            .map(|entries| {
-                entries
-                    .flatten()
-                    .filter(|e| e.path().join(".git").exists())
-                    .map(|e| e.file_name().to_string_lossy().to_string())
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        if sub_repos.len() > 1 {
-            let mut msg = format!(
-                "{} contains {} repositories. Specify one:\n",
-                abs_path.display(),
-                sub_repos.len()
-            );
-            for repo in &sub_repos {
-                msg.push_str(&format!("  trs ingest {}/{}\n", path.display(), repo));
-            }
-            return Err(msg);
-        }
-
-        eprintln!(
-            "trs ingest: warning: {} is not a git repository",
-            abs_path.display()
-        );
-        Ok(abs_path)
-    } else {
-        Err(format!(
-            "{} is not a directory or git repository",
-            path.display()
-        ))
-    }
-}
-
-/// Return a human-friendly budget suggestion for a digest of `n` tokens.
-/// Picks a round budget that roughly halves the current output — enough
-/// compression pressure to matter, but not so aggressive it empties the digest.
-fn suggest_budget(n: usize) -> &'static str {
-    if n > 200_000 {
-        "128k"
-    } else if n > 80_000 {
-        "64k"
-    } else if n > 40_000 {
-        "32k"
-    } else {
-        "16k"
-    }
 }
 
 /// Run the ingest command.
@@ -538,7 +423,7 @@ pub fn run_ingest(config: &IngestConfig) {
         // clean.
         if let Some(threshold) = config.warn_at_tokens {
             if threshold > 0 && total_tokens > threshold {
-                let suggested = suggest_budget(total_tokens);
+                let suggested = resolve::suggest_budget(total_tokens);
                 eprintln!(
                     "  ⚠  {} tokens exceeds threshold ({}) — consider: trs ingest --budget {}",
                     format_tokens(total_tokens),
@@ -558,86 +443,4 @@ pub fn run_ingest(config: &IngestConfig) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_format_tokens() {
-        assert_eq!(format_tokens(500), "500");
-        assert_eq!(format_tokens(1500), "1.5k");
-        assert_eq!(format_tokens(128000), "128.0k");
-        assert_eq!(format_tokens(1_500_000), "1.5M");
-    }
-
-    #[test]
-    fn test_format_bytes() {
-        assert_eq!(format_bytes(500), "500B");
-        assert_eq!(format_bytes(1536), "1.5KB");
-        assert_eq!(format_bytes(1_048_576), "1.0MB");
-    }
-
-    #[test]
-    fn test_ingest_level_from_str() {
-        assert_eq!(IngestLevel::from_str("minimal"), IngestLevel::Minimal);
-        assert_eq!(IngestLevel::from_str("min"), IngestLevel::Minimal);
-        assert_eq!(IngestLevel::from_str("aggressive"), IngestLevel::Aggressive);
-        assert_eq!(IngestLevel::from_str("agg"), IngestLevel::Aggressive);
-        assert_eq!(IngestLevel::from_str("full"), IngestLevel::Full);
-        assert_eq!(IngestLevel::from_str("anything"), IngestLevel::Full);
-    }
-
-    #[test]
-    fn test_skip_extensions() {
-        assert!(SKIP_EXTENSIONS.contains(&"png"));
-        assert!(SKIP_EXTENSIONS.contains(&"wasm"));
-        assert!(!SKIP_EXTENSIONS.contains(&"rs"));
-        assert!(!SKIP_EXTENSIONS.contains(&"ts"));
-    }
-
-    #[test]
-    fn test_skip_files() {
-        assert!(SKIP_FILES.contains(&"package-lock.json"));
-        assert!(SKIP_FILES.contains(&"Cargo.lock"));
-        assert!(!SKIP_FILES.contains(&"Cargo.toml"));
-    }
-
-    #[test]
-    fn test_build_tree() {
-        let files = vec![
-            DigestFile {
-                rel_path: "src/main.rs".into(),
-                content: String::new(),
-                tokens: 0,
-                loc: 0,
-                is_changed: false,
-                raw_imports: vec![],
-                module_doc: None,
-                symbols: vec![],
-            },
-            DigestFile {
-                rel_path: "src/lib.rs".into(),
-                content: String::new(),
-                tokens: 0,
-                loc: 0,
-                is_changed: false,
-                raw_imports: vec![],
-                module_doc: None,
-                symbols: vec![],
-            },
-            DigestFile {
-                rel_path: "README.md".into(),
-                content: String::new(),
-                tokens: 0,
-                loc: 0,
-                is_changed: false,
-                raw_imports: vec![],
-                module_doc: None,
-                symbols: vec![],
-            },
-        ];
-        let tree = format::build_tree(&files);
-        assert!(tree.contains("src/"));
-        assert!(tree.contains("  main.rs"));
-        assert!(tree.contains("README.md"));
-    }
-}
+mod tests;

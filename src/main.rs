@@ -44,6 +44,8 @@ mod doctor_checks;
 mod exec;
 mod formatter;
 mod help;
+mod help_text;
+mod help_text_more;
 mod ingest;
 mod init;
 mod init_collision;
@@ -65,6 +67,7 @@ mod rewrite_decide;
 mod router;
 #[allow(dead_code)]
 mod schema;
+mod text_util;
 pub(crate) mod tracker;
 mod uninstall;
 mod upgrade;

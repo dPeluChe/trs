@@ -2,6 +2,7 @@
 //!
 //! Contains format_grep and all format-specific variants (JSON, compact, CSV, TSV, raw).
 
+use super::super::common::escape_csv_field;
 use super::super::run::RunHandler;
 use super::super::types::*;
 use super::ParseHandler;
@@ -77,7 +78,7 @@ impl ParseHandler {
 
         for file in &grep_output.files {
             for m in &file.matches {
-                let line_escaped = RunHandler::escape_csv_field(&m.line);
+                let line_escaped = escape_csv_field(&m.line);
                 result.push_str(&format!(
                     "{},{},{},{},{}\n",
                     file.path,

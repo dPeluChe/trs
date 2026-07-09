@@ -245,17 +245,20 @@ fn test_replace_truncate_line() {
 
 #[test]
 fn test_replace_escape_csv_field() {
-    assert_eq!(ReplaceHandler::escape_csv_field("simple"), "simple");
     assert_eq!(
-        ReplaceHandler::escape_csv_field("with,comma"),
+        crate::router::handlers::common::escape_csv_field("simple"),
+        "simple"
+    );
+    assert_eq!(
+        crate::router::handlers::common::escape_csv_field("with,comma"),
         "\"with,comma\""
     );
     assert_eq!(
-        ReplaceHandler::escape_csv_field("with\"quote"),
+        crate::router::handlers::common::escape_csv_field("with\"quote"),
         "\"with\"\"quote\""
     );
     assert_eq!(
-        ReplaceHandler::escape_csv_field("with\nnewline"),
+        crate::router::handlers::common::escape_csv_field("with\nnewline"),
         "\"with\nnewline\""
     );
 }

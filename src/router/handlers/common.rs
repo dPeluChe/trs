@@ -97,6 +97,17 @@ pub(crate) fn estimate_tokens(bytes: usize) -> usize {
     bytes / 4
 }
 
+/// Quote a field for CSV output, per RFC 4180: wrap in double quotes when it
+/// holds a comma, quote, CR or LF, doubling any embedded quote. Shared by the
+/// run / replace / tail / parse handlers that emit CSV directly.
+pub(crate) fn escape_csv_field(field: &str) -> String {
+    if field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r') {
+        format!("\"{}\"", field.replace('"', "\"\""))
+    } else {
+        field.to_string()
+    }
+}
+
 /// Statistics about command execution.
 #[derive(Debug, Clone, Default)]
 pub struct CommandStats {
