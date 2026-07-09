@@ -47,6 +47,13 @@ pub(super) fn build_digest(
         project_type
     ));
 
+    // About: the project's own one-line purpose (manifest description / README).
+    // Gives the reading agent *intent*, not just structure — mirrors the HTML
+    // report's subtitle. See `purpose::about`.
+    if let Some(about) = super::purpose::about(files) {
+        out.push_str(&format!("> {}\n\n", about));
+    }
+
     // Structure
     out.push_str("## Structure\n\n");
     out.push_str(&build_tree(files));
@@ -55,6 +62,17 @@ pub(super) fn build_digest(
     // Key Dependencies (injected from dep graph, code projects only)
     if !is_docs_project && !dep_summary.is_empty() {
         out.push_str(dep_summary);
+    }
+
+    // Architecture: module roles by pure fan-in/fan-out topology (entry / core
+    // / leaf / internal). The HTML report shows this as a colored graph; here
+    // it's a compact list so an agent gets the same "what routes through what"
+    // map without the visual.
+    if !is_docs_project {
+        let roles = build_roles_section(files);
+        if !roles.is_empty() {
+            out.push_str(&roles);
+        }
     }
 
     // Symbol index (opt-in via --symbols). Flat `name → path` list so an
@@ -174,6 +192,42 @@ pub(super) fn build_digest(
         format_bytes(out.len())
     ));
 
+    out
+}
+
+/// Build the "Architecture (module roles)" markdown block: the top graphed
+/// modules grouped by fan-in/fan-out role. Empty string if the import graph has
+/// no edges (nothing to classify — keeps the digest clean for trivial repos).
+fn build_roles_section(files: &[DigestFile]) -> String {
+    use std::collections::HashMap;
+    let roles = super::purpose::roles(files, 24);
+    if roles.is_empty() {
+        return String::new();
+    }
+    let mut by_role: HashMap<&str, Vec<String>> = HashMap::new();
+    for r in &roles {
+        by_role
+            .entry(r.role)
+            .or_default()
+            .push(format!("`{}` ({}↓/{}↑)", r.module, r.in_deg, r.out_deg));
+    }
+    let mut out = String::from(
+        "## Architecture (module roles)\n\nFrom the import graph (fan-in↓ / fan-out↑), no AST:\n\n",
+    );
+    for (role, desc) in super::purpose::ROLE_DESC {
+        if let Some(mods) = by_role.get(role) {
+            // Cap each bucket — `internal` can be long and is the least
+            // informative role; entry/core/leaf are naturally short.
+            let shown = mods.iter().take(8).cloned().collect::<Vec<_>>().join(", ");
+            let more = if mods.len() > 8 {
+                format!(" +{} more", mods.len() - 8)
+            } else {
+                String::new()
+            };
+            out.push_str(&format!("- **{}**: {} → {}{}\n", role, desc, shown, more));
+        }
+    }
+    out.push('\n');
     out
 }
 

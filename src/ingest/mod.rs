@@ -22,6 +22,7 @@ mod format_tree;
 mod meta;
 mod mod_html;
 mod ollama;
+mod purpose;
 mod remote;
 mod store;
 

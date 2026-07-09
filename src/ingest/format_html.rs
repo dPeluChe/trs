@@ -9,143 +9,9 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use super::deps::build_dep_graph;
 use super::mod_html::{CSS, GRAPH_JS};
+use super::purpose::{self, module_of, role_of, ROLE_DESC};
 use super::DigestFile;
-
-/// Group a file into a display "module" = its directory (so files in the same
-/// folder share a node), with a single leading source-root wrapper
-/// (`src`/`lib`/`app`) stripped for tidier labels. A top-level file maps to its
-/// stem (`src/main.rs` → `main`).
-///
-/// Grouping by directory (not by the first component) is what keeps the graph
-/// meaningful for monorepo / multi-root layouts: collapsing everything under
-/// `docu_frontend/` into one node would turn every real edge into a
-/// self-loop and empty the graph.
-fn module_of(rel: &str) -> String {
-    let mut parts: Vec<&str> = rel.split('/').filter(|p| !p.is_empty()).collect();
-    if parts.is_empty() {
-        return "(root)".to_string();
-    }
-    if parts.len() > 1 && matches!(parts[0], "src" | "lib" | "app") {
-        parts.remove(0);
-    }
-    if parts.len() == 1 {
-        // top-level file → its stem
-        Path::new(parts[0])
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or(parts[0])
-            .to_string()
-    } else {
-        // nested → the containing directory path (drop the filename)
-        parts[..parts.len() - 1].join("/")
-    }
-}
-
-/// The project's own one-line purpose: manifest `description` first (the most
-/// deliberate statement), else the README's first prose paragraph. Gives the
-/// agent *intent*, not just structure.
-fn project_about(files: &[&DigestFile]) -> Option<String> {
-    let named = |f: &&DigestFile, want: &str| {
-        Path::new(&f.rel_path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(|n| n.eq_ignore_ascii_case(want))
-            .unwrap_or(false)
-    };
-    for f in files {
-        if named(f, "Cargo.toml") || named(f, "pyproject.toml") {
-            if let Some(d) = kv_value(&f.content, "description") {
-                return Some(d);
-            }
-        }
-        if named(f, "package.json") {
-            if let Some(d) = json_value(&f.content, "description") {
-                return Some(d);
-            }
-        }
-    }
-    for f in files {
-        if named(f, "README.md") {
-            if let Some(p) = readme_first_para(&f.content) {
-                return Some(p);
-            }
-        }
-    }
-    None
-}
-
-/// `key = "value"` / `key = 'value'` from a TOML-ish blob (first match).
-fn kv_value(content: &str, key: &str) -> Option<String> {
-    for line in content.lines() {
-        let t = line.trim_start();
-        if let Some(rest) = t.strip_prefix(key) {
-            let rest = rest.trim_start();
-            if let Some(rest) = rest.strip_prefix('=') {
-                let v = rest.trim().trim_matches(|c| c == '"' || c == '\'').trim();
-                if !v.is_empty() {
-                    return Some(truncate(v, 240));
-                }
-            }
-        }
-    }
-    None
-}
-
-/// `"key": "value"` from a JSON blob (first match).
-fn json_value(content: &str, key: &str) -> Option<String> {
-    let needle = format!("\"{}\"", key);
-    let idx = content.find(&needle)?;
-    let after = &content[idx + needle.len()..];
-    let colon = after.find(':')?;
-    let after = after[colon + 1..].trim_start();
-    let after = after.strip_prefix('"')?;
-    let end = after.find('"')?;
-    let v = after[..end].trim();
-    if v.is_empty() {
-        None
-    } else {
-        Some(truncate(v, 240))
-    }
-}
-
-/// First real prose paragraph of a README (skip headings, badges, images, HTML).
-fn readme_first_para(content: &str) -> Option<String> {
-    for line in content.lines() {
-        let t = line.trim();
-        if t.is_empty()
-            || t.starts_with('#')
-            || t.starts_with('!')
-            || t.starts_with('[')
-            || t.starts_with('<')
-            || t.starts_with('>')
-            || t.starts_with("---")
-            || t.starts_with("```")
-            || t.contains('|') // status/table rows ("Versión: x | Estado: y")
-            || t.contains("://") && t.split_whitespace().count() <= 2
-        // a bare URL line
-        {
-            continue;
-        }
-        // Strip inline markdown emphasis/links lightly.
-        let clean = t.replace(['*', '`'], "");
-        if clean.len() >= 20 {
-            return Some(truncate(clean.trim(), 240));
-        }
-    }
-    None
-}
-
-fn truncate(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
-        s.to_string()
-    } else {
-        let mut out: String = s.chars().take(max).collect();
-        out.push('…');
-        out
-    }
-}
 
 /// Source-code extensions — the orphan/isolated heuristic only considers code
 /// (a stray `.md`/`.json` module isn't "dead code").
@@ -344,7 +210,7 @@ pub(super) fn format_html(
     let total_loc: usize = real.iter().map(|f| f.loc).sum();
     let file_count = real.len();
     let symbol_count: usize = real.iter().map(|f| f.symbols.len()).sum();
-    let about_line = match project_about(&real) {
+    let about_line = match purpose::about(files) {
         Some(a) => esc(&a),
         None => "Structure, size and internal dependencies at a glance.".to_string(),
     };
@@ -406,50 +272,24 @@ pub(super) fn format_html(
         .collect::<Vec<_>>()
         .join("");
 
-    // --- dependency graph, aggregated to module level ---
-    let graph = build_dep_graph(files);
-    let mut medges: HashMap<(String, String), usize> = HashMap::new();
-    for (src, dsts) in &graph.edges {
-        let ms = module_of(src);
-        for d in dsts {
-            let md = module_of(d);
-            if ms != md {
-                *medges.entry((ms.clone(), md.clone())).or_default() += 1;
-            }
-        }
-    }
-    // Fan-in (how many distinct modules import me) and fan-out (how many I
-    // import). Edges are already deduped to unique (src, dst) pairs.
-    let mut in_deg: HashMap<String, usize> = HashMap::new();
-    let mut out_deg: HashMap<String, usize> = HashMap::new();
-    for (s, t) in medges.keys() {
-        *out_deg.entry(s.clone()).or_default() += 1;
-        *in_deg.entry(t.clone()).or_default() += 1;
-    }
+    // --- dependency graph, aggregated to module level (see `purpose`) ---
+    let medges = purpose::module_edges(files);
+    let (in_deg, out_deg) = purpose::degrees(&medges);
     let mut deg: HashMap<String, usize> = HashMap::new();
     for m in in_deg.keys().chain(out_deg.keys()) {
         deg.entry(m.clone()).or_insert_with(|| {
             in_deg.get(m).copied().unwrap_or(0) + out_deg.get(m).copied().unwrap_or(0)
         });
     }
-    // Role by pure fan-in/fan-out topology (classify_layer, no AST):
-    //   entry  — nothing imports it, it imports others (a root / CLI / main)
-    //   leaf   — used by others, imports nothing (a utility / type module)
-    //   core   — high fan-in: many modules route through it
-    //   internal — everything else (mid of the graph)
-    let core_floor = in_deg.values().copied().max().unwrap_or(0).max(6) / 2;
-    let role_of = |m: &str| -> &'static str {
-        let i = in_deg.get(m).copied().unwrap_or(0);
-        let o = out_deg.get(m).copied().unwrap_or(0);
-        if i == 0 && o > 0 {
-            "entry"
-        } else if o == 0 && i > 0 {
-            "leaf"
-        } else if i >= core_floor.max(3) {
-            "core"
-        } else {
-            "internal"
-        }
+    // Role by pure fan-in/fan-out topology (classify_layer, no AST). See
+    // `purpose::role_of` for the entry/core/leaf/internal rules.
+    let floor = purpose::core_floor(&in_deg);
+    let role_at = |m: &str| -> &'static str {
+        role_of(
+            in_deg.get(m).copied().unwrap_or(0),
+            out_deg.get(m).copied().unwrap_or(0),
+            floor,
+        )
     };
     let mut ranked: Vec<String> = deg.keys().cloned().collect();
     ranked.sort_by(|a, b| {
@@ -468,7 +308,7 @@ pub(super) fn format_html(
                 mod_loc.get(m).copied().unwrap_or(0),
                 deg.get(m).copied().unwrap_or(0),
                 mod_files.get(m).copied().unwrap_or(0),
-                json_str(role_of(m)),
+                json_str(role_at(m)),
                 in_deg.get(m).copied().unwrap_or(0),
                 out_deg.get(m).copied().unwrap_or(0),
             )
@@ -489,15 +329,9 @@ pub(super) fn format_html(
     // roles breakdown among graphed modules (classify_layer summary)
     let mut role_groups: HashMap<&str, Vec<&str>> = HashMap::new();
     for m in &keep {
-        role_groups.entry(role_of(m)).or_default().push(m.as_str());
+        role_groups.entry(role_at(m)).or_default().push(m.as_str());
     }
-    let role_desc: &[(&str, &str)] = &[
-        ("entry", "roots — nothing imports them (main, CLI)"),
-        ("core", "high fan-in — everything routes through"),
-        ("leaf", "used by many, import nothing (utils, types)"),
-        ("internal", "mid-graph plumbing"),
-    ];
-    let roles_html = role_desc
+    let roles_html = ROLE_DESC
         .iter()
         .filter_map(|(r, desc)| {
             role_groups.get(r).map(|mods| {
