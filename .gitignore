@@ -64,3 +64,6 @@ npm/platforms/*/trs.exe
 # ship with the main repo).
 /docs/promo-video/
 docs/launch/
+
+# local codebase report prototype (not published)
+trs-report.html

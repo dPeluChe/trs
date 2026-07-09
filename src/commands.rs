@@ -305,6 +305,16 @@ pub enum Commands {
         #[arg(long)]
         symbols: bool,
 
+        /// Emit a self-contained visual HTML report (structure, LOC by module,
+        /// interactive dependency graph, oversized files) instead of markdown.
+        #[arg(long)]
+        html: bool,
+
+        /// Flag files over N lines in the report (default 500). Only meaningful
+        /// with --html.
+        #[arg(long)]
+        max_loc: Option<usize>,
+
         /// For URL/remote input: shallow-clone into a tempdir (not saved).
         /// Ignored when the input is a local path.
         #[arg(long)]

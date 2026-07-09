@@ -21,6 +21,8 @@ pub(super) struct CompressResult {
     pub module_doc: Option<String>,
     /// Public / exported symbol names for the symbol index.
     pub symbols: Vec<String>,
+    /// Raw line count of the original (uncompressed) file.
+    pub loc: usize,
 }
 
 /// Intelligently extract what matters from a file for LLM consumption.
@@ -95,6 +97,7 @@ pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<Compr
     // already-extracted metadata. Each early-return branch calls `ok` exactly
     // once, so the metadata is moved (not cloned) into the result via
     // interior mutability on an Option.
+    let loc = content.lines().count();
     let mut meta = Some((raw_imports, module_doc, symbols));
     let mut ok = |s: String| {
         let (imports, doc, syms) = meta.take().expect("CompressResult built twice");
@@ -103,6 +106,7 @@ pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<Compr
             raw_imports: imports,
             module_doc: doc,
             symbols: syms,
+            loc,
         })
     };
 

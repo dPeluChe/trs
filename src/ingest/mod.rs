@@ -16,8 +16,10 @@ mod collect_manifests;
 mod deps;
 mod deps_extract;
 mod format;
+mod format_html;
 mod format_tree;
 mod meta;
+mod mod_html;
 mod ollama;
 mod remote;
 mod store;
@@ -174,6 +176,10 @@ pub struct IngestConfig {
     /// Emit a flat symbol → file index after the Structure section. Lets
     /// agents resolve "where is X?" in a single scan without reading any file.
     pub symbols_index: bool,
+    /// Emit a self-contained visual HTML report instead of the markdown digest.
+    pub html: bool,
+    /// LOC threshold for flagging oversized files in the HTML report.
+    pub max_loc: usize,
 }
 
 /// A file entry in the digest.
@@ -181,6 +187,9 @@ pub(crate) struct DigestFile {
     pub(crate) rel_path: String,
     pub(crate) content: String,
     pub(crate) tokens: usize,
+    /// Raw line count of the original file (before compression). Feeds the
+    /// HTML report's LOC-by-module bars and oversized-file flags.
+    pub(crate) loc: usize,
     pub(crate) is_changed: bool,
     /// Raw import tokens extracted from original file content (before compression).
     pub(crate) raw_imports: Vec<String>,
@@ -408,6 +417,44 @@ pub fn run_ingest(config: &IngestConfig) {
         return;
     }
 
+    // --html mode: emit a self-contained visual report instead of markdown.
+    if config.html {
+        let output = format_html::format_html(&files, project_name, config.max_loc);
+        let out_path = config.output_file.clone().unwrap_or_else(|| {
+            let safe: String = project_name
+                .chars()
+                .map(|c| {
+                    if c.is_alphanumeric() || c == '-' || c == '_' {
+                        c
+                    } else {
+                        '-'
+                    }
+                })
+                .collect();
+            std::path::PathBuf::from(format!("{}-report.html", safe))
+        });
+        if let Some(parent) = out_path.parent() {
+            if !parent.as_os_str().is_empty() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+        }
+        match std::fs::write(&out_path, &output) {
+            Ok(()) => {
+                eprintln!(
+                    "trs ingest --html: {} -> {}",
+                    format_bytes(output.len()),
+                    out_path.display()
+                );
+                println!("{}", out_path.display());
+            }
+            Err(e) => {
+                eprintln!("trs ingest: write failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
     // Build the dep summary for header injection
     let dep_summary = if graph.is_empty() {
         String::new()
@@ -558,6 +605,7 @@ mod tests {
                 rel_path: "src/main.rs".into(),
                 content: String::new(),
                 tokens: 0,
+                loc: 0,
                 is_changed: false,
                 raw_imports: vec![],
                 module_doc: None,
@@ -567,6 +615,7 @@ mod tests {
                 rel_path: "src/lib.rs".into(),
                 content: String::new(),
                 tokens: 0,
+                loc: 0,
                 is_changed: false,
                 raw_imports: vec![],
                 module_doc: None,
@@ -576,6 +625,7 @@ mod tests {
                 rel_path: "README.md".into(),
                 content: String::new(),
                 tokens: 0,
+                loc: 0,
                 is_changed: false,
                 raw_imports: vec![],
                 module_doc: None,
