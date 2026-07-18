@@ -49,6 +49,54 @@ fn default_does_not_emit_digest_content() {
 }
 
 #[test]
+fn agent_large_no_budget_warns_inside_digest() {
+    // Agents run `2>/dev/null`, so the stderr budget warning is invisible —
+    // it must ride inside the digest. `--warn-at 1` forces the threshold on a
+    // tiny project.
+    let dir = make_project("warn");
+    Command::cargo_bin("trs")
+        .unwrap()
+        .arg("ingest")
+        .arg(&dir)
+        .args(["--agent", "--warn-at", "1"])
+        .assert()
+        .success()
+        .stdout(predicate::str::starts_with("# "))
+        .stdout(predicate::str::contains("Large digest"))
+        .stdout(predicate::str::contains("--budget"));
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn agent_with_budget_has_no_in_digest_warning() {
+    // A budget was set → the digest is already fitted, no nag.
+    let dir = make_project("warnbudget");
+    Command::cargo_bin("trs")
+        .unwrap()
+        .arg("ingest")
+        .arg(&dir)
+        .args(["--agent", "--warn-at", "1", "--budget", "128k"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Large digest").not());
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn agent_warn_disabled_has_no_in_digest_warning() {
+    let dir = make_project("warnoff");
+    Command::cargo_bin("trs")
+        .unwrap()
+        .arg("ingest")
+        .arg(&dir)
+        .args(["--agent", "--warn-at", "0"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Large digest").not());
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn agent_with_output_flag_still_returns_path() {
     let dir = make_project("outfile");
     let out = dir.join("digest.md");

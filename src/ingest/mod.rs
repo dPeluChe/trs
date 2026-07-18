@@ -184,6 +184,10 @@ pub struct IngestConfig {
     pub html: bool,
     /// LOC threshold for flagging oversized files in the HTML report.
     pub max_loc: usize,
+    /// The caller is an agent (`--agent`). Agents run `2>/dev/null`, so the
+    /// stderr budget warning never reaches them — when set, a large no-budget
+    /// digest also carries the warning inside its own markdown header.
+    pub agent_mode: bool,
 }
 
 /// A file entry in the digest.

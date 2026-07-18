@@ -333,12 +333,12 @@ fn run() {
                     }
                 };
                 let budget_tokens = budget.as_ref().map(|b| parse_token_budget(b));
+                let agent_mode = ctx.format == OutputFormat::Agent;
                 // Agent-first ergonomics: `--agent` emits the digest to stdout
                 // (implicit --print) instead of just the saved path — an agent
                 // asked for the content, not a file to re-read. Skipped when the
                 // caller explicitly writes a file with `-o`.
-                let print_content =
-                    *print || (ctx.format == OutputFormat::Agent && output.is_none());
+                let print_content = *print || (agent_mode && output.is_none());
                 let config = ingest::IngestConfig {
                     root,
                     level: ingest::IngestLevel::from_str(level),
@@ -364,6 +364,7 @@ fn run() {
                     symbols_index: *symbols,
                     html: *html,
                     max_loc: max_loc.unwrap_or(500),
+                    agent_mode,
                 };
                 ingest::run_ingest(&config);
             }
