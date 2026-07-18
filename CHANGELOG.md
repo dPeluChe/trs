@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.7.1] - 2026-07-18
+
+### Features
+
+- **ingest:** --agent implies --print (digest to stdout) (#117)
+
 ## [0.7.0] - 2026-07-18
 
 ### Features
@@ -27,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Genericize competitor references in guard/exit-code comments (#107)
+
+### CI / Build
+
+- **release:** Pin npm to 11.x for publish (npm@latest 12.x needs node ≥22) (#116)
 
 ### Dependencies
 
