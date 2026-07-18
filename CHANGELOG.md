@@ -5,28 +5,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.6.18] - 2026-07-08
+## [0.7.0] - 2026-07-18
 
 ### Features
 
-- **core:** Never-worse output guard — the parser path now measures its output and falls back to raw if a parse would ever be larger (#105)
-- **core:** Lock exit-code fidelity through the compressing path with regression tests — git/grep/ls exits stay faithful (#105)
-- **output-saver:** Sharpen the rules block — persistence, safety carve-out, no invented abbreviations, reuse-before-write (#104)
-- **output-saver:** Add `--verify` to confirm each agent's block matches the current canonical after upgrade (#106)
+- **core:** Never-worse output guard + lock exit-code fidelity (rtk 0.43.0) (#105)
+- **output-saver:** Sharpen rules with caveman/ponytail learnings (lean) (#104)
+- **output-saver:** Add --verify to confirm agents picked up the block (#106)
+- **ingest:** --html visual codebase report with dependency graph (#111)
+
+### Bug Fixes
+
+- **ingest:** Capture pub(crate)/pub(super) symbols in Rust digests (#109)
 
 ### Refactor
 
-- **output:** Make trs init/upgrade/doctor output scannable — one aligned row per agent, single restart note, `~/`-shortened paths (#103)
+- **output:** Make trs init/upgrade/doctor output scannable (#103)
+- Extract inline test modules to *_tests.rs (under 500 LOC) (#110)
+- Apply ingest learnings — dedup + LOC splits (#112)
 
 ### Documentation
 
-- Tidy internal doc comments (#107)
+- Genericize competitor references in guard/exit-code comments (#107)
 
 ### Dependencies
 
 - **deps:** Bump the cargo-minor group across 1 directory with 2 updates (#99)
 - **deps:** Bump actions/cache from 5 to 6 (#97)
 - **deps:** Bump actions/checkout from 6 to 7 (#98)
+- **deps:** Bump actions/setup-node from 6 to 7 (#113)
+- **deps:** Bump the cargo-minor group with 4 updates (#114)
 
 ## [0.6.17] - 2026-07-07
 
