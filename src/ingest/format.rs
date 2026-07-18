@@ -47,6 +47,23 @@ pub(super) fn build_digest(
         project_type
     ));
 
+    // Budget warning, in-band. The stderr warning is invisible to agents (they
+    // run `2>/dev/null`), so when an agent pulls a large digest with no budget
+    // set, put the nudge inside the digest itself — the one thing it always
+    // reads, surviving any redirection.
+    if config.agent_mode && config.budget_tokens.is_none() {
+        if let Some(threshold) = config.warn_at_tokens {
+            if threshold > 0 && total_tokens > threshold {
+                out.push_str(&format!(
+                    "> ⚠ **Large digest** — {} tokens, no `--budget` set (full dump). \
+                     For a tighter, higher-signal context, re-run with `--budget {}`.\n\n",
+                    format_tokens(total_tokens),
+                    super::resolve::suggest_budget(total_tokens),
+                ));
+            }
+        }
+    }
+
     // About: the project's own one-line purpose (manifest description / README).
     // Gives the reading agent *intent*, not just structure — mirrors the HTML
     // report's subtitle. See `purpose::about`.

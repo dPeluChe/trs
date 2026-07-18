@@ -30,6 +30,13 @@ format implies `--print`, so `trs ingest --agent` emits the **digest content**
 to stdout directly — no second read step. Passing `-o <file>` always wins:
 the content goes to the file and stdout stays the path.
 
+**In-band budget warning (agent mode):** the oversized-digest warning normally
+goes to stderr, but agents run with `2>/dev/null`, so it never reaches them.
+When `--agent` pulls a large digest with **no `--budget`** set (over the
+`--warn-at` threshold), the warning is also written **inside the digest header**
+— the one thing the agent always reads — nudging a re-run with `--budget`. Set
+a budget, or `--warn-at 0` to silence it.
+
 ## What the digest contains
 
 ```
