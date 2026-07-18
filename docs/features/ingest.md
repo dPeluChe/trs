@@ -16,12 +16,19 @@ trs ingest --since-last         # only files changed since last ingest
 trs ingest --fresh              # reuse cached digest if HEAD unchanged
 trs ingest -o ~/ctx.md          # custom output path (no shadow save)
 trs ingest --print              # emit content to stdout instead of path
+trs ingest --agent              # agent format ⇒ implicit --print (content to stdout)
 trs ingest --warn-at 40k        # stderr warning if digest exceeds N tokens
 trs ingest --list               # list saved digests + HEAD sha + stale markers
 trs ingest --read myproject     # read a saved digest by name
 trs ingest --html               # self-contained visual report (see below)
 trs ingest --html --max-loc 400 # tune the oversized-file threshold
 ```
+
+**stdout contract:** by default `trs ingest` writes the digest to the store
+and prints only the **saved path** (cheap for callers). The agent output
+format implies `--print`, so `trs ingest --agent` emits the **digest content**
+to stdout directly — no second read step. Passing `-o <file>` always wins:
+the content goes to the file and stdout stays the path.
 
 ## What the digest contains
 
