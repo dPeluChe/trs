@@ -186,7 +186,10 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Upgrade npm to ≥11.5 (Trusted Publishing + provenance)
-        run: npm install -g npm@latest
+        # Pin to 11.x: npm@latest is now 12.x, which requires node ≥22.22.2
+        # and breaks on this job's node 20. 11.x still has Trusted Publishing
+        # + provenance (landed in 11.5) and supports node 20.
+        run: npm install -g npm@11
 
       - name: Download all npm artifacts
         uses: actions/download-artifact@v8
