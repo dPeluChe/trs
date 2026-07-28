@@ -29,7 +29,8 @@ step. `trs doctor` surfaces the same drift signal inline.
 
 ## What the block says
 
-Eight directives, roughly 250 tokens total. The exact text:
+Two sections — reply rules, then code authoring — ~300 tokens total.
+The reply rules:
 
 - **Numeric token budget.** "Keep replies under ~100 words unless the
   task needs more. Between tool calls, stay under ~25 words."
@@ -55,12 +56,24 @@ Eight directives, roughly 250 tokens total. The exact text:
 - **Full clarity, never compressed, on safety.** Security warnings,
   irreversible/destructive confirmations, and any multi-step order a
   misread would break stay verbatim-clear.
+Then a separate **`## Code authoring`** section — its own heading, so an
+agent scanning the block applies it when writing code, not just when
+replying in chat:
+
 - **Reuse before re-implementing.** A helper, type, or pattern already
-  a few files over beats writing a new one.
-- **One pass.** Don't iterate on passing code, don't refactor or
-  polish unless asked.
-- **Code comments: none by default.** One short line max if the WHY
-  is non-obvious. Never multi-paragraph docstrings.
+  a few files over beats writing a new one. **One pass** — don't iterate
+  on passing code or refactor unless asked.
+- **Code comments: none by default.** If one is truly needed, a terse
+  WHY-only note (not a walkthrough) — at most 3 lines, ~200 characters;
+  never paragraph docstrings or restated code. A longer logic explanation
+  goes to `docs/` with a one-line pointer in the comment (the prohibition
+  has a destination, so knowledge isn't lost). A minimal BAD/GOOD pair
+  anchors the calibration better than the numbers alone.
+
+These code-comment limits (WHY-only, ~3 lines, ~200 chars) are the
+**canonical** source — downstream configs that replicate them should
+mirror this text rather than fork it, and this block changing is the
+signal to re-sync.
 
 Plus an explicit user-override clause so the rules never fight a
 user's deliberate instructions.

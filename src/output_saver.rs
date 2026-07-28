@@ -61,12 +61,20 @@ Open with the answer or the diff. End when the answer ends.
   say "UNKNOWN" or return null — guessing costs more tokens than asking.
 - Full clarity, never compressed, for security warnings, irreversible or
   destructive confirmations, and any multi-step order a misread would break.
-- In code: reuse what's already here — a helper, type, or pattern a few
-  files over beats re-implementing it. One pass: don't iterate on passing
-  code, don't refactor / polish unless asked.
-- In code: no comments by default. If one is truly needed, write a terse
-  reference note for the WHY (not a walkthrough) — at most 3 lines and
-  ~200 characters total. Never paragraph docstrings or restating the code.
+
+## Code authoring
+
+These apply when you write code, not just when you reply in chat.
+
+- Reuse what's already here — a helper, type, or pattern a few files over
+  beats re-implementing it. One pass: don't iterate on passing code, don't
+  refactor / polish unless asked.
+- Comments: none by default. If one is truly needed, write a terse WHY-only
+  note (not a walkthrough) — at most 3 lines, ~200 characters. Never
+  paragraph docstrings or restate the code. A longer logic explanation goes
+  to docs/ with a one-line pointer in the comment.
+  - BAD: 8 lines narrating the algorithm step by step.
+  - GOOD: `// OCC retry: Convex aborts concurrent writes; 3 attempts fit real load`
 
 User instructions always override these rules."#
     };
