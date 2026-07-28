@@ -350,9 +350,19 @@ impl ParseHandler {
         warnings.dedup();
         creds.dedup();
 
+        // Hard rule: a non-zero exit means the build failed, whatever the text
+        // looked like. Heuristics can't know every tool's error dialect (tsc
+        // writes `error TS2322:`, not `error:`), and a summary that says "ok"
+        // for a failed build is a false claim, not compression.
+        let exit_code = super::super::common::child_exit_code();
+        if super::super::common::child_failed() {
+            success = false;
+        }
+
         let output = match ctx.format {
             OutputFormat::Json => serde_json::json!({
                 "success": success,
+                "exit_code": exit_code,
                 "errors": errors,
                 "error_count": errors.len(),
                 "warnings": warnings,
@@ -361,11 +371,18 @@ impl ParseHandler {
             })
             .to_string(),
             _ => {
+                // The exit code rides along so the verdict is verifiable
+                // rather than inferred.
+                let exit_note = match exit_code {
+                    Some(c) => format!(", exit {}", c),
+                    None => String::new(),
+                };
                 let mut out = format!(
-                    "build: {} ({} errors, {} warnings)\n",
+                    "build: {} ({} errors, {} warnings{})\n",
                     if success { "ok" } else { "FAILED" },
                     errors.len(),
-                    warnings.len()
+                    warnings.len(),
+                    exit_note
                 );
                 if !errors.is_empty() {
                     out.push_str(&format!("errors ({}):\n", errors.len()));

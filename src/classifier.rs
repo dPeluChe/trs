@@ -64,8 +64,22 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 truncate: None,
             }),
             "branch" => Some(ParseCommands::GitBranch { file: None }),
-            // git show → commit header + diff; diff parser handles both
-            "show" => Some(ParseCommands::GitDiff { file: None }),
+            // git show → commit header + diff; diff parser handles both.
+            // EXCEPT the `<rev>:<path>` form (`git show main:src/App.tsx`),
+            // which prints raw FILE CONTENTS, not a diff — running that
+            // through the diff parser yields "diff: empty" and destroys the
+            // content (worse when redirected into a file).
+            "show" => {
+                let blob_form = args_ref
+                    .iter()
+                    .skip(1)
+                    .any(|a| !a.starts_with('-') && a.contains(':'));
+                if blob_form {
+                    None
+                } else {
+                    Some(ParseCommands::GitDiff { file: None })
+                }
+            }
             // git stash show -p → standard diff output
             // git stash pop/apply → diff + status after applying
             "stash" => {

@@ -125,6 +125,11 @@ pub(crate) fn standalone_file() -> String {
          collapsed; signal preserved. There is no detail in raw output\n\
          that the compressed form hides from you, so treat what arrives\n\
          as authoritative and write normal shell commands.\n\n\
+         A failed command always says so: the summary never reports\n\
+         success for a non-zero exit, and a `[trs] exit N` line carries\n\
+         the real status plus a path to the full raw output. Redirecting\n\
+         to a file (`> out.log`, `| tee`) bypasses compression entirely,\n\
+         so the file holds the command's own output.\n\n\
          {}\n",
         IMPORT_FILENAME, BLOCK
     )
