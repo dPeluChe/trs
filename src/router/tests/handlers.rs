@@ -343,3 +343,23 @@ fn test_clean_handler() {
     let _ = std::fs::remove_file(&tmp);
     assert!(result.is_ok());
 }
+
+#[test]
+fn test_coded_diagnostics_are_errors() {
+    use crate::router::handlers::common::{is_error_line, is_warning_line};
+    // Severity word, then a code, then the colon — tsc/MSVC/C# dialects that
+    // the plain `error:` markers miss. A failing tsc build once summarized as
+    // "0 errors" because of this.
+    assert!(is_error_line(
+        "src/index.ts(1,7): error TS2322: Type 'number' is not assignable"
+    ));
+    assert!(is_error_line(
+        "main.c(5): error C2065: undeclared identifier"
+    ));
+    assert!(is_warning_line("main.c(5): warning C4996: deprecated"));
+    // Prose must not trip it: no code, no colon.
+    assert!(!is_error_line(
+        "note: error handling improved in this release"
+    ));
+    assert!(!is_error_line("renamed error reporting module"));
+}

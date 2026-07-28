@@ -118,3 +118,19 @@ fn bash_c_compound_or_quoted_stays_generic() {
         );
     }
 }
+
+#[test]
+fn git_show_blob_form_is_not_a_diff() {
+    // `git show <rev>:<path>` prints raw file contents. Routing it to the diff
+    // parser yielded "diff: empty" — silently destroying the file when the
+    // caller redirected it into one.
+    let blob = |a: &[&str]| {
+        classify_command("git", &a.iter().map(|s| s.to_string()).collect::<Vec<_>>()).is_none()
+    };
+    assert!(blob(&["show", "main:src/App.tsx"]));
+    assert!(blob(&["show", "HEAD:Cargo.toml"]));
+    assert!(blob(&["show", "origin/main:a/b.ts"]));
+    // Ordinary commit views still route to the diff parser.
+    assert!(!blob(&["show", "HEAD"]));
+    assert!(!blob(&["show", "--stat", "HEAD~2"]));
+}

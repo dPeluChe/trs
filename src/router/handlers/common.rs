@@ -89,6 +89,40 @@ impl std::error::Error for CommandError {}
 // Command Statistics
 // ============================================================
 
+/// Exit status of the command trs just ran, for parsers that summarize
+/// success/failure. Ambient because the parse layer is reached through a
+/// generic Router route, and threading it would touch every handler.
+/// Unset means no child ran (standalone `trs parse --file`), so parsers keep
+/// their text-only behavior there.
+mod child_exit {
+    use std::sync::atomic::{AtomicI32, Ordering};
+    const UNSET: i32 = i32::MIN;
+    static CODE: AtomicI32 = AtomicI32::new(UNSET);
+
+    pub(crate) fn set(code: i32) {
+        CODE.store(code, Ordering::Relaxed);
+    }
+    pub(crate) fn get() -> Option<i32> {
+        match CODE.load(Ordering::Relaxed) {
+            UNSET => None,
+            v => Some(v),
+        }
+    }
+}
+
+pub(crate) use child_exit::set as set_child_exit;
+
+/// The command trs ran exited non-zero. A hard fact — parsers use it to
+/// override text heuristics, which cannot see every tool's error dialect.
+pub(crate) fn child_failed() -> bool {
+    matches!(child_exit::get(), Some(c) if c != 0)
+}
+
+/// Exit code of the command trs ran, when one ran.
+pub(crate) fn child_exit_code() -> Option<i32> {
+    child_exit::get()
+}
+
 /// Estimate the number of tokens from byte count.
 /// Uses the common approximation of ~4 characters per token.
 pub(crate) fn estimate_tokens(bytes: usize) -> usize {
@@ -362,6 +396,40 @@ pub(crate) fn is_error_line(line: &str) -> bool {
             return true;
         }
     }
+    has_coded_diagnostic(&lower, "error")
+}
+
+/// Diagnostics that put a code between the severity word and the colon —
+/// `error TS2322:` (tsc), `error C2065:` (MSVC), `warning CS0168:` (C#).
+/// The plain `error:` markers miss these, which is how a failing `tsc` build
+/// once summarized as zero errors. Requiring the trailing colon on the code
+/// keeps prose like "error handling improved" from matching.
+fn has_coded_diagnostic(lower: &str, word: &str) -> bool {
+    let needle = format!("{} ", word);
+    let mut from = 0;
+    while let Some(pos) = lower[from..].find(&needle) {
+        let at = from + pos;
+        // Must start the line or follow a separator, not be a word tail
+        // ("mirror error" is fine; "syntaxerror foo:" should not match here).
+        let boundary = at == 0
+            || matches!(
+                lower[..at].chars().next_back(),
+                Some(' ') | Some(':') | Some('\t') | Some('[') | Some('(')
+            );
+        let rest = &lower[at + needle.len()..];
+        let code: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+            .collect();
+        if boundary
+            && !code.is_empty()
+            && code.chars().any(|c| c.is_ascii_digit())
+            && rest[code.len()..].starts_with(':')
+        {
+            return true;
+        }
+        from = at + needle.len();
+    }
     false
 }
 
@@ -377,7 +445,7 @@ pub(crate) fn is_warning_line(line: &str) -> bool {
             return true;
         }
     }
-    false
+    has_coded_diagnostic(&lower, "warning")
 }
 
 /// True if the output contains a hard-failure signal: exit stack trace, panic,

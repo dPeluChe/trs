@@ -221,14 +221,37 @@ fn test_rewrite_multi_pipe_first_segment_only() {
 }
 
 #[test]
-fn test_rewrite_redirect_first_segment() {
+fn test_captured_output_is_left_raw() {
+    // Redirecting must stay an escape hatch: rewriting here would put trs's
+    // compressed summary in the file instead of the command's real output.
+    for cmd in [
+        "git diff > out.txt",
+        "git log >> history.txt",
+        "npm run build 2> err.log",
+        "npm run build &> all.log",
+        "npm run build | tee out.log",
+        "npm run build 2>&1 | tee out.log",
+        "git show main:src/App.tsx > out.tsx",
+    ] {
+        assert_eq!(maybe_rewrite(cmd), None, "must not rewrite: {}", cmd);
+    }
+    // Command substitution: the caller consumes the value directly. It also
+    // must not be split mid-`$( )`, which produced a mangled command.
+    assert_eq!(maybe_rewrite("OUT=$(npm run build)"), None);
+    assert_eq!(maybe_rewrite("echo `git rev-parse HEAD`"), None);
+}
+
+#[test]
+fn test_pipes_and_discards_still_rewrite() {
+    // These still reach the agent as text — the case trs compresses for.
     assert_eq!(
-        maybe_rewrite("git diff > out.txt"),
-        Some("trs git diff > out.txt".into())
+        maybe_rewrite("npm run build | head -5"),
+        Some("trs npm run build | head -5".into())
     );
+    // /dev/null is a discard, not a capture — nobody reads it back.
     assert_eq!(
-        maybe_rewrite("git log >> history.txt"),
-        Some("trs git log >> history.txt".into())
+        maybe_rewrite("git status 2>/dev/null"),
+        Some("trs git status 2>/dev/null".into())
     );
 }
 

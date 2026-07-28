@@ -15,7 +15,11 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     // Execute the command. build_command routes through the platform shell on
     // Windows so .cmd/.bat shims, .ps1 scripts, and builtins resolve (issue #53).
+    // stdin must be inherited: `Command::output()` defaults it to null, which
+    // silently starves anything reading stdin — a heredoc (`python3 - <<EOF`)
+    // would see EOF, run nothing, and still exit 0.
     let output = match build_command(cmd, args)
+        .stdin(Stdio::inherit())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -35,6 +39,10 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     let stderr = String::from_utf8_lossy(&output.stderr);
     let in_bytes = stdout.len() + stderr.len();
 
+    // Publish the real exit status so summarizing parsers can state the
+    // verdict as fact instead of inferring it from text.
+    crate::router::handlers::common::set_child_exit(output.status.code().unwrap_or(1));
+
     // Git push/pull/fetch: output goes to stderr, compact it inline
     let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
     if cmd == "git" && matches!(subcmd, "push" | "pull" | "fetch") {
@@ -45,9 +53,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let full_cmd = format!("{} {}", cmd, args.join(" "));
         crate::tracker::log_execution(&full_cmd, in_bytes, compact.len(), duration_ms);
         if !output.status.success() {
-            if let Some(tee_path) = save_tee_output(&full_cmd, &stdout, &stderr) {
-                eprintln!("[full output: {}]", tee_path);
-            }
+            emit_failure_footer(&output.status, &full_cmd, &stdout, &stderr);
         }
         std::process::exit(output.status.code().unwrap_or(1));
     }
@@ -84,10 +90,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let fcmd = full_cmd(cmd, args);
         crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
         if !output.status.success() {
-            if let Some(tee_path) = save_tee_output(&fcmd, &stdout, &stderr) {
-                eprintln!("[full output: {}]", tee_path);
-            }
-            std::process::exit(output.status.code().unwrap_or(1));
+            emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
         }
         return;
     }
@@ -107,10 +110,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             let fcmd = full_cmd(cmd, args);
             crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
             if !output.status.success() {
-                if let Some(tee_path) = save_tee_output(&fcmd, &stdout, &stderr) {
-                    eprintln!("[full output: {}]", tee_path);
-                }
-                std::process::exit(output.status.code().unwrap_or(1));
+                emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
             }
             return;
         }
@@ -143,11 +143,18 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         };
 
         if parse_ok {
+            // Truth guard: a summary must never stand in for a failed command
+            // unless it actually shows the failure. Parsers infer success from
+            // text patterns, so an unrecognized error format (e.g. tsc's
+            // `error TS2322:`) yields a clean-looking summary for a non-zero
+            // exit — a false claim, not lossy compression. Emit the raw output
+            // instead so the real error survives.
+            let summary_hides_failure = !output.status.success() && !failure_is_visible(&parsed);
             // Never-worse guard: a parser must never make output larger than
             // the raw command output. If it somehow did (degenerate/tiny
             // input, header overhead), emit the raw instead. Ties go to raw —
             // no point spending a parse when it didn't save anything.
-            if parsed.len() < stdout_ref.len() {
+            if parsed.len() < stdout_ref.len() && !summary_hides_failure {
                 print!("{}", parsed);
                 out_bytes = parsed.len();
             } else {
@@ -185,11 +192,57 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     // Tee system: on failure, save full raw output for recovery
     if !output.status.success() {
-        if let Some(tee_path) = save_tee_output(&fcmd, &stdout, &stderr) {
-            eprintln!("[full output: {}]", tee_path);
-        }
-        std::process::exit(output.status.code().unwrap_or(1));
+        emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
     }
+}
+
+/// Does this compressed output actually show that something went wrong?
+/// Backstop for parsers that summarize without consulting the exit status —
+/// when the answer is "no" we fall back to raw, so a miss costs tokens, never
+/// truth.
+///
+/// Counts of zero don't count: "0 errors" contains "error" while asserting the
+/// opposite, and reading it as failure evidence is what lets a clean summary
+/// stand in for a failed command.
+fn failure_is_visible(parsed: &str) -> bool {
+    if parsed.contains('✗') {
+        return true;
+    }
+    let lower = parsed.to_ascii_lowercase();
+    let words: Vec<&str> = lower
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .collect();
+    const MARKERS: &[&str] = &["fail", "error", "panic", "fatal", "abort", "refus"];
+    words.iter().enumerate().any(|(i, w)| {
+        if !MARKERS.iter().any(|m| w.starts_with(m)) {
+            return false;
+        }
+        !matches!(
+            i.checked_sub(1).and_then(|p| words.get(p)),
+            Some(&"0") | Some(&"no")
+        )
+    })
+}
+
+/// Terminal failure footer, printed on STDOUT and never returning.
+///
+/// stdout, not stderr: agents run commands with `2>/dev/null` to keep their
+/// context clean, which silently drops a stderr-only notice exactly when it
+/// matters most. The exit code makes the status verifiable instead of
+/// inferred, and the tee path is the escape hatch to the full raw output.
+fn emit_failure_footer(
+    status: &std::process::ExitStatus,
+    fcmd: &str,
+    stdout: &str,
+    stderr: &str,
+) -> ! {
+    let code = status.code().unwrap_or(1);
+    match save_tee_output(fcmd, stdout, stderr) {
+        Some(tee_path) => println!("[trs] exit {} · full output: {}", code, tee_path),
+        None => println!("[trs] exit {}", code),
+    }
+    std::process::exit(code);
 }
 
 /// Save full command output to ~/.trs/tee/ for failure recovery.

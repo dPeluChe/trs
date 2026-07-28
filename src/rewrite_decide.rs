@@ -55,6 +55,16 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
+    // Output is being captured somewhere the user will read raw (file
+    // redirect, `| tee`, command substitution). Rewriting here would put the
+    // COMPRESSED text in the file instead of the command's real output, so
+    // redirection would stop being an escape hatch. Checked before the
+    // env-prefix split because `OUT=$(cmd)` otherwise splits mid-substitution
+    // and produces a mangled command.
+    if captures_output(trimmed) {
+        return None;
+    }
+
     // Env-var prefix stays attached to the wrapped command so the shell
     // applies it to the real program, not to trs.
     if let Some((env_prefix, body)) = split_env_prefix(trimmed) {
@@ -222,6 +232,63 @@ pub(super) fn strip_word_prefix<'a>(cmd: &'a str, prefix: &str) -> Option<&'a st
     } else {
         None
     }
+}
+
+/// True when the command routes its output somewhere the caller reads raw:
+/// a file redirect, `| tee`, or command substitution. Rewriting those would
+/// capture trs's compressed summary instead of the command's real output —
+/// silently turning redirection from an escape hatch into a lossy filter.
+///
+/// Deliberately NOT flagged: `| head`, `| grep`, and fd duplications like
+/// `2>&1`. Those still reach the agent as text, which is what trs compresses
+/// for. A `>` inside a quoted argument reads as a redirect here; erring
+/// toward "leave it raw" is the safe direction.
+pub(super) fn captures_output(cmd: &str) -> bool {
+    // Command substitution — the caller consumes the value directly.
+    if cmd.contains("$(") || cmd.contains('`') {
+        return true;
+    }
+    // `| tee file` writes a raw copy the caller will read.
+    if cmd.split('|').skip(1).any(|seg| {
+        let t = seg.trim_start();
+        t == "tee" || t.starts_with("tee ")
+    }) {
+        return true;
+    }
+    // A `>` / `>>` whose target is a real path. Two things don't count: an fd
+    // duplication (`2>&1`) and a discard (`2>/dev/null`) — neither leaves a
+    // copy anyone reads, and discarding stderr is a very common agent idiom.
+    let chars: Vec<char> = cmd.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i] != '>' {
+            i += 1;
+            continue;
+        }
+        let mut j = i + 1;
+        while j < chars.len() && chars[j] == '>' {
+            j += 1;
+        }
+        while j < chars.len() && chars[j] == ' ' {
+            j += 1;
+        }
+        if j >= chars.len() {
+            return true;
+        }
+        if chars[j] == '&' {
+            i = j;
+            continue;
+        }
+        let target: String = chars[j..]
+            .iter()
+            .take_while(|c| !c.is_whitespace())
+            .collect();
+        if target != "/dev/null" {
+            return true;
+        }
+        i = j;
+    }
+    false
 }
 
 /// Split a command at the first shell operator (pipe or redirect) so the
