@@ -381,3 +381,56 @@ fn test_node_prefix_does_not_match_nodemon() {
     // full command, not between "node" and "mon".
     assert_eq!(out, Some("trs nodemon server.js".into()));
 }
+
+#[test]
+fn test_never_rewrites_inside_heredoc_or_quotes() {
+    // Field report: ` && ` was substituted inside a heredoc body, so the
+    // injected text landed in the written file — in one case corrupting a
+    // security test that then reported a real escape as blocked.
+    assert_eq!(maybe_rewrite("cat <<'EOF'\nC: foo && bar\nEOF"), None);
+    assert_eq!(maybe_rewrite("python3 - <<EOF\nx = 1\nEOF"), None);
+
+    // Quoted operators are data, not operators: the message and the search
+    // pattern must survive byte-for-byte.
+    let m = maybe_rewrite(r#"git commit -m "fix a && b""#).unwrap();
+    assert!(m.ends_with(r#"git commit -m "fix a && b""#), "got: {}", m);
+    let g = maybe_rewrite(r#"grep -r "foo && bar" src/"#).unwrap();
+    assert!(g.contains(r#""foo && bar""#), "pattern was altered: {}", g);
+}
+
+#[test]
+fn test_never_rewrites_multiline_scripts() {
+    // A newline separates statements. Collapsing them turned `V=abc` into a
+    // command-scoped env prefix, so `$V` expanded before the assignment
+    // applied and non-exported values silently vanished.
+    assert_eq!(maybe_rewrite("V=abc\nprintf '%s' \"$V\""), None);
+    assert_eq!(maybe_rewrite("cargo build\ncargo test"), None);
+}
+
+#[test]
+fn test_never_wraps_shell_keywords() {
+    // `trs for x in …` makes the shell read `for` as a program and `do` as a
+    // syntax error, killing the command outright.
+    for cmd in [
+        "for f in a b; do git add $f; done",
+        "while read l; do git add $l; done",
+        "if git diff --quiet; then git status; fi",
+        "case $x in a) git status;; esac",
+    ] {
+        assert_eq!(maybe_rewrite(cmd), None, "must not rewrite: {}", cmd);
+    }
+}
+
+#[test]
+fn test_simple_commands_still_compress() {
+    // The guards above must not cost the common case.
+    assert_eq!(maybe_rewrite("cargo test"), Some("trs cargo test".into()));
+    assert_eq!(
+        maybe_rewrite("cd /tmp && git status"),
+        Some("cd /tmp && trs git status".into())
+    );
+    assert_eq!(
+        maybe_rewrite("cargo test | head -5"),
+        Some("trs cargo test | head -5".into())
+    );
+}

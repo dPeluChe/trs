@@ -65,6 +65,17 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
+    // Anything that isn't a flat single command is left alone. Everything
+    // below manipulates the command as TEXT, which is only sound when the
+    // string really is one command: field reports had `&& ` substituted
+    // inside a heredoc body, inside a quoted `git commit -m` message and
+    // inside a `grep` pattern, and had `for … do … done` wrapped into a
+    // shell syntax error. Compression is never worth rewriting something we
+    // can't parse.
+    if !is_simple_command(trimmed) {
+        return None;
+    }
+
     // Env-var prefix stays attached to the wrapped command so the shell
     // applies it to the real program, not to trs.
     if let Some((env_prefix, body)) = split_env_prefix(trimmed) {
@@ -86,12 +97,10 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
 
     // `&&` chains: rewrite each segment independently. Checked BEFORE
     // SKIP_PREFIXES so `cd X && git Y` doesn't get short-circuited by `cd`.
-    if has_shell_op
-        && trimmed.contains(" && ")
-        && !trimmed.contains(" | ")
-        && !trimmed.contains(" ; ")
-    {
-        let segments: Vec<&str> = trimmed.split(" && ").map(str::trim).collect();
+    // The split is quote-aware: a ` && ` inside `-m "fix a && b"` is text the
+    // user is passing along, not an operator to slice on.
+    if has_shell_op && find_unquoted_str(trimmed, " && ").is_some() && !trimmed.contains(" | ") {
+        let segments: Vec<&str> = split_and_chain(trimmed);
         let mut any_changed = false;
         let mut rewritten: Vec<String> = Vec::with_capacity(segments.len());
         for seg in &segments {
@@ -232,6 +241,109 @@ pub(super) fn strip_word_prefix<'a>(cmd: &'a str, prefix: &str) -> Option<&'a st
     } else {
         None
     }
+}
+
+/// Shell keywords that open a compound construct. `trs for x in …` makes the
+/// shell parse `for` as a program name and the following `do` as a syntax
+/// error, so the whole command dies — a field report hit exactly this.
+const SHELL_KEYWORDS: &[&str] = &[
+    "for", "while", "until", "if", "case", "select", "function", "do", "then", "else", "elif",
+    "fi", "done", "esac", "time{", "{", "(",
+];
+
+/// True when the command is a flat single command that the text-level rewrite
+/// below can safely reason about.
+///
+/// Rejects the shapes where "replace some substring" stops being equivalent to
+/// "wrap this command":
+/// - **newlines** — a multi-line script is a *sequence*; collapsing it turned
+///   `V=abc` + `printf "$V"` into `V=abc trs printf "$V"`, where the shell
+///   expands `$V` before the assignment applies, so the value silently
+///   vanished (only exported vars survived).
+/// - **heredocs** — the body is data, not commands, yet ` && ` inside it got
+///   substituted and landed in the written file.
+/// - **compound keywords** — see SHELL_KEYWORDS.
+/// - **`;` sequences** — independent commands, same problem as newlines.
+fn is_simple_command(cmd: &str) -> bool {
+    if cmd.contains('\n') || cmd.contains('\r') {
+        return false;
+    }
+    // Heredoc / herestring: everything after it is data.
+    if cmd.contains("<<") {
+        return false;
+    }
+    if contains_unquoted(cmd, ';') {
+        return false;
+    }
+    let first = cmd.split_whitespace().next().unwrap_or("");
+    let first = first.trim_end_matches(|c: char| c == '{' || c == '(');
+    if SHELL_KEYWORDS.contains(&first) {
+        return false;
+    }
+    true
+}
+
+/// True when `needle` appears outside single/double quotes. Quoting is the
+/// difference between an operator and a literal: `git commit -m "a && b"`
+/// carries no operator at all, and splitting it rewrote the commit message.
+fn contains_unquoted(cmd: &str, needle: char) -> bool {
+    find_unquoted(cmd, needle).is_some()
+}
+
+/// Byte offset of the first unquoted occurrence of `needle`.
+fn find_unquoted(cmd: &str, needle: char) -> Option<usize> {
+    let mut single = false;
+    let mut double = false;
+    let mut escaped = false;
+    for (i, c) in cmd.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match c {
+            '\\' if !single => escaped = true,
+            '\'' if !double => single = !single,
+            '"' if !single => double = !double,
+            _ if c == needle && !single && !double => return Some(i),
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Split on ` && ` only where it is a real operator (outside quotes).
+fn split_and_chain(cmd: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut rest = cmd;
+    loop {
+        let Some(pos) = find_unquoted_str(rest, " && ") else {
+            out.push(rest.trim());
+            return out;
+        };
+        out.push(rest[..pos].trim());
+        rest = &rest[pos + 4..];
+    }
+}
+
+/// Byte offset of the first unquoted occurrence of `needle` (multi-char).
+fn find_unquoted_str(cmd: &str, needle: &str) -> Option<usize> {
+    let mut single = false;
+    let mut double = false;
+    let mut escaped = false;
+    for (i, c) in cmd.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match c {
+            '\\' if !single => escaped = true,
+            '\'' if !double => single = !single,
+            '"' if !single => double = !double,
+            _ if !single && !double && cmd[i..].starts_with(needle) => return Some(i),
+            _ => {}
+        }
+    }
+    None
 }
 
 /// True when the command routes its output somewhere the caller reads raw:
