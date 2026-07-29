@@ -19,6 +19,8 @@ build: cargo build
 # --no-fail-fast so one failing suite doesn't mask the rest (matters most
 # on the blocking windows-latest job).
 test: cargo test --no-fail-fast
+# pre-push deliberately not delegated: it already mirrors CI and is stricter.
+hooks_skip: pre-push: "already mirrors CI (fmt + clippy + full suite), stricter than the ship-config gate"
 merge_policy: ask   # auto | ask
 loc_limit: 500
 simplify: 500       # run /simplify only if changed LOC > N (off = only on request)
