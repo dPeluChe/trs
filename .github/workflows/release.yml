@@ -17,7 +17,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    runs-on: tenki-standard-medium-4c-8g
     strategy:
       matrix:
         include:
@@ -109,7 +109,7 @@ jobs:
   release:
     name: Create GitHub Release
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: tenki-standard-medium-4c-8g
     steps:
       # Full history + tags so git-cliff can build the changelog/notes.
       - uses: actions/checkout@v7
@@ -169,7 +169,7 @@ jobs:
   npm-publish:
     name: Publish npm packages
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: tenki-standard-medium-4c-8g
     # Trusted Publishing requires the workflow to mint an OIDC token that
     # npm verifies against its allowlist. No NPM_TOKEN secret needed —
     # the publisher identity is the (repo + workflow + ref) tuple.
