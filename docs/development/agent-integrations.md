@@ -410,6 +410,32 @@ The log tells you:
    from the agent can hallucinate.
 8. **Document here** — add an entry to the per-agent table.
 
+## What the hook refuses to rewrite
+
+The hook wraps a command by manipulating its **text**. That is only sound when
+the string really is one flat command, so `rewrite_decide::is_simple_command`
+bails out on everything else. Each rule below exists because the alternative
+was observed in the field, and every one of them failed **silently or fatally**,
+never loudly:
+
+| Shape | What wrapping did |
+|---|---|
+| newline (multi-line script) | Two statements collapsed into one: `V=abc` + `printf "$V"` became `V=abc trs printf "$V"`, where the shell expands `$V` *before* the command-scoped assignment applies. Non-exported values vanished; exported ones survived, which made it look intermittent. |
+| heredoc (`<<`) | The body is data, not commands — yet ` && ` inside it was substituted, so the injected text landed in the **written file**. In one report it reached `main` and corrupted a security test whose grep then read compressed output. |
+| quoted operators | `git commit -m "fix a && b"` had its message rewritten; `grep -r "foo && bar"` had its **pattern** rewritten, so the search silently looked for something else and returned "not found". |
+| array literal (`arr=(…)`) | The env-prefix split walks by whitespace and landed inside the parens, inserting a phantom element: `[uno][trs][dos]`. No error, no exit code — corrupt data that downstream loops iterate over. |
+| compound keywords, `( )`, `{ }`, `f() {}` | `trs for f in …` makes the shell read `for` as a program and `do` as a syntax error: the command dies outright. |
+| `;` sequences | Independent commands, same problem as newlines. |
+
+Two mechanisms decide whether a command is touched, and both are visible in
+behaviour: this shape gate, and the exempt-prefix list (`echo`, `cd`, …) which
+skips the command entirely. A shape that looks exempt may simply be unparseable
+— check both before concluding.
+
+Escape hatch for anything the gate lets through: `TRS_SKIP=1 <cmd>`. It does
+**not** work in front of shell keywords or `(`/`{` — an env prefix there is
+itself a syntax error; wrap those as `TRS_SKIP=1 sh -c "…"`.
+
 ## Related files
 
 - `src/init.rs` — install orchestration, `merge_json_hook` (safe merging),

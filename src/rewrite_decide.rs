@@ -65,13 +65,8 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
-    // Anything that isn't a flat single command is left alone. Everything
-    // below manipulates the command as TEXT, which is only sound when the
-    // string really is one command: field reports had `&& ` substituted
-    // inside a heredoc body, inside a quoted `git commit -m` message and
-    // inside a `grep` pattern, and had `for … do … done` wrapped into a
-    // shell syntax error. Compression is never worth rewriting something we
-    // can't parse.
+    // Text-level rewriting is only sound on a flat single command; anything
+    // else gets corrupted silently. Compression is never worth that.
     if !is_simple_command(trimmed) {
         return None;
     }
@@ -243,27 +238,17 @@ pub(super) fn strip_word_prefix<'a>(cmd: &'a str, prefix: &str) -> Option<&'a st
     }
 }
 
-/// Shell keywords that open a compound construct. `trs for x in …` makes the
-/// shell parse `for` as a program name and the following `do` as a syntax
-/// error, so the whole command dies — a field report hit exactly this.
+/// Keywords opening a compound construct: `trs for x in …` makes the shell
+/// read `for` as a program and `do` as a syntax error.
 const SHELL_KEYWORDS: &[&str] = &[
     "for", "while", "until", "if", "case", "select", "function", "do", "then", "else", "elif",
     "fi", "done", "esac", "time{", "{", "(",
 ];
 
-/// True when the command is a flat single command that the text-level rewrite
-/// below can safely reason about.
-///
-/// Rejects the shapes where "replace some substring" stops being equivalent to
-/// "wrap this command":
-/// - **newlines** — a multi-line script is a *sequence*; collapsing it turned
-///   `V=abc` + `printf "$V"` into `V=abc trs printf "$V"`, where the shell
-///   expands `$V` before the assignment applies, so the value silently
-///   vanished (only exported vars survived).
-/// - **heredocs** — the body is data, not commands, yet ` && ` inside it got
-///   substituted and landed in the written file.
-/// - **compound keywords** — see SHELL_KEYWORDS.
-/// - **`;` sequences** — independent commands, same problem as newlines.
+/// True when the command is one flat command, the only shape where editing the
+/// text is equivalent to wrapping the command. Every rejected shape below was
+/// corrupted in the field — per-shape evidence in
+/// `docs/development/agent-integrations.md` § "What the hook refuses to rewrite".
 fn is_simple_command(cmd: &str) -> bool {
     if cmd.contains('\n') || cmd.contains('\r') {
         return false;
@@ -275,15 +260,12 @@ fn is_simple_command(cmd: &str) -> bool {
     if contains_unquoted(cmd, ';') {
         return false;
     }
-    // Array literal (`arr=(uno dos)`). The env-prefix split walks by
-    // whitespace and lands INSIDE the parentheses, so the wrap inserted a
-    // phantom `trs` ELEMENT: `[uno][trs][dos]`. No error, no exit code —
-    // just a list with an extra entry that downstream code iterates over.
+    // Array literal: the env-prefix split lands inside the parens and adds a
+    // phantom element (`[uno][trs][dos]`) — corrupt data, no exit code.
     if find_unquoted_str(cmd, "=(").is_some() {
         return false;
     }
-    // Subshell `( … )` or brace group `{ …; }` opening the command: wrapping
-    // makes the shell read `(` / `{` as an argument and die parsing.
+    // Subshell / brace group: wrapping makes the shell die parsing.
     if cmd.starts_with('(') || cmd.starts_with('{') {
         return false;
     }
@@ -299,9 +281,8 @@ fn is_simple_command(cmd: &str) -> bool {
     true
 }
 
-/// True when `needle` appears outside single/double quotes. Quoting is the
-/// difference between an operator and a literal: `git commit -m "a && b"`
-/// carries no operator at all, and splitting it rewrote the commit message.
+/// True when `needle` appears outside quotes — quoting is what separates an
+/// operator from a literal the caller is passing along.
 fn contains_unquoted(cmd: &str, needle: char) -> bool {
     find_unquoted(cmd, needle).is_some()
 }
