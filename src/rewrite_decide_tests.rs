@@ -434,3 +434,33 @@ fn test_simple_commands_still_compress() {
         Some("trs cargo test | head -5".into())
     );
 }
+
+#[test]
+fn test_never_rewrites_compound_or_array_shapes() {
+    // Array literal is the dangerous one: the env-prefix split landed inside
+    // the parens and inserted a phantom element (`[uno][trs][dos]`) with no
+    // error and no exit code to check — corrupt data, not a failed command.
+    assert_eq!(maybe_rewrite("arr=(uno dos)"), None);
+    assert_eq!(
+        maybe_rewrite(r#"arr=(uno dos); printf "[%s]" "${arr[@]}""#),
+        None
+    );
+    // These died with a parse error once wrapped.
+    for cmd in [
+        "(printf x)",
+        "{ printf x; }",
+        "f() { printf x; }",
+        "case x in x) printf ok;; esac",
+    ] {
+        assert_eq!(maybe_rewrite(cmd), None, "must not rewrite: {}", cmd);
+    }
+}
+
+#[test]
+fn test_legitimate_env_prefix_still_wraps() {
+    // A real env prefix is not an array literal — it must keep working.
+    assert_eq!(
+        maybe_rewrite("RUST_LOG=debug cargo test"),
+        Some("RUST_LOG=debug trs cargo test".into())
+    );
+}

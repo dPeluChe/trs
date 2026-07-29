@@ -275,7 +275,23 @@ fn is_simple_command(cmd: &str) -> bool {
     if contains_unquoted(cmd, ';') {
         return false;
     }
+    // Array literal (`arr=(uno dos)`). The env-prefix split walks by
+    // whitespace and lands INSIDE the parentheses, so the wrap inserted a
+    // phantom `trs` ELEMENT: `[uno][trs][dos]`. No error, no exit code —
+    // just a list with an extra entry that downstream code iterates over.
+    if find_unquoted_str(cmd, "=(").is_some() {
+        return false;
+    }
+    // Subshell `( … )` or brace group `{ …; }` opening the command: wrapping
+    // makes the shell read `(` / `{` as an argument and die parsing.
+    if cmd.starts_with('(') || cmd.starts_with('{') {
+        return false;
+    }
     let first = cmd.split_whitespace().next().unwrap_or("");
+    // Function definition: `f() { … }`.
+    if first.ends_with("()") {
+        return false;
+    }
     let first = first.trim_end_matches(|c: char| c == '{' || c == '(');
     if SHELL_KEYWORDS.contains(&first) {
         return false;
