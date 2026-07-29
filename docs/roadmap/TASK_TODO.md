@@ -63,6 +63,7 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 - [ ] **Proactive `.zshenv` check in install.sh**. If `~/.local/bin` is in the user's interactive PATH but NOT in `~/.zshenv`, IDE subshells will still fail.
 - [ ] **OpenCode TUI DrizzleError root cause**. Installing our plugin crashed OpenCode's TUI on startup once with a SQLite WAL init error. Couldn't reproduce. If users report it, the plugin file is the likely cause.
 - [ ] **`HookEvent::Unknown` variant**. Today unknown `hook_event_name` values default to Claude format. Silent misroute if a 4th client ships its own envelope.
+- [ ] **Wrap the whole command instead of editing its text** (`rewrite_decide.rs`). v0.7.4 stopped the corruption by *refusing* every shape it can't parse (heredocs, multi-line, arrays, subshells, keywords), which costs compression on those. Wrapping as `trs sh -c '<cmd>'` would cover them instead of skipping them — but it changes stdin, exit-code and quoting semantics all at once, so it needs its own cycle and a field test. Do not swap a silent corruption for a quieter one.
 - [ ] **Research: plain-text hook protocols**. Some clients may pipe the command directly (no JSON envelope). `run_rewrite` handles this via fallback, but no real client uses it yet.
 
 ### VSCode ecosystem (vanilla, not the forks)
