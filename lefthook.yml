@@ -1,0 +1,7 @@
+# Central hooks live in dPeluChe/skills (hooks/lefthook-base.yml).
+remotes:
+  - git_url: https://github.com/dPeluChe/skills
+    ref: main
+    refetch_frequency: 24h
+    configs:
+      - hooks/lefthook-base.yml

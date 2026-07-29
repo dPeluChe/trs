@@ -1,0 +1,8 @@
+#!/bin/sh
+# Delegates to lefthook: strips agent attribution so authorship stays human.
+# "$@" carries the path to the commit message file. No-ops without lefthook.
+
+if command -v lefthook >/dev/null 2>&1; then
+  exec lefthook run commit-msg "$@"
+fi
+exit 0
