@@ -13,14 +13,10 @@ Drop it into any agent's context for an instant map of the project
 without having to run `trs ingest` yourself.
 
 The digest can drift from HEAD between releases. Regenerate before
-tagging a release, or whenever `src/` has moved meaningfully:
+tagging a release, or whenever `src/` has moved meaningfully.
 
-```bash
-./scripts/sync-codebase-digest.sh
-```
-
-The script uses `trs` from `PATH` and falls back to
-`./target/release/trs` if one isn't installed.
+Run `./scripts/sync-codebase-digest.sh` — it uses `trs` from `PATH` and
+falls back to `./target/release/trs` if one isn't installed.
 
 ## Related commands worth knowing
 
@@ -62,98 +58,24 @@ The script uses `trs` from `PATH` and falls back to
 
 ## Architecture
 
-```
-src/
-├── main.rs                    # Entry point, mod declarations
-├── cli.rs                     # Cli struct, OutputFormat enum, flag precedence
-├── commands.rs                # Commands enum, TestRunner
-├── commands_parse.rs          # ParseCommands enum
-├── command_registry.rs        # Single source of truth: per-command facts
-│                              #   (aliases, rewrite/known, keep_ratio, stderr)
-├── classifier.rs              # Subcommand → parser dispatch (reads registry)
-├── classifier_exec.rs         # Execute → parse → format pipeline
-├── classifier_transfer.rs     # Compact git push/pull/fetch output
-├── config.rs                  # Config system (~/.trs/config.toml)
-├── ingest/
-│   ├── mod.rs                 # IngestConfig, DigestFile, run_ingest, resolve_project_root
-│   ├── collect.rs             # File walker, read_and_compress, apply_budget
-│   ├── deps.rs                # Import graph: extract_raw_imports, build_dep_graph, format_dep_*
-│   ├── format.rs              # build_digest, build_tree, format_bytes/tokens
-│   ├── ollama.rs              # Ollama post-processing (ollama_format)
-│   └── store.rs               # ~/.trs/ingest/ persistence (save, list, read)
-├── discover.rs                # trs discover — scan history for missed savings
-├── init.rs                    # trs init — hook installer for 9 AI agents (see docs/development/agent-integrations.md)
-├── rewrite.rs                 # trs rewrite — hook command rewriter engine
-├── help.rs                    # Help text for all commands
-├── process.rs                 # Process execution (spawn, capture, timeout)
-├── process_helpers.rs         # Spawn error classification, output capture
-├── tracker.rs                 # Token savings tracker (history.jsonl)
-├── formatter/
-│   ├── mod.rs                 # Formatter trait + select_formatter
-│   ├── compact.rs             # Human-readable compact output
-│   ├── compact_schema_git.rs  # Compact format: git status/diff schemas
-│   ├── compact_schema_output.rs # Compact format: ls/grep/find/test/logs schemas
-│   ├── json.rs                # Structured JSON
-│   ├── agent.rs               # AI-optimized markdown
-│   ├── agent_schema.rs        # Agent format: all schema types
-│   ├── csv.rs / tsv.rs        # Tabular formats
-│   ├── raw.rs                 # Passthrough
-│   └── tests/                 # 6 test modules (150 tests)
-├── reducer/
-│   ├── mod.rs                 # Reducer framework (truncation, stats)
-│   ├── output.rs / registry.rs
-│   └── tests/                 # 6 test modules (93 tests)
-├── schema/                    # JSON schema types (git, fs, search, test, logs, process)
-└── router/
-    ├── mod.rs                 # Router: dispatch commands to handlers
-    ├── tests/                 # 14 test modules (225 tests)
-    └── handlers/
-        ├── common.rs          # CommandContext, CommandError, CommandStats
-        ├── types/             # Data structures (git, fs, grep, test runners, logs)
-        ├── run.rs             # trs run <command>
-        ├── search.rs          # trs search (ripgrep)
-        ├── replace.rs         # trs replace
-        ├── tail.rs            # trs tail
-        ├── clean.rs           # trs clean
-        ├── trim.rs            # trs trim
-        ├── json.rs            # trs json (structure + query engine)
-        ├── json_query.rs      # JSON path query (.key, [0], [].field)
-        ├── read.rs            # trs read (handler + filter levels)
-        ├── read_filters.rs    # Language detection, minimal/aggressive filters
-        ├── html2md.rs         # trs html2md
-        ├── txt2md/            # trs txt2md (detect_headings + detect_lists + format)
-        ├── isclean.rs         # trs is-clean
-        ├── err.rs             # trs err (error filter)
-        ├── stats.rs           # trs stats (token savings dashboard)
-        └── parse/             # All input parsers
-            ├── git_*.rs       # git status, diff, log, branch
-            ├── ls.rs          # ls parser
-            ├── grep*.rs       # grep parser + formatter
-            ├── find.rs        # find parser
-            ├── logs*.rs       # log parser + helpers + formatter
-            ├── {pytest,jest,vitest,npm,pnpm,bun}_{parse,format}.rs
-            ├── extra_system.rs    # tree, docker, deps, install, build, wc
-            ├── extra_download.rs  # curl/wget download handler
-            ├── extra_env.rs       # env handler (grouped, filtered)
-            ├── extra_services.rs  # gh pr/issue/run (truncated titles)
-            ├── extra_cargo_test.rs # cargo test parser
-            ├── go_test.rs         # go test parser (verbose + default mode)
-            └── lint.rs            # lint parser (clippy, eslint, ruff, biome, golangci-lint)
+`src/` is ~216 files. Rather than mirror the tree here (it drifts the
+moment anything moves), generate it on demand — trs does this itself:
 
-tests/
-├── fixture_data/              # 160+ .txt/.html/.log fixture files
-├── fixtures/                  # Fixture loader module (7 sub-modules)
-├── cli_*.rs                   # 26 CLI integration test files
-├── test_replace_*.rs          # 5 replace test files
-├── test_search_*.rs           # 3 search test files
-├── test_parser_*.rs           # 5 parser test files
-├── test_signal_*.rs           # 3 signal preservation test files
-├── test_clean_*.rs            # 3 clean test files
-├── test_conversion_*.rs       # 3 conversion test files
-├── test_run_*.rs              # 3 run test files
-├── test_tail_*.rs             # 3 tail test files
-└── ...                        # 70+ total test files
-```
+    trs ingest --print          # structure + module roles + symbols
+    trs ingest --html           # same, as a visual report
+
+The load-bearing entry points:
+
+| Path | Role |
+|---|---|
+| `main.rs` / `cli.rs` / `commands.rs` | entry, flag precedence, command enums |
+| `classifier*.rs` | command -> parser routing, subprocess execution |
+| `rewrite*.rs` | the hook: decides what gets wrapped with `trs` |
+| `router/handlers/` | one parser per command family |
+| `formatter/` | output shapes (json / compact / raw) |
+| `ingest/` | project digest + `--html` report |
+| `output_saver*.rs` | the rules block installed into agent configs |
+| `schema/` | shared output types |
 
 ## Key Design Decisions
 
@@ -173,16 +95,19 @@ tests/
 
 ## Development
 
-```bash
-cargo build                    # Build
-cargo test                     # Run 2,186+ tests
-cargo install --path .         # Install globally
-./docs/development/benchmarks/benchmark.sh  # Compare vs other token-savers (see docs/development/benchmarks/README.md)
-```
+- `cargo build` — build; `cargo install --path .` — install globally.
+- `cargo test --no-fail-fast` — full suite (one failing suite shouldn't
+  mask the rest).
+- `./docs/development/benchmarks/benchmark.sh` — compare against other
+  token-savers; see
+  [`docs/development/benchmarks/README.md`](./docs/development/benchmarks/README.md).
+
+The exact lint/build/test commands the ship gate uses live in the
+`## ship config` block of `CLAUDE.md`.
 
 ## Testing
 
-- 796 unit tests (src/) across 30+ test modules
+- Unit tests live beside the code in `src/`; integration tests in `tests/`.
 - 540+ CLI integration tests (tests/cli_*.rs, 26 files)
 - 800+ additional integration tests (70+ test files)
-- Total: 2,186 tests across 71 suites, 0 failures, 0 warnings
+- Run `cargo test --no-fail-fast` for the current totals — CI gates on ubuntu, macOS and Windows with zero warnings.
