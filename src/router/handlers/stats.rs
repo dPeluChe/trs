@@ -72,6 +72,7 @@ pub struct StatsInput {
     /// Coverage analysis: which commands are passing through with poor
     /// compression vs which have effective parsers.
     pub coverage: bool,
+    pub gaps: bool,
     /// Row cap. Overrides the default for either `--history` (20) or
     /// the summary's Top Commands table (15).
     pub limit: Option<usize>,
@@ -89,6 +90,12 @@ pub fn handle_stats(input: &StatsInput) {
     } else {
         tracker::read_history()
     };
+
+    if input.gaps {
+        let limit = input.limit.unwrap_or(15);
+        super::stats_render::print_gaps(&entries, limit);
+        return;
+    }
 
     if input.coverage {
         let limit = input.limit.unwrap_or(15);

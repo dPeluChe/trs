@@ -392,3 +392,50 @@ fn test_is_clean_raw_format() {
 }
 
 // ============================================================
+
+/// `find` output is tiered by result size: full names for small results,
+/// capped names in the middle, counts only for thousands of matches. The small
+/// case must stay lossless — a short find IS the answer, not a summary of it.
+#[test]
+fn find_tiers_by_result_size() {
+    use assert_cmd::Command as C;
+
+    let run = |body: String| -> String {
+        let out = C::cargo_bin("trs")
+            .unwrap()
+            .args(["parse", "find"])
+            .write_stdin(body)
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).to_string()
+    };
+
+    // Small: every name present, no truncation marker.
+    let small: String = (0..5).map(|i| format!("src/a/f{}.rs\n", i)).collect();
+    let got = run(small);
+    for i in 0..5 {
+        assert!(got.contains(&format!("f{}", i)), "lost a name: {}", got);
+    }
+    assert!(
+        !got.contains("more"),
+        "small result must not be capped: {}",
+        got
+    );
+
+    // Middle (>200 entries, one crowded dir): capped with a marker, and the
+    // count of what was dropped has to be there.
+    let mid: String = (0..300).map(|i| format!("src/a/f{}.rs\n", i)).collect();
+    let got = run(mid);
+    assert!(got.contains("more"), "middle tier should cap: {}", got);
+
+    // Large (>1000): directory map with counts, no individual names.
+    let big: String = (0..1200)
+        .map(|i| format!("src/d{}/f{}.rs\n", i % 40, i))
+        .collect();
+    let got = run(big);
+    assert!(
+        got.contains("(30)"),
+        "large tier should show counts: {}",
+        got
+    );
+}

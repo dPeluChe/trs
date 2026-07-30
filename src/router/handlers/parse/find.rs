@@ -3,6 +3,19 @@ use super::super::types::*;
 use super::ParseHandler;
 use crate::OutputFormat;
 
+/// Three tiers by result size, because what the caller needs changes with it:
+///
+/// - up to `CAP_TOTAL`: every name. A small find IS the answer.
+/// - up to `COUNTS_ONLY_TOTAL`: `NAMES_PER_DIR` names per directory, then a
+///   `+N more` marker.
+/// - beyond that: directory + count, no names. At thousands of matches the
+///   answer is *which directories matched and how heavily*; echoing every name
+///   costs more context than the question was worth (field data: one find
+///   emitted ~1.1 MB). Narrow the search to get names back.
+const CAP_TOTAL: usize = 200;
+const NAMES_PER_DIR: usize = 12;
+const COUNTS_ONLY_TOTAL: usize = 1000;
+
 impl ParseHandler {
     /// Handle the find subcommand.
     pub(crate) fn handle_find(
@@ -245,10 +258,23 @@ impl ParseHandler {
                 files.clone()
             };
 
-            if display_dir.is_empty() {
-                output.push_str(&format!("./ {}\n", display_files.join(" ")));
+            // See the tier constants: full names, capped names, or counts only.
+            let total = find_output.total_count;
+            let shown: Vec<String> = if total > COUNTS_ONLY_TOTAL {
+                vec![format!("({})", display_files.len())]
+            } else if total > CAP_TOTAL && display_files.len() > NAMES_PER_DIR {
+                let mut v: Vec<String> =
+                    display_files.iter().take(NAMES_PER_DIR).cloned().collect();
+                v.push(format!("+{} more", display_files.len() - NAMES_PER_DIR));
+                v
             } else {
-                output.push_str(&format!("{}/ {}\n", display_dir, display_files.join(" ")));
+                display_files
+            };
+
+            if display_dir.is_empty() {
+                output.push_str(&format!("./ {}\n", shown.join(" ")));
+            } else {
+                output.push_str(&format!("{}/ {}\n", display_dir, shown.join(" ")));
             }
         }
 
