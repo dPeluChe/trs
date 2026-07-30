@@ -240,6 +240,7 @@ const GOLDEN_KNOWN: &[&str] = &[
     "echo",
     "go",
     "poetry",
+    "aws",
 ];
 
 #[test]
