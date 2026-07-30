@@ -93,7 +93,7 @@ pub fn handle_stats(input: &StatsInput) {
 
     if input.gaps {
         let limit = input.limit.unwrap_or(15);
-        super::stats_render::print_gaps(&entries, limit);
+        super::stats_gaps::print_gaps(&entries, limit);
         return;
     }
 
