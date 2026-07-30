@@ -10,10 +10,10 @@ use crate::tracker::{format_bytes_human, HistoryEntry};
 use time::OffsetDateTime;
 
 #[derive(Debug, Default)]
-struct CommandAgg {
-    count: usize,
-    in_bytes: usize,
-    out_bytes: usize,
+pub(crate) struct CommandAgg {
+    pub(crate) count: usize,
+    pub(crate) in_bytes: usize,
+    pub(crate) out_bytes: usize,
     /// Subset of `count` recorded as a bypass observation
     /// (`TRS_SKIP=1` prefix). Surfaces as a column in the
     /// `--by-agent` view so the user can tell which agents reach for
@@ -23,7 +23,7 @@ struct CommandAgg {
 }
 
 impl CommandAgg {
-    fn saved(&self) -> usize {
+    pub(crate) fn saved(&self) -> usize {
         self.in_bytes.saturating_sub(self.out_bytes)
     }
 
