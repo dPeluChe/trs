@@ -255,6 +255,15 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         stderr: Stderr::Never,
     },
 
+    // ---- Cloud CLIs ----
+    // Recursive s3 output is ~1 line per object: the most compressible shape
+    // trs sees, hence the very low keep ratio.
+    CommandSpec {
+        names: &["aws"], rewrite: true, known: true,
+        keep_ratio: KeepRatio { default: 0.30, overrides: &[("s3", 0.01)] },
+        stderr: Stderr::Always,
+    },
+
     // ---- Environment / misc utilities ----
     CommandSpec { names: &["env", "printenv"], rewrite: true, known: true,
         keep_ratio: KeepRatio::flat(0.32), stderr: Stderr::Never },

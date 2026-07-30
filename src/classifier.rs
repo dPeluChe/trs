@@ -398,6 +398,11 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             _ => None,
         },
 
+        // AWS CLI: recursive s3 calls print one receipt line per object;
+        // describe/get/list emit JSON, which handle_aws forwards to the JSON
+        // body compressor.
+        "aws" => Some(ParseCommands::Aws { file: None }),
+
         // Database clients
         "psql" | "mysql" | "sqlite3" | "mariadb" => Some(ParseCommands::Db { file: None }),
 

@@ -134,6 +134,29 @@ counts and lists only non-passing checks with duration. `gh run view`
 extracts title, conclusion, job counts, up to 3 annotations, and
 the run URL.
 
+### Cloud CLIs
+
+| Command | Subcommands parsed |
+|---|---|
+| `aws` | `s3` recursive operations (`rm`, `rb`, `cp`, `sync`, `mv`); `describe-*` / `get-*` / `list-*` JSON bodies |
+
+Recursive `s3` calls print one receipt line per object
+(`delete: s3://bucket/key`), which is the most repetitive output trs
+sees — a real 3.3 MB deletion compressed to 275 bytes (99.99%). The
+summary keeps the verb, the object count and the busiest key prefixes:
+
+```
+delete: 50000 objects — s3://bucket/logs/2026/01/ (596), … +81 more prefixes
+problems (1):
+  An error occurred (AccessDenied) when calling the DeleteObject operation
+```
+
+Failures are pulled out and never truncated — AWS's canonical
+`An error occurred (…)` line carries no colon after "error", so the
+generic error markers miss it and it is matched explicitly. JSON bodies
+are forwarded to the same compressor `gh api` uses; output that matches
+neither shape passes through untouched rather than being guessed at.
+
 ### System & network
 
 | Command | What gets parsed |

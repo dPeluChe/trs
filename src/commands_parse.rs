@@ -224,6 +224,15 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse aws CLI output (per-object s3 receipts -> counts)
+    ///
+    /// Example: aws s3 rm s3://b/ --recursive | trs parse aws
+    Aws {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse environment variables
     ///
     /// Example: env | trs parse env
@@ -408,6 +417,7 @@ impl ParseCommands {
             Self::Deps { .. } => Self::Deps { file: Some(path) },
             Self::Install { .. } => Self::Install { file: Some(path) },
             Self::Build { .. } => Self::Build { file: Some(path) },
+            Self::Aws { .. } => Self::Aws { file: Some(path) },
             Self::Env { .. } => Self::Env { file: Some(path) },
             Self::Wc { .. } => Self::Wc { file: Some(path) },
             Self::Download { .. } => Self::Download { file: Some(path) },

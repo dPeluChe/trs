@@ -2,6 +2,7 @@ use super::common::{CommandContext, CommandError, CommandResult};
 use super::types::*;
 use crate::ParseCommands;
 
+pub(crate) mod aws;
 pub(crate) mod brew;
 pub(crate) mod bun_format;
 pub(crate) mod bun_parse;
@@ -120,6 +121,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::GitStatus { file, count } => Self::handle_git_status(file, count, ctx),
             ParseCommands::GitDiff { file } => Self::handle_git_diff(file, ctx),
             ParseCommands::GitLog { file, truncate } => Self::handle_git_log(file, *truncate, ctx),
+            ParseCommands::Aws { file } => Self::handle_aws(file, ctx),
             ParseCommands::GitBranch { file } => Self::handle_git_branch(file, ctx),
             ParseCommands::Ls { file } => Self::handle_ls(file, ctx),
             ParseCommands::Grep { file } => Self::handle_grep(file, ctx),
