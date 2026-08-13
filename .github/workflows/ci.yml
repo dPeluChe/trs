@@ -35,14 +35,19 @@ concurrency:
 jobs:
   quick:
     name: Quick (lint + linux)
-    # Runner choice is one line on purpose. This tier ran on Tenki
-    # (`tenki-standard-medium-4c-8g`) to spread load, but since 2026-08-06 no
-    # Tenki job in this repo has been assigned a runner — a dependabot bump sat
-    # queued 1h19m and a normal push queued behind it, both with no runner,
-    # while the GitHub-hosted jobs passed. A tier that never starts blocks the
-    # run instead of speeding it up, so it is back on GitHub, which is free and
-    # unmetered on a public repo. Flip the label back when Tenki serves again.
-    runs-on: ubuntu-latest
+    # `small` is the deliberate default, not a fallback. Measured on this
+    # workload: small 2m30s, GitHub ubuntu 1m38s, and medium ~3m back when it
+    # still ran — two extra cores bought nothing. Medium (4c/8g) sits exactly
+    # at the documented Starter cap and stopped being served on 2026-08-06:
+    # jobs queued for 10h with no runner and no error, which is worse than a
+    # clean failure. Small was assigned a runner in under 25s in the same repo,
+    # same minute, so the App connection was never the problem.
+    #
+    # Dependabot skips this tier: the Tenki pool is 5 concurrent jobs on
+    # Starter and shared across repos, so a weekly bump should not take a slot
+    # from interactive work. The GitHub-hosted matrix below still gates it.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: tenki-standard-small-2c-4g
     steps:
       - uses: actions/checkout@v7
 
