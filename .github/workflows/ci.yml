@@ -15,6 +15,13 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
+# A newer push on the same ref makes the older run pointless — cancel it
+# instead of letting queued jobs pile up against a limited runner pool.
+# main is excluded: those runs gate releases and must complete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 # Two tiers, split across providers on purpose:
 #
 #   quick  — Tenki, Linux only, runs on EVERY push including drafts. Fast
@@ -28,6 +35,12 @@ env:
 jobs:
   quick:
     name: Quick (lint + linux)
+    # Dependabot is background work. The Tenki pool is small and shared with
+    # other repos, so a routine dependency bump sitting in that queue blocks
+    # interactive pushes — observed: a dependabot job queued 1h19m without ever
+    # being assigned a runner. The GitHub-hosted matrix below still validates
+    # these PRs in full, and it is free on a public repo.
+    if: github.actor != 'dependabot[bot]'
     runs-on: tenki-standard-medium-4c-8g
     steps:
       - uses: actions/checkout@v7
