@@ -42,7 +42,7 @@ jobs:
     # while the GitHub-hosted jobs passed. A tier that never starts blocks the
     # run instead of speeding it up, so it is back on GitHub, which is free and
     # unmetered on a public repo. Flip the label back when Tenki serves again.
-    runs-on: ubuntu-latest
+    runs-on: tenki-standard-small-2c-4g
     steps:
       - uses: actions/checkout@v7
 
