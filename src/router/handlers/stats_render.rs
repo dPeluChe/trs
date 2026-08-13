@@ -223,11 +223,19 @@ pub(crate) fn print_summary(entries: &[HistoryEntry], top_limit: usize) {
         if today_entries.len() == 1 { "" } else { "s" }
     );
 
+    // Lifetime efficiency is a cumulative mean, so one rare huge command
+    // dominates it forever: two `aws s3 --recursive` calls (367 MB at 0%) sank
+    // this number ~14 points in an afternoon and it never recovers, while the
+    // weeks after ran at 81-86%. Show recent windows next to it, otherwise the
+    // headline reports an old event as if it were today's performance.
+
+    super::stats_efficiency::print_recent(entries);
+
     let filled = (avg_pct / 5.0).round() as usize;
     let filled = filled.min(20);
     let empty = 20 - filled;
     println!(
-        "Efficiency: {}{} {:.0}%",
+        "Efficiency: {}{} {:.0}% (lifetime)",
         "\u{2588}".repeat(filled),
         "\u{2591}".repeat(empty),
         avg_pct
