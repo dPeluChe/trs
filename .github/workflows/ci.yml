@@ -35,13 +35,14 @@ concurrency:
 jobs:
   quick:
     name: Quick (lint + linux)
-    # Dependabot is background work. The Tenki pool is small and shared with
-    # other repos, so a routine dependency bump sitting in that queue blocks
-    # interactive pushes — observed: a dependabot job queued 1h19m without ever
-    # being assigned a runner. The GitHub-hosted matrix below still validates
-    # these PRs in full, and it is free on a public repo.
-    if: github.actor != 'dependabot[bot]'
-    runs-on: tenki-standard-medium-4c-8g
+    # Runner choice is one line on purpose. This tier ran on Tenki
+    # (`tenki-standard-medium-4c-8g`) to spread load, but since 2026-08-06 no
+    # Tenki job in this repo has been assigned a runner — a dependabot bump sat
+    # queued 1h19m and a normal push queued behind it, both with no runner,
+    # while the GitHub-hosted jobs passed. A tier that never starts blocks the
+    # run instead of speeding it up, so it is back on GitHub, which is free and
+    # unmetered on a public repo. Flip the label back when Tenki serves again.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
