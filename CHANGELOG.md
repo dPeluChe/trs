@@ -5,6 +5,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.7.5] - 2026-08-13
+
+### Features
+
+- **aws:** Compress recursive s3 output from receipts to counts (#131)
+- **find, stats:** Tier find output by size, add `stats --gaps` (#132)
+- **stats:** Show recent efficiency next to the lifetime mean (#139)
+- **stats:** Add --days, and window the gaps view by default (#140)
+
+### Refactor
+
+- **stats:** Fold --gaps into --coverage, document the windows (#141)
+
+### CI / Build
+
+- Split CI into a Tenki quick tier and a GitHub full gate (#130)
+- Move the quick tier back to GitHub runners, cancel superseded runs (#135)
+- Adopt tenki-standard-small-2c-4g as the quick-tier default (#138)
+
+### Dependencies
+
+- **deps:** Bump the cargo-minor group across 1 directory with 4 updates (#134)
+
 ## [0.7.4] - 2026-07-29
 
 ### Bug Fixes
