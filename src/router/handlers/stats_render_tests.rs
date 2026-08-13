@@ -47,6 +47,7 @@ fn recent_efficiency_ignores_an_old_outlier() {
         e(1, 1_000_000, 150_000),
     ];
 
+    use super::super::stats_efficiency::efficiency_since;
     let d7 = efficiency_since(&entries, now, 7).unwrap();
     let d30 = efficiency_since(&entries, now, 30).unwrap();
     assert!(d7 > 80.0, "last 7d should reflect recent work, got {d7}");
