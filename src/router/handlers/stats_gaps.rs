@@ -16,11 +16,17 @@ use super::stats_render::CommandAgg;
 /// history showed `aws` was the largest source of uncompressed output at 1%
 /// savings, and nothing in the tool surfaced it. Two signals matter — volume
 /// wasted, and whether the binary is even in the registry.
-pub(crate) fn print_gaps(entries: &[HistoryEntry], limit: usize) {
+pub(crate) fn print_gaps(entries: &[HistoryEntry], limit: usize, days: u64) {
+    let cutoff = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+        .saturating_sub(days * 86_400);
+    let entries: Vec<&HistoryEntry> = entries.iter().filter(|e| e.ts >= cutoff).collect();
     use std::collections::BTreeMap;
 
     let mut agg: BTreeMap<String, CommandAgg> = BTreeMap::new();
-    for entry in entries {
+    for entry in &entries {
         // Group by binary (basename), not by full command line: the question
         // is "which tool needs a parser", not "which invocation was big".
         let Some(first) = entry.cmd.split_whitespace().next() else {
@@ -43,7 +49,7 @@ pub(crate) fn print_gaps(entries: &[HistoryEntry], limit: usize) {
     rows.sort_by_key(|(_, a)| std::cmp::Reverse(a.out_bytes));
     rows.truncate(limit);
 
-    println!("trs — compression gaps");
+    println!("trs — compression gaps (last {} days)", days);
     println!("{}", "=".repeat(56));
     println!("Ranked by bytes that still reached the agent.\n");
     println!(

@@ -165,7 +165,7 @@ fn format_bypass_cell(bypass_count: usize, total_count: usize) -> String {
 }
 
 /// Print the full summary view with efficiency meter and top commands.
-pub(crate) fn print_summary(entries: &[HistoryEntry], top_limit: usize) {
+pub(crate) fn print_summary(entries: &[HistoryEntry], top_limit: usize, window_days: Option<u64>) {
     let total_cmds = entries.len();
     let total_in: usize = entries.iter().map(|e| e.in_bytes).sum();
     let total_out: usize = entries.iter().map(|e| e.out_bytes).sum();
@@ -229,17 +229,14 @@ pub(crate) fn print_summary(entries: &[HistoryEntry], top_limit: usize) {
     // weeks after ran at 81-86%. Show recent windows next to it, otherwise the
     // headline reports an old event as if it were today's performance.
 
-    super::stats_efficiency::print_recent(entries);
+    // Only meaningful on the unwindowed view: with `--days N` the entries are
+    // already filtered, so a "last 30d" line computed over them would report
+    // the window's own number under someone else's label.
+    if window_days.is_none() {
+        super::stats_efficiency::print_recent(entries);
+    }
 
-    let filled = (avg_pct / 5.0).round() as usize;
-    let filled = filled.min(20);
-    let empty = 20 - filled;
-    println!(
-        "Efficiency: {}{} {:.0}% (lifetime)",
-        "\u{2588}".repeat(filled),
-        "\u{2591}".repeat(empty),
-        avg_pct
-    );
+    super::stats_efficiency::print_bar(avg_pct, window_days);
 
     // Last command footer — confirms tracking is live and points at the
     // detail view for anyone who wants more than the top-N summary.

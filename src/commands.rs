@@ -525,6 +525,11 @@ pub enum Commands {
         /// Output format (text or json)
         #[arg(long)]
         json: bool,
+        /// Only consider the last N days. Defaults to 30 for --gaps, whose
+        /// job is "what should I fix now" — a fixed parser has to age out of
+        /// it. The summary keeps lifetime totals unless this is passed.
+        #[arg(long)]
+        days: Option<u64>,
         /// Rank commands by output that still reached the agent — where a
         /// parser is missing or has headroom. Complements the default view,
         /// which ranks by savings already achieved.

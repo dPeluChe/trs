@@ -37,3 +37,21 @@ pub(crate) fn efficiency_since(entries: &[HistoryEntry], now_ts: u64, days: u64)
         });
     (i > 0).then(|| 100.0 * (1.0 - o as f64 / i as f64))
 }
+
+/// The efficiency bar, labelled with the window it actually covers. The label
+/// matters: an unlabelled percentage over 120 days reads as today's number.
+pub(crate) fn print_bar(avg_pct: f64, window_days: Option<u64>) {
+    let filled = (avg_pct / 5.0).round() as usize;
+    let filled = filled.min(20);
+    let empty = 20 - filled;
+    println!(
+        "Efficiency: {}{} {:.0}% ({})",
+        "\u{2588}".repeat(filled),
+        "\u{2591}".repeat(empty),
+        avg_pct,
+        match window_days {
+            Some(d) => format!("last {}d", d),
+            None => "lifetime".to_string(),
+        }
+    );
+}
