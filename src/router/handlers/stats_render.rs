@@ -223,11 +223,28 @@ pub(crate) fn print_summary(entries: &[HistoryEntry], top_limit: usize) {
         if today_entries.len() == 1 { "" } else { "s" }
     );
 
+    // Lifetime efficiency is a cumulative mean, so one rare huge command
+    // dominates it forever: two `aws s3 --recursive` calls (367 MB at 0%) sank
+    // this number ~14 points in an afternoon and it never recovers, while the
+    // weeks after ran at 81-86%. Show recent windows next to it, otherwise the
+    // headline reports an old event as if it were today's performance.
+    let now_ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let recent = |days: u64| efficiency_since(entries, now_ts, days);
+    if let (Some(d7), Some(d30)) = (recent(7), recent(30)) {
+        println!(
+            "Recent:            {:.0}% last 7d · {:.0}% last 30d",
+            d7, d30
+        );
+    }
+
     let filled = (avg_pct / 5.0).round() as usize;
     let filled = filled.min(20);
     let empty = 20 - filled;
     println!(
-        "Efficiency: {}{} {:.0}%",
+        "Efficiency: {}{} {:.0}% (lifetime)",
         "\u{2588}".repeat(filled),
         "\u{2591}".repeat(empty),
         avg_pct
@@ -487,3 +504,18 @@ fn truncate_cmd(cmd: &str, max_len: usize) -> String {
 #[cfg(test)]
 #[path = "stats_render_tests.rs"]
 mod tests;
+
+/// Compression efficiency over the last `days`, or None when that window holds
+/// no input. Separate from the lifetime mean on purpose: the lifetime figure is
+/// cumulative, so a single rare command can hold it down permanently while
+/// recent work runs far better.
+pub(crate) fn efficiency_since(entries: &[HistoryEntry], now_ts: u64, days: u64) -> Option<f64> {
+    let cutoff = now_ts.saturating_sub(days * 86_400);
+    let (i, o) = entries
+        .iter()
+        .filter(|e| e.ts >= cutoff)
+        .fold((0usize, 0usize), |(i, o), e| {
+            (i + e.in_bytes, o + e.out_bytes)
+        });
+    (i > 0).then(|| 100.0 * (1.0 - o as f64 / i as f64))
+}
