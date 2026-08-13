@@ -232,11 +232,17 @@ pub(crate) fn print_summary(entries: &[HistoryEntry], top_limit: usize, window_d
     // Only meaningful on the unwindowed view: with `--days N` the entries are
     // already filtered, so a "last 30d" line computed over them would report
     // the window's own number under someone else's label.
-    if window_days.is_none() {
-        super::stats_efficiency::print_recent(entries);
-    }
+    // The bar tracks the last 30 days, not the lifetime mean: the text above
+    // already carries the cumulative story (period, command count, total
+    // saved), so the one visual element is better spent on whether things are
+    // healthy NOW. `--days N` overrides it.
+    let bar_pct = if window_days.is_none() {
+        super::stats_efficiency::print_recent(entries).unwrap_or(avg_pct)
+    } else {
+        avg_pct
+    };
 
-    super::stats_efficiency::print_bar(avg_pct, window_days);
+    super::stats_efficiency::print_bar(bar_pct, window_days.or(Some(30)));
 
     // Last command footer — confirms tracking is live and points at the
     // detail view for anyone who wants more than the top-N summary.
