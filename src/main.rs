@@ -405,6 +405,7 @@ fn run() {
             by_command,
             coverage,
             gaps,
+            days,
             limit,
         }) => {
             use router::handlers::stats::{handle_stats, StatsInput};
@@ -416,6 +417,7 @@ fn run() {
                 by_command: *by_command,
                 coverage: *coverage,
                 gaps: *gaps,
+                days: *days,
                 limit: *limit,
             };
             handle_stats(&input);

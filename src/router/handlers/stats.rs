@@ -73,6 +73,7 @@ pub struct StatsInput {
     /// compression vs which have effective parsers.
     pub coverage: bool,
     pub gaps: bool,
+    pub days: Option<u64>,
     /// Row cap. Overrides the default for either `--history` (20) or
     /// the summary's Top Commands table (15).
     pub limit: Option<usize>,
@@ -91,9 +92,30 @@ pub fn handle_stats(input: &StatsInput) {
         tracker::read_history()
     };
 
+    // `--days` scopes every view. The summary keeps lifetime by default on
+    // purpose: "tokens saved" is a cumulative total and the honest answer to
+    // "was trs worth installing" — unlike the efficiency percentage, it does
+    // not get distorted by an old outlier, it just grows.
+    let entries: Vec<tracker::HistoryEntry> = match input.days {
+        Some(d) => {
+            let cutoff = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|x| x.as_secs())
+                .unwrap_or(0)
+                .saturating_sub(d * 86_400);
+            entries.into_iter().filter(|e| e.ts >= cutoff).collect()
+        }
+        None => entries,
+    };
+
     if input.gaps {
         let limit = input.limit.unwrap_or(15);
-        super::stats_gaps::print_gaps(&entries, limit);
+        // 30 days by default. Over the full history this view keeps pointing at
+        // problems already solved — after the aws parser shipped, `aws` still
+        // ranked first at 0%, because the bytes it names were spent before the
+        // fix existed. A gap list has to age out or it stops being a to-do.
+        let days = input.days.unwrap_or(30);
+        super::stats_gaps::print_gaps(&entries, limit, days);
         return;
     }
 
@@ -131,7 +153,7 @@ pub fn handle_stats(input: &StatsInput) {
         print_history(&entries, limit);
     } else {
         let top_limit = input.limit.unwrap_or(DEFAULT_TOP_LIMIT);
-        print_summary(&entries, top_limit);
+        print_summary(&entries, top_limit, input.days);
     }
 }
 
