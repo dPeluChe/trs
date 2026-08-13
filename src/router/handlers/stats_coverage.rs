@@ -44,7 +44,21 @@ impl Agg {
 }
 
 /// Entry point — called from `handle_stats` when `--coverage` is set.
-pub(crate) fn print_coverage(entries: &[HistoryEntry], limit: usize, json: bool) {
+/// Coverage analysis over a time window.
+///
+/// The window is not cosmetic. Run over the full history this view keeps
+/// naming problems that were already solved: after the `aws` parser shipped,
+/// `aws` still ranked first at 0%, because the bytes it counted were spent
+/// before the fix existed. A gap list that never forgets stops being a to-do
+/// list. Callers pass `days`; the CLI defaults it to 30.
+pub(crate) fn print_coverage(entries: &[HistoryEntry], limit: usize, json: bool, days: u64) {
+    let cutoff = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+        .saturating_sub(days * 86_400);
+    let windowed: Vec<HistoryEntry> = entries.iter().filter(|e| e.ts >= cutoff).cloned().collect();
+    let entries: &[HistoryEntry] = &windowed;
     if entries.is_empty() {
         println!("No history yet. Run some commands through trs to start tracking.");
         return;

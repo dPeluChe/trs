@@ -72,7 +72,6 @@ pub struct StatsInput {
     /// Coverage analysis: which commands are passing through with poor
     /// compression vs which have effective parsers.
     pub coverage: bool,
-    pub gaps: bool,
     pub days: Option<u64>,
     /// Row cap. Overrides the default for either `--history` (20) or
     /// the summary's Top Commands table (15).
@@ -108,20 +107,14 @@ pub fn handle_stats(input: &StatsInput) {
         None => entries,
     };
 
-    if input.gaps {
-        let limit = input.limit.unwrap_or(15);
-        // 30 days by default. Over the full history this view keeps pointing at
-        // problems already solved — after the aws parser shipped, `aws` still
-        // ranked first at 0%, because the bytes it names were spent before the
-        // fix existed. A gap list has to age out or it stops being a to-do.
-        let days = input.days.unwrap_or(30);
-        super::stats_gaps::print_gaps(&entries, limit, days);
-        return;
-    }
-
     if input.coverage {
         let limit = input.limit.unwrap_or(15);
-        super::stats_coverage::print_coverage(&entries, limit, input.json);
+        super::stats_coverage::print_coverage(
+            &entries,
+            limit,
+            input.json,
+            input.days.unwrap_or(30),
+        );
         return;
     }
 

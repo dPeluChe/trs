@@ -530,11 +530,6 @@ pub enum Commands {
         /// it. The summary keeps lifetime totals unless this is passed.
         #[arg(long)]
         days: Option<u64>,
-        /// Rank commands by output that still reached the agent — where a
-        /// parser is missing or has headroom. Complements the default view,
-        /// which ranks by savings already achieved.
-        #[arg(long)]
-        gaps: bool,
         /// Break down totals by AI agent (claude, gemini, cursor,
         /// opencode, kilo). Detected via the TRS_AGENT env var
         /// injected by hook/plugin templates; rules-based agents

@@ -22,8 +22,37 @@ trs stats -n 30        # override row cap (top 30 in summary, last 30 in --histo
 trs stats --by-agent   # breakdown by which AI agent triggered the run
 trs stats --by-command # breakdown by normalized command family (e.g. "git diff", "npm run lint")
 trs stats --coverage   # parser-gap analysis (what compresses well, what falls through)
+trs stats --days 7     # scope every view to the last N days
 trs stats --json       # machine-readable summary (combines with any of the above)
 ```
+
+## Time windows
+
+Two questions live in this command, and they need different windows:
+
+- **"Was this worth installing?"** — cumulative. `Period`, `Total commands`
+  and `Tokens saved` cover the whole history. A running total is not
+  distorted by one bad day; it only grows.
+- **"Is it healthy now?"** — recent. The `Last 7 days` / `Last 30 days`
+  lines and the efficiency bar track the last 30 days.
+
+That split exists because of a real incident: two `aws s3 --recursive`
+calls pushed 367 MB through at 0% in one afternoon and dropped the
+lifetime efficiency ~14 points. A cumulative mean never forgets, so for
+weeks it reported a three-week-old event as today's performance while the
+actual weekly numbers ran at 81-86%.
+
+`--days N` overrides the window everywhere, including `--coverage`:
+
+```bash
+trs stats                      # lifetime totals, bar on the last 30d
+trs stats --days 7             # every line scoped to 7 days
+trs stats --coverage --days 90 # widen the gap analysis
+```
+
+`--coverage` defaults to 30 days for the same reason: after a parser
+ships, the bytes it used to waste are still in the history forever. A
+to-do list that never forgets stops being a to-do list.
 
 ## Summary (default)
 

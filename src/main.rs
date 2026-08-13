@@ -404,7 +404,6 @@ fn run() {
             by_agent,
             by_command,
             coverage,
-            gaps,
             days,
             limit,
         }) => {
@@ -416,7 +415,6 @@ fn run() {
                 by_agent: *by_agent,
                 by_command: *by_command,
                 coverage: *coverage,
-                gaps: *gaps,
                 days: *days,
                 limit: *limit,
             };
