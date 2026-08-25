@@ -429,7 +429,7 @@ pub fn run_ingest(config: &IngestConfig) {
             if threshold > 0 && total_tokens > threshold {
                 let suggested = resolve::suggest_budget(total_tokens);
                 eprintln!(
-                    "  ⚠  {} tokens exceeds threshold ({}) — consider: trs ingest --budget {}",
+                    "  ⚠  {} tokens exceeds threshold ({}). Consider: trs ingest --budget {}",
                     format_tokens(total_tokens),
                     format_tokens(threshold),
                     suggested,

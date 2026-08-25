@@ -207,12 +207,12 @@ pub(super) fn format_html(
     // language (aliases, dynamic imports, mod-wiring) — don't cry wolf.
     let dead_html = if flagged_ratio > 0.40 {
         format!(
-            r#"<p class="note">Import resolution looks incomplete for this project ({} of {} code modules had no resolved edges) — skipping to avoid false positives. This heuristic is reliable where imports resolve cleanly (e.g. Rust/Go).</p>"#,
+            r#"<p class="note">Import resolution looks incomplete for this project ({} of {} code modules had no resolved edges), so skipping to avoid false positives. This heuristic is reliable where imports resolve cleanly (e.g. Rust/Go).</p>"#,
             dead.len(),
             code_mod_total
         )
     } else if dead.is_empty() {
-        r#"<div class="rows"><div class="row"><span class="p">Every code module is connected — nothing isolated.</span></div></div>"#.to_string()
+        r#"<div class="rows"><div class="row"><span class="p">Every code module is connected, nothing isolated.</span></div></div>"#.to_string()
     } else {
         let rows = dead
             .iter()
@@ -259,7 +259,7 @@ pub(super) fn format_html(
     let over_count = over.len();
     let over_rows = if over.is_empty() {
         format!(
-            r#"<div class="row"><span class="p">No files over {} LOC — tidy.</span></div>"#,
+            r#"<div class="row"><span class="p">No files over {} LOC. Tidy.</span></div>"#,
             max_loc
         )
     } else {
@@ -373,7 +373,7 @@ pub(super) fn format_html(
 
   <section>
     <div class="h"><h2>Isolated modules</h2><span class="tag">module-level · import graph</span></div>
-    <p class="lead">Code folders with no import edge in or out — unreachable via imports, so likely dead or standalone. This is a <b style="color:var(--ink)">module-level</b> heuristic. <b style="color:var(--ink)">Symbol/function-level</b> dead code needs the language's own tool (<code style="font-family:var(--mono)">cargo</code>/<code style="font-family:var(--mono)">knip</code>/<code style="font-family:var(--mono)">vulture</code>) — import edges can't see method calls, trait impls or macros.</p>
+    <p class="lead">Code folders with no import edge in or out, so unreachable via imports, so likely dead or standalone. This is a <b style="color:var(--ink)">module-level</b> heuristic. <b style="color:var(--ink)">Symbol/function-level</b> dead code needs the language's own tool (<code style="font-family:var(--mono)">cargo</code>/<code style="font-family:var(--mono)">knip</code>/<code style="font-family:var(--mono)">vulture</code>): import edges can't see method calls, trait impls or macros.</p>
     <div class="card {deadclass}">
       <h3><span class="dot warn"></span>Unreachable-via-imports {deadpill}</h3>
 {deadhtml}
@@ -382,7 +382,7 @@ pub(super) fn format_html(
 
   <section>
     <div class="h"><h2>Duplicate functions</h2><span class="tag">MinHash · ≥80% similar</span></div>
-    <p class="lead">Function pairs whose structure is near-identical after masking names, strings and numbers — copy-paste candidates to unify. Structural fingerprint, so renamed clones still match.</p>
+    <p class="lead">Function pairs whose structure is near-identical after masking names, strings and numbers, so these are copy-paste candidates to unify. Structural fingerprint, so renamed clones still match.</p>
     <div class="card {dupclass}">
       <h3><span class="dot warn"></span>Near-duplicate pairs {duppill}</h3>
 {duphtml}
@@ -391,7 +391,7 @@ pub(super) fn format_html(
 
   <section>
     <div class="h"><h2>Assets &amp; binaries</h2><span class="tag">{acount} files · {abytes}</span></div>
-    <p class="lead">Images, media, fonts and other binaries — skipped by the code digest but real weight in the repo. Heaviest files listed.</p>
+    <p class="lead">Images, media, fonts and other binaries, skipped by the code digest but real weight in the repo. Heaviest files listed.</p>
     <div class="card">
       <h3><span class="dot warn"></span>What's taking space</h3>
 {assets}
@@ -440,7 +440,7 @@ pub(super) fn format_html(
     format!(
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
 <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
-<title>{} — codebase report</title><style>{}</style></head><body>{}<script>{}</script></body></html>",
+<title>{}: codebase report</title><style>{}</style></head><body>{}<script>{}</script></body></html>",
         esc(project_name),
         CSS,
         body,

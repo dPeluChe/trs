@@ -110,12 +110,12 @@ pub fn resolve_remote(input: &str, tmp: TmpMode) -> Result<ResolvedSource, Strin
     let path = guard.path().to_path_buf();
     if matches!(tmp, TmpMode::Force) {
         eprintln!(
-            "trs ingest: ephemeral clone (not saved) — to persist: `spark clone {}`",
+            "trs ingest: ephemeral clone (not saved). To persist: `spark clone {}`",
             url
         );
     } else {
         eprintln!(
-            "trs ingest: ephemeral clone — install spark to manage repos permanently: {}",
+            "trs ingest: ephemeral clone. Install spark to manage repos permanently: {}",
             SPARK_INSTALL_URL
         );
     }
@@ -222,7 +222,7 @@ fn git_shallow_clone(url: &str, repo: &str) -> Result<TempDir, String> {
         .status()
         .map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => {
-                "git not found — install git to use `trs ingest` with URLs".to_string()
+                "git not found. Install git to use `trs ingest` with URLs".to_string()
             }
             _ => format!("failed to run git clone: {}", e),
         })?;

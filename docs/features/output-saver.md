@@ -47,6 +47,14 @@ The reply rules:
   narrative.
 - **Persistence.** The rules hold for every reply, not just the first —
   agents drift back to preambles over a long session unless reminded.
+- **No em dashes.** Comma, colon, parentheses, period, or "and". It is
+  the top tell of generated text and almost nobody types one; the en dash
+  goes too, in prose. Numeric ranges keep their hyphen. The block itself
+  contains none, which is the point: a prompt that uses the tell teaches
+  every agent that the tell is fine.
+- **Concrete over abstract in prose.** No rule-of-three padding, no tier-1
+  slop (delve, leverage, robust, seamless, streamline, potenciar,
+  impulsar). This is the same cut as cutting tokens, not a second one.
 - **No invented abbreviations or causal arrows.** `cfg/impl/req/res` and
   `→` split into the same tokens as the full word, so they save nothing
   and cost clarity.
@@ -173,7 +181,7 @@ Inline installs wrap the block in HTML comment sentinels:
 
 ```
 <!-- trs:output-saver:start v1 -->
-## Output saver — keep replies cheap
+## Output saver: keep replies cheap
 …
 <!-- trs:output-saver:end -->
 ```
