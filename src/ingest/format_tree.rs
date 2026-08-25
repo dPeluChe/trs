@@ -36,7 +36,7 @@ pub(crate) fn build_tree(files: &[DigestFile]) -> String {
         let header_dir = if dir.is_empty() { "/" } else { dir.as_str() };
         match dir_annotations.get(dir) {
             Some(annotation) => {
-                tree.push_str(&format!("{}/  — {}\n", header_dir, annotation));
+                tree.push_str(&format!("{}/: {}\n", header_dir, annotation));
             }
             None => {
                 tree.push_str(&format!("{}/\n", header_dir));

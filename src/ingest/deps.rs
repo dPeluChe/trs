@@ -336,7 +336,7 @@ fn short_label(rel_path: &str, all_paths: &[&str]) -> String {
 
 /// Full dependency graph output for `--deps` mode (no file content).
 pub(super) fn format_dep_full(graph: &DepGraph, project_name: &str) -> String {
-    let mut out = format!("# {} — import graph\n\n", project_name);
+    let mut out = format!("# {}: import graph\n\n", project_name);
 
     // Build full path list for disambiguation
     let all_paths: Vec<&str> = graph

@@ -38,13 +38,13 @@
 #[macro_export]
 macro_rules! output_saver_block_literal {
     () => {
-        r#"## Output saver — keep replies cheap
+        r#"## Output saver: keep replies cheap
 
-These hold for every reply, not just the first — don't drift back to
+These hold for every reply, not just the first. Don't drift back to
 preambles and filler over a long session.
 
 Keep replies under ~100 words unless the task needs more. Between tool
-calls, stay under ~25 words. Match shape to task — a one-line question
+calls, stay under ~25 words. Match shape to task: a one-line question
 gets a one-line answer, no headers.
 
 Open with the answer or the diff. End when the answer ends.
@@ -55,10 +55,18 @@ Open with the answer or the diff. End when the answer ends.
   already shows.
 - Structured output when the data is structured: bullets, tables, JSON.
   Prose only when the reader is human and the content is narrative.
-- Don't invent abbreviations (cfg/impl/req/res) or causal arrows (→): the
-  tokenizer splits them like the full word — nothing saved, clarity lost.
+- Don't invent abbreviations (cfg/impl/req/res) or causal arrows: the
+  tokenizer splits them like the full word, so nothing is saved and
+  clarity is lost.
+- No em dashes. Use a comma, a colon, parentheses, a period, or "and".
+  It is the top tell of generated text and almost nobody types one. Same
+  for the en dash in prose; numeric ranges keep their hyphen.
+- In prose (replies, docs, comments): concrete over abstract. No
+  rule-of-three padding, no tier-1 slop (delve, leverage, robust,
+  seamless, streamline, potenciar, impulsar). Terse and specific is what
+  reads as human, and it is the same cut as cutting tokens.
 - Never invent file paths, function names, or API fields. If unknown,
-  say "UNKNOWN" or return null — guessing costs more tokens than asking.
+  say "UNKNOWN" or return null. Guessing costs more tokens than asking.
 - Full clarity, never compressed, for security warnings, irreversible or
   destructive confirmations, and any multi-step order a misread would break.
 
@@ -66,11 +74,11 @@ Open with the answer or the diff. End when the answer ends.
 
 These apply when you write code, not just when you reply in chat.
 
-- Reuse what's already here — a helper, type, or pattern a few files over
+- Reuse what's already here. A helper, type, or pattern a few files over
   beats re-implementing it. One pass: don't iterate on passing code, don't
   refactor / polish unless asked.
 - Comments: none by default. If one is truly needed, write a terse WHY-only
-  note (not a walkthrough) — at most 3 lines, ~200 characters. Never
+  note (not a walkthrough), at most 3 lines, ~200 characters. Never
   paragraph docstrings or restate the code. A longer logic explanation goes
   to docs/ with a one-line pointer in the comment.
   - BAD: 8 lines narrating the algorithm step by step.
@@ -114,14 +122,14 @@ pub(crate) const IMPORT_FILENAME_LEGACY: &str = "trs-output-saver.md";
 /// the `trs <cmd>` prefix, since there's no hook to do it for them.
 pub(crate) fn standalone_file() -> String {
     format!(
-        "# trs — token-reducing shell\n\n\
+        "# trs: token-reducing shell\n\n\
          Installed by `trs output-saver --install`. Remove with\n\
          `trs output-saver --remove` or delete this file plus the\n\
          `@{}` import line in the parent config.\n\n\
          ## Shell output\n\n\
          Shell command output is automatically routed through trs (a\n\
          token-reduction hook) and may appear in compact form. The\n\
-         compression is purely presentational — repetition and noise\n\
+         compression is purely presentational: repetition and noise\n\
          collapsed; signal preserved. There is no detail in raw output\n\
          that the compressed form hides from you, so treat what arrives\n\
          as authoritative and write normal shell commands.\n\n\

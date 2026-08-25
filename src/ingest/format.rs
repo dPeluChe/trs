@@ -55,7 +55,7 @@ pub(super) fn build_digest(
         if let Some(threshold) = config.warn_at_tokens {
             if threshold > 0 && total_tokens > threshold {
                 out.push_str(&format!(
-                    "> ⚠ **Large digest** — {} tokens, no `--budget` set (full dump). \
+                    "> ⚠ **Large digest**: {} tokens, no `--budget` set (full dump). \
                      For a tighter, higher-signal context, re-run with `--budget {}`.\n\n",
                     format_tokens(total_tokens),
                     super::resolve::suggest_budget(total_tokens),

@@ -199,8 +199,8 @@ pub(super) fn role_of(in_deg: usize, out_deg: usize, core_floor: usize) -> &'sta
 
 /// Human descriptions for each role (order = display order).
 pub(super) const ROLE_DESC: &[(&str, &str)] = &[
-    ("entry", "roots — nothing imports them (main, CLI)"),
-    ("core", "high fan-in — everything routes through"),
+    ("entry", "roots, nothing imports them (main, CLI)"),
+    ("core", "high fan-in, everything routes through"),
     ("leaf", "used by many, import nothing (utils, types)"),
     ("internal", "mid-graph plumbing"),
 ];
