@@ -15,7 +15,7 @@ pub(crate) enum Language {
     Java, // also C, C++, C#, Kotlin, Swift
     Ruby,
     Shell, // also Bash, Zsh
-    Data,  // JSON, YAML, TOML, XML, CSV — never filter
+    Data,  // JSON, YAML, TOML, XML, CSV, never filter
     Unknown,
 }
 

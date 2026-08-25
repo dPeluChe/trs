@@ -224,14 +224,14 @@ trs cargo test
 trs cargo clippy
 ```
 
-(Prefixing is always safe — trs never double-wraps a command that already
+(Prefixing is always safe: trs never double-wraps a command that already
 starts with `trs`.) This reduces token consumption by 68-99% without losing
 signal. Commands without a dedicated parser still get ANSI stripping and
 whitespace collapse (~30-40% reduction "free").
 
 The output-saver reply-brevity rules are installed separately as their own
 sentinel-managed block (run `trs output-saver --install`, which `trs init
-codex` also triggers) — kept out of this section so the two never duplicate.
+codex` also triggers), kept out of this section so the two never duplicate.
 
 ## Keeping this file lean
 
@@ -239,7 +239,7 @@ Periodically run `trs audit-docs` in this project to surface content that
 bloats every agent session: duplicate sections across rules files, embedded
 code/SQL/JSON that should live in their own files, references to docs that
 no longer exist. The tool also cross-checks whether code snippets here
-already have definitions in the source tree — flagging them as "remove and
+already have definitions in the source tree, flagging them as "remove and
 link" vs "extract to a new file".
 
 See https://github.com/dPeluChe/trs for details.
@@ -299,7 +299,7 @@ for the investigation that led to this rules-only integration.
 
 pub(crate) const WINDSURF_RULES: &str = concat!(
     r#"
-# trs (Token-Reducing Shell) — terminal output optimization
+# trs (Token-Reducing Shell): terminal output optimization
 
 Windsurf Cascade does not expose a pre-execution hook, so this rules file is
 the way to opt into trs for this project. When running shell commands, prefix
@@ -327,7 +327,7 @@ compression (~30-40% reduction). Pipes and chains are passed through unchanged.
 ## Keeping this file lean
 
 Run `trs audit-docs` periodically to surface content that inflates every
-agent session — duplicate sections across rules files, embedded code/SQL
+agent session: duplicate sections across rules files, embedded code/SQL
 blocks that belong in their own files, dead references. Every unnecessary
 token here loads on every call.
 
@@ -345,7 +345,7 @@ pub(crate) const DEVIN_RULE: &str = concat!(
 trigger: always_on
 ---
 
-# trs (Token-Reducing Shell) — terminal output optimization
+# trs (Token-Reducing Shell): terminal output optimization
 
 Devin Local does not expose a pre-execution hook, so this rule is the way to
 opt into trs. When running shell commands, prefix them with `trs` to get
@@ -373,7 +373,7 @@ compression (~30-40% reduction). Pipes and chains are passed through unchanged.
 ## Keeping this file lean
 
 Run `trs audit-docs` periodically to surface content that inflates every
-agent session — duplicate sections, embedded code/SQL blocks that belong in
+agent session: duplicate sections, embedded code/SQL blocks that belong in
 their own files, dead references. Every unnecessary token here loads on every
 call.
 

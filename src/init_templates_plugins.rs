@@ -13,7 +13,7 @@
 //   - the guard skips anything already routed through trs, including the
 //     legacy `TRS_AGENT=…` prefix, so a retried command can't snowball
 // Reference: https://opencode.ai/docs/plugins/
-pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
+pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin: route commands through trs for token-optimized output
 
 export const TrsPlugin = async () => {
   return {
@@ -36,7 +36,7 @@ export const TrsPlugin = async () => {
 
 /// Kilo plugin — identical mechanism to OpenCode but tags the downstream
 /// run as `kilo` so history attribution is accurate across forks.
-pub(crate) const KILO_PLUGIN: &str = r#"// trs plugin — route commands through trs for token-optimized output
+pub(crate) const KILO_PLUGIN: &str = r#"// trs plugin: route commands through trs for token-optimized output
 
 export const TrsPlugin = async () => {
   return {
@@ -59,7 +59,7 @@ export const TrsPlugin = async () => {
 // env, not a shell prefix — works on every platform). Auto-discovered from
 // ~/.pi/agent/extensions/ (global) or .pi/extensions/ (project); `/reload` to
 // pick up changes. Reference: https://pi.dev (earendil-works/pi).
-pub(crate) const PI_EXTENSION: &str = r#"// trs plugin — route commands through trs for token-optimized output
+pub(crate) const PI_EXTENSION: &str = r#"// trs plugin: route commands through trs for token-optimized output
 import { createBashTool } from "@earendil-works/pi-coding-agent";
 
 export default function (pi) {
@@ -91,7 +91,7 @@ pub(crate) const OPENCLAW_PLUGIN_MANIFEST: &str = r#"{
 }
 "#;
 
-pub(crate) const OPENCLAW_PLUGIN_INDEX: &str = r#"// trs plugin — route exec commands through trs for token-optimized output
+pub(crate) const OPENCLAW_PLUGIN_INDEX: &str = r#"// trs plugin: route exec commands through trs for token-optimized output
 // Validate live: hook payload field names + manifest schema (docs verified
 // 2026-06-11: before_tool_call rewrites params; resolve_exec_env merges env).
 export default {
@@ -113,7 +113,7 @@ export default {
 
 // Validate live: hook signature + plugin.yaml manifest keys (docs verified
 // 2026-06-11: register(ctx) → ctx.register_hook("pre_tool_call", fn)).
-pub(crate) const HERMES_PLUGIN_INIT: &str = r#""""trs plugin — route Hermes terminal commands through trs.
+pub(crate) const HERMES_PLUGIN_INIT: &str = r#""""trs plugin: route Hermes terminal commands through trs.
 
 Prepends `trs ` to terminal tool commands (idempotent) and tags child
 processes via TRS_AGENT for attribution. Fails open on any error.

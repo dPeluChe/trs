@@ -18,7 +18,7 @@ pub(crate) fn render_report(
 ) {
     let total_tokens: usize = docs.iter().map(|d| d.tokens).sum();
     println!(
-        "trs audit-docs — {} file{}, {} tokens total loaded per agent session",
+        "trs audit-docs: {} file{}, {} tokens total loaded per agent session",
         docs.len(),
         if docs.len() == 1 { "" } else { "s" },
         human_tokens(total_tokens),
@@ -67,7 +67,7 @@ pub(crate) fn render_report(
         println!("⚠ Large files (>5k tokens):");
         for d in big {
             println!(
-                "  - {} ({} tokens) — consider splitting heavy sections into linked docs",
+                "  - {} ({} tokens), consider splitting heavy sections into linked docs",
                 d.path.display(),
                 human_tokens(d.tokens)
             );
@@ -182,7 +182,7 @@ pub(crate) fn render_report(
                 } else {
                     String::new()
                 };
-                format!(" — declares: {}{}", joined, tail)
+                format!(", declares: {}{}", joined, tail)
             };
             println!(
                 "  {}:{}-{}  {}{}",
@@ -198,7 +198,7 @@ pub(crate) fn render_report(
                 let found_count = b.symbol_matches.len();
                 if found_count > 0 {
                     println!(
-                        "      ▸ REMOVE from doc — {} of {} symbols already in source:",
+                        "      ▸ REMOVE from doc: {} of {} symbols already in source:",
                         found_count,
                         b.symbols.len()
                     );
@@ -222,7 +222,7 @@ pub(crate) fn render_report(
                         String::new()
                     };
                     println!(
-                        "      ▸ EXTRACT — {} symbol(s) not found in source: {}{}",
+                        "      ▸ EXTRACT: {} symbol(s) not found in source: {}{}",
                         missing.len(),
                         shown.join(", "),
                         tail
@@ -255,7 +255,7 @@ pub(crate) fn render_report(
                 .map(|p| estimate_tokens(&all_blocks[p.b].text))
                 .sum();
             println!(
-                "  - Dedup the flagged block pairs — ~{} tokens saved per session",
+                "  - Dedup the flagged block pairs, ~{} tokens saved per session",
                 human_tokens(potential)
             );
         }

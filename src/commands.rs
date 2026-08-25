@@ -97,7 +97,7 @@ pub enum Commands {
     ///
     /// Default is interactive: lists what's installed and asks what to
     /// remove. Uninstall scans both global (`~/.tool/`) and project-local
-    /// (`./.tool/`) paths — it's symmetric with how `trs init` writes.
+    /// (`./.tool/`) paths, it's symmetric with how `trs init` writes.
     Uninstall {
         /// Uninstall for one tool (claude, gemini, cursor, codex, …).
         tool: Option<String>,
@@ -129,7 +129,7 @@ pub enum Commands {
     /// Bundle version + platform + doctor results + recent history +
     /// recent tee logs into one paste-ready report. Useful when you
     /// hit an issue and want to file a bug without manually
-    /// collecting every piece. Review the output before sharing — it
+    /// collecting every piece. Review the output before sharing, it
     /// includes cwd paths and failing-command output from tee logs.
     #[command(name = "debug-info")]
     DebugInfo {
@@ -142,7 +142,7 @@ pub enum Commands {
     /// to pick up the latest release. Supports npm and the curl|sh script;
     /// flags the cargo / Homebrew channels as manual-only for now. After
     /// a successful binary upgrade, also refreshes hook templates and any
-    /// already-installed output-saver blocks — pass --binary-only to
+    /// already-installed output-saver blocks. Pass --binary-only to
     /// skip that step.
     Upgrade {
         /// Detect the install method and show what would run without
@@ -154,7 +154,7 @@ pub enum Commands {
         #[arg(short = 'y', long = "yes")]
         yes: bool,
 
-        /// Upgrade only the binary — skip the hook-template refresh
+        /// Upgrade only the binary, skip the hook-template refresh
         /// and output-saver refresh that normally follow.
         #[arg(long)]
         binary_only: bool,
@@ -162,7 +162,7 @@ pub enum Commands {
 
     /// Install a compact output-reduction rules block into agent configs
     /// (Claude, Gemini, Cursor, Codex, Devin). trs already compresses
-    /// what agents see — this does the symmetric job for what they emit.
+    /// what agents see. This does the symmetric job for what they emit.
     OutputSaver {
         /// Target a specific agent (claude, gemini, cursor, codex, devin).
         /// Omit to act on every supported agent that's detected.
@@ -178,7 +178,7 @@ pub enum Commands {
         #[arg(long)]
         remove: bool,
 
-        /// Print the rules block to stdout and exit — useful for piping
+        /// Print the rules block to stdout and exit, useful for piping
         /// into a custom location.
         #[arg(long)]
         print: bool,
@@ -191,7 +191,7 @@ pub enum Commands {
         refresh: bool,
 
         /// Verify each agent's installed block byte-matches the current
-        /// canonical text. Reports per-agent: loaded / drifted (stale —
+        /// canonical text. Reports per-agent: loaded / drifted (stale,
         /// run --refresh) / not installed. Use after `trs upgrade` to
         /// confirm every agent picked up the new rules.
         #[arg(long)]
@@ -526,7 +526,7 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
         /// Only consider the last N days. Defaults to 30 for --gaps, whose
-        /// job is "what should I fix now" — a fixed parser has to age out of
+        /// job is "what should I fix now", a fixed parser has to age out of
         /// it. The summary keeps lifetime totals unless this is passed.
         #[arg(long)]
         days: Option<u64>,
@@ -537,7 +537,7 @@ pub enum Commands {
         #[arg(long = "by-agent")]
         by_agent: bool,
         /// Aggregate by normalised command family (git diff, cargo test,
-        /// npm run lint…) — strips paths and flags, groups variants.
+        /// npm run lint…), strips paths and flags, groups variants.
         #[arg(long = "by-command")]
         by_command: bool,
         /// Coverage analysis: which commands pass through with poor
@@ -621,11 +621,11 @@ pub enum Commands {
 /// Filter level for `trs read`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ReadLevel {
-    /// No filtering — raw content
+    /// No filtering: raw content
     None,
     /// Strip comments, normalize blank lines
     Minimal,
-    /// Signatures only — imports + definitions
+    /// Signatures only: imports + definitions
     Aggressive,
 }
 

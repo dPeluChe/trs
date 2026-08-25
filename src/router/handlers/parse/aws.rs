@@ -157,7 +157,7 @@ impl ParseHandler {
                     } else {
                         String::new()
                     };
-                    out.push_str(&format!("{}: {} objects — {}{}\n", verb, n, shown, more));
+                    out.push_str(&format!("{}: {} objects, {}{}\n", verb, n, shown, more));
                 }
                 if !problems.is_empty() {
                     out.push_str(&format!("problems ({}):\n", problems.len()));

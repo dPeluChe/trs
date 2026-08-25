@@ -134,7 +134,7 @@ use crate::doctor_checks::*;
 /// Print doctor results in spark-style format.
 pub(crate) fn print_report(checks: &[Check]) {
     println!();
-    println!("  TRS Doctor \u{2014} Installation Health Check");
+    println!("  TRS Doctor: Installation Health Check");
     println!();
 
     for check in checks {

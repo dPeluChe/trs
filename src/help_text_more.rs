@@ -34,7 +34,7 @@ Read a file with optional filtering to reduce token consumption.
 FILTER LEVELS:
     none        Raw content (default)
     minimal     Strip comments, normalize blank lines
-    aggressive  Signatures only — imports, function/class definitions
+    aggressive  Signatures only: imports, function/class definitions
 
 Data files (JSON, YAML, TOML, XML) are always passed through unmodified.
 
@@ -147,9 +147,9 @@ CHECKS:
     hooks        AI tool hooks installed
 
 STATUS MARKERS:
-    +  PASS — check passed
-    ~  WARN — non-critical issue
-    !  FAIL — needs attention
+    +  PASS: check passed
+    ~  WARN: non-critical issue
+    !  FAIL: needs attention
 
 EXIT CODES:
     0  All checks passed (or only warnings)
@@ -194,7 +194,7 @@ Show raw vs compact output and exactly what trs dropped.
 
 Runs a command once, captures the raw output and the compacted output
 trs produces, then reports the size delta and lists the lines dropped or
-collapsed — so you can trust what the agent actually sees.
+collapsed, so you can trust what the agent actually sees.
 
 USAGE:
     trs diff <COMMAND> [ARGS]...

@@ -167,7 +167,7 @@ fn tee_section() -> String {
         return "(HOME unavailable)\n".into();
     };
     if !tee_dir.exists() {
-        return "(no tee directory yet — no failures recorded)\n".into();
+        return "(no tee directory yet, no failures recorded)\n".into();
     }
 
     let mut files: Vec<(PathBuf, std::time::SystemTime)> = fs::read_dir(&tee_dir)

@@ -167,7 +167,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             let truncated = if stdout_ref.len() > passthrough_max {
                 let cut = &stdout_ref[..passthrough_max];
                 format!(
-                    "{}\n[trs:passthrough — truncated at {} chars, full output: {} chars]",
+                    "{}\n[trs:passthrough truncated at {} chars, full output: {} chars]",
                     cut,
                     passthrough_max,
                     stdout_ref.len()

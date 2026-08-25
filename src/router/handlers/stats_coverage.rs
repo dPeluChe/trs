@@ -219,7 +219,7 @@ fn print_human(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, l
     let oldest = entries.iter().map(|e| e.ts).min().unwrap_or(0);
     let newest = entries.iter().map(|e| e.ts).max().unwrap_or(0);
 
-    println!("trs stats — coverage analysis\n");
+    println!("trs stats: coverage analysis\n");
     println!(
         "{} entries  ·  {} → {}\n",
         entries.len(),
@@ -228,12 +228,12 @@ fn print_human(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, l
     );
 
     if !tier_a.is_empty() {
-        println!("Gaps — high-volume subcommands with poor compression");
+        println!("Gaps: high-volume subcommands with poor compression");
         print_sub_table(&tier_a);
         println!();
     }
     if !tier_b.is_empty() {
-        println!("Unrecognized binaries — no dedicated parser");
+        println!("Unrecognized binaries: no dedicated parser");
         print_bin_table(&tier_b);
         println!();
     }

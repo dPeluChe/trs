@@ -28,7 +28,7 @@ pub(crate) fn hermes_home() -> Result<PathBuf, String> {
 
 pub(crate) fn install_openclaw_plugin(opts: InstallOpts) -> Result<String, String> {
     if !opts.global {
-        eprintln!("note: OpenClaw plugins are global — installing to ~/.openclaw/plugins/trs/");
+        eprintln!("note: OpenClaw plugins are global, installing to ~/.openclaw/plugins/trs/");
     }
     let openclaw_home = home_dir()?.join(".openclaw");
     let plugin_dir = openclaw_home.join("plugins").join("trs");
@@ -75,7 +75,7 @@ pub(crate) fn install_openclaw_plugin(opts: InstallOpts) -> Result<String, Strin
 
 pub(crate) fn install_hermes_plugin(opts: InstallOpts) -> Result<String, String> {
     if !opts.global {
-        eprintln!("note: Hermes plugins are global — installing to the Hermes home dir");
+        eprintln!("note: Hermes plugins are global, installing to the Hermes home dir");
     }
     let home = hermes_home()?;
     let plugin_dir = home.join("plugins").join("trs-rewrite");

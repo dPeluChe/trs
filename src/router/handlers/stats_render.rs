@@ -56,7 +56,7 @@ pub(crate) fn print_by_command(entries: &[HistoryEntry], limit: usize) {
     rows.sort_by_key(|(_, a)| std::cmp::Reverse(a.saved()));
     rows.truncate(limit);
 
-    println!("trs Token Savings — by command");
+    println!("trs Token Savings: by command");
     println!("{}", "=".repeat(50));
     println!(
         "  {:<22} {:>5} {:>7}  {:>6}  {:>10}",
@@ -111,7 +111,7 @@ pub(crate) fn print_by_agent(entries: &[HistoryEntry]) {
     let mut rows: Vec<(String, CommandAgg)> = agg.into_iter().collect();
     rows.sort_by_key(|(_, a)| std::cmp::Reverse(a.saved()));
 
-    println!("trs Token Savings — by agent");
+    println!("trs Token Savings: by agent");
     println!("{}", "=".repeat(60));
     println!(
         "  {:<14} {:>6} {:>8}  {:>6}  {:>10}  {:>10}",
@@ -142,7 +142,7 @@ pub(crate) fn print_by_agent(entries: &[HistoryEntry]) {
     println!("direct shell invocations land under (untagged).");
     if any_bypass {
         println!();
-        println!("BYPASS counts commands the agent prefixed with TRS_SKIP=1 — trs stepped");
+        println!("BYPASS counts commands the agent prefixed with TRS_SKIP=1, trs stepped");
         println!("aside and didn't compress. High rates suggest the agent is reaching for");
         println!("the escape hatch on routine commands; consider refreshing prompts.");
     }

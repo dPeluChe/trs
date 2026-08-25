@@ -141,7 +141,7 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
-    /// Parse ping output — collapses per-packet lines into a single summary
+    /// Parse ping output: collapses per-packet lines into a single summary
     /// (host, ratio, loss %, avg/range latency).
     ///
     /// Example: ping -c 3 8.8.8.8 | trs parse ping
@@ -151,7 +151,7 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
-    /// Parse `brew install|upgrade|reinstall` output — drops progress bars
+    /// Parse `brew install|upgrade|reinstall` output: drops progress bars
     /// and fetch/pour chatter, keeps the 🍺 install-result lines and errors.
     ///
     /// Example: brew install wget | trs parse brew
@@ -161,7 +161,7 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
-    /// Parse Python traceback output — collapse full paths to basename,
+    /// Parse Python traceback output: collapse full paths to basename,
     /// drop code snippet lines under each File frame, keep the stack
     /// frame list and the final ErrorType: message. Output passthrough
     /// when no traceback is detected so normal script output is
@@ -175,7 +175,7 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
-    /// Parse `ps aux` / `ps -ef` output — truncate multi-kilobyte
+    /// Parse `ps aux` / `ps -ef` output: truncate multi-kilobyte
     /// COMMAND arguments to the executable basename, sort by CPU
     /// descending, show the top 30 with a summary footer. Agents
     /// scanning for a specific process or the top CPU hogs can skim
@@ -354,7 +354,7 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
-    /// Parse git pull / git fetch output — strips remote progress noise,
+    /// Parse git pull / git fetch output: strips remote progress noise,
     /// keeps branch update lines and the file-change summary.
     ///
     /// Example: git pull | trs parse git-pull
@@ -364,7 +364,7 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
-    /// Parse git commit output — keeps the header and summary line,
+    /// Parse git commit output: keeps the header and summary line,
     /// collapses per-file create/delete/rename mode lines into counts.
     ///
     /// Example: git commit -m "msg" | trs parse git-commit
@@ -374,7 +374,7 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
-    /// Parse cargo fmt --check output — collapses per-file diff blocks
+    /// Parse cargo fmt --check output: collapses per-file diff blocks
     /// into a file list with diff counts.
     ///
     /// Example: cargo fmt --check | trs parse fmt

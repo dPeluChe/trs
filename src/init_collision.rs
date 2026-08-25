@@ -327,7 +327,7 @@ pub(crate) fn format_report(tool: &AiTool, collisions: &[Collision]) -> String {
         match &c.kind {
             CollisionKind::HookBinary { binary } => {
                 out.push_str(&format!(
-                    "  ! {} — existing hook runs '{}'\n    {}\n",
+                    "  ! {}: existing hook runs '{}'\n    {}\n",
                     c.location.display(),
                     binary,
                     c.detail
@@ -335,7 +335,7 @@ pub(crate) fn format_report(tool: &AiTool, collisions: &[Collision]) -> String {
             }
             CollisionKind::RulesCompressor { signature } => {
                 out.push_str(&format!(
-                    "  ! {} — references '{}'\n    {}\n",
+                    "  ! {}: references '{}'\n    {}\n",
                     c.location.display(),
                     signature,
                     c.detail

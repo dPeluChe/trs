@@ -179,7 +179,7 @@ impl ParseHandler {
                     out.push_str(&format!("failures ({}):\n", failed_names.len()));
                     for name in &failed_names {
                         match panic_info.get(name) {
-                            Some(info) => out.push_str(&format!("  {} — {}\n", name, info)),
+                            Some(info) => out.push_str(&format!("  {}: {}\n", name, info)),
                             None => out.push_str(&format!("  {}\n", name)),
                         }
                     }

@@ -18,8 +18,7 @@ pub(crate) struct UninstallOpts {
     pub yes: bool,
 }
 
-const DRY_RUN_NOTE: &str =
-    "note: dry-run — nothing was written. Re-run without --dry-run to apply.";
+const DRY_RUN_NOTE: &str = "note: dry-run: nothing was written. Re-run without --dry-run to apply.";
 
 pub(crate) fn run_uninstall(tool: Option<&str>, opts: UninstallOpts) {
     if opts.output_saver {
@@ -92,7 +91,7 @@ fn run_interactive(opts: UninstallOpts) {
         return;
     }
 
-    println!("trs uninstall — interactive\n");
+    println!("trs uninstall: interactive\n");
     println!("Installed:");
     for (i, t) in installed.iter().enumerate() {
         println!("  [{}] {:<20} {}", i + 1, t.name(), t.target_label());
@@ -105,7 +104,7 @@ fn run_interactive(opts: UninstallOpts) {
 
     let mut line = String::new();
     if io::stdin().lock().read_line(&mut line).is_err() {
-        eprintln!("read error — aborting");
+        eprintln!("read error, aborting");
         return;
     }
     let pick = line.trim();
@@ -138,7 +137,7 @@ fn run_interactive(opts: UninstallOpts) {
         })
         .collect();
     if selected.is_empty() {
-        eprintln!("no valid selection — aborting");
+        eprintln!("no valid selection, aborting");
         return;
     }
     for t in &selected {

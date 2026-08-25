@@ -115,14 +115,14 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: boo
         }
         InstallMethod::Cargo => {
             println!("trs upgrade does not support cargo installs yet");
-            println!("(requires publishing to crates.io — tracked on the roadmap).");
+            println!("(requires publishing to crates.io, tracked on the roadmap).");
             println!();
             println!("Run manually:");
             println!("  cargo install trs-cli --force");
         }
         InstallMethod::Brew => {
             println!("trs upgrade does not support Homebrew yet");
-            println!("(tap not published — tracked on the roadmap).");
+            println!("(tap not published, tracked on the roadmap).");
             println!();
             println!("For now, see: {}", DOCS_INSTALL_URL);
         }
@@ -268,7 +268,7 @@ fn refresh_configs() {
         }
         Ok(_) | Err(_) => {
             eprintln!("  ! new trs binary did not respond to --version");
-            eprintln!("    skipping config refresh — verify the install manually.");
+            eprintln!("    skipping config refresh. Verify the install manually.");
             return;
         }
     };
@@ -279,7 +279,7 @@ fn refresh_configs() {
         // The installer fetches the latest release, so an unchanged version
         // means you were already on it — not a failed update. Say so plainly.
         println!(
-            "  ok  already on the latest version ({}) — nothing to update.",
+            "  ok  already on the latest version ({}), nothing to update.",
             new_version
         );
         println!("      Configs left as-is (re-run `trs init --all --global --force` to refresh templates).");
@@ -310,7 +310,7 @@ fn refresh_configs() {
         .map(|s| s.success())
         .unwrap_or(false);
     if !init_ok {
-        eprintln!("  warning: hook refresh failed — run manually if needed");
+        eprintln!("  warning: hook refresh failed, run manually if needed");
     }
 
     println!();
@@ -321,7 +321,7 @@ fn refresh_configs() {
         .map(|s| s.success())
         .unwrap_or(false);
     if !refresh_ok {
-        eprintln!("  warning: output-saver refresh failed — run manually if needed");
+        eprintln!("  warning: output-saver refresh failed, run manually if needed");
     }
 
     println!();
@@ -347,7 +347,7 @@ fn first_broken_hook_json() -> Option<std::path::PathBuf> {
             continue;
         }
         let Ok(content) = std::fs::read_to_string(&path) else {
-            continue; // unreadable isn't "corrupt" — init's own error path will handle
+            continue; // unreadable isn't "corrupt", init's own error path will handle
         };
         if content.trim().is_empty() {
             continue;
