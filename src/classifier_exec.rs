@@ -81,9 +81,10 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     #[allow(unused_assignments)]
     let mut out_bytes = in_bytes; // default: no reduction (passthrough)
 
-    // Min input guard: skip parsing entirely for tiny outputs
+    // Min input guard: skip parsing entirely for tiny outputs. Verbatim
+    // commands take the same exit at every size: their spacing is the data.
     let min_input = crate::config::config().limits.min_input_chars;
-    if stdout_ref.len() < min_input {
+    if stdout_ref.len() < min_input || is_verbatim_invocation(cmd, args) {
         print!("{}", stdout_ref);
         out_bytes = stdout_ref.len();
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -330,6 +331,37 @@ fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()
 /// Generic compression for commands without a dedicated parser.
 /// Collapses consecutive whitespace in tabular output, strips ANSI codes,
 /// removes carriage returns (progress bars), and collapses blank lines.
+/// Verbatim check that also sees through a shell wrapper, so an inner
+/// `awk`/`cut`/`column` is protected the same way a bare one is.
+///
+/// Deliberately looser than `unwrap_shell_c`: that gate has to be strict
+/// because it picks a parser, and picking the wrong one produces garbage.
+/// Here the only decision is "leave the bytes alone", where a false positive
+/// costs some compression and a false negative corrupts output. So the first
+/// token of the script is enough, quotes and redirects and all.
+///
+/// Known limit: a compound script (`cd x && awk …`) reports its first token,
+/// so an inner verbatim command later in the chain is not seen.
+fn is_verbatim_invocation(cmd: &str, args: &[String]) -> bool {
+    use crate::command_registry::is_verbatim_command;
+    if is_verbatim_command(cmd) {
+        return true;
+    }
+    if !matches!(cmd, "bash" | "sh" | "zsh" | "dash") {
+        return false;
+    }
+    let mut it = args.iter().map(String::as_str);
+    while let Some(a) = it.next() {
+        if a.starts_with('-') && a.ends_with('c') {
+            return it
+                .next()
+                .and_then(|s| s.split_whitespace().next())
+                .is_some_and(is_verbatim_command);
+        }
+    }
+    false
+}
+
 fn generic_compress(input: &str) -> String {
     use crate::router::handlers::common::strip_ansi_codes;
 

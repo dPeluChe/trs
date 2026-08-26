@@ -152,6 +152,13 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // (command_registry.rs) is the single source of truth for which binaries
     // trs is designed to compress — no more parallel prefix list to drift.
     let first = trimmed.split_whitespace().next().unwrap_or("");
+
+    // Verbatim commands re-layout bytes; the generic catch-all below would
+    // collapse the spacing that IS their output. Leave them unwrapped.
+    if crate::command_registry::is_verbatim_command(first) {
+        return None;
+    }
+
     if crate::command_registry::is_rewrite_command(first) {
         return Some(format!("trs {}", trimmed));
     }

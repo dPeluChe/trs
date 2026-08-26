@@ -175,7 +175,7 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         ]},
         stderr: Stderr::Never,
     },
-    CommandSpec { names: &["npx"], rewrite: true, known: true,
+    CommandSpec { names: &["npx", "bunx"], rewrite: true, known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Python package managers ----
@@ -298,8 +298,12 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
 
     // ---- Generic CLIs: rewrite-eligible for ANSI/whitespace compression,
     //      but no dedicated parser and not counted in coverage stats. ----
-    CommandSpec { names: &["bash", "node", "awk", "du", "jq"], rewrite: true, known: false,
+    CommandSpec { names: &["bash", "node", "du"], rewrite: true, known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
+
+    // ---- Verbatim: output is the payload, never compressed. ----
+    CommandSpec { names: VERBATIM_COMMANDS, rewrite: false, known: true,
+        keep_ratio: KeepRatio::flat(1.0), stderr: Stderr::Never },
 
     // ---- Recognized-but-not-rewritten: intercepted in the fast path
     //      (cat/head/sed) or shell builtins. Counted as known for coverage. ----
@@ -331,6 +335,26 @@ pub(crate) fn combine_stderr(cmd: &str, subcmd: &str) -> bool {
         Some(s) => s.stderr.matches(subcmd),
         None => false,
     }
+}
+
+/// Commands whose stdout IS the payload: a byte-level transform or re-layout
+/// of their input, where runs of spaces and blank lines carry meaning. Generic
+/// compression collapses exactly those, so `awk 'NR<=4' x.py` came back with
+/// every indent flattened to one space, which is broken Python, not a terser
+/// rendering of it. trs passes these through untouched: no rewrite, and no
+/// compression when invoked directly. Same reasoning that already keeps
+/// `cat`/`head`/`echo` out of the hook's rewrite list.
+///
+/// Referenced by the `REGISTRY` row above, so the list lives in one place.
+pub(crate) const VERBATIM_COMMANDS: &[&str] = &[
+    "awk", "base64", "basenc", "column", "comm", "cut", "expand", "fold", "hexdump", "iconv",
+    "join", "jq", "nl", "od", "paste", "printf", "rev", "sort", "strings", "tac", "tr", "unexpand",
+    "uniq", "xxd", "yq",
+];
+
+/// Whether trs must hand this command's output back byte for byte.
+pub(crate) fn is_verbatim_command(cmd: &str) -> bool {
+    VERBATIM_COMMANDS.contains(&cmd)
 }
 
 /// Whether the command is explicitly rewrite-eligible. Unknown commands are

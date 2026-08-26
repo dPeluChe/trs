@@ -351,8 +351,10 @@ fn test_skip_cd_chain_all_skips() {
 
 #[test]
 fn test_rewrite_inline_scripts_and_generic_clis() {
-    // bash -c, node -e, awk, du, jq — no dedicated parser but generic
-    // ANSI/whitespace compression should kick in via REWRITE_PREFIXES.
+    // bash -c, node -e, du: no dedicated parser, so generic ANSI/whitespace
+    // compression should kick in. `awk` and `jq` used to be in this list and
+    // moved to VERBATIM_COMMANDS: generic compression collapsed the spacing
+    // that is their actual output. See verbatim_commands_are_left_unwrapped.
     assert_eq!(
         maybe_rewrite("bash -c \"echo hello\""),
         Some("trs bash -c \"echo hello\"".into())
@@ -361,15 +363,7 @@ fn test_rewrite_inline_scripts_and_generic_clis() {
         maybe_rewrite("node -e 'console.log(1)'"),
         Some("trs node -e 'console.log(1)'".into())
     );
-    assert_eq!(
-        maybe_rewrite("awk '/foo/ {print}' file.txt"),
-        Some("trs awk '/foo/ {print}' file.txt".into())
-    );
     assert_eq!(maybe_rewrite("du -h dist/"), Some("trs du -h dist/".into()));
-    assert_eq!(
-        maybe_rewrite("jq -r .name package.json"),
-        Some("trs jq -r .name package.json".into())
-    );
 }
 
 #[test]
@@ -463,4 +457,38 @@ fn test_legitimate_env_prefix_still_wraps() {
         maybe_rewrite("RUST_LOG=debug cargo test"),
         Some("RUST_LOG=debug trs cargo test".into())
     );
+}
+
+#[test]
+fn verbatim_commands_are_left_unwrapped() {
+    // Generic compression collapses runs of spaces and blank lines, which is
+    // exactly the payload of these. `awk 'NR<=4' x.py` came back with every
+    // indent flattened to one space before this gate existed.
+    for cmd in [
+        "awk 'NR<=4' src/main.rs",
+        "cut -c1-20 src/main.rs",
+        "column -t data.tsv",
+        "xxd binary.bin",
+        "iconv -f latin1 -t utf8 data.csv",
+        "sort names.txt",
+        "jq . package.json",
+    ] {
+        assert_eq!(maybe_rewrite(cmd), None, "must not wrap: {}", cmd);
+    }
+}
+
+#[test]
+fn verbatim_gate_does_not_swallow_compressible_commands() {
+    for cmd in [
+        "npm test",
+        "poetry install",
+        "du -sh .",
+        "bunx tsc --noEmit",
+    ] {
+        assert!(
+            maybe_rewrite(cmd).is_some(),
+            "must still wrap for compression: {}",
+            cmd
+        );
+    }
 }
