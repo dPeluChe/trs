@@ -14,6 +14,7 @@ pub(crate) mod extra_network;
 pub(crate) mod extra_system;
 pub(crate) mod find;
 pub(crate) mod fmt;
+pub(crate) mod gh_api;
 pub(crate) mod gh_pr;
 pub(crate) mod gh_run;
 pub(crate) mod git_branch;
@@ -136,6 +137,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::Brew { file } => Self::handle_brew(file, ctx),
             ParseCommands::PythonTraceback { file } => Self::handle_python_traceback(file, ctx),
             ParseCommands::Ps { file } => Self::handle_ps(file, ctx),
+            ParseCommands::GhApi { file } => Self::handle_gh_api(file, ctx),
             ParseCommands::Du { file } => Self::handle_du(file, ctx),
             ParseCommands::Lsof { file } => Self::handle_lsof(file, ctx),
             ParseCommands::Pgrep { file } => Self::handle_pgrep(file, ctx),

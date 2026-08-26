@@ -125,7 +125,20 @@ falls through to the subprocess path unchanged.
 | Command | Subcommands parsed |
 |---|---|
 | `docker` | `ps`, `logs`, `build` |
-| `gh` | `pr list`, `pr view`, `pr diff`, `pr checks`, `issue list`, `run list`, `run view`, plus `gh api <endpoint>` passthrough tracked in stats |
+| `gh` | `pr list`, `pr view`, `pr diff`, `pr checks`, `issue list`, `run list`, `run view`, `api` |
+
+`gh api` responses arrive minified, so there is no whitespace left to
+squeeze. What trs drops instead is GitHub's link boilerplate: every
+`*_url` key except `html_url`, the API self-link `url`, `node_id`,
+`gravatar_id`, the `_links` block that restates the URLs, and a
+commit's `verification.payload` / `verification.signature` (a PGP blob
+plus a raw copy of fields already present as structured keys;
+`verified` and `reason` stay). Measured 62 to 67% smaller on pulls,
+repos, commits and issues, and the output is still valid JSON.
+
+Two cases pass through untouched: a body that is not JSON, and
+`gh api --jq` / `--template`, where the caller already selected their
+fields. `trs diff gh api <endpoint>` shows exactly which keys went.
 
 `gh pr view` extracts title, state, author, url, labels, and a
 3-line body preview. `gh pr diff` routes to the git-diff parser

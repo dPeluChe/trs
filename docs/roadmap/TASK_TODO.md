@@ -201,9 +201,10 @@ Ranked `stats --coverage` by `count * avg_in * %low` over 27,696 runs.
   were there.
 - [x] **`du` / `lsof` / `pgrep` parsers** (#147): 73% / 83% / 94% on real
   output.
-- [ ] **`gh api`**: the largest remaining gap by far (229 runs, 10.5 KB
-  average, 45% low). JSON responses, so it needs actual design rather than a
-  row-folding parser. Kept separate on purpose.
+- [x] **`gh api`** (#148): the largest remaining gap (229 runs, 10.5 KB
+  average). It was compressing 0%, not 45%: `gh` emits minified JSON, so the
+  generic whitespace reducer had nothing to take. Dropping GitHub's link
+  boilerplate instead gives 62 to 67%, and the output stays valid JSON.
 
 Left alone deliberately:
 

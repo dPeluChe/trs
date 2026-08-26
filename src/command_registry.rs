@@ -251,6 +251,9 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         names: &["gh"], rewrite: true, known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("pr", 0.30), ("issue", 0.30), ("run", 0.30),
+            // Measured over pulls/repos/commits/issues responses: the link
+            // boilerplate is a consistent ~62% of a GitHub REST body.
+            ("api", 0.38),
         ]},
         stderr: Stderr::Never,
     },

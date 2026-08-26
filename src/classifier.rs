@@ -394,10 +394,13 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 Some("view") => Some(ParseCommands::GhRunView { file: None }),
                 _ => None,
             },
-            // `gh api <path>` returns raw GitHub JSON responses — route
-            // to the download handler whose body compressor compacts
-            // JSON and decodes base64-encoded contents payloads.
-            "api" => Some(ParseCommands::Download { file: None }),
+            // `gh api <path>` returns GitHub's JSON, already minified, so
+            // the generic reducer measured 0% on it. handle_gh_api drops the
+            // link boilerplate instead. When the caller passed --jq or
+            // --template they already selected their fields, so there is
+            // nothing left to drop and the output is handed back untouched
+            // (see is_verbatim_invocation).
+            "api" => Some(ParseCommands::GhApi { file: None }),
             _ => None,
         },
 
