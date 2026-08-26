@@ -29,12 +29,12 @@ that dir to PATH automatically if it isn't already.
 | Linux | arm64 | prebuilt binary + npm + cargo |
 | Windows | x64 | prebuilt binary + npm + cargo |
 
-## Prebuilt binaries — manual install
+## Prebuilt binaries: manual install
 
 If you prefer to pick the file yourself:
 
 1. Go to <https://github.com/dPeluChe/trs/releases/latest>.
-2. Download the asset matching your platform — `trs-darwin-arm64`,
+2. Download the asset matching your platform: `trs-darwin-arm64`,
    `trs-darwin-x64`, `trs-linux-arm64`, `trs-linux-x64`, or
    `trs-windows-x64.exe`.
 3. Make it executable (`chmod +x trs-*` on Unix) and place it
@@ -120,7 +120,7 @@ duplicates explicitly:
 WARN PATH  multiple trs binaries found
            active:    /Users/you/.local/bin/trs
            shadowed:  /Users/you/.nvm/.../node_modules/.bin/trs
-           2 trs binaries in PATH — the first one wins
+           2 trs binaries in PATH, the first one wins
 ```
 
 Fix by uninstalling the duplicate (`npm uninstall -g @dpeluche/trs`
@@ -142,22 +142,22 @@ trs init --remove --all         # before: cleans hooks using the current binary
 trs output-saver --remove       # removes the rules block from agent configs
 ```
 
-These can also be done manually — the integration files live under
+These can also be done manually: the integration files live under
 `~/.claude/`, `~/.gemini/`, `~/.cursor/`, etc. Grep for `trs` in
 `settings.json` / `hooks.json` to find any leftovers.
 
 ## Troubleshooting
 
-- **`trs: command not found` after install** — re-source your shell
+- **`trs: command not found` after install**: re-source your shell
   profile (`source ~/.zshrc` / `source ~/.bashrc`) or open a new
   terminal. The installer adds the install dir to the profile but
   the current shell doesn't pick it up until it restarts.
-- **Permission denied writing to `~/.local/bin`** — the dir doesn't
+- **Permission denied writing to `~/.local/bin`**: the dir doesn't
   exist or isn't writable. `mkdir -p ~/.local/bin` and retry.
-- **Windows PATH not updating** — check `Get-Command trs` and confirm
+- **Windows PATH not updating**: check `Get-Command trs` and confirm
   the install dir appears in `$env:Path`. The installer uses
   `SetEnvironmentVariable('Path', …, 'User')` which persists for new
   shells but leaves the current process's env untouched.
 - **Still stuck?** Run `trs debug-info -o /tmp/trs.txt` and paste the
-  file contents into a GitHub issue — the report bundles version,
+  file contents into a GitHub issue, the report bundles version,
   platform, doctor checks, and recent logs.

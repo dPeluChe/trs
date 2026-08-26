@@ -1,5 +1,5 @@
 #Requires -Version 5.1
-# trs installer for Windows — downloads the prebuilt binary.
+# trs installer for Windows: downloads the prebuilt binary.
 #
 # Usage:
 #   irm https://usetrs.dev/install.ps1 | iex
@@ -7,9 +7,9 @@
 #   irm https://raw.githubusercontent.com/dPeluChe/trs/main/docs/install.ps1 | iex
 #
 # Options (env vars):
-#   $env:TRS_VERSION     — pin a specific release (default: latest)
-#   $env:TRS_INSTALL_DIR — override install location
-#   $env:TRS_NO_MODIFY_PATH=1 — skip auto-adding the install dir to User PATH
+#   $env:TRS_VERSION          pin a specific release (default: latest)
+#   $env:TRS_INSTALL_DIR      override install location
+#   $env:TRS_NO_MODIFY_PATH=1  skip auto-adding the install dir to User PATH
 #
 # Default install dir: $USERPROFILE\.local\bin (XDG parity with Unix). When
 # it's not already in User PATH, we add it via SetEnvironmentVariable so the
@@ -52,7 +52,7 @@ function Get-InstallDir {
     foreach ($d in $candidates) {
         if (Test-InUserPath $d) { return $d }
     }
-    # Nothing pre-configured — default to XDG convention. We'll add it to
+    # Nothing pre-configured: default to XDG convention. We'll add it to
     # User PATH automatically below.
     return $candidates[0]
 }
@@ -120,7 +120,7 @@ try {
     }
     Write-Ok "sha256 verified"
 } catch {
-    Write-Info "no SHA256SUMS for $version — skipping checksum (older release)"
+    Write-Info "no SHA256SUMS for $version, skipping checksum (older release)"
 } finally {
     if (Test-Path $sumsTmp) { Remove-Item $sumsTmp -Force }
 }
@@ -139,7 +139,7 @@ if ($existing -and $existing.Source -ne $target) {
 Write-Ok "installed trs $version to $target"
 
 # ------------------------------------------------------------------
-# PATH handling — auto-add to User PATH unless opted out
+# PATH handling: auto-add to User PATH unless opted out
 # ------------------------------------------------------------------
 
 if (Test-InUserPath $InstallDir) {
@@ -149,7 +149,7 @@ if (Test-InUserPath $InstallDir) {
     Write-Host "trs doctor" -ForegroundColor Cyan
     Write-Host ""
 } elseif ($env:TRS_NO_MODIFY_PATH) {
-    Write-Warning2 "$InstallDir is not in your PATH (TRS_NO_MODIFY_PATH set — not modifying)"
+    Write-Warning2 "$InstallDir is not in your PATH (TRS_NO_MODIFY_PATH set, not modifying)"
     Write-Host "  Add it later with:"
     Write-Host ("    [Environment]::SetEnvironmentVariable('Path', '{0};' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')" -f $InstallDir) -ForegroundColor Cyan
     Write-Host ""

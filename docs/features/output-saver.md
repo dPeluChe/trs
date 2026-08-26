@@ -1,7 +1,7 @@
-# `trs output-saver` — reduce tokens on the agent's replies
+# `trs output-saver`: reduce tokens on the agent's replies
 
 `trs rewrite` (wired up by [`trs init`](init.md)) compresses what
-agents **see** — the output of the shell commands they run. Agents
+agents **see**, the output of the shell commands they run. Agents
 still **emit** verbose replies: preambles ("Sure!"), narration
 ("Now I will…"), speculative suggestions, hallucinated file paths.
 
@@ -24,17 +24,17 @@ trs output-saver --print         # dump the block to stdout (pipe-friendly)
 block **byte-matches the current canonical text**, so you know every agent
 picked up new rules after `trs upgrade`. It prints per-agent
 `loaded` / `drifted` / `not installed` and **exits non-zero if any agent
-drifted** (stale block — run `--refresh`), so it can gate a script or CI
+drifted** (stale block, run `--refresh`), so it can gate a script or CI
 step. `trs doctor` surfaces the same drift signal inline.
 
 ## What the block says
 
-Two sections — reply rules, then code authoring — ~300 tokens total.
+Two sections (reply rules, then code authoring), ~300 tokens total.
 The reply rules:
 
 - **Numeric token budget.** "Keep replies under ~100 words unless the
   task needs more. Between tool calls, stay under ~25 words."
-- **Task-shape calibration.** "Match shape to task — a one-line
+- **Task-shape calibration.** "Match shape to task, a one-line
   question gets a one-line answer, no headers."
 - **Open and end positively.** "Open with the answer or the diff.
   End when the answer ends."
@@ -43,9 +43,9 @@ The reply rules:
 - **Let tool output speak for itself.** Don't restate or recap what
   the diff already shows.
 - **Structured output when the data is structured.** Bullets, tables,
-  JSON — prose only when the reader is human and the content is
+  JSON, prose only when the reader is human and the content is
   narrative.
-- **Persistence.** The rules hold for every reply, not just the first —
+- **Persistence.** The rules hold for every reply, not just the first, 
   agents drift back to preambles over a long session unless reminded.
 - **No em dashes.** Comma, colon, parentheses, period, or "and". It is
   the top tell of generated text and almost nobody types one; the en dash
@@ -59,27 +59,27 @@ The reply rules:
   `→` split into the same tokens as the full word, so they save nothing
   and cost clarity.
 - **Never invent file paths, function names, or API fields.** If
-  unknown, return `UNKNOWN` or `null` — guessing costs more tokens
+  unknown, return `UNKNOWN` or `null`, guessing costs more tokens
   than asking.
 - **Full clarity, never compressed, on safety.** Security warnings,
   irreversible/destructive confirmations, and any multi-step order a
   misread would break stay verbatim-clear.
-Then a separate **`## Code authoring`** section — its own heading, so an
+Then a separate **`## Code authoring`** section, its own heading, so an
 agent scanning the block applies it when writing code, not just when
 replying in chat:
 
 - **Reuse before re-implementing.** A helper, type, or pattern already
-  a few files over beats writing a new one. **One pass** — don't iterate
+  a few files over beats writing a new one. **One pass**, don't iterate
   on passing code or refactor unless asked.
 - **Code comments: none by default.** If one is truly needed, a terse
-  WHY-only note (not a walkthrough) — at most 3 lines, ~200 characters;
+  WHY-only note (not a walkthrough), at most 3 lines, ~200 characters;
   never paragraph docstrings or restated code. A longer logic explanation
   goes to `docs/` with a one-line pointer in the comment (the prohibition
   has a destination, so knowledge isn't lost). A minimal BAD/GOOD pair
   anchors the calibration better than the numbers alone.
 
 These code-comment limits (WHY-only, ~3 lines, ~200 chars) are the
-**canonical** source — downstream configs that replicate them should
+**canonical** source, downstream configs that replicate them should
 mirror this text rather than fork it, and this block changing is the
 signal to re-sync.
 
@@ -89,7 +89,7 @@ user's deliberate instructions.
 Run `trs output-saver --print` to see the exact text before
 installing.
 
-## Why these rules — research backing
+## Why these rules: research backing
 
 The current rules block is the result of a 2026-Q2 research pass into
 public prompt-engineering patterns for response-length reduction. Two
@@ -101,13 +101,13 @@ classes of sources informed each rule:
    A/B-tested numeric token budgets against the qualitative "be
    concise" baseline and reported ~1.2% output token reduction in
    production. This is the strongest empirical signal available for a
-   terminal-tooling agent like Claude Code — the closest match to
+   terminal-tooling agent like Claude Code, the closest match to
    trs's deployment shape.
 
 2. **Positive vs negative instruction studies** ([eval.16x.engineer
    pink-elephant analysis][pink-1], [gadlet.com on negative
    prompting][pink-2]). InstructGPT-class models reliably comply less
-   with "Don't do X" than with "Do Y" — the negation primes the
+   with "Don't do X" than with "Do Y", the negation primes the
    forbidden behavior. Our previous block leaned heavily on negatives
    ("No preambles", "No narration", "Don't iterate"); the rewrite
    flips them where the positive alternative is unambiguous.
@@ -124,7 +124,7 @@ classes of sources informed each rule:
 | Structured when data is structured | Carryover from v0.5 | Internal opinion |
 | Never invent | Carryover from v0.5 | Common LLM hallucination guard |
 | Persistence | [caveman][cav] SKILL ("ACTIVE EVERY RESPONSE, no filler drift") | Counters verbosity regression over long sessions |
-| No invented abbreviations / arrows | [caveman][cav] SKILL | Non-obvious tokenizer insight — `cfg/impl` split like the full word |
+| No invented abbreviations / arrows | [caveman][cav] SKILL | Non-obvious tokenizer insight, `cfg/impl` split like the full word |
 | Full clarity on safety | [caveman][cav] auto-clarity + [ponytail][pony] "when NOT to be lazy" | Guards against dangerous over-compression |
 | Reuse before re-implementing | [ponytail][pony] ladder rung 2 ("the most common slop") | Code-quality lift |
 | One pass | Carryover from v0.5 | Internal opinion |
@@ -135,12 +135,12 @@ classes of sources informed each rule:
 
 ### What was deliberately NOT added
 
-- **`<answer>` XML delimiters** — Anthropic-documented for *parsing*
+- **`<answer>` XML delimiters**: Anthropic-documented for *parsing*
   structured outputs, not brevity. Wrong tool for this surface.
-- **CoT (chain-of-thought) suppression in the prompt** — extended
+- **CoT (chain-of-thought) suppression in the prompt**: extended
   thinking is controlled by API parameters (`max_thinking_tokens`),
   not by reply-text instructions. Out of scope here.
-- **GPT-5 `<verbosity>low</verbosity>` tag** — empirically validated
+- **GPT-5 `<verbosity>low</verbosity>` tag**: empirically validated
   by OpenAI for Codex / GPT-5+ agents, but requires per-agent
   conditional content (Claude doesn't honor it). Worth a follow-up
   with agent-specific templates; not in the current single-template
@@ -172,7 +172,7 @@ why they share the same install mechanism.
 
 **Antigravity IDE + CLI (`agy`)** share Gemini's `GEMINI.md`/`trs.md`
 for the output-saver only. Their *hooks* are jetski-specific and live
-in `~/.gemini/antigravity-{ide,cli}/hooks.json` — see
+in `~/.gemini/antigravity-{ide,cli}/hooks.json`, see
 [supported agents](../support/agents.md#antigravity-ide--antigravity-cli-agy).
 
 ## How the install is idempotent
@@ -187,7 +187,7 @@ Inline installs wrap the block in HTML comment sentinels:
 ```
 
 Running `--install` again detects the sentinels and replaces the
-content between them — no duplication, no accidental user-content
+content between them, no duplication, no accidental user-content
 loss. The sentinel carries a version tag (`v1`) so we can migrate
 block content in future releases without breaking detection.
 
@@ -200,13 +200,13 @@ and its import line replaced with `@trs.md` automatically.
 
 A bare `trs output-saver` never writes. It reports what install would
 do for each agent and prints the exact commands to commit or remove
-the block. This mirrors `trs audit-docs` and `trs doctor` — nothing
+the block. This mirrors `trs audit-docs` and `trs doctor`, nothing
 destructive happens without an explicit flag.
 
 Sample output:
 
 ```
-trs output-saver — scan
+trs output-saver: scan
 
   + Claude Code     already installed
   . Gemini CLI      not yet installed
@@ -218,7 +218,7 @@ trs output-saver — scan
   1 installable, 4 already installed, 1 not detected, 0 unsupported
 ```
 
-## `--refresh` — pick up template changes without adding new installs
+## `--refresh`: pick up template changes without adding new installs
 
 ```bash
 trs output-saver --refresh
@@ -235,7 +235,7 @@ you deliberately didn't opt into.
 For `@import` and `RulesDir` installs, `--remove` deletes the
 standalone file and strips the import line from the parent config.
 For `InlineFile` installs, the content between the sentinels is
-removed along with the sentinels themselves — surrounding user
+removed along with the sentinels themselves, surrounding user
 content is preserved exactly.
 
 ## Measuring impact
@@ -247,22 +247,22 @@ are proportionally the bulk of replies), less on long reasoning
 replies where the compression target is narration and speculation.
 
 The `trs stats` dashboard tracks input-side savings from `trs rewrite`
-but cannot measure output-side savings — they happen outside any
+but cannot measure output-side savings, they happen outside any
 process we run. If you want to measure, compare before/after
 token-usage numbers in your agent's own dashboard.
 
 ## Interaction with `trs init`
 
 For Claude Code and Gemini CLI, `trs init --global` now writes `trs.md`
-automatically alongside the hook config — you get both input compression
+automatically alongside the hook config, you get both input compression
 and output-saver rules in one command. For all other agents the two
 installs remain independent: you can have hooks without output-saver
 rules, and vice versa.
 
 ## See also
 
-- [`trs init`](init.md) — the input-side compression via hooks.
-- [`trs audit-docs`](audit-docs.md) — audit CLAUDE.md / AGENTS.md
+- [`trs init`](init.md): the input-side compression via hooks.
+- [`trs audit-docs`](audit-docs.md): audit CLAUDE.md / AGENTS.md
   files for bloat; pairs well with output-saver.
-- [`trs doctor`](doctor.md) — reports output-saver coverage alongside
+- [`trs doctor`](doctor.md): reports output-saver coverage alongside
   hook coverage.

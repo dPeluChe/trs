@@ -1,5 +1,5 @@
 #!/bin/sh
-# trs installer — downloads the prebuilt binary for your platform.
+# trs installer: downloads the prebuilt binary for your platform.
 #
 # Usage:
 #   curl -fsSL https://usetrs.dev/install.sh | sh
@@ -7,8 +7,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/docs/install.sh | sh
 #
 # Options (env vars):
-#   TRS_VERSION=v0.5.9  — pin a specific release (default: latest)
-#   TRS_INSTALL_DIR=... — override install location
+#   TRS_VERSION=v0.5.9    pin a specific release (default: latest)
+#   TRS_INSTALL_DIR=...   override install location
 #
 # Install dir selection (in priority order):
 #   1. $TRS_INSTALL_DIR if set
@@ -134,21 +134,21 @@ pick_install_dir() {
             return
         fi
     done
-    # Nothing in PATH yet — default to XDG convention so the user only has to
+    # Nothing in PATH yet, default to XDG convention so the user only has to
     # add it to PATH once and it'll be correct for every future tool too.
     echo "$HOME/.local/bin"
 }
 
 shell_rc_for() {
-    # Prefer the rc file that's read by ALL shell invocations — interactive,
+    # Prefer the rc file that's read by ALL shell invocations, interactive,
     # login, and non-interactive subshells (the kind IDE agents like
     # Antigravity / Windsurf / Cursor spawn). Otherwise trs works in your
     # terminal but `command not found` in IDE-spawned shells.
     #
-    #   zsh  — .zshenv     (every invocation)   vs .zshrc (interactive only)
-    #   bash — .bashrc     (interactive non-login; also sourced by many IDEs)
+    #   zsh:  .zshenv     (every invocation)   vs .zshrc (interactive only)
+    #   bash: .bashrc     (interactive non-login; also sourced by many IDEs)
     #          (.profile covers the non-interactive case but is widely ignored)
-    #   fish — config.fish (fish reads this for both interactive and scripts)
+    #   fish: config.fish (fish reads this for both interactive and scripts)
     case "${SHELL:-}" in
         */zsh)  echo "$HOME/.zshenv" ;;
         */bash) echo "$HOME/.bashrc" ;;
@@ -264,34 +264,34 @@ if download "$sums_url" "$sums_tmp" 2>/dev/null && [ -s "$sums_tmp" ]; then
     elif command -v shasum >/dev/null 2>&1; then
         actual=$(shasum -a 256 "$tmp" | awk '{print $1}')
     else
-        error "neither sha256sum nor shasum found — cannot verify download"
+        error "neither sha256sum nor shasum found, cannot verify download"
     fi
     if [ "$expected" != "$actual" ]; then
         error "checksum mismatch for $asset (expected $expected, got $actual)"
     fi
     ok "sha256 verified"
 else
-    info "no SHA256SUMS for $version — skipping checksum (older release)"
+    info "no SHA256SUMS for $version, skipping checksum (older release)"
 fi
 
 chmod +x "$tmp"
 
 # Sanity check: run --version to verify binary works on this system
 if ! "$tmp" --version >/dev/null 2>&1; then
-    error "downloaded binary failed to run — architecture mismatch?"
+    error "downloaded binary failed to run, architecture mismatch?"
 fi
 
 mv "$tmp" "$INSTALL_DIR/$BIN_NAME"
 ok "installed $BIN_NAME $version to $INSTALL_DIR/$BIN_NAME"
 
-# PATH check — with pick_install_dir's zero-config default, this should
+# PATH check: with pick_install_dir's zero-config default, this should
 # rarely fire. When it does, print the exact line the user needs to add.
 #
 # zsh sub-check: even when $PATH is correct for the current (interactive)
 # shell, IDE-spawned non-interactive shells (Antigravity, Cursor, VS Code,
 # Windsurf, Claude Code in some configs) only source ~/.zshenv. If the
 # user added $INSTALL_DIR to ~/.zshrc but not ~/.zshenv, agents will hit
-# "command not found: trs" — silently, with no install error to chase.
+# "command not found: trs", silently, with no install error to chase.
 zshenv_has_path() {
     case "${SHELL:-}" in
         */zsh) ;;
@@ -316,7 +316,7 @@ if already_in_path; then
         printf '\n'
         warn "zsh: $INSTALL_DIR is in your PATH for this shell, but not in ~/.zshenv."
         printf '  IDE-spawned shells (Antigravity, Cursor, VS Code, Windsurf, Claude Code)\n'
-        printf '  only source %b~/.zshenv%b — they will see %bcommand not found: trs%b.\n' \
+        printf '  only source %b~/.zshenv%b. They will see %bcommand not found: trs%b.\n' \
             "$C_BOLD" "$C_RESET" "$C_RED" "$C_RESET"
         printf '  Add this line to %b~/.zshenv%b to fix:\n' "$C_BOLD" "$C_RESET"
         printf '    %bexport PATH="%s:$PATH"%b\n\n' "$C_CYAN" "$INSTALL_DIR" "$C_RESET"

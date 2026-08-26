@@ -1,4 +1,4 @@
-# `trs stats` — token savings dashboard
+# `trs stats`: token savings dashboard
 
 Every trs invocation logs an entry to `~/.trs/history.jsonl`:
 timestamp, command, input bytes, output bytes, duration. `trs stats`
@@ -30,10 +30,10 @@ trs stats --json       # machine-readable summary (combines with any of the abov
 
 Two questions live in this command, and they need different windows:
 
-- **"Was this worth installing?"** — cumulative. `Period`, `Total commands`
+- **"Was this worth installing?"**: cumulative. `Period`, `Total commands`
   and `Tokens saved` cover the whole history. A running total is not
   distorted by one bad day; it only grows.
-- **"Is it healthy now?"** — recent. The `Last 7 days` / `Last 30 days`
+- **"Is it healthy now?"**: recent. The `Last 7 days` / `Last 30 days`
   lines and the efficiency bar track the last 30 days.
 
 That split exists because of a real incident: two `aws s3 --recursive`
@@ -57,7 +57,7 @@ to-do list that never forgets stops being a to-do list.
 ## Summary (default)
 
 ```
-trs savings — Apr 15 23:04 → Apr 20 17:12 (5 days)
+trs savings: Apr 15 23:04 → Apr 20 17:12 (5 days)
 ────────────────────────────────────────────────────
   input:       4.2 MB    output:  930 KB     saved: 3.3 MB
   tokens in:   1.0M      out:     232K        saved: 800K (77%)
@@ -102,7 +102,7 @@ invoking `/Users/you/.local/bin/trs …`), the display collapses it to
 the basename so you still see what was run. The full path is preserved
 in `~/.trs/history.jsonl` if you need it.
 
-## `--by-agent` — attribution breakdown
+## `--by-agent`: attribution breakdown
 
 ```bash
 trs stats --by-agent
@@ -111,7 +111,7 @@ trs stats --by-agent
 Shows which AI agent triggered each execution. Added in v0.5.8.
 
 ```
-trs Token Savings — by agent
+trs Token Savings: by agent
 ============================================================
   AGENT           CALLS    SHARE  AVG -%       SAVED      BYPASS
 ────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ picks it up when the rewritten invocation eventually logs.
 ### The BYPASS column
 
 `BYPASS` counts how many commands the agent prefixed with
-`TRS_SKIP=1` — those skip trs entirely, so we never see the output
+`TRS_SKIP=1`, those skip trs entirely, so we never see the output
 and can't compress it. The column shows the count plus the rate as
 a fraction of the agent's total calls (`3 (0.2%)`); `0` is rendered
 as a plain zero so the eye skips over the common case.
@@ -140,12 +140,12 @@ as a plain zero so the eye skips over the common case.
 We log bypass observations even though we don't see the output, so
 the dashboard can answer: "is this agent reaching for the escape
 hatch on routine commands?" High rates (>5%) usually mean the
-agent's prompt promotes bypass too aggressively — refresh
+agent's prompt promotes bypass too aggressively, refresh
 `~/.<agent>/trs.md` via `trs output-saver --refresh` to ship the
 current minimal template.
 
 Bypass entries carry zero in/out byte counts, so they don't affect
-SAVED / AVG -% — they only contribute to CALLS and BYPASS.
+SAVED / AVG -%: they only contribute to CALLS and BYPASS.
 
 ### Which agents get attributed
 
@@ -174,7 +174,7 @@ you need separation, you currently need to eyeball `cwd` paths or
 look at the hour of the day. A future release could disambiguate
 via a install-time flag or a second detection path.
 
-## `--by-command` — command family breakdown
+## `--by-command`: command family breakdown
 
 ```bash
 trs stats --by-command
@@ -185,7 +185,7 @@ meaningful subcommands) and ranks by total tokens saved. Useful for
 spotting which commands run most and which give the best reduction.
 
 ```
-trs Token Savings — by command
+trs Token Savings: by command
 ==================================================
   COMMAND                CALLS   SHARE  AVG -%       SAVED
 ──────────────────────────────────────────────────
@@ -196,11 +196,11 @@ trs Token Savings — by command
   …
 ```
 
-Normalization strips paths, flags, and IDs — `git diff HEAD~1` and
+Normalization strips paths, flags, and IDs, `git diff HEAD~1` and
 `git diff main..feature` both count as `git diff`. `npm run lint`
 and `pnpm run lint` are separate entries (binary is kept).
 
-## `--coverage` — parser-gap analysis
+## `--coverage`: parser-gap analysis
 
 ```bash
 trs stats --coverage           # human-readable, three tiers
@@ -211,14 +211,14 @@ trs stats --coverage -n 20     # row cap per tier (default 15)
 Aggregates every entry by `(binary, subcommand)` and surfaces three
 tiers:
 
-1. **Gaps** — high-volume subcommands with poor compression. These are
+1. **Gaps**: high-volume subcommands with poor compression. These are
    the highest-leverage parser additions. Sample row:
    `poetry run  count=769  avg_in=11186  %low=51%`.
-2. **Unrecognized binaries** — commands trs has no dedicated parser
+2. **Unrecognized binaries**: commands trs has no dedicated parser
    for. Falls through to generic ANSI / whitespace compression
    (~30-40%). Adding a row for the binary in `src/command_registry.rs`
    (the unified command registry) ensures even that minimum kicks in.
-3. **Well-covered** — top by volume, low `%low` rate. Confirmation
+3. **Well-covered**: top by volume, low `%low` rate. Confirmation
    the existing parsers are doing their job.
 
 A row qualifies as "low" when its `saved_pct < 10`. A row enters tier 1
@@ -236,7 +236,7 @@ gh issue create --repo dPeluChe/trs --title "parser-gap: poetry run" --body-file
 
 The JSON is self-contained (`trs_version`, entry range, tier rows with
 binary/sub/count/in_bytes/avg_in/low_pct/sample). No cwd paths or
-secrets leak — `sample` is truncated to 70 chars and may include flag
+secrets leak, `sample` is truncated to 70 chars and may include flag
 patterns, so glance over it before sharing if your project layouts
 contain sensitive names.
 
@@ -267,7 +267,7 @@ Structured output suitable for dashboards or CI:
 ```
 
 `bypass_count` is the number of `TRS_SKIP=1` observations across the
-window — same signal as the BYPASS column in `--by-agent`, but
+window, same signal as the BYPASS column in `--by-agent`, but
 aggregated. Useful for dashboards that want a single bypass-rate
 metric (`bypass_count / total_commands`).
 
@@ -275,13 +275,13 @@ metric (`bypass_count / total_commands`).
 
 Every invocation of trs that produces output (compressed or not)
 writes a line to history.jsonl. Commands that failed, commands routed
-through the generic fallback, commands that emitted zero savings —
+through the generic fallback, commands that emitted zero savings, 
 all logged, so the dashboard reflects real usage rather than only the
 "wins."
 
 Failed passthrough (when a parser errors out and trs falls back to
 raw output) is logged with identical input/output bytes so the
-reduction shows as 0%. That's intentional — lying about savings would
+reduction shows as 0%. That's intentional, lying about savings would
 defeat the point of the dashboard.
 
 ## Clearing / trimming history
@@ -290,13 +290,13 @@ defeat the point of the dashboard.
 rm ~/.trs/history.jsonl        # start over
 ```
 
-No built-in retention policy yet — history grows indefinitely. A log
+No built-in retention policy yet, history grows indefinitely. A log
 rotation helper is on the roadmap. Typical sizes: a few MB after a
 few months of heavy use.
 
 ## See also
 
-- [`trs doctor`](doctor.md) — reports history.jsonl size and
+- [`trs doctor`](doctor.md): reports history.jsonl size and
   writability.
-- [`trs discover`](../../README.md) — scans your prior shell history
+- [`trs discover`](../../README.md): scans your prior shell history
   for commands where trs would have saved tokens but wasn't used.
