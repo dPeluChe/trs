@@ -167,6 +167,39 @@ Context-compression layer (Python+Rust): compresses tool outputs / logs / files 
 - [ ] Same drift risk applies to: supported-commands table, built-in tools list, and "8 of 9 agents supported" claim.
 - [ ] Decide whether `docs/development/codebase-digest.md` should stay committed or move to a CI-generated release artifact.
 
+### Writing convention: no em dashes
+
+Rule added to the injected output-saver block in #143, then applied to the
+tool itself. The convention now lives in `CONTRIBUTING.md` § Writing.
+
+- [x] **CLI micro-copy** (#144): 92 strings across 28 modules. Two traps worth
+  remembering: `doctor.rs` wrote the dash as `\u{2014}` so a literal grep
+  missed it, and clap renders `///` doc comments into `--help`, so 19 lines
+  that look like internal comments are the most-read copy in the tool. Verify
+  against the built binary, not the source.
+- [x] **Documentation and repo governance** (#145): 628 conversions across the
+  docs, plus `README.es.md`, `npm/README.md`, `CONTRIBUTING.md`, `SECURITY.md`,
+  the issue/PR templates, the workflows, the hooks and the install scripts.
+- [ ] **Internal Rust comments** (~449) and test assertion messages. Being
+  cleaned as we touch the files rather than in one sweep, agreed 2026-08-26.
+- [ ] **Regenerate `docs/development/codebase-digest.md`** after the next
+  release. It is `trs ingest` output, so it picks the cleanup up on its own;
+  the ~192 dashes left in it today come from source comments.
+
+Not swept, on purpose: `docs/roadmap/completed/*.md` and `CHANGELOG.md` are
+dated records of a past state, and rewriting a log falsifies it. Table cells
+holding `—` for "no value" are a glyph, not prose.
+
+### Other drift found while sweeping (2026-08-26)
+
+- [ ] `docs/features/stats.md` § Summary shows a `trs savings:` block in a
+  shape the binary no longer prints. The real header is `trs Token Savings`
+  followed by `Period:` / `Total commands:` rows.
+- [ ] `memory/` is tracked in the repo (4 files, including `MEMORY.md`). It
+  reads like agent working notes, it names a competing tool by name, and it
+  duplicates state that lives outside the repo. Decide whether it belongs
+  here at all.
+
 ---
 
 ## Phase 2.6: Internal architecture (May 2026 feedback)

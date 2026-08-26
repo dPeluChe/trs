@@ -1,5 +1,5 @@
 name: Bug report
-description: Something broke — wrong output, crash, hook not firing
+description: Something broke: wrong output, crash, hook not firing
 labels: [bug]
 body:
   - type: input
@@ -28,7 +28,7 @@ body:
       label: Command and what happened
       description: |
         The command you ran and what went wrong. If output looks wrong,
-        `trs diff <cmd>` shows raw vs compact — paste that if possible.
+        `trs diff <cmd>` shows raw vs compact, paste that if possible.
       placeholder: |
         trs git status
         → expected X, got Y

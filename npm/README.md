@@ -1,4 +1,4 @@
-# trs — Token-Reducing Shell
+# trs: Token-Reducing Shell
 
 Transform noisy terminal output into compact, structured signal.
 A CLI toolkit for developers, automation pipelines, and AI agents.
@@ -56,7 +56,7 @@ trs audit-docs                # lint CLAUDE.md / AGENTS.md for bloat
 
 ## How it works
 
-trs wraps your existing commands, parses their output, and returns a compact structured version. No changes to your workflow — just prefix with `trs`.
+trs wraps your existing commands, parses their output, and returns a compact structured version. No changes to your workflow, just prefix with `trs`.
 
 ```
 $ git status                    # 2.1 KB raw output
@@ -82,7 +82,7 @@ trs git status --raw        # passthrough (tracked)
 | Linux    | x64, arm64  | shell launcher (~12ms overhead) |
 | Windows  | x64         | `.cmd` launcher (requires Windows x64) |
 
-> The launcher `exec`s the native binary directly — no Node.js at runtime,
+> The launcher `exec`s the native binary directly, no Node.js at runtime,
 > which is why startup is on par with a Homebrew install.
 
 ## Links

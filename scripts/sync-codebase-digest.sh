@@ -4,7 +4,7 @@
 # Run this before tagging a release, or any time src/ has moved
 # significantly since the last digest. The committed digest is
 # meant to be an up-to-date, drop-in context primer for any AI
-# agent working on this repo — if it drifts too far from HEAD,
+# agent working on this repo: if it drifts too far from HEAD,
 # the digest loses its point.
 #
 # Usage:

@@ -1,5 +1,5 @@
 #!/bin/sh
-# trs — shell wrapper that execs the native binary directly.
+# trs: shell wrapper that execs the native binary directly.
 # Saves ~25ms vs the previous Node wrapper by skipping the node runtime.
 #
 # The platform-specific binary is installed by npm as an optionalDependency
