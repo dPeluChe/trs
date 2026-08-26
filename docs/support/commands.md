@@ -162,6 +162,9 @@ neither shape passes through untouched rather than being guessed at.
 | Command | What gets parsed |
 |---|---|
 | `ps` | column-aware (robust against right-aligned columns) |
+| `du` | sorted by size descending, largest 15 kept, tail summarized |
+| `lsof` | one row per process instead of one per descriptor, address kept |
+| `pgrep` | identical command lines merged, `argv[0]` shortened to basename |
 | `env` | sorted, secrets masked |
 | `wc` | line/word/byte totals |
 | `brew` | `list`, `outdated`, `services` |

@@ -333,6 +333,9 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // Other ps invocations (e.g. `ps -o pid,cmd`) also route here;
         // the parser passes through when the header doesn't match.
         "ps" => Some(ParseCommands::Ps { file: None }),
+        "du" => Some(ParseCommands::Du { file: None }),
+        "lsof" => Some(ParseCommands::Lsof { file: None }),
+        "pgrep" => Some(ParseCommands::Pgrep { file: None }),
 
         // `python3 -m <module>` — route to the module's dedicated
         // parser when we have one. `python3 -m pytest` is a very

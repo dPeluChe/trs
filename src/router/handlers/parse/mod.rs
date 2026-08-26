@@ -43,6 +43,7 @@ pub(crate) mod ps;
 pub(crate) mod pytest_format;
 pub(crate) mod pytest_parse;
 pub(crate) mod python_traceback;
+pub(crate) mod sysinfo;
 pub(crate) mod test;
 pub(crate) mod vitest_format;
 pub(crate) mod vitest_parse;
@@ -135,6 +136,9 @@ impl CommandHandler for ParseHandler {
             ParseCommands::Brew { file } => Self::handle_brew(file, ctx),
             ParseCommands::PythonTraceback { file } => Self::handle_python_traceback(file, ctx),
             ParseCommands::Ps { file } => Self::handle_ps(file, ctx),
+            ParseCommands::Du { file } => Self::handle_du(file, ctx),
+            ParseCommands::Lsof { file } => Self::handle_lsof(file, ctx),
+            ParseCommands::Pgrep { file } => Self::handle_pgrep(file, ctx),
             ParseCommands::Deps { file } => Self::handle_deps(file, ctx),
             ParseCommands::Install { file } => Self::handle_install(file, ctx),
             ParseCommands::Build { file } => Self::handle_build(file, ctx),

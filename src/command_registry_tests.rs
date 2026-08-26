@@ -242,6 +242,9 @@ const GOLDEN_KNOWN: &[&str] = &[
     "poetry",
     "aws",
     "bunx",
+    "du",
+    "lsof",
+    "pgrep",
     // Verbatim: handled by being left alone, so coverage counts them as
     // handled rather than reporting them as missing parsers. Same treatment
     // cat/head/sed/echo already get above.
@@ -356,6 +359,8 @@ fn rewrite_eligibility_matches_legacy_prefixes() {
         "bash",
         "node",
         "du",
+        "lsof",
+        "pgrep",
         "bunx",
     ] {
         assert!(is_rewrite_command(cmd), "{cmd} should be rewrite-eligible");
