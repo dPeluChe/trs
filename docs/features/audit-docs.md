@@ -1,7 +1,7 @@
-# `trs audit-docs` — find bloat in CLAUDE.md / AGENTS.md / rules files
+# `trs audit-docs`: find bloat in CLAUDE.md / AGENTS.md / rules files
 
 Agent instruction files (`CLAUDE.md`, `AGENTS.md`, `.cursor/rules/*.mdc`,
-`.windsurfrules`) get loaded into **every** agent session — every turn,
+`.windsurfrules`) get loaded into **every** agent session, every turn,
 every project open, every conversation start. Bloat in these files is
 the single most expensive kind of bloat because it multiplies across
 every interaction.
@@ -10,7 +10,7 @@ every interaction.
 
 - Cross-file duplicate sections (SimHash over 3-word shingles; flags
   blocks with Hamming distance ≤ 6, i.e. ≥ 90% similar).
-- Dead `@imports` — references to files that don't exist.
+- Dead `@imports`, references to files that don't exist.
 - Embedded code / SQL / JSON / YAML / tables that belong in their own
   files rather than inline in rules.
 - Code fences whose declared symbols already exist in the project's
@@ -25,7 +25,7 @@ trs audit-docs path/to/docs     # audit a specific folder
 ```
 
 The output groups findings by file with line numbers and a short
-one-line description. Nothing is modified — this is a read-only
+one-line description. Nothing is modified. This is a read-only
 report.
 
 ## What it scans
@@ -63,24 +63,24 @@ rules files. An import is flagged as dead if:
 
 - The path is relative and doesn't resolve to an existing file.
 - The path looks like an `@import` (has `./`, `../`, or a known file
-  extension) — we explicitly skip npm-package-style `@scope/package`
+  extension), we explicitly skip npm-package-style `@scope/package`
   mentions to avoid false positives.
 
 ## Embedded bloat
 
 Fenced code blocks, JSON blobs, SQL queries, and HTML tables inside
 rules files. These inflate the per-session load without adding
-instructional value — they're content that should live in source
+instructional value. They're content that should live in source
 files, docs, or test fixtures.
 
 For code fences, we cross-reference declared symbols against the
 project's actual source tree:
 
 - If the symbol (e.g. `fn handle_request`, `class UserService`)
-  **already exists** in `src/`, the fence is flagged as `REMOVE` —
+  **already exists** in `src/`, the fence is flagged as `REMOVE`, 
   replace with a source-file link.
 - If the symbol **doesn't exist anywhere**, the fence is flagged as
-  `EXTRACT` — copy to a real file, then link to it.
+  `EXTRACT`, copy to a real file, then link to it.
 
 Symbol matching uses a blocklist of generic names (`data`, `result`,
 `page`, `value`, `json`, …) to avoid matching on project-agnostic
@@ -112,7 +112,7 @@ docs/CLAUDE.md (4 findings):
   L12-L45  ~  near-duplicate with docs/AGENTS.md:L8-L41
   L78-L92  ~  embedded SQL query (25 lines, 680 tokens)
               → move to docs/queries/user-lookup.sql and link
-  L103-L120 ~  embedded code fence — symbol `handleLogin` already
+  L103-L120 ~  embedded code fence, symbol `handleLogin` already
               defined in src/auth/handlers.rs:44
               → REMOVE, replace with link
   L138     ~  dead @import: @./removed-rules.md
@@ -123,9 +123,9 @@ total: 4 findings
 
 ## See also
 
-- [`trs doctor`](doctor.md) — surfaces the warning that points here.
-- [`trs output-saver`](output-saver.md) — writes a small rules block
+- [`trs doctor`](doctor.md): surfaces the warning that points here.
+- [`trs output-saver`](output-saver.md): writes a small rules block
   that `audit-docs` will recognize via its sentinels and skip from
   duplicate-detection noise.
-- [`docs/development/agent-integrations.md`](../development/agent-integrations.md) — per-agent
+- [`docs/development/agent-integrations.md`](../development/agent-integrations.md): per-agent
   reference for which paths get auto-loaded.

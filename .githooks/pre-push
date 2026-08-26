@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pre-push hook — mirrors CI checks exactly so nothing reaches GitHub red.
+# Pre-push hook: mirrors CI checks exactly so nothing reaches GitHub red.
 # Install once: git config core.hooksPath .githooks
 
 set -e

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Agent instructions for this repo live in [`AGENTS.md`](./AGENTS.md) — start
+Agent instructions for this repo live in [`AGENTS.md`](./AGENTS.md). Start
 there. This file carries only the machine-readable config the hooks and the
 ship gate read.
 

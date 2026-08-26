@@ -1,4 +1,4 @@
-# AI Agent Integrations — Reference
+# AI Agent Integrations: Reference
 
 How `trs` integrates with each supported AI coding agent. Use this doc when
 adding a new agent, debugging a broken integration, or reviewing why a
@@ -22,8 +22,8 @@ matrix below. Six distinct target paths across three mechanisms:
 | OpenCode | inline with sentinels | `~/.config/opencode/AGENTS.md` |
 | Kilo Code | inline with sentinels | `~/.config/kilo/AGENTS.md` |
 | Factory Droid | inline with sentinels | `~/.factory/AGENTS.md` |
-| Antigravity IDE | `@import` (shared with Gemini) — `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` (output-saver); hooks live separately, see below |
-| Antigravity CLI (`agy`) | `@import` (shared with Gemini) — `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` (output-saver); hooks live separately, see below |
+| Antigravity IDE | `@import` (shared with Gemini), `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` (output-saver); hooks live separately, see below |
+| Antigravity CLI (`agy`) | `@import` (shared with Gemini), `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` (output-saver); hooks live separately, see below |
 
 Inline installs use the sentinels
 `<!-- trs:output-saver:start v1 -->` / `<!-- trs:output-saver:end -->`
@@ -32,20 +32,20 @@ surrounding user content.
 
 **AGENTS.md convention:** Codex, OpenCode, Kilo, and Droid all auto-load
 the `AGENTS.md` convention (Droid is a signatory of the AGENTS.md
-consortium — see https://factory.ai/news/agents-md). That's why those
+consortium, see https://factory.ai/news/agents-md). That's why those
 four converge on the same install mechanism.
 
 **Plugin-level hook note:** OpenCode's plugin API has no prompt-layer
 hook (`tool.execute.*` only). Kilo exposes
 `experimental.chat.system.transform` and Droid exposes `SessionStart` /
-`UserPromptSubmit` — both could inject rules dynamically. For a static
+`UserPromptSubmit`, both could inject rules dynamically. For a static
 rules block the AGENTS.md file is simpler and less likely to break
 across agent updates.
 
 ## Integration types
 
 Agents fall into three architectural buckets. Pick the right bucket BEFORE
-writing a template — the install mechanism, test strategy, and failure modes
+writing a template, the install mechanism, test strategy, and failure modes
 differ.
 
 | Type | How it works | Agents | File written |
@@ -55,7 +55,7 @@ differ.
 | **Rules file** | No programmatic interception. Agent reads a rules/instructions file and VOLUNTARILY prefixes `trs` | Windsurf, Codex (fallback on older builds) | `AGENTS.md` / `.windsurfrules` |
 
 Hook and plugin are deterministic (binary: fires or not). Rules-based is
-probabilistic — depends on the agent choosing to follow the guidance.
+probabilistic, depends on the agent choosing to follow the guidance.
 
 ## Wire-format dispatch (hook agents)
 
@@ -74,7 +74,7 @@ Claude's `PreToolUse` and Cursor's `preToolUse` differ ONLY by case. If you
 change the match order or add a case-insensitive comparison, you will break
 one of them silently.
 
-Factory Droid uses Claude's Shape verbatim — `hook_event_name: "PreToolUse"`.
+Factory Droid uses Claude's Shape verbatim, `hook_event_name: "PreToolUse"`.
 
 ## Agent attribution (`TRS_AGENT`)
 
@@ -95,7 +95,7 @@ downstream `trs <cmd>` execution can attribute the run.
 | Windsurf | rules-only, no programmatic signal | `(untagged)` |
 
 The shell treats leading `VAR=value` as a per-command env override
-and strips it before executing the downstream program — so the tag
+and strips it before executing the downstream program, so the tag
 is transparent to git/cargo/etc. Read via `std::env::var("TRS_AGENT")`
 at log time in `tracker::log_execution`. View results with
 `trs stats --by-agent`.
@@ -117,7 +117,7 @@ show up as `claude` in attribution today.
 | Template | `CLAUDE_HOOKS` |
 | Test prompt | hook-based |
 
-No known quirks. Canonical client — we treat its format as the default.
+No known quirks. Canonical client: we treat its format as the default.
 
 ### Gemini CLI
 
@@ -131,12 +131,12 @@ No known quirks. Canonical client — we treat its format as the default.
 | Docs | https://geminicli.com/docs/hooks/reference/ |
 
 **Quirk**: emits a different output envelope than Claude. Early installs
-copied Claude's shape and silently failed — hook fired, exit 0, command not
+copied Claude's shape and silently failed, hook fired, exit 0, command not
 rewritten. Fixed in `a662c9d` by dispatching on `hook_event_name`.
 
 **Hallucination caveat**: Gemini's chat mode sometimes fabricates plausible
 command output when shell is unavailable. If the reported `trs --version`
-shows a version that doesn't exist (e.g. `v0.14.13`), Gemini is inventing —
+shows a version that doesn't exist (e.g. `v0.14.13`), Gemini is inventing, 
 validate via `trs stats --history` from a real terminal.
 
 ### Cursor
@@ -152,11 +152,11 @@ validate via `trs stats --history` from a real terminal.
 
 **Quirks**:
 - `beforeShellExecution` (Cursor's other shell-ish hook) only supports
-  allow/deny — no rewrite. DO NOT register there. `preToolUse` is the one
+  allow/deny, no rewrite. DO NOT register there. `preToolUse` is the one
   with `updated_input` support. Fixed in `fb4bafb`.
 - Cursor fires `preToolUse` for every tool (Shell, Read, Write, MCP, Task).
   Without `matcher: "Shell"`, the hook ran for hundreds of Read-tool polling
-  calls per session — wasted ~4ms subprocess each. Fixed in `e797d8a`.
+  calls per session, wasted ~4ms subprocess each. Fixed in `e797d8a`.
 - Cursor matchers are case-sensitive. `"Shell"` is the Shell tool's exact
   name; `"shell"` doesn't match.
 
@@ -191,7 +191,7 @@ Output envelope is identical to Claude Code.
 | Docs | https://opencode.ai/docs/plugins/ |
 
 **Quirks**:
-- Plugin files are auto-discovered — no registration in `opencode.json`
+- Plugin files are auto-discovered: no registration in `opencode.json`
   needed.
 - Older docs showed `before_tool_call` hook with `ctx.tool` / `ctx.input`;
   that API is outdated. The current API is `"tool.execute.before"` with
@@ -199,7 +199,7 @@ Output envelope is identical to Claude Code.
 - Global path is `~/.config/opencode/plugins/`, NOT `~/.opencode/plugins/`.
   The `~/.opencode/` directory exists for unrelated reasons (bun workspace).
 - If the plugin throws during OpenCode startup, the whole TUI crashes with a
-  DrizzleError on SQLite WAL init — unrelated-looking stack trace. If users
+  DrizzleError on SQLite WAL init, unrelated-looking stack trace. If users
   report this, the plugin file is the likely cause; delete and retry.
 
 ### Kilo Code
@@ -208,7 +208,7 @@ Output envelope is identical to Claude Code.
 |---|---|
 | Type | Plugin (TypeScript) |
 | Config | `~/.config/kilo/plugins/trs.ts` (global) or `.kilo/plugins/trs.ts` (project) |
-| Template | `OPENCODE_PLUGIN` (shared — same plugin API) |
+| Template | `OPENCODE_PLUGIN` (shared, same plugin API) |
 
 Kilo mirrors OpenCode's plugin architecture. Same `tool.execute.before`
 hook, same auto-discovery. Our install spec treats it as an OpenCode clone.
@@ -231,17 +231,17 @@ field starting in **codex-cli ≥ 0.134** (PR openai/codex#20527, merged
 `trs init codex --global` merges a real `PreToolUse` hook into
 `~/.codex/hooks.json` (preserving the user's other hooks; idempotent).
 Approve it once via Codex's `/hooks` prompt and commands are rewritten
-automatically — no `trs` prefix needed.
+automatically, no `trs` prefix needed.
 
 **Rules-only fallback.** On older codex builds (or when the hook isn't
 trusted), trs falls back to the `~/.codex/AGENTS.md` block instructing
-Codex to prefix `trs`. Prefixing is always safe — trs never
+Codex to prefix `trs`. Prefixing is always safe: trs never
 double-wraps a command already starting with `trs`.
 
 **Caveat.** `codex exec` (non-interactive) does NOT dispatch
 `PreToolUse`; the hook only fires in interactive sessions. (Issue
 openai/codex#18491 remains open but only concerns `read_file`/`grep`
-hook dispatch, which trs doesn't use — it is not an `updatedInput`
+hook dispatch, which trs doesn't use. It is not an `updatedInput`
 limitation.)
 
 Validate with the hook-based test prompt on ≥ 0.134, or the rules-based
@@ -255,7 +255,7 @@ below).
 | Type | Rules file (was programmatic hook, reverted in v0.6.6) |
 | Config (shared) | `~/.gemini/GEMINI.md` (sentinel-wrapped rules block) |
 | Template | `ANTIGRAVITY_RULES_SECTION` |
-| Tool name | n/a — no programmatic interception |
+| Tool name | n/a, no programmatic interception |
 
 **v0.6.6 revert.** Antigravity (IDE + CLI/`agy`) is rules-only.
 Empirical testing against agy v1.0.1 showed user-defined entries in
@@ -303,7 +303,7 @@ for the exact checklist.
 | Config | `.windsurfrules` (project root) |
 | Template | `WINDSURF_RULES` |
 
-Windsurf Cascade has no pre-execution hook — rules-based voluntary
+Windsurf Cascade has no pre-execution hook: rules-based voluntary
 adoption only (like Codex's fallback on older builds).
 
 ## Test prompts
@@ -315,7 +315,7 @@ Estoy validando el hook de trs en este entorno. Ejecuta los comandos
 abajo usando tu tool de shell. Pega outputs literales.
 
 CRITICO: Si no tienes acceso a shell, di "no tengo shell" en lugar de
-inventar. Si ejecutas algo, no parafrasees — copy-paste literal.
+inventar. Si ejecutas algo, no parafrasees, copy-paste literal.
 
 1. `trs --version`
 2. `git status`
@@ -330,7 +330,7 @@ Despues responde en 1 frase:
 - `git status` returns the compact `branch\nuntracked (N):\n  ?? file`
   format, NOT the native `On branch X\nYour branch is up to date\n...`
 - `trs stats --history` shows a new entry with a timestamp matching the
-  test moment — **ground truth**, use this instead of trusting the agent's
+  test moment, **ground truth**, use this instead of trusting the agent's
   reported output.
 
 ### Rules-based agents (Codex, Antigravity, Windsurf)
@@ -339,12 +339,12 @@ Despues responde en 1 frase:
 Tu archivo de instrucciones (AGENTS.md / .windsurfrules /
 .agent/rules/) debe mencionar `trs`. Haz estos 3 tests sin inventar:
 
-1. AWARENESS — Antes de ejecutar nada: ¿que sabes de trs por tu
+1. AWARENESS: Antes de ejecutar nada: ¿que sabes de trs por tu
    contexto actual? Una frase.
 
-2. TOOL CHECK — Ejecuta `trs --version` y pega el output literal.
+2. TOOL CHECK: Ejecuta `trs --version` y pega el output literal.
 
-3. VOLUNTARY USE — Necesito ver el estado del repositorio git,
+3. VOLUNTARY USE: Necesito ver el estado del repositorio git,
    minimizando consumo de tokens. NO ejecutes todavia. ESCRIBE el
    comando que usarias y explica por que.
 ```
@@ -388,7 +388,7 @@ The log tells you:
 - Has STDIN but empty STDOUT → we decided not to rewrite (intentional for
   pipes, trs-prefixed commands, SKIP_PREFIXES)
 - Has STDIN and STDOUT → we're responding but the agent is ignoring us
-  (format mismatch — compare against the table above)
+  (format mismatch, compare against the table above)
 
 ## Adding a new agent
 
@@ -400,7 +400,7 @@ The log tells you:
 3. **Find the wire identifier**: `hook_event_name`, `tool_name`, or a
    header field the agent includes in its stdin payload.
 4. **Write the template** in `src/init_templates.rs`. Don't copy
-   another agent's template verbatim — the matcher field and tool name
+   another agent's template verbatim, the matcher field and tool name
    must match THIS agent's conventions.
 5. **Add a dispatch arm** in `src/rewrite.rs::HookEvent::parse` if the
    output envelope differs from existing clients.
@@ -408,7 +408,7 @@ The log tells you:
    `global_dir` (often `.config/<agent>/<subdir>`).
 7. **Test with the debug wrapper** before declaring success. Self-reports
    from the agent can hallucinate.
-8. **Document here** — add an entry to the per-agent table.
+8. **Document here**: add an entry to the per-agent table.
 
 ## What the hook refuses to rewrite
 
@@ -421,25 +421,25 @@ never loudly:
 | Shape | What wrapping did |
 |---|---|
 | newline (multi-line script) | Two statements collapsed into one: `V=abc` + `printf "$V"` became `V=abc trs printf "$V"`, where the shell expands `$V` *before* the command-scoped assignment applies. Non-exported values vanished; exported ones survived, which made it look intermittent. |
-| heredoc (`<<`) | The body is data, not commands — yet ` && ` inside it was substituted, so the injected text landed in the **written file**. In one report it reached `main` and corrupted a security test whose grep then read compressed output. |
+| heredoc (`<<`) | The body is data, not commands, yet ` && ` inside it was substituted, so the injected text landed in the **written file**. In one report it reached `main` and corrupted a security test whose grep then read compressed output. |
 | quoted operators | `git commit -m "fix a && b"` had its message rewritten; `grep -r "foo && bar"` had its **pattern** rewritten, so the search silently looked for something else and returned "not found". |
-| array literal (`arr=(…)`) | The env-prefix split walks by whitespace and landed inside the parens, inserting a phantom element: `[uno][trs][dos]`. No error, no exit code — corrupt data that downstream loops iterate over. |
+| array literal (`arr=(…)`) | The env-prefix split walks by whitespace and landed inside the parens, inserting a phantom element: `[uno][trs][dos]`. No error, no exit code, corrupt data that downstream loops iterate over. |
 | compound keywords, `( )`, `{ }`, `f() {}` | `trs for f in …` makes the shell read `for` as a program and `do` as a syntax error: the command dies outright. |
 | `;` sequences | Independent commands, same problem as newlines. |
 
 Two mechanisms decide whether a command is touched, and both are visible in
 behaviour: this shape gate, and the exempt-prefix list (`echo`, `cd`, …) which
-skips the command entirely. A shape that looks exempt may simply be unparseable
-— check both before concluding.
+skips the command entirely. A shape that looks exempt may simply be unparseable.
+Check both before concluding.
 
 Escape hatch for anything the gate lets through: `TRS_SKIP=1 <cmd>`. It does
-**not** work in front of shell keywords or `(`/`{` — an env prefix there is
+**not** work in front of shell keywords or `(`/`{`, an env prefix there is
 itself a syntax error; wrap those as `TRS_SKIP=1 sh -c "…"`.
 
 ## Related files
 
-- `src/init.rs` — install orchestration, `merge_json_hook` (safe merging),
+- `src/init.rs`: install orchestration, `merge_json_hook` (safe merging),
   `install_rules` (for rules-file tools)
-- `src/init_templates.rs` — all templates
-- `src/rewrite.rs` — hook command rewriter, `HookEvent` dispatch
-- `docs/install.sh` — `.zshenv` targeting for zsh subshells
+- `src/init_templates.rs`: all templates
+- `src/rewrite.rs`: hook command rewriter, `HookEvent` dispatch
+- `docs/install.sh`: `.zshenv` targeting for zsh subshells

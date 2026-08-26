@@ -8,11 +8,11 @@ that from happening.
 ## Command hygiene
 
 - **`--no-verify` blocked on `git commit` / `git push`.** Pre-commit
-  and pre-push hooks are there for a reason — agents that default to
+  and pre-push hooks are there for a reason, agents that default to
   bypassing them can ship broken code. trs refuses the bypass; users
   who explicitly want it can still invoke git directly (`TRS_SKIP=1`).
 - **`--json` / `--porcelain` passthrough.** When the wrapped tool
-  already has a structured mode, trs doesn't re-parse its output —
+  already has a structured mode, trs doesn't re-parse its output, 
   the structured form passes through untouched.
 - **Exit codes always propagated.** If the wrapped command exits 1,
   trs exits 1. Scripts and CI relying on exit codes keep working.
@@ -26,7 +26,7 @@ that from happening.
   `passthrough_max_chars`) rather than silently losing content. The
   full raw output is always saved to `~/.trs/tee/` regardless.
 - **`trs read` never strips content from data files.** JSON, YAML,
-  TOML, XML, and CSV files are returned verbatim — stripping
+  TOML, XML, and CSV files are returned verbatim, stripping
   comments or "aggressive" signature extraction only applies to
   source-code files where the syntax supports it unambiguously.
 
@@ -55,9 +55,9 @@ that from happening.
 
 ## See also
 
-- [`docs/features/doctor.md`](../features/doctor.md) — health check
+- [`docs/features/doctor.md`](../features/doctor.md): health check
   that surfaces any config drift or unexpected state.
-- [`docs/features/upgrade.md`](../features/upgrade.md) — upgrade
+- [`docs/features/upgrade.md`](../features/upgrade.md): upgrade
   pre-flight validations.
-- [`docs/support/other-token-savers.md`](./other-token-savers.md) —
+- [`docs/support/other-token-savers.md`](./other-token-savers.md), 
   migration notes from other tools in the space.

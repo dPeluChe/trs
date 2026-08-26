@@ -1,4 +1,4 @@
-# `trs uninstall` — remove trs from agent configs
+# `trs uninstall`: remove trs from agent configs
 
 `trs uninstall` is the inverse of [`trs init`](init.md). It walks every
 surface `trs init` (and `trs output-saver`) wrote to and cleans up:
@@ -8,10 +8,10 @@ the output-saver sidecar / `@import` line.
 ## Quick reference
 
 ```bash
-trs uninstall                        # interactive — lists installed agents
+trs uninstall                        # interactive, lists installed agents
 trs uninstall <agent>                # one agent (claude, codex, gemini, …)
 trs uninstall --all                  # every agent, with confirmation
-trs uninstall --all --yes            # no prompt — for scripts / CI
+trs uninstall --all --yes            # no prompt, for scripts / CI
 trs uninstall --output-saver         # only the output-saver block
 trs uninstall --dry-run              # preview without writing
 ```
@@ -23,11 +23,11 @@ trs uninstall --dry-run              # preview without writing
 | JSON hooks (Claude / Gemini / Cursor / Factory Droid / Antigravity IDE+CLI) | scrub entries whose `command` contains `trs rewrite` |
 | Plugin files (OpenCode / Kilo) | delete `~/.config/<tool>/plugins/trs.ts` |
 | Codex AGENTS.md | remove the sentinel-delimited block; delete the file if it was just our block |
-| Codex `hooks.json` | scrub the `trs rewrite` `PreToolUse` entry from `~/.codex/hooks.json` (preserving the user's other hooks). On codex-cli ≥ 0.134 this is a real, valid hook; on older builds it's an inert orphan — either way it's removed cleanly |
+| Codex `hooks.json` | scrub the `trs rewrite` `PreToolUse` entry from `~/.codex/hooks.json` (preserving the user's other hooks). On codex-cli ≥ 0.134 this is a real, valid hook; on older builds it's an inert orphan, either way it's removed cleanly |
 | Devin Desktop rules file (id `devin`, ex-Windsurf) | delete `.devin/rules/trs.md` and legacy `.windsurfrules` when they carry the trs marker |
 | Legacy Antigravity rules | delete pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md` if present |
 | Antigravity rules block | remove the `<!-- trs:antigravity-rules:start v1 -->` … `:end -->` block from `~/.gemini/GEMINI.md` (v0.6.6+ rules-only integration) |
-| Legacy Antigravity hooks.json | remove inert `~/.gemini/antigravity-{ide,cli}/hooks.json` (v0.6.5 jetski install that never fired — see [research notes](../development/antigravity-hooks-research.md)) |
+| Legacy Antigravity hooks.json | remove inert `~/.gemini/antigravity-{ide,cli}/hooks.json` (v0.6.5 jetski install that never fired, see [research notes](../development/antigravity-hooks-research.md)) |
 | Legacy Antigravity `BeforeTool` | scrub orphan `BeforeTool → trs rewrite` from `~/.gemini/settings.json` (v0.6.4 wrongly aliased Antigravity to the Gemini harness) |
 | Output-saver block (Imported agents) | remove the sidecar `trs.md` and the `@trs.md` import line |
 | Output-saver block (inline agents) | remove the `<!-- trs:output-saver:start v1 -->` … `:end -->` block in place |
@@ -39,7 +39,7 @@ Run `trs uninstall` with no arguments. It scans both global
 agents with trs artifacts present:
 
 ```
-trs uninstall — interactive
+trs uninstall: interactive
 
 Installed:
   [1] Claude Code          hooks → ~/.claude/settings.json
@@ -69,7 +69,7 @@ trs would remove from Claude Code:
   - would remove output-saver block (claude)
 trs would remove from Codex:
   - would remove trs block from /Users/you/.codex/AGENTS.md
-note: dry-run — nothing was written. Re-run without --dry-run to apply.
+note: dry-run: nothing was written. Re-run without --dry-run to apply.
 ```
 
 ## Preserving user-added hooks
@@ -112,8 +112,8 @@ sentinels are intact, uninstall still finds it.
 
 ## See also
 
-- [`trs init`](init.md) — install hooks for AI agents.
-- [`trs output-saver`](output-saver.md) — the symmetric feature for
+- [`trs init`](init.md): install hooks for AI agents.
+- [`trs output-saver`](output-saver.md): the symmetric feature for
   LLM-generated output (its `--remove` is bundled into
   `trs uninstall --output-saver`).
-- [`trs doctor`](doctor.md) — health check; reports install coverage.
+- [`trs doctor`](doctor.md): health check; reports install coverage.

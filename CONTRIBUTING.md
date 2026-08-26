@@ -1,6 +1,6 @@
 # Contributing to trs
 
-Thanks for your interest in contributing! trs is a personal project that grew into something useful, and contributions are welcome — whether it's a new parser, a bug fix, or just better docs.
+Thanks for your interest in contributing! trs is a personal project that grew into something useful, and contributions are welcome, whether it's a new parser, a bug fix, or just better docs.
 
 ## Getting started
 
@@ -29,7 +29,7 @@ git config core.hooksPath .githooks
 
 ### File size
 - **Max 500 lines per file.** If a file grows past this, split it.
-- Rust allows multiple `impl` blocks in separate files — use this pattern.
+- Rust allows multiple `impl` blocks in separate files, use this pattern.
 - Tests go in `tests/` (integration) or `src/*_tests.rs` (unit).
 
 ### Naming
@@ -39,17 +39,27 @@ git config core.hooksPath .githooks
 
 ### Style
 - Run `cargo fmt` before committing. No exceptions.
-- No `unwrap()` in production code — use `?` or explicit error handling.
+- No `unwrap()` in production code, use `?` or explicit error handling.
 - `unwrap()` is fine in tests.
 - Prefer simple code over clever code. Three similar lines > premature abstraction.
-- Don't add doc comments to every function — only where the logic isn't obvious.
+- Don't add doc comments to every function, only where the logic isn't obvious.
+
+### Writing
+- No em dashes (`—`) in anything a person reads: CLI strings, docs, comments,
+  commit messages. It is the strongest "a model wrote this" marker, and the
+  rules block trs installs into every agent config bans it, so the tool holds
+  itself to it. Use a colon for a label and its explanation, a comma for an
+  aside, a period for two independent clauses.
+- Two exceptions: a `—` cell standing in for "no value" in a table, and a
+  numeric range (which takes an en dash, `–`).
+- Check before pushing: `grep -rn '—' src/ docs/ README.md`.
 
 ### Tests
 - Every new parser needs at least 3 tests: basic input, edge case, empty input.
 - Integration tests (in `tests/`) test the CLI binary end-to-end.
 - Unit tests (in `src/`) test individual functions.
-- Don't assert on timing (`duration_ms > 0`) — fast CI runners can complete in <1ms.
-- Tests that hit the live network must be `#[ignore]`d (they're not a CI gate — a
+- Don't assert on timing (`duration_ms > 0`), fast CI runners can complete in <1ms.
+- Tests that hit the live network must be `#[ignore]`d (they're not a CI gate: a
   flaky endpoint shouldn't redden the build). Run them with `cargo test -- --ignored`.
 - Fixture files go in `tests/fixture_data/`. Add `!tests/fixture_data/*.log` patterns to `.gitignore` if needed.
 
@@ -104,12 +114,12 @@ impl ParseHandler {
 
 ### 3. Wire it up
 
-- `src/router/handlers/parse/mod.rs` — add `pub(crate) mod {tool};` and the dispatch match arm
-- `src/classifier.rs` — add the subcommand → parser dispatch in `classify_command()`
-- `src/classifier.rs` — add to `inject_file_path()`
-- `src/command_registry.rs` — add **one row** to `REGISTRY` with the command's
+- `src/router/handlers/parse/mod.rs`: add `pub(crate) mod {tool};` and the dispatch match arm
+- `src/classifier.rs`: add the subcommand → parser dispatch in `classify_command()`
+- `src/classifier.rs`: add to `inject_file_path()`
+- `src/command_registry.rs`: add **one row** to `REGISTRY` with the command's
   flat facts: aliases, `rewrite`/`known` flags, `keep_ratio`, and stderr policy.
-  This is the single source of truth — keep_ratio, stderr handling, rewrite
+  This is the single source of truth: keep_ratio, stderr handling, rewrite
   eligibility and coverage stats all read from it, so you no longer edit four
   files to add a command.
 
@@ -117,7 +127,7 @@ impl ParseHandler {
 
 Some tools write their primary output (errors, warnings, results) to stderr
 (clippy, eslint, gcc). Set the `stderr` field on the command's `REGISTRY` row
-in `src/command_registry.rs` — `Stderr::Always`, or `Stderr::Subcmds(&[...])`
+in `src/command_registry.rs`: `Stderr::Always`, or `Stderr::Subcmds(&[...])`
 for subcommand-scoped cases like `cargo build` vs `cargo test`.
 
 ### 5. Add tests
@@ -136,9 +146,9 @@ fn test_parse_tool_edge_case() { ... }
 
 ### 6. Update docs
 
-- `README.md` — add the command to the appropriate section
-- `AGENTS.md` — add the file to the architecture diagram
-- `docs/roadmap/completed/YYMM.md` — document what you did and why
+- `README.md`: add the command to the appropriate section
+- `AGENTS.md`: add the file to the architecture diagram
+- `docs/roadmap/completed/YYMM.md`: document what you did and why
 
 ## Proposing new commands
 
@@ -182,7 +192,7 @@ tests/
 
 ## Commit messages
 
-We use [Conventional Commits](https://www.conventionalcommits.org) — the
+We use [Conventional Commits](https://www.conventionalcommits.org), the
 changelog and release notes are generated from them, so the prefix matters.
 
 ```
@@ -211,7 +221,7 @@ The changelog is automated with [git-cliff](https://git-cliff.org)
 4. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
 
 The tag triggers `release.yml`, which builds the binaries, **regenerates the
-GitHub Release notes for that tag with git-cliff** (grouped by type — not a
+GitHub Release notes for that tag with git-cliff** (grouped by type, not a
 raw PR list), and publishes the npm packages. Devs watching the repo get the
 release notification; npm and GitHub both show the same curated changelog.
 

@@ -6,18 +6,18 @@ Every command supported by trs falls into one of four levels.
    and emits a structured compact form. Typical reduction **68–99%**.
 2. **Dispatched alias.** A different binary with the same semantics
    (e.g. `rg` for `grep`, `eza` for `ls`) gets routed to the same
-   parser. No configuration — the dispatcher recognizes the binary
+   parser. No configuration, the dispatcher recognizes the binary
    name.
 3. **Generic compression.** Commands without a parser still get ANSI
    stripping, whitespace collapse, and repeated-line deduplication.
    Typical reduction **30–40%** "free."
 4. **Passthrough.** Commands where trs detects a flag that already
    produces structured output (`--json`, `--porcelain`) are passed
-   through untouched — the agent gets the raw structured form.
+   through untouched, the agent gets the raw structured form.
 
 ## Commands with dedicated parsers
 
-### VCS — git
+### VCS: git
 
 | Command | Subcommands parsed |
 |---|---|
@@ -29,19 +29,19 @@ them. `git status --porcelain` passes through untouched.
 `git show` and `git stash show -p` are routed to the diff parser
 (~90% reduction on commits with modifications).
 `git push / pull / fetch` strips `remote:` progress lines (Counting,
-Compressing, Total) — ~85% reduction vs ~35% without this filter.
+Compressing, Total), ~85% reduction vs ~35% without this filter.
 
-### Build — Rust
+### Build: Rust
 
 | Command | Subcommands parsed |
 |---|---|
 | `cargo` | `build`, `check`, `clippy`, `test`, `fmt`, `install`, `add` |
 
-Notes: env-var prefix preserved — `RUSTFLAGS=xyz cargo build` is
+Notes: env-var prefix preserved, `RUSTFLAGS=xyz cargo build` is
 rewritten to `RUSTFLAGS=xyz trs cargo build` so the flag still reaches
 cargo.
 
-### Build — JavaScript / TypeScript
+### Build: JavaScript / TypeScript
 
 | Command | Subcommands parsed |
 |---|---|
@@ -53,13 +53,13 @@ cargo.
 
 `run` subcommand routing: `build*` → Build parser, `test*` → Test parser, `lint` / `type-check` / `typecheck` / `check` / `format` / `format:check` → Lint parser. Other script names fall through to generic compression.
 
-### Build — Go
+### Build: Go
 
 | Command | Subcommands parsed |
 |---|---|
 | `go` | `test`, `build`, `mod` |
 
-### Build — Python
+### Build: Python
 
 | Command | Subcommands parsed |
 |---|---|
@@ -71,11 +71,11 @@ cargo.
 
 | Command | What gets parsed |
 |---|---|
-| `pytest` | full runner output — pass/fail counts, failure locations, tracebacks |
-| `jest` | full runner output — suite summary, failed assertions |
+| `pytest` | full runner output, pass/fail counts, failure locations, tracebacks |
+| `jest` | full runner output, suite summary, failed assertions |
 | `vitest` | full runner output |
-| `cargo test` | see "Build — Rust" |
-| `go test` | see "Build — Go" |
+| `cargo test` | see "Build, Rust" |
+| `go test` | see "Build, Go" |
 | `npm test` / `pnpm test` / `bun test` / `yarn test` | dispatched to the inner runner |
 
 ### Linters
@@ -88,7 +88,7 @@ cargo.
 | `ruff` | issues grouped by file |
 | `pylint` | issues grouped by file |
 | `golangci-lint` | issues grouped by file |
-| `tsc` | `file(line,col): error TS6133: …` — grouped by file, ~80% reduction |
+| `tsc` | `file(line,col): error TS6133: …`, grouped by file, ~80% reduction |
 
 `tsc` is also reached via `npx tsc`, `pnpm dlx tsc`, and `uv run tsc`.
 `biome` is also reached via `npx @biomejs/biome` (full package-name form).
@@ -113,7 +113,7 @@ return empty output (e.g. an all-comment slice).
 
 | Command | Pattern | Typical reduction |
 |---|---|---|
-| `cat` | `cat FILE [FILE2…]` — no flags | 10–35% on code files |
+| `cat` | `cat FILE [FILE2…]`, no flags | 10–35% on code files |
 | `head` | `head [-n N \| -N] FILE` | 5–20% |
 | `sed` | `sed -n X,Yp FILE` (line-range only) | 10–25% vs 0% passthrough |
 
@@ -142,16 +142,16 @@ the run URL.
 
 Recursive `s3` calls print one receipt line per object
 (`delete: s3://bucket/key`), which is the most repetitive output trs
-sees — a real 3.3 MB deletion compressed to 275 bytes (99.99%). The
+sees, a real 3.3 MB deletion compressed to 275 bytes (99.99%). The
 summary keeps the verb, the object count and the busiest key prefixes:
 
 ```
-delete: 50000 objects — s3://bucket/logs/2026/01/ (596), … +81 more prefixes
+delete: 50000 objects, s3://bucket/logs/2026/01/ (596), … +81 more prefixes
 problems (1):
   An error occurred (AccessDenied) when calling the DeleteObject operation
 ```
 
-Failures are pulled out and never truncated — AWS's canonical
+Failures are pulled out and never truncated: AWS's canonical
 `An error occurred (…)` line carries no colon after "error", so the
 generic error markers miss it and it is matched explicitly. JSON bodies
 are forwarded to the same compressor `gh api` uses; output that matches
@@ -170,7 +170,7 @@ neither shape passes through untouched rather than being guessed at.
 
 ## Built-in trs tools (not wrappers)
 
-These are native trs commands — no external binary behind them. They
+These are native trs commands: no external binary behind them. They
 ship inside the single-binary install.
 
 | Command | Purpose |
@@ -179,7 +179,7 @@ ship inside the single-binary install.
 | `trs read` | file reader with `-l minimal` (strip comments) / `-l aggressive` (signatures only) |
 | `trs search` | ripgrep-powered content search |
 | `trs replace` | ripgrep-powered replace with `--dry-run` |
-| `trs err` | error filter — only errors/warnings from a wrapped command |
+| `trs err` | error filter, only errors/warnings from a wrapped command |
 | `trs tail` | log tail with `--errors` filter |
 | `trs clean` | `--no-ansi`, `--collapse-blanks`, `--dedup-lines` |
 | `trs html2md` | HTML → Markdown |
@@ -201,7 +201,7 @@ cd src && cargo test              → cd src && trs cargo test
 cargo fmt && cargo clippy         → trs cargo fmt && trs cargo clippy
 ```
 
-Pipes pass through untouched — trs never splits a pipeline because
+Pipes pass through untouched: trs never splits a pipeline because
 the compressed form would lose the byte-stream contract.
 
 ### Pipe syntax (stdin)
@@ -222,7 +222,7 @@ RUSTFLAGS='-C target-cpu=native' cargo build
 → RUSTFLAGS='-C target-cpu=native' trs cargo build
 ```
 
-### Bypass — `TRS_SKIP=1`
+### Bypass: `TRS_SKIP=1`
 
 To run a single command without any trs wrapping (for debugging or
 when you specifically need raw output):
@@ -244,11 +244,11 @@ reducer: ANSI strips, whitespace collapsed, repeated lines deduped.
 Typical reduction 30–40% for free with no format-specific knowledge.
 
 If a dedicated parser exists but errors out mid-parse, trs falls back
-to **truncated passthrough** rather than silent failure — the full
+to **truncated passthrough** rather than silent failure, the full
 raw output is also saved to `~/.trs/tee/` so you can recover it.
 
 See also:
-- [`docs/features/formats.md`](../features/formats.md) — the six
+- [`docs/features/formats.md`](../features/formats.md): the six
   output formats every command supports.
-- [`docs/features/stats.md`](../features/stats.md) — how command
+- [`docs/features/stats.md`](../features/stats.md): how command
   routing is logged and visualized.

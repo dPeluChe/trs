@@ -2,4 +2,4 @@ blank_issues_enabled: true
 contact_links:
   - name: Question / discussion
     url: https://github.com/dPeluChe/trs/discussions
-    about: Usage questions and ideas — faster than issues for non-bugs
+    about: Usage questions and ideas, faster than issues for non-bugs

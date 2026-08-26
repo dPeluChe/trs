@@ -1,4 +1,4 @@
-# `trs doctor` — installation health check
+# `trs doctor`: installation health check
 
 `trs doctor` runs 10 checks that cover every surface where a trs
 install can go wrong: the binary, the PATH, dependencies, the config
@@ -17,9 +17,9 @@ trs doctor --json   # machine-readable; exits non-zero on any Fail
 
 | Check | What it verifies |
 |---|---|
-| `trs binary` | Reports version + binary path (never fails — always informational). |
+| `trs binary` | Reports version + binary path (never fails, always informational). |
 | `trs in PATH` | `which -a trs` / `where trs`. Warns if multiple binaries exist so a shadowed install doesn't silently win. |
-| `git available` | `git --version`. Required — several parsers assume git is present. |
+| `git available` | `git --version`. Required, several parsers assume git is present. |
 | `ripgrep available` | `rg --version`. Not required but needed for `trs search`. |
 | `config directory` | `~/.trs/` exists and is writable. Creates it if missing. |
 | `history writable` | `~/.trs/history.jsonl` can be written. Reports current size. |
@@ -31,7 +31,7 @@ trs doctor --json   # machine-readable; exits non-zero on any Fail
 ## Reading the report
 
 ```
-TRS Doctor — Installation Health Check
+TRS Doctor: Installation Health Check
 
   ✓ trs binary
     version: 0.5.8
@@ -57,10 +57,10 @@ TRS Doctor — Installation Health Check
 
 Markers:
 
-- `✓` pass — the check succeeded.
-- `~` warn — something worth attention, but not blocking. Reported
+- `✓` pass: the check succeeded.
+- `~` warn: something worth attention, but not blocking. Reported
   with a hint about how to act.
-- `✗` fail — something broken. Exits non-zero in JSON mode so CI
+- `✗` fail: something broken. Exits non-zero in JSON mode so CI
   catches it.
 
 ## JSON mode
@@ -93,16 +93,16 @@ fi
   stripped (sometimes happens after file-sync tools). Re-install.
 - **`no AI tool hooks installed`**: Run `trs init --all --global`.
 - **`output-saver not installed`**: Run `trs output-saver --install`
-  (check-first — it won't write without confirmation).
+  (check-first, it won't write without confirmation).
 - **`agent docs oversized`**: Run `trs audit-docs` to find the
   biggest offenders.
 
 ## See also
 
-- [`trs init`](init.md) — install the input-side hooks that `doctor`
+- [`trs init`](init.md): install the input-side hooks that `doctor`
   reports on.
-- [`trs output-saver`](output-saver.md) — install the output-side
+- [`trs output-saver`](output-saver.md): install the output-side
   rules block that `doctor` reports on.
-- [`trs audit-docs`](audit-docs.md) — the tool that fixes the
+- [`trs audit-docs`](audit-docs.md): the tool that fixes the
   oversized-docs warning.
-- [`trs upgrade`](upgrade.md) — re-run the install pipeline.
+- [`trs upgrade`](upgrade.md): re-run the install pipeline.

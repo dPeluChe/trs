@@ -15,7 +15,7 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
-# A newer push on the same ref makes the older run pointless — cancel it
+# A newer push on the same ref makes the older run pointless, cancel it
 # instead of letting queued jobs pile up against a limited runner pool.
 # main is excluded: those runs gate releases and must complete.
 concurrency:
@@ -24,9 +24,9 @@ concurrency:
 
 # Two tiers, split across providers on purpose:
 #
-#   quick  — Tenki, Linux only, runs on EVERY push including drafts. Fast
+#   quick:   Tenki, Linux only, runs on EVERY push including drafts. Fast
 #            feedback while iterating, and it spreads CI load off GitHub.
-#   full   — GitHub-hosted, the real 3-OS gate. Runs on main and once a PR is
+#   full:    GitHub-hosted, the real 3-OS gate. Runs on main and once a PR is
 #            marked ready for review. macOS and Windows binaries are built
 #            natively, so those legs cannot move: Tenki has no Windows runner.
 #
@@ -37,7 +37,7 @@ jobs:
     name: Quick (lint + linux)
     # `small` is the deliberate default, not a fallback. Measured on this
     # workload: small 2m30s, GitHub ubuntu 1m38s, and medium ~3m back when it
-    # still ran — two extra cores bought nothing. Medium (4c/8g) sits exactly
+    # still ran. Two extra cores bought nothing. Medium (4c/8g) sits exactly
     # at the documented Starter cap and stopped being served on 2026-08-06:
     # jobs queued for 10h with no runner and no error, which is worse than a
     # clean failure. Small was assigned a runner in under 25s in the same repo,

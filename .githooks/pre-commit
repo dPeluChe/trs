@@ -3,7 +3,7 @@
 # (secret scan on staged changes, .env block, LOC warning).
 #
 # core.hooksPath points here, so lefthook's own stubs in .git/hooks are never
-# invoked — this file is the entry point.
+# invoked, this file is the entry point.
 #
 # Optional by design: lefthook is a personal tool, not a build dependency. A
 # contributor without it installed is not blocked; CI and .githooks/pre-push

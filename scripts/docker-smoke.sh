@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# docker-smoke.sh — Test trs installation on fresh Linux distributions.
+# docker-smoke.sh: Test trs installation on fresh Linux distributions.
 #
 # Usage:
 #   ./scripts/docker-smoke.sh              # Test all distros
@@ -88,7 +88,7 @@ test_distro() {
             $install_git
             trs doctor --json 2>&1
         " 2>&1); then
-        printf "${YELLOW}SKIP${NC} — container failed: %s\n" "$(echo "$output" | head -1)"
+        printf "${YELLOW}SKIP${NC}: container failed: %s\n" "$(echo "$output" | head -1)"
         ((SKIP++))
         return
     fi
@@ -106,20 +106,20 @@ test_distro() {
     warn_count=$(echo "$output" | grep -o '"warn": *[0-9]*' | head -1 | sed 's/.*: *//')
 
     if [ "$healthy" = "true" ]; then
-        printf "${GREEN}PASS${NC} — %s/%s checks passed\n" "$pass_count" "$total"
+        printf "${GREEN}PASS${NC}: %s/%s checks passed\n" "$pass_count" "$total"
         ((PASS++))
     elif [ -n "$fail_count" ] && [ "$fail_count" = "0" ]; then
-        printf "${YELLOW}WARN${NC} — %s passed, %s warnings\n" "$pass_count" "$warn_count"
+        printf "${YELLOW}WARN${NC}: %s passed, %s warnings\n" "$pass_count" "$warn_count"
         ((PASS++))  # Warnings are acceptable
     else
-        printf "${RED}FAIL${NC} — %s/%s passed, %s failed\n" "$pass_count" "$total" "$fail_count"
+        printf "${RED}FAIL${NC}: %s/%s passed, %s failed\n" "$pass_count" "$total" "$fail_count"
         ((FAIL++))
         # Show failing checks
         echo "$output" | grep '"status":"fail"' | while read -r line; do
             local name detail
             name=$(echo "$line" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
             detail=$(echo "$line" | grep -o '"detail":"[^"]*"' | cut -d'"' -f4)
-            printf "    ! %s — %s\n" "$name" "$detail"
+            printf "    ! %s: %s\n" "$name" "$detail"
         done
     fi
 }
@@ -128,7 +128,7 @@ test_distro() {
 # Main
 # ============================================================
 
-echo "trs smoke test — cross-platform validation"
+echo "trs smoke test: cross-platform validation"
 echo ""
 
 # Handle args

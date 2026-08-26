@@ -29,7 +29,7 @@ install scope.
 - **Install method.** *Programmatic hook* means the agent fires trs on
   every tool-use event via a JSON hook config. *Plugin template* means
   the agent loads a plugin/extension that calls trs. *Rules file only*
-  means the agent has no programmatic hook surface — the only thing
+  means the agent has no programmatic hook surface, the only thing
   we can do is append a Markdown rules block that the model reads at
   session start.
 - **Input hook (rewrite).** Whether `trs init` can install a hook that
@@ -45,7 +45,7 @@ install scope.
   below).
 - **Attribution label.** What `trs stats --by-agent` shows for runs
   triggered by this agent. `(untagged)` means trs has no
-  programmatic signal to identify the agent — rules-only agents fall
+  programmatic signal to identify the agent, rules-only agents fall
   here, as do direct shell invocations.
 - **Scope.** Whether the integration works globally (`~/.claude/`,
   etc.) or only per-project (`./AGENTS.md`, etc.). Project-only means
@@ -75,7 +75,7 @@ install scope.
 - **Hook wire format:** `hook_event_name: preToolUse` (camelCase vs
   Claude's PascalCase).
 - **Config path:** `~/.cursor/hooks.json`.
-- **Output-saver:** `.cursor/rules/trs.mdc` — Cursor auto-loads `.mdc`
+- **Output-saver:** `.cursor/rules/trs.mdc`, Cursor auto-loads `.mdc`
   files from the rules dir, no explicit import needed.
 - **Why `preToolUse`:** it's the only Cursor hook that can rewrite the
   command (via the `updated_input` field); `beforeShellExecution` can
@@ -95,11 +95,11 @@ install scope.
 ### Pi Coding Agent
 
 - **Install mechanism:** a programmatic extension (TypeScript) with a
-  bash `spawnHook` that rewrites the command and sets env before exec —
+  bash `spawnHook` that rewrites the command and sets env before exec, 
   same tier as Claude/Cursor/OpenCode/Kilo, not rules-only.
 - **Config path:** `~/.pi/agent/extensions/trs.ts` (global) or
   `.pi/extensions/trs.ts` (project).
-- **Attribution:** `pi` — the extension's env carries `TRS_AGENT=pi`.
+- **Attribution:** `pi`: the extension's env carries `TRS_AGENT=pi`.
 - **Typical install:** `trs init pi` (aliases: `pi`, `pi.dev`,
   `pidev`). Upstream: pi.dev (repo `earendil-works/pi`).
 
@@ -108,7 +108,7 @@ install scope.
 - **Attribution.** Droid reuses Claude's `hook_event_name: PreToolUse`
   wire format verbatim; the hook command carries `--caller droid` so
   runs show up as `droid` in `trs stats --by-agent`. Installs from
-  before v0.6.16 shared Claude's label — re-run `trs init droid` to
+  before v0.6.16 shared Claude's label, re-run `trs init droid` to
   pick up the labeled hook.
 
 ### Antigravity IDE + Antigravity CLI (`agy`)
@@ -124,13 +124,13 @@ install scope.
   `invoke_subagent`"). Bash invocations go through
   `*gemini_coder_go_proto.Step_RunCommand`, which bypasses the
   user-visible PreToolHook pipeline. Five different hook schemas were
-  tested with side-channel probes — none fired.
+  tested with side-channel probes, none fired.
 - **Install mechanism.** `trs init antigravity` (or `agy` /
   `antigravity-cli`) appends a sentinel-wrapped rules block to
   `~/.gemini/GEMINI.md`. Both IDE and CLI read that file at session
   start. The block tells the agent to prefix shell commands with
   `trs` when token-optimized output is desired.
-- **Output-saver.** Unchanged — `~/.gemini/trs.md` + the `@trs.md`
+- **Output-saver.** Unchanged: `~/.gemini/trs.md` + the `@trs.md`
   import in `~/.gemini/GEMINI.md` keeps the anti-preamble / numeric
   budget rules active for both Antigravity surfaces. This part of the
   integration **does** work because it's LLM-side (prompt context),
@@ -138,21 +138,21 @@ install scope.
 - **Aliases.** `trs init antigravity` → IDE (back-compat).
   `trs init antigravity-cli` or `trs init agy` → CLI. `trs init --show`
   lists both rows separately so you can see what's detected.
-- **Attribution.** `(untagged)` in `trs stats --by-agent` — we have no
+- **Attribution.** `(untagged)` in `trs stats --by-agent`. We have no
   programmatic signal (no hook ever fires for Antigravity-launched
   commands). Same posture as Codex/Devin Desktop. When the user prefixes
   `trs git status` manually, those runs also land in `(untagged)`.
 - **Migration cleanup.** `trs init` and `trs uninstall` both sweep the
   inert artifacts from previous releases:
   - v0.6.5 `hooks.json` at `~/.gemini/antigravity-{cli,ide}/hooks.json`
-    (jetski PreToolUse — never actually fired)
+    (jetski PreToolUse, never actually fired)
   - v0.6.4 BeforeTool entry in `~/.gemini/settings.json` (aliased to
-    Gemini's harness — also never fired)
+    Gemini's harness, also never fired)
   - Pre-v0.6.4 `.agent/rules/antigravity-trs-rules.md` per-project
     rules file
 - **Re-enabling the hook.** When Google ships user-configurable
   PreToolHooks for Bash, restoring the programmatic integration is a
-  mechanical revert of branch `fix/antigravity-rules-only-revert` — see
+  mechanical revert of branch `fix/antigravity-rules-only-revert`, see
   the [research doc](../development/antigravity-hooks-research.md#what-unblocks-re-enabling-the-integration).
 
 ### Codex CLI
@@ -178,7 +178,7 @@ install scope.
   Windsurf. Its old agent engine "Cascade" was replaced by "Devin
   Local" (Rust rewrite, subagents, ACP support). Cascade reaches
   end-of-life 2026-07-01.
-- **Install mechanism:** rules file only — Devin Local exposes no
+- **Install mechanism:** rules file only: Devin Local exposes no
   shell hook / plugin API. `trs init` appends a rules block
   recommending manual `trs <cmd>` prefixes; the agent reads the rules
   at session start but there's no enforcement.
@@ -195,7 +195,7 @@ install scope.
 ### Devin CLI
 
 - **Background:** "Devin for Terminal" (Devin CLI, binary `devin`, by
-  Cognition) — a distinct product from Devin Desktop. Unlike the
+  Cognition), a distinct product from Devin Desktop. Unlike the
   Desktop rules-only integration, the CLI exposes real programmatic
   `PreToolUse` hooks, so trs wires a deterministic rewrite hook here.
 - **Install mechanism:** `trs init devin-cli --global` merges a hook
@@ -206,9 +206,9 @@ install scope.
 - **Target file:** `~/.config/devin/config.json` (global) or
   `.devin/config.json` (project).
 - **CLI names:** primary `devin-cli`; aliases `devin-terminal`, `dcli`.
-- **Attribution:** `devin-cli` — the hook command carries
+- **Attribution:** `devin-cli`: the hook command carries
   `--caller devin-cli`.
-- **updatedInput — validated live (2026-07-07):** Devin honors
+- **updatedInput: validated live (2026-07-07):** Devin honors
   `hookSpecificOutput.updatedInput`; commands execute rewritten as
   `trs …`. (Devin's docs only document `decision` + `additionalContext`,
   but the rewrite works in practice.)
@@ -218,7 +218,7 @@ install scope.
   test in rewrite.rs.
 - **`.claude` interplay:** Devin reads `.claude/settings.json` hooks by
   default (`read_config_from.claude: true`). With `trs init claude`
-  present, that transitive Claude hook fires and tags runs `claude` — the
+  present, that transitive Claude hook fires and tags runs `claude`, the
   same de-facto-coverage pattern as VS Code. Set
   `read_config_from.claude: false` in `~/.config/devin/config.json` so the
   dedicated `devin-cli` hook wins and attribution is correct.
@@ -226,7 +226,7 @@ install scope.
 ### VS Code Copilot
 
 - **Status:** programmatic hook via VS Code's **agent hooks
-  (preview)**, which speak Claude Code's `PreToolUse` envelope —
+  (preview)**, which speak Claude Code's `PreToolUse` envelope, 
   including the `hookSpecificOutput.updatedInput` rewrite that trs
   relies on. Validated live 2026-06-09.
 - **Config path:** `trs init vscode` writes `.github/hooks/trs.json`
@@ -236,17 +236,17 @@ install scope.
   for the hook to fire.
 - **Claude-settings interplay:** the related setting **"Chat: Use
   Claude Hooks"** makes VS Code *also* load `~/.claude/settings.json`
-  hooks — users with `trs init claude --global` get de-facto coverage
+  hooks, users with `trs init claude --global` get de-facto coverage
   that way, but runs are attributed as `claude`. The dedicated
   `trs init vscode` gives correct `vscode` attribution and works
   without Claude Code installed. If both surfaces fire, the
-  double-fire is harmless — `trs rewrite` is idempotent.
+  double-fire is harmless, `trs rewrite` is idempotent.
 - **Matcher caveat:** VS Code parses but **ignores** hook matchers,
   so the hook fires on every tool. Safe in practice: trs no-ops on
   tools without a `command` field, and unknown event names fail open.
 - **Fail-closed caveat (version skew):** VS Code **blocks the terminal
   tool** when a hook command errors ("blocked by prehook"). The
-  `--caller` flag requires **trs ≥ 0.6.16** — an older binary exits
+  `--caller` flag requires **trs ≥ 0.6.16**, an older binary exits
   with a clap usage error and every shell run gets blocked. Relevant
   when `.github/hooks/trs.json` is committed to a shared repo:
   teammates need trs ≥ 0.6.16, or the hook should use plain
@@ -257,19 +257,19 @@ install scope.
 
 ### OpenClaw
 
-- **Status:** shipped pending live validation — install and run
+- **Status:** shipped pending live validation, install and run
   `git status`, then check `trs stats --by-agent`.
 - **Install mechanism:** JS plugin at `~/.openclaw/plugins/trs/`
   (`openclaw.plugin.json` manifest + `index.js`). The plugin's
   `before_tool_call` hook prepends `trs ` to `exec` commands
   (idempotent), and `resolve_exec_env` injects `TRS_AGENT=openclaw`
-  into the exec environment — cross-platform attribution, no shell
+  into the exec environment, cross-platform attribution, no shell
   prefix.
 - **Config enable:** `trs init openclaw` also merges
   `plugins.entries.trs.enabled = true` and the plugin dir into
   `plugins.load.paths` in `~/.openclaw/openclaw.json` (everything
   else preserved; idempotent).
-- **Scope:** global only — OpenClaw plugins live under the gateway's
+- **Scope:** global only: OpenClaw plugins live under the gateway's
   home dir. Restart the gateway after install:
   `openclaw gateway restart`.
 - **Uninstall:** removes the plugin files; the now-inert
@@ -278,7 +278,7 @@ install scope.
 
 ### Hermes
 
-- **Status:** shipped pending live validation — install and run
+- **Status:** shipped pending live validation, install and run
   `git status`, then check `trs stats --by-agent`.
 - **Install mechanism:** Python plugin at
   `~/.hermes/plugins/trs-rewrite/` (`__init__.py` + `plugin.yaml`
@@ -287,7 +287,7 @@ install scope.
   fails open) and exports `TRS_AGENT=hermes` for attribution.
 - **Config enable:** `trs init hermes` adds `trs-rewrite` to
   `plugins.enabled` in `~/.hermes/config.yaml`. The YAML patch is
-  conservative — block-style lists are patched in place; exotic
+  conservative, block-style lists are patched in place; exotic
   layouts (inline arrays, `plugins` without `enabled`) get a manual
   instruction instead.
 - **Home override:** the `HERMES_HOME` env var relocates the Hermes
@@ -299,20 +299,20 @@ install scope.
 
 ### Zed (Agent Panel)
 
-- **Status:** rules-only. Zed's native agent exposes no tool hooks —
+- **Status:** rules-only. Zed's native agent exposes no tool hooks, 
   the feature request is open upstream
   ([zed-industries/zed#52688](https://github.com/zed-industries/zed/issues/52688)).
   Until it ships, there is no programmatic rewrite surface.
 - **Install mechanism:** Zed's native agent reads the project
   `AGENTS.md` as always-on instructions, so `trs init zed` writes the
   same trs sentinel block Codex uses (shared template, shared
-  sentinel scrub on uninstall). Project scope only — `--global`
+  sentinel scrub on uninstall). Project scope only, `--global`
   prints a note and writes nothing (Zed's global personal-instructions
   location is not yet verified).
-- **IMPORTANT — external agents via ACP:** running Claude Code,
+- **IMPORTANT: external agents via ACP:** running Claude Code,
   Codex CLI, Gemini CLI, or OpenCode inside Zed's Agent Panel (from
   the ACP registry) runs the real CLIs as ACP servers. Those agents'
-  existing trs hooks fire transitively — no extra setup — and
+  existing trs hooks fire transitively (no extra setup) and
   `trs stats --by-agent` attributes runs to the backend agent
   (`claude`, `codex`, `gemini`, `opencode`), not to Zed.
 - **Roadmap:** ACP-level interception (covering the native agent
@@ -335,15 +335,15 @@ Before any write, `trs init` runs a **pre-install collision check**:
 it scans the target config (following `@imports` for Claude/Gemini)
 for existing competing compressor hooks and aborts by default.
 `--replace` scrubs the previous compressor's hook cleanly before
-installing trs; `--force` installs alongside (risky —
+installing trs; `--force` installs alongside (risky, 
 double-compression).
 
 See also:
-- [`docs/features/init.md`](../features/init.md) — `trs init`
+- [`docs/features/init.md`](../features/init.md), `trs init`
   reference (flags, hooks, merge behavior).
-- [`docs/features/output-saver.md`](../features/output-saver.md) —
+- [`docs/features/output-saver.md`](../features/output-saver.md), 
   `trs output-saver` reference (sentinels, idempotence, check-first).
-- [`docs/development/agent-integrations.md`](../development/agent-integrations.md)
-  — internals: per-agent file layout, merge paths, known quirks.
-- [`docs/support/other-token-savers.md`](./other-token-savers.md) —
+- [`docs/development/agent-integrations.md`](../development/agent-integrations.md):
+  internals: per-agent file layout, merge paths, known quirks.
+- [`docs/support/other-token-savers.md`](./other-token-savers.md):
   alternatives trs coexists with.

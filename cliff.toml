@@ -1,4 +1,4 @@
-# git-cliff configuration — https://git-cliff.org
+# git-cliff configuration: https://git-cliff.org
 # Generates CHANGELOG.md (Keep a Changelog) and release notes from
 # Conventional Commits. Regenerate: `git cliff -o CHANGELOG.md`.
 

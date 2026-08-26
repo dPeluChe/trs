@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>trs</strong> — <strong>T</strong>oken-<strong>R</strong>educing <strong>S</strong>hell · compresión de salida terminal para agentes de IA
+  <strong>trs</strong>: <strong>T</strong>oken-<strong>R</strong>educing <strong>S</strong>hell · compresión de salida terminal para agentes de IA
 </p>
 
 <p align="center">
@@ -55,11 +55,11 @@ src/main.rs (3):
 # 55 KB → 5.5 KB (90% reducción)
 ```
 
-Los comandos sin parser dedicado siguen obteniendo compresión genérica (whitespace, ANSI) — ~30–40% gratis.
+Los comandos sin parser dedicado siguen obteniendo compresión genérica (whitespace, ANSI), ~30–40% gratis.
 
 ## Instalación
 
-Binario nativo único — **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
+Binario nativo único: **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
 
 ```bash
 # macOS / Linux
@@ -75,7 +75,7 @@ cargo install trs-cli
 irm https://usetrs.dev/install.ps1 | iex
 ```
 
-[Guía completa de instalación — binarios prebuilt, fijar versión, directorios personalizados, solución de problemas →](docs/support/install.md)
+[Guía completa de instalación: binarios prebuilt, fijar versión, directorios personalizados, solución de problemas →](docs/support/install.md)
 
 ### Actualizar
 
@@ -99,7 +99,7 @@ trs stats                          # dashboard
 trs stats --by-agent               # desglose por agente de IA
 trs stats -n 30                    # límite de filas personalizado
 
-# 3. Desinstala cuando quieras — flujo simétrico
+# 3. Desinstala cuando quieras: flujo simétrico
 trs uninstall                      # interactivo
 trs uninstall --all --yes          # scriptable
 ```
@@ -128,7 +128,7 @@ Dieciséis agentes cubiertos de extremo a extremo. Hook programático para Claud
 
 ### Uso standalone (opcional)
 
-También puedes invocar `trs` directamente sin hooks — útil para scripts, CI, o para probarlo antes de usar `trs init`:
+También puedes invocar `trs` directamente sin hooks: útil para scripts, CI, o para probarlo antes de usar `trs init`:
 
 ```bash
 trs git status
@@ -160,7 +160,7 @@ También incluye **chain-aware rewrite** (`cd X && cargo test`), **preservación
 
 ## Herramientas built-in
 
-Comandos nativos — sin binario externo detrás.
+Comandos nativos: sin binario externo detrás.
 
 ```bash
 trs json              # motor de queries tipo jq-lite (-q '.users[].name')
@@ -180,7 +180,7 @@ trs debug-info        # empaqueta version + doctor + logs para reportar bugs
 
 ## Digest del proyecto
 
-`trs ingest` recorre un repo y emite un digest Markdown compacto — estructura + archivos clave + firmas de funciones — listo para pegar en el contexto de cualquier agente. Respeta un budget de tokens, detecta digests obsoletos (stale) y soporta generación incremental.
+`trs ingest` recorre un repo y emite un digest Markdown compacto (estructura + archivos clave + firmas de funciones), listo para pegar en el contexto de cualquier agente. Respeta un budget de tokens, detecta digests obsoletos (stale) y soporta generación incremental.
 
 ```bash
 trs ingest                     # escribe el digest, imprime el path
@@ -192,11 +192,11 @@ trs ingest --fresh             # reusa el digest en caché si HEAD no cambió
 trs ingest --list              # digests guardados + HEAD sha + si están stale
 ```
 
-[Referencia completa de `trs ingest` →](docs/features/ingest.md) · [Ejemplo vivo — trs aplicado a sí mismo →](docs/development/codebase-digest.md)
+[Referencia completa de `trs ingest` →](docs/features/ingest.md) · [Ejemplo vivo: trs aplicado a sí mismo →](docs/development/codebase-digest.md)
 
 ## Output saver
 
-`trs` comprime lo que los agentes **ven** (via `trs rewrite`). `trs output-saver` cierra el otro lado del bucle — instala un bloque de reglas compacto en la configuración global de cada agente para comprimir lo que los agentes **emiten**: sin preámbulos, sin narración, resultado primero, output estructurado cuando aplica, y sin paths inventados.
+`trs` comprime lo que los agentes **ven** (via `trs rewrite`). `trs output-saver` cierra el otro lado del bucle: instala un bloque de reglas compacto en la configuración global de cada agente para comprimir lo que los agentes **emiten**: sin preámbulos, sin narración, resultado primero, output estructurado cuando aplica, y sin paths inventados.
 
 ```bash
 trs output-saver               # escaneo de solo lectura
@@ -228,14 +228,14 @@ trs git status --raw           # passthrough sin procesar
 
 El precio por token seguía subiendo. Cada `git status`, `cargo test` y `ls -la` que el agente volcaba a su contexto costaba dinero real, y la relación señal/ruido en esos comandos era pésima. Empezamos a escribir herramientas pequeñas dentro del equipo de Iteris para reducir lo que el agente realmente tenía que leer.
 
-En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar — más opciones en este espacio significan un mejor encaje con más flujos de trabajo. Seguimos iterando y expandiendo `trs` conforme aprendíamos dónde se queman realmente los tokens.
+En ese camino nos topamos con [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). Para entonces nuestras herramientas venían evolucionando por su cuenta, así que enfrentamos la decisión honesta: migrar a rtk y desechar lo construido, o continuar y publicar nuestra propuesta. Decidimos continuar: más opciones en este espacio significan un mejor encaje con más flujos de trabajo. Seguimos iterando y expandiendo `trs` conforme aprendíamos dónde se queman realmente los tokens.
 
 Mientras más lo usábamos, más vimos que la oportunidad era más grande que solo los hooks de entrada. La historia se convirtió en cuatro herramientas complementarias:
 
-- [`trs rewrite`](docs/features/init.md) — compresión de la entrada en cada tool-call del agente.
-- [`trs output-saver`](docs/features/output-saver.md) — bloque de reglas que acorta las respuestas de vuelta.
-- [`trs audit-docs`](docs/features/audit-docs.md) — encuentra contenido redundante, duplicados y `@imports` muertos en los archivos de instrucciones que cada sesión re-carga.
-- [`trs ingest`](docs/features/ingest.md) — digest de todo un repo, listo para LLM y con control de budget.
+- [`trs rewrite`](docs/features/init.md): compresión de la entrada en cada tool-call del agente.
+- [`trs output-saver`](docs/features/output-saver.md): bloque de reglas que acorta las respuestas de vuelta.
+- [`trs audit-docs`](docs/features/audit-docs.md): encuentra contenido redundante, duplicados y `@imports` muertos en los archivos de instrucciones que cada sesión re-carga.
+- [`trs ingest`](docs/features/ingest.md): digest de todo un repo, listo para LLM y con control de budget.
 
 </details>
 
@@ -259,7 +259,7 @@ cargo run -- git status        # corre localmente contra el workspace
 
 ## For contributors
 
-Mantenemos la referencia de contribución en inglés — los términos técnicos (wire formats, benchmarks, PR checklist, etc.) no tienen equivalente limpio en español.
+Mantenemos la referencia de contribución en inglés, los términos técnicos (wire formats, benchmarks, PR checklist, etc.) no tienen equivalente limpio en español.
 
 | Link | Topic |
 |---|---|

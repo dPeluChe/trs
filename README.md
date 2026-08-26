@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>trs</strong> — <strong>T</strong>oken-<strong>R</strong>educing <strong>S</strong>hell · terminal compression for AI agents
+  <strong>trs</strong>: <strong>T</strong>oken-<strong>R</strong>educing <strong>S</strong>hell · terminal compression for AI agents
 </p>
 
 <p align="center">
@@ -55,11 +55,11 @@ src/main.rs (3):
 # 55 KB → 5.5 KB (90% reduction)
 ```
 
-Commands without a dedicated parser still get generic compression (whitespace collapse, ANSI stripping) — ~30–40% for free.
+Commands without a dedicated parser still get generic compression (whitespace collapse, ANSI stripping), ~30–40% for free.
 
 ## Install
 
-Single native binary — **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
+Single native binary: **macOS (arm64/x64), Linux (arm64/x64), Windows (x64)**.
 
 ```bash
 # macOS / Linux
@@ -75,7 +75,7 @@ cargo install trs-cli
 irm https://usetrs.dev/install.ps1 | iex
 ```
 
-[Full install options — prebuilt binaries, version pinning, custom install dirs, troubleshooting →](docs/support/install.md)
+[Full install options: prebuilt binaries, version pinning, custom install dirs, troubleshooting →](docs/support/install.md)
 
 ### Upgrading
 
@@ -99,7 +99,7 @@ trs stats                          # dashboard
 trs stats --by-agent               # breakdown per AI agent
 trs stats -n 30                    # custom row limit
 
-# 3. Walk back when you want — symmetric removal
+# 3. Walk back when you want: symmetric removal
 trs uninstall                      # interactive
 trs uninstall --all --yes          # scripted
 ```
@@ -128,7 +128,7 @@ Sixteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini C
 
 ### Standalone (optional)
 
-You can also call trs directly without the hooks wired — handy for scripts, CI, or trying it out before committing to the init flow:
+You can also call trs directly without the hooks wired: handy for scripts, CI, or trying it out before committing to the init flow:
 
 ```bash
 trs git status
@@ -160,7 +160,7 @@ Plus **chain-aware rewrite** (`cd X && cargo test`), **env-prefix preservation**
 
 ## Built-in trs tools
 
-Native commands — no external binary behind them.
+Native commands: no external binary behind them.
 
 ```bash
 trs json              # jq-lite query engine (-q '.users[].name')
@@ -180,7 +180,7 @@ trs debug-info        # bundle version + doctor + logs for bug reports
 
 ## Project digest
 
-`trs ingest` walks a repo and emits a compact Markdown digest — structure + key files + signatures — ready to paste into any AI agent's context. Budget-aware, staleness-aware, incremental.
+`trs ingest` walks a repo and emits a compact Markdown digest (structure + key files + signatures), ready to paste into any AI agent's context. Budget-aware, staleness-aware, incremental.
 
 ```bash
 trs ingest                     # writes digest, prints path
@@ -192,11 +192,11 @@ trs ingest --fresh             # reuse cached digest if HEAD unchanged
 trs ingest --list              # saved digests + HEAD sha + stale markers
 ```
 
-[Full `trs ingest` reference →](docs/features/ingest.md) · [Live example — trs ingesting itself →](docs/development/codebase-digest.md)
+[Full `trs ingest` reference →](docs/features/ingest.md) · [Live example: trs ingesting itself →](docs/development/codebase-digest.md)
 
 ## Output saver
 
-trs compresses what agents **see** via `trs rewrite`. `trs output-saver` closes the symmetric gap — installs a compact rules block into each agent's global config to compress what agents **emit**: no preambles, no narration, result-first, structured output where appropriate, no hallucinated paths.
+trs compresses what agents **see** via `trs rewrite`. `trs output-saver` closes the symmetric gap: installs a compact rules block into each agent's global config to compress what agents **emit**: no preambles, no narration, result-first, structured output where appropriate, no hallucinated paths.
 
 ```bash
 trs output-saver               # read-only scan
@@ -228,14 +228,14 @@ trs git status --raw           # unprocessed passthrough
 
 Token pricing kept climbing. Every `git status`, `cargo test`, and `ls -la` the agent rendered into its context cost real money, and the signal-to-noise ratio on those commands was painfully low. We started writing small tools at Iteris to reduce what the agent actually had to read.
 
-Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). By then our tools had been evolving on their own, so we faced the honest choice: migrate to rtk and drop what we'd built, or continue and publish our own take. We chose to continue — more options in this space means a better fit for more workflows. trs kept iterating and expanding as we learned more about where tokens actually burn.
+Along the way we came across [**rtk**](https://github.com/rtk-ai/rtk) (Rust Token Killer). By then our tools had been evolving on their own, so we faced the honest choice: migrate to rtk and drop what we'd built, or continue and publish our own take. We chose to continue, more options in this space means a better fit for more workflows. trs kept iterating and expanding as we learned more about where tokens actually burn.
 
 The more we used it, the more we saw the opportunity was bigger than input hooks. The story grew into four complementary tools:
 
-- [`trs rewrite`](docs/features/init.md) — input compression on every AI-agent tool call.
-- [`trs output-saver`](docs/features/output-saver.md) — rules block that shortens replies coming back from the agent.
-- [`trs audit-docs`](docs/features/audit-docs.md) — finds bloat, duplicates, and dead imports in the instruction files every session re-loads.
-- [`trs ingest`](docs/features/ingest.md) — budget-aware, LLM-ready digest of a whole repo.
+- [`trs rewrite`](docs/features/init.md): input compression on every AI-agent tool call.
+- [`trs output-saver`](docs/features/output-saver.md): rules block that shortens replies coming back from the agent.
+- [`trs audit-docs`](docs/features/audit-docs.md): finds bloat, duplicates, and dead imports in the instruction files every session re-loads.
+- [`trs ingest`](docs/features/ingest.md): budget-aware, LLM-ready digest of a whole repo.
 
 </details>
 

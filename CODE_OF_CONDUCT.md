@@ -23,4 +23,4 @@ Project maintainers may remove, edit, or reject contributions that violate this 
 
 ## Scope
 
-This code of conduct applies to all project spaces — issues, PRs, discussions, and related communications.
+This code of conduct applies to all project spaces: issues, PRs, discussions, and related communications.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# trs benchmark-real — Real-world project benchmark
+# trs benchmark-real: Real-world project benchmark
 # Usage: ./scripts/benchmark-real.sh [PROJECT_PATH]
 #   Default project: ~/dPeluCheData/PROJECTS/dPeluChe/_code_/labs-cameraman
 #   Env: RUNS=10 ./scripts/benchmark-real.sh (default: 5 runs per test)
@@ -40,7 +40,7 @@ header()  { divider; echo -e "${BOLD}${BLUE}  $1${NC}"; divider; }
 # =============================================================================
 echo -e "${BOLD}${GREEN}"
 echo "  ╔══════════════════════════════════════════════════════════════╗"
-echo "  ║       trs benchmark-real — Live Project Benchmark           ║"
+echo "  ║       trs benchmark-real: Live Project Benchmark            ║"
 echo "  ╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 echo -e "  ${BOLD}Project:${NC} $PROJECT"
@@ -194,7 +194,7 @@ if has_rtk:
     rtk_pct = (raw_total_b - rtk_total_b) * 100 // raw_total_b if raw_total_b > 0 else 0
     print(f'  rtk reduction: {rtk_pct}% ({raw_total_b:,} -> {rtk_total_b:,} bytes)')
     if skipped > 0:
-        print(f'  (rtk skipped {skipped} test(s) — refused to execute command)')
+        print(f'  (rtk skipped {skipped} test(s), refused to execute command)')
     print()
     print(f'  Speed wins:       trs {trs_speed_wins}/{n_tests}  rtk {rtk_speed_wins}/{n_tests}')
     print(f'  Compression wins: trs {trs_size_wins}/{n_tests}  rtk {rtk_size_wins}/{n_tests}')

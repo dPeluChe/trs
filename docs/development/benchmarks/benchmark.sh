@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# trs benchmark — Compare raw, trs, and rtk output
+# trs benchmark: Compare raw, trs, and rtk output
 # Usage: ./scripts/benchmark.sh [--all]
 #   Without --all: pauses between each test (press Enter to continue)
 #   With --all: runs all tests without pausing
@@ -49,14 +49,14 @@ TS_WINS=0
 TIES=0
 TOTAL=0
 
-# Cumulative timing (milliseconds) — local tests only (deterministic)
+# Cumulative timing (milliseconds): local tests only (deterministic)
 RAW_LOCAL_MS=0
 TRS_LOCAL_MS=0
 RTK_LOCAL_MS=0
 TS_LOCAL_MS=0
 LOCAL_TESTS=0
 
-# Network test timing (high variance — shown separately)
+# Network test timing (high variance: shown separately)
 RAW_NET_MS=0
 TRS_NET_MS=0
 RTK_NET_MS=0
@@ -135,7 +135,7 @@ time_label() {
 }
 
 speed_badge() {
-    # speed_badge <tool_ms> <raw_ms>  — shows overhead vs raw
+    # speed_badge <tool_ms> <raw_ms>: shows overhead vs raw
     local tool_ms="$1" raw_ms="$2"
     if [ "$raw_ms" -gt 0 ] && [ "$tool_ms" -gt 0 ]; then
         local overhead=$(( (tool_ms - raw_ms) * 100 / raw_ms ))
@@ -381,7 +381,7 @@ print_summary() {
 # =============================================================================
 echo -e "${BOLD}${GREEN}"
 echo "  ╔══════════════════════════════════════════════════════════════╗"
-echo "  ║            trs benchmark — Output Comparison                ║"
+echo "  ║            trs benchmark: Output Comparison                 ║"
 echo "  ╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 echo -e "  trs: $(trs --version 2>/dev/null || echo 'not found')"

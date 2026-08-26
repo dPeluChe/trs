@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 # Opt JavaScript actions (upload/download-artifact, setup-node, gh-release)
-# into the Node.js 24 runtime — Node 20 is being removed from runners
+# into the Node.js 24 runtime. Node 20 is being removed from runners
 # (forced by 2026-06-16). Silences the deprecation warnings.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -136,13 +136,13 @@ jobs:
         run: |
           # One sums file covering every published binary so install.sh /
           # install.ps1 can verify the download before chmod +x. Format
-          # is `<hex>  <filename>` (two spaces) — what `shasum -a 256`
+          # is `<hex>  <filename>` (two spaces), what `shasum -a 256`
           # outputs natively when run from the file's own dir.
           #
           # v0.6.3 footgun: piping `sha256sum a/b ...` through
           # `sed 's|.*/||'` looks like it strips the dir prefix, but
-          # the greedy `.*` also matched the hash + double-space + dir
-          # — published file ended up with names only, no hashes.
+          # the greedy `.*` also matched the hash + double-space + dir,
+          # so the published file ended up with names only, no hashes.
           # Hash inside each artifact dir to avoid that path-juggling.
           cd artifacts
           : > SHA256SUMS
@@ -171,7 +171,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     # Trusted Publishing requires the workflow to mint an OIDC token that
-    # npm verifies against its allowlist. No NPM_TOKEN secret needed —
+    # npm verifies against its allowlist. No NPM_TOKEN secret needed,
     # the publisher identity is the (repo + workflow + ref) tuple.
     # See https://docs.npmjs.com/trusted-publishers
     permissions:
@@ -199,7 +199,7 @@ jobs:
       - name: Assemble platform packages
         run: |
           # Copy binaries from artifacts into platform package dirs.
-          # Must run BEFORE Sync version — the artifact contains package.json
+          # Must run BEFORE Sync version: the artifact contains package.json
           # at the old version; syncing after assembly ensures the version
           # update is not overwritten by the cp.
           for dir in darwin-x64 darwin-arm64 linux-x64 linux-arm64 win32-x64; do
@@ -235,7 +235,7 @@ jobs:
           done
 
       - name: Publish platform packages
-        # No NODE_AUTH_TOKEN — Trusted Publishing uses the OIDC token
+        # No NODE_AUTH_TOKEN: Trusted Publishing uses the OIDC token
         # implicitly via `npm publish` (npm CLI 11+ detects the runtime).
         # `--provenance` attaches a cryptographic attestation that the
         # tarball was built by this workflow at this commit.

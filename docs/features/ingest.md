@@ -1,8 +1,8 @@
-# `trs ingest` — project digest for AI agents
+# `trs ingest`: project digest for AI agents
 
 `trs ingest` walks a repo and produces a compact, token-budget-aware
-Markdown digest of the codebase — structure + key files + signatures
-— ready to paste into an AI agent's context.
+Markdown digest of the codebase (structure + key files + signatures),
+ready to paste into an AI agent's context.
 
 ## Quick reference
 
@@ -27,14 +27,14 @@ trs ingest --html --max-loc 400 # tune the oversized-file threshold
 **stdout contract:** by default `trs ingest` writes the digest to the store
 and prints only the **saved path** (cheap for callers). The agent output
 format implies `--print`, so `trs ingest --agent` emits the **digest content**
-to stdout directly — no second read step. Passing `-o <file>` always wins:
+to stdout directly, no second read step. Passing `-o <file>` always wins:
 the content goes to the file and stdout stays the path.
 
 **In-band budget warning (agent mode):** the oversized-digest warning normally
 goes to stderr, but agents run with `2>/dev/null`, so it never reaches them.
 When `--agent` pulls a large digest with **no `--budget`** set (over the
 `--warn-at` threshold), the warning is also written **inside the digest header**
-— the one thing the agent always reads — nudging a re-run with `--budget`. Set
+(the one thing the agent always reads), nudging a re-run with `--budget`. Set
 a budget, or `--warn-at 0` to silence it.
 
 ## What the digest contains
@@ -67,17 +67,17 @@ the agent still sees the shape of the codebase.
 
 ### About line + module roles (the "purpose layer")
 
-Right after the title, the digest states the project's **intent** — the
-manifest `description`, or the README's first prose paragraph — so the
+Right after the title, the digest states the project's **intent**, the
+manifest `description`, or the README's first prose paragraph, so the
 reading agent gets *what this is*, not just *what files exist*.
 
 The **Architecture** section classifies the most-connected modules by
 pure import-graph topology (fan-in ↓ / fan-out ↑), no AST required:
 
-- **entry** — roots nothing imports (main, CLI).
-- **core** — high fan-in, everything routes through them.
-- **leaf** — imported by many, import nothing (utils, types).
-- **internal** — mid-graph plumbing.
+- **entry**: roots nothing imports (main, CLI).
+- **core**: high fan-in, everything routes through them.
+- **leaf**: imported by many, import nothing (utils, types).
+- **internal**: mid-graph plumbing.
 
 This is the same signal the `--html` report draws as a colored graph,
 rendered as a compact list so it costs almost nothing in tokens.
@@ -96,7 +96,7 @@ packing strategy:
 
 Token counts are approximations (~4 bytes per token). Set
 `--warn-at <N>` to emit a stderr warning when the digest exceeds
-`<N>` tokens — useful in CI where you want a hard ceiling.
+`<N>` tokens, useful in CI where you want a hard ceiling.
 
 ## Staleness detection
 
@@ -118,18 +118,18 @@ old-client       v0.5.6     2026-03-10 09:12    stale (HEAD moved)
 
 ## Scoped ingests
 
-- `--changed` — only uncommitted files (working tree vs HEAD). Useful
+- `--changed`: only uncommitted files (working tree vs HEAD). Useful
   for "here's what I'm touching, help me finish it."
-- `--since-last` — only files changed since the last ingest of this
+- `--since-last`: only files changed since the last ingest of this
   project. Useful for incremental context rollouts on long-running
   sessions.
-- `--deps` — dependency graph only, no file contents. Useful as a
+- `--deps`: dependency graph only, no file contents. Useful as a
   lightweight primer when the full digest would exceed budget.
 
 ## Visual HTML report (`--html`)
 
 `trs ingest --html` swaps the Markdown digest for a **self-contained
-HTML report** — a single file with all CSS/JS inlined (no CDN, survives
+HTML report**, a single file with all CSS/JS inlined (no CDN, survives
 a strict CSP), light/dark theme aware. It's for humans skimming a repo,
 where the Markdown digest is for agents reading one.
 
@@ -141,24 +141,24 @@ trs ingest --html --max-loc 400      # flag files over 400 LOC (default 500)
 
 The report renders, from the same ingest data:
 
-- **KPIs** — lines, files, symbols indexed, oversized-file count.
-- **File mix** — distribution by extension.
-- **Where the code lives** — LOC-by-module bars; click a bar to expand
+- **KPIs**: lines, files, symbols indexed, oversized-file count.
+- **File mix**: distribution by extension.
+- **Where the code lives**: LOC-by-module bars; click a bar to expand
   its files.
-- **How it connects** — an interactive force-directed module graph.
+- **How it connects**: an interactive force-directed module graph.
   Circle size = LOC; **color = role** (entry / core / leaf / internal,
   the same purpose layer as the Markdown digest). Hover to preview,
   click a node to pin its links, drag to rearrange.
-- **Oversized files** — anything over `--max-loc`, split candidates.
-- **Isolated modules** — code folders with **no import edge in or
-  out** — unreachable via imports, so likely dead or standalone. This
+- **Oversized files**: anything over `--max-loc`, split candidates.
+- **Isolated modules**: code folders with **no import edge in or
+  out**, unreachable via imports, so likely dead or standalone. This
   is a *module-level* heuristic; it self-suppresses when import
   resolution looks incomplete for the language (>40% flagged), and
   symbol/function-level dead code is deferred to the language's own
   tool (`cargo`, `knip`, `vulture`).
-- **Duplicate functions** — near-duplicate function pairs found with
+- **Duplicate functions**: near-duplicate function pairs found with
   MinHash + LSH over token shingles (copy-paste candidates to unify).
-- **Assets & binaries** — images, media, fonts skipped by the digest
+- **Assets & binaries**: images, media, fonts skipped by the digest
   but real weight in the repo, heaviest first.
 
 ## Ollama post-processing
@@ -174,7 +174,7 @@ model = "llama3.2"
 prompt = "Summarize this codebase digest while preserving all symbol names and file paths."
 ```
 
-The post-processing is off by default — enable only if you're sure
+The post-processing is off by default: enable only if you're sure
 about the trade-off (adds latency, changes content that may lose
 fidelity).
 
@@ -189,7 +189,7 @@ fidelity).
 ```
 
 Each digest is keyed by project name (derived from the manifest or
-the cwd basename). Delete files here to clear cache — trs will
+the cwd basename). Delete files here to clear cache. trs will
 regenerate on the next `trs ingest`.
 
 ## Reading saved digests
@@ -200,7 +200,7 @@ trs ingest --read myproject | pbcopy   # copy to clipboard
 ```
 
 Useful when you want to paste the digest into a chat UI that doesn't
-have file-upload — or to verify what `trs ingest --fresh` is
+have file-upload, or to verify what `trs ingest --fresh` is
 actually returning.
 
 ## Typical workflows
@@ -227,17 +227,17 @@ trs ingest --changed --budget 32k -o /tmp/pr-context.md --warn-at 20k
 # attach /tmp/pr-context.md to the PR review agent invocation
 ```
 
-## Live example — trs ingesting itself
+## Live example: trs ingesting itself
 
 [`docs/development/codebase-digest.md`](../development/codebase-digest.md)
 is the output of `trs ingest --budget 128k` run against this repo.
-~100 KB / ~26 k tokens covering 187 files — a realistic example of
+~100 KB / ~26 k tokens covering 187 files, a realistic example of
 what a digest looks like, and a drop-in context primer for agents
 working on the trs codebase itself.
 
 ## See also
 
-- [`docs/support/commands.md`](../support/commands.md) — `trs ingest`
+- [`docs/support/commands.md`](../support/commands.md), `trs ingest`
   in context with other built-in tools.
-- [`docs/features/stats.md`](./stats.md) — how ingest runs show up in
+- [`docs/features/stats.md`](./stats.md): how ingest runs show up in
   the savings dashboard.

@@ -1,5 +1,5 @@
 @echo off
-rem trs launcher for Windows — execs the native binary directly.
+rem trs launcher for Windows: execs the native binary directly.
 rem See bin/trs for the Unix equivalent.
 setlocal
 

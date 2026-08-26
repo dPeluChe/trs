@@ -55,7 +55,7 @@ npm/platforms/*/trs
 npm/platforms/*/trs.exe
 
 # Rules/hook files `trs init` generates into the current project during
-# local testing. We install these for downstream users — they shouldn't
+# local testing. We install these for downstream users. They shouldn't
 # live in the trs source tree itself.
 .agent/
 .windsurfrules

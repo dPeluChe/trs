@@ -1,4 +1,4 @@
-# `trs init` — install hooks for AI agents
+# `trs init`: install hooks for AI agents
 
 `trs init` wires your AI coding agent's shell-execution pipeline through
 `trs rewrite` so every command gets compressed automatically. Sixteen
@@ -35,23 +35,23 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | VS Code Copilot | JSON hook (agent hooks preview) | `.github/hooks/trs.json` (project) / `~/.copilot/hooks/trs.json` (`--global`); aliases `vscode` / `vs-code` / `copilot` / `vscode-copilot` / `code` |
 | OpenClaw | JS plugin + config enable | `~/.openclaw/plugins/trs/` (`openclaw.plugin.json` + `index.js`) + enable entry in `~/.openclaw/openclaw.json`; aliases `openclaw` / `claw`; global only |
 | Hermes | Python plugin + config enable | `~/.hermes/plugins/trs-rewrite/` (`__init__.py` + `plugin.yaml`) + `plugins.enabled` entry in `~/.hermes/config.yaml` (`HERMES_HOME` overrides the home dir); aliases `hermes` / `hermes-agent`; global only |
-| Zed (Agent Panel) | Rules append (sentinel block) | `./AGENTS.md` (project only — native agent has no tool hooks, zed#52688; `--global` is a no-op with a note); aliases `zed` / `zed-ide` |
+| Zed (Agent Panel) | Rules append (sentinel block) | `./AGENTS.md` (project only, native agent has no tool hooks, zed#52688; `--global` is a no-op with a note); aliases `zed` / `zed-ide` |
 
 Hooks fire deterministically on every shell-tool invocation. Rules
-files are probabilistic — they only work because the agent chooses to
+files are probabilistic: they only work because the agent chooses to
 follow the guidance in them.
 
 Zed attribution note: the native Zed agent is rules-only, so its runs
 show as `(untagged)` in `trs stats --by-agent`. External agents run
 inside Zed via ACP (Claude Code, Codex CLI, Gemini CLI, OpenCode) are
-the real CLIs — their own trs hooks fire transitively and runs are
+the real CLIs, their own trs hooks fire transitively and runs are
 attributed to the backend agent's label, not Zed.
 
 Codex is version-gated. On **codex-cli ≥ 0.134** (which implements
 programmatic command rewriting via the `PreToolUse` hook's
 `hookSpecificOutput.updatedInput.command` field), `trs init codex
 --global` installs a real `PreToolUse` hook merged into
-`~/.codex/hooks.json` — approve it once via Codex's `/hooks` prompt and
+`~/.codex/hooks.json`, approve it once via Codex's `/hooks` prompt and
 commands get rewritten automatically, no `trs` prefix needed. On older
 codex builds (or when the hook isn't trusted), trs falls back to
 rules-only: the `~/.codex/AGENTS.md` block tells the model to prefix
@@ -99,7 +99,7 @@ location flagged and the options below.
 
 Scrubs the competitor's hook entries from each JSON file we detected,
 then installs trs. Rules-file collisions (e.g. a `CLAUDE.md` that
-describes rtk in prose) are flagged but not edited — rewriting
+describes rtk in prose) are flagged but not edited, rewriting
 someone's markdown is out of scope.
 
 ```bash
@@ -119,7 +119,7 @@ command output.
 ```
 Found 1 potential collision(s) while preparing Claude Code install:
 
-  ! /Users/you/.claude/RTK.md — references 'RTK - Rust Token Killer'
+  ! /Users/you/.claude/RTK.md, references 'RTK - Rust Token Killer'
     file references another compressor (RTK - Rust Token Killer)
 
 Risk: running two shell-compression tools on the same
@@ -135,7 +135,7 @@ Recommended: migrate to trs.
 
 Templates evolve between trs releases. When `trs init --all` reports
 `N already configured, 0 installed`, your hooks are written with an
-older template — fine in most cases, but you might be missing
+older template, fine in most cases, but you might be missing
 improvements (e.g. a widened matcher, a richer rules file, a new
 agent the template now supports).
 
@@ -154,13 +154,13 @@ trs init --all --global --force
 `~/.gemini/`, …). Project-local installs (no flag) write to the
 current working directory (`.gemini/settings.json`, etc.).
 
-Most users want `--global` — it works across every project. Project-
+Most users want `--global`: it works across every project. Project-
 local is useful for repos where you want trs's behavior isolated to
 that checkout, or for CI that needs a pinned local config.
 
 ## Bypassing the hook for one command
 
-Sometimes you want the agent to get raw command output — to diff
+Sometimes you want the agent to get raw command output: to diff
 exact bytes, pipe into `sha256sum`, or assert on an unmodified shell
 response. Three equivalent env-var prefixes signal bypass:
 
@@ -170,14 +170,14 @@ TRS_DISABLE=1 npx tsc --noEmit
 env TRS_DISABLE=1 cargo test -- --nocapture
 ```
 
-`TRS_DISABLE=1` is an alias for `TRS_SKIP=1` — historically users
+`TRS_DISABLE=1` is an alias for `TRS_SKIP=1`, historically users
 invented the convention and it's now recognized. The env-wrapped form
 (`env TRS_DISABLE=1 <cmd>` or `/usr/bin/env TRS_SKIP=1 <cmd>`) is
 also stripped so the bypass survives the `env` indirection.
 
 The env-var assignment stays in the command string; the shell strips
 it before executing the downstream program, so the bypass is
-transparent to git / cargo / whatever. Any value after `=` works —
+transparent to git / cargo / whatever. Any value after `=` works, 
 we only check for the prefix.
 
 No global toggle: the bypass is always per-invocation. Removing trs
@@ -190,37 +190,37 @@ prefixes the result with `TRS_AGENT=<label>` so the downstream
 `trs <cmd>` execution can record which agent triggered the run.
 
 The shell strips the env-var assignment before executing git / cargo
-/ etc. — so the tagging is transparent to downstream programs — and
+/ etc. (so the tagging is transparent to downstream programs) and
 trs's tracker picks up the label and writes it into
 `~/.trs/history.jsonl`. Run `trs stats --by-agent` to see the
 breakdown.
 
 Labels per agent:
 
-- `claude` — Claude Code
-- `droid` — Factory Droid (the hook command carries `--caller droid`;
-  pre-v0.6.16 installs shared Claude's label — re-run `trs init droid`)
-- `gemini` — Gemini CLI
-- `antigravity` — Antigravity IDE / CLI (`agy`): rules-only (no hook),
+- `claude`: Claude Code
+- `droid`: Factory Droid (the hook command carries `--caller droid`;
+  pre-v0.6.16 installs shared Claude's label, re-run `trs init droid`)
+- `gemini`: Gemini CLI
+- `antigravity`: Antigravity IDE / CLI (`agy`): rules-only (no hook),
   but direct `trs <cmd>` runs inside agy are attributed via the
   `ANTIGRAVITY_CONVERSATION_ID` env var agy exports. See
   [research notes](../development/antigravity-hooks-research.md).
-- `cursor` — Cursor
-- `opencode` — OpenCode (baked into the plugin template)
-- `kilo` — Kilo Code (baked into its plugin template)
-- `pi` — Pi Coding Agent (set via `TRS_AGENT=pi` in the extension's
+- `cursor`: Cursor
+- `opencode`: OpenCode (baked into the plugin template)
+- `kilo`: Kilo Code (baked into its plugin template)
+- `pi`: Pi Coding Agent (set via `TRS_AGENT=pi` in the extension's
   `spawnHook` env)
-- `codex` — Codex when the `PreToolUse` hook is active (codex-cli
+- `codex`: Codex when the `PreToolUse` hook is active (codex-cli
   ≥ 0.134); the hook command carries `--caller codex`. Rules-only
   fallback (older builds / untrusted hook) is still `(untagged)`.
-- `vscode` — VS Code Copilot via the agent hooks (preview); the hook
+- `vscode`: VS Code Copilot via the agent hooks (preview); the hook
   command carries `--caller vscode`. (Runs that arrive through
   VS Code's "Chat: Use Claude Hooks" setting instead show as `claude`.)
-- `openclaw` — OpenClaw (set via `TRS_AGENT=openclaw` from the
+- `openclaw`: OpenClaw (set via `TRS_AGENT=openclaw` from the
   plugin's `resolve_exec_env` hook)
-- `hermes` — Hermes / hermes-agent (set via `TRS_AGENT=hermes` exported
+- `hermes`: Hermes / hermes-agent (set via `TRS_AGENT=hermes` exported
   by the Python plugin)
-- `(untagged)` — rules-only agents (Devin Desktop, Codex fallback) and
+- `(untagged)`: rules-only agents (Devin Desktop, Codex fallback) and
   direct-shell invocations, where no programmatic signal is available
 
 If you want to spoof attribution for a specific command (e.g.
@@ -230,25 +230,25 @@ testing), prefix manually:
 TRS_AGENT=claude trs git status
 ```
 
-`TRS_AGENT` is only read by trs — it has no other effect on the
+`TRS_AGENT` is only read by trs: it has no other effect on the
 environment.
 
 ## Uninstalling
 
-Use [`trs uninstall`](uninstall.md). It's symmetric to `trs init` —
+Use [`trs uninstall`](uninstall.md). It's symmetric to `trs init`, 
 interactive by default, or `--all` / `--tool <x>` / `--output-saver` /
 `--dry-run` for scripted removal. JSON hooks get scrubbed (user-added
-entries on the same event survive) — including the Codex `PreToolUse`
-entry in `~/.codex/hooks.json` — plugin files are deleted, and the
+entries on the same event survive), including the Codex `PreToolUse`
+entry in `~/.codex/hooks.json`, plugin files are deleted, and the
 Codex sentinel block in `AGENTS.md` is removed in place. See the
 `trs uninstall` doc for the per-surface details.
 
 ## See also
 
-- [`trs uninstall`](uninstall.md) — symmetric removal command.
-- [`trs output-saver`](output-saver.md) — the symmetric feature for
+- [`trs uninstall`](uninstall.md): symmetric removal command.
+- [`trs output-saver`](output-saver.md): the symmetric feature for
   LLM-generated output.
-- [`trs doctor`](doctor.md) — health check that reports install
+- [`trs doctor`](doctor.md): health check that reports install
   coverage.
-- [`docs/development/agent-integrations.md`](../development/agent-integrations.md) — deep per-
+- [`docs/development/agent-integrations.md`](../development/agent-integrations.md): deep per-
   agent reference (wire formats, protocol quirks, test prompts).
