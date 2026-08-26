@@ -190,6 +190,29 @@ Not swept, on purpose: `docs/roadmap/completed/*.md` and `CHANGELOG.md` are
 dated records of a past state, and rewriting a log falsifies it. Table cells
 holding `—` for "no value" are a glyph, not prose.
 
+### Coverage sweep, 2026-08-26
+
+Ranked `stats --coverage` by `count * avg_in * %low` over 27,696 runs.
+
+- [x] **Verbatim class** (#146): the sweep's real finding was a correctness
+  bug, not a missing parser. Generic compression was flattening the output of
+  commands whose layout is their payload.
+- [x] **`bunx`** (#146): missing from the registry while `npx`/`pnpm`/`yarn`
+  were there.
+- [x] **`du` / `lsof` / `pgrep` parsers** (#147): 73% / 83% / 94% on real
+  output.
+- [ ] **`gh api`**: the largest remaining gap by far (229 runs, 10.5 KB
+  average, 45% low). JSON responses, so it needs actual design rather than a
+  row-folding parser. Kept separate on purpose.
+
+Left alone deliberately:
+
+- `security` (17 runs): macOS keychain, output can carry credentials. A
+  parser there adds risk, not savings.
+- `bash -c` / `sh` / `zsh` (534 runs, the largest single bucket): compound
+  commands, which the shape gate refuses by design. `bash -c "<one simple
+  command>"` already unwraps and routes to the inner parser.
+
 ### Verbatim commands: known gap
 
 - [ ] A compound shell script (`bash -c "cd x && awk '{print}' f.py"`) still

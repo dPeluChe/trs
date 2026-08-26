@@ -298,8 +298,12 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
 
     // ---- Generic CLIs: rewrite-eligible for ANSI/whitespace compression,
     //      but no dedicated parser and not counted in coverage stats. ----
-    CommandSpec { names: &["bash", "node", "du"], rewrite: true, known: false,
+    CommandSpec { names: &["bash", "node"], rewrite: true, known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
+
+    // ---- System inventory: many rows, few columns that matter. ----
+    CommandSpec { names: &["du", "lsof", "pgrep"], rewrite: true, known: true,
+        keep_ratio: KeepRatio::flat(0.35), stderr: Stderr::Never },
 
     // ---- Verbatim: output is the payload, never compressed. ----
     CommandSpec { names: VERBATIM_COMMANDS, rewrite: false, known: true,

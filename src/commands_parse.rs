@@ -188,6 +188,36 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse `du` output: sort paths by size descending, keep the largest
+    /// 15, and summarize the tail. Agents run `du` to find what is big.
+    ///
+    /// Example: du -sh * | trs parse du
+    Du {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse `lsof` output: fold the per-descriptor rows into one row per
+    /// process and keep only the NAME column, which is the address.
+    ///
+    /// Example: lsof -i -P -n | trs parse lsof
+    Lsof {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Parse `pgrep -fl` output: collapse identical command lines into one
+    /// row carrying every pid, and shorten argv[0] to its basename.
+    ///
+    /// Example: pgrep -fl node | trs parse pgrep
+    Pgrep {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse docker logs output
     ///
     /// Example: docker logs container | trs parse docker-logs
@@ -414,6 +444,9 @@ impl ParseCommands {
             Self::Brew { .. } => Self::Brew { file: Some(path) },
             Self::PythonTraceback { .. } => Self::PythonTraceback { file: Some(path) },
             Self::Ps { .. } => Self::Ps { file: Some(path) },
+            Self::Du { .. } => Self::Du { file: Some(path) },
+            Self::Lsof { .. } => Self::Lsof { file: Some(path) },
+            Self::Pgrep { .. } => Self::Pgrep { file: Some(path) },
             Self::Deps { .. } => Self::Deps { file: Some(path) },
             Self::Install { .. } => Self::Install { file: Some(path) },
             Self::Build { .. } => Self::Build { file: Some(path) },
