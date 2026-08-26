@@ -29,6 +29,16 @@ that from happening.
   TOML, XML, and CSV files are returned verbatim, stripping
   comments or "aggressive" signature extraction only applies to
   source-code files where the syntax supports it unambiguously.
+- **Verbatim commands are handed back byte for byte.** `awk`, `cut`,
+  `tr`, `sort`, `uniq`, `column`, `fold`, `nl`, `iconv`, `xxd`, `od`,
+  `hexdump`, `base64`, `jq`, `yq`, `printf` and friends re-lay-out
+  their input, so runs of spaces and blank lines are the payload, not
+  noise. Generic compression collapses exactly those, which turned
+  `awk 'NR<=4' x.py` into Python with every indent flattened to one
+  space. trs neither rewrites these at the hook nor compresses them
+  when called directly, at any output size. The same holds through a
+  shell wrapper (`bash -c "cut -c1-20 x.py"`); a compound script
+  (`cd x && awk …`) is the known gap, only its first command is seen.
 
 ## Failure recovery
 

@@ -241,6 +241,35 @@ const GOLDEN_KNOWN: &[&str] = &[
     "go",
     "poetry",
     "aws",
+    "bunx",
+    // Verbatim: handled by being left alone, so coverage counts them as
+    // handled rather than reporting them as missing parsers. Same treatment
+    // cat/head/sed/echo already get above.
+    "awk",
+    "base64",
+    "basenc",
+    "column",
+    "comm",
+    "cut",
+    "expand",
+    "fold",
+    "hexdump",
+    "iconv",
+    "join",
+    "jq",
+    "nl",
+    "od",
+    "paste",
+    "printf",
+    "rev",
+    "sort",
+    "strings",
+    "tac",
+    "tr",
+    "unexpand",
+    "uniq",
+    "xxd",
+    "yq",
 ];
 
 #[test]
@@ -326,11 +355,19 @@ fn rewrite_eligibility_matches_legacy_prefixes() {
         "uv",
         "bash",
         "node",
-        "awk",
         "du",
-        "jq",
+        "bunx",
     ] {
         assert!(is_rewrite_command(cmd), "{cmd} should be rewrite-eligible");
+    }
+    // `jq` and `awk` were here until the verbatim class landed: generic
+    // compression collapsed the runs of spaces and blank lines that carry
+    // their meaning, so they are now handled by being left alone.
+    for cmd in ["jq", "awk"] {
+        assert!(
+            !is_rewrite_command(cmd),
+            "{cmd} moved to the verbatim class"
+        );
     }
     // Commands that were NOT in REWRITE_PREFIXES (still wrapped by catch-all,
     // but not part of the documented explicit set).
@@ -351,4 +388,31 @@ fn no_duplicate_command_names() {
             seen.push(name);
         }
     }
+}
+
+#[test]
+fn verbatim_commands_are_known_and_never_rewritten() {
+    for name in VERBATIM_COMMANDS {
+        assert!(is_verbatim_command(name), "not verbatim: {name}");
+        // Declared as known so `stats --coverage` stops reporting them as
+        // parser gaps: trs handles them, by deliberately not touching them.
+        assert!(is_known_binary(name), "should be known: {name}");
+        assert!(!is_rewrite_command(name), "should not rewrite: {name}");
+    }
+}
+
+#[test]
+fn compressible_commands_stay_out_of_the_verbatim_class() {
+    // Regression guard: widening VERBATIM_COMMANDS to a command that has a
+    // parser silently drops its compression instead of failing loudly.
+    for name in ["ls", "git", "cargo", "npm", "grep", "find", "du", "poetry"] {
+        assert!(!is_verbatim_command(name), "must stay compressible: {name}");
+    }
+}
+
+#[test]
+fn bunx_dispatches_like_npx() {
+    let npx = spec("npx").expect("npx in registry");
+    let bunx = spec("bunx").expect("bunx in registry");
+    assert!(std::ptr::eq(npx, bunx), "bunx must share npx's spec row");
 }

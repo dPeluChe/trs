@@ -49,7 +49,7 @@ cargo.
 | `pnpm` | `install` (+`i`), `test`, `ls`, `audit`, `outdated`, `why`, `add`, `update`, `up`, `run`, `dlx`, `exec` |
 | `yarn` | `install`, `test` |
 | `bun` | `install`, `test`, `run` |
-| `npx` / `pnpm dlx` | routed to whichever inner command is invoked |
+| `npx` / `bunx` / `pnpm dlx` | routed to whichever inner command is invoked |
 
 `run` subcommand routing: `build*` → Build parser, `test*` → Test parser, `lint` / `type-check` / `typecheck` / `check` / `format` / `format:check` → Lint parser. Other script names fall through to generic compression.
 
@@ -90,7 +90,7 @@ cargo.
 | `golangci-lint` | issues grouped by file |
 | `tsc` | `file(line,col): error TS6133: …`, grouped by file, ~80% reduction |
 
-`tsc` is also reached via `npx tsc`, `pnpm dlx tsc`, and `uv run tsc`.
+`tsc` is also reached via `npx tsc`, `bunx tsc`, `pnpm dlx tsc`, and `uv run tsc`.
 `biome` is also reached via `npx @biomejs/biome` (full package-name form).
 Dispatched the same as any other linter (compact by default, `--json` for structured output).
 
@@ -242,6 +242,14 @@ same combined stream the shell would have produced.
 Any command not listed above still flows through trs's generic
 reducer: ANSI strips, whitespace collapsed, repeated lines deduped.
 Typical reduction 30–40% for free with no format-specific knowledge.
+
+One class is exempt. Commands whose output is a re-layout of their
+input carry meaning in exactly the runs of spaces and blank lines the
+reducer collapses, so trs hands their output back untouched: `awk`,
+`base64`, `basenc`, `column`, `comm`, `cut`, `expand`, `fold`,
+`hexdump`, `iconv`, `join`, `jq`, `nl`, `od`, `paste`, `printf`,
+`rev`, `sort`, `strings`, `tac`, `tr`, `unexpand`, `uniq`, `xxd`,
+`yq`. See [`docs/support/safety.md`](./safety.md).
 
 If a dedicated parser exists but errors out mid-parse, trs falls back
 to **truncated passthrough** rather than silent failure, the full

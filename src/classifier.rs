@@ -419,7 +419,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         "wget" => Some(ParseCommands::Download { file: None }),
         "curl" => Some(ParseCommands::Download { file: None }),
 
-        // npx <tool> — route to the underlying tool's parser so the
+        // npx/bunx <tool>: route to the underlying tool's parser so the
         // agent gets the same compression as when the tool runs
         // directly. Anything not in this list falls through to the
         // generic whitespace/ANSI fallback.
@@ -439,7 +439,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             classify_command(&inner[0], &inner[1..])
         }
 
-        "npx" => match subcmd {
+        "npx" | "bunx" => match subcmd {
             "jest" => Some(ParseCommands::Test {
                 runner: Some(TestRunner::Jest),
                 file: None,

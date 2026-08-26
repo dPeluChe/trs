@@ -190,6 +190,15 @@ Not swept, on purpose: `docs/roadmap/completed/*.md` and `CHANGELOG.md` are
 dated records of a past state, and rewriting a log falsifies it. Table cells
 holding `—` for "no value" are a glyph, not prose.
 
+### Verbatim commands: known gap
+
+- [ ] A compound shell script (`bash -c "cd x && awk '{print}' f.py"`) still
+  reaches generic compression: `is_verbatim_invocation` reads the first token
+  of the script only. Covering it means splitting the script on `&&`/`;`/`|`
+  and treating the whole thing as verbatim if any segment is, which is a
+  bigger change than the bug warranted. Field data says the direct forms are
+  what actually run (`awk` 34, `iconv` 10, `cut`, `column`, `xxd`).
+
 ### Other drift found while sweeping (2026-08-26)
 
 - [ ] `docs/features/stats.md` § Summary shows a `trs savings:` block in a
