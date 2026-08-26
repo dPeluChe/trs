@@ -98,7 +98,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
                 // Standalone `trs init zed --global` lands here; the batch path
                 // (install_all) short-circuits Zed+global to a compact row.
                 eprintln!(
-                    "Zed reads the project AGENTS.md — global personal-instructions location \
+                    "Zed reads the project AGENTS.md, global personal-instructions location \
                      not yet verified; installing would be a no-op. Run without --global in \
                      each project."
                 );
@@ -161,7 +161,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
                         eprintln!(
                             "warning: 'trs' not found in PATH. The hook may fail silently.\n\
                              Make sure trs is installed: npm install -g @dpeluche/trs\n\
-                             (or cargo install trs-cli, or curl-sh script — see README)"
+                             (or cargo install trs-cli, or curl-sh script, see README)"
                         );
                     }
                     // For Imported agents (Claude, Gemini): also write trs.md so the
@@ -212,7 +212,7 @@ pub(crate) fn install_all(opts: InstallOpts) {
 
     // Announce the write root once so per-agent rows don't repeat the
     // shared `~/` (global) or `./` (project) prefix on every line.
-    println!("trs init — {} agents", tools.len());
+    println!("trs init: {} agents", tools.len());
     if opts.global {
         println!("  writing to ~/  (global)\n");
     } else {
@@ -255,7 +255,7 @@ pub(crate) fn install_all(opts: InstallOpts) {
         println!("  ↻ restart open agent sessions to load the new hooks");
     }
     if opts.dry_run {
-        println!("  note: dry-run — nothing written. Re-run without --dry-run to apply.");
+        println!("  note: dry-run: nothing written. Re-run without --dry-run to apply.");
     }
     // When everything is already wired up, remind the user how to force
     // a refresh — template content can change between releases even

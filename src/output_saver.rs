@@ -209,7 +209,7 @@ pub(crate) fn run(
 /// failures — the user simply hasn't opted in there.
 fn run_verify(targets: &[&str]) {
     use crate::output_saver_core::{verify_agent, VerifyStatus};
-    println!("trs output-saver — verify\n");
+    println!("trs output-saver: verify\n");
     let (mut loaded, mut drifted, mut not_installed, mut other) = (0, 0, 0, 0);
 
     for id in targets {
@@ -221,7 +221,7 @@ fn run_verify(targets: &[&str]) {
             }
             VerifyStatus::Drifted => {
                 println!(
-                    "  ~ {:<18}  drifted — run `trs output-saver --refresh`",
+                    "  ~ {:<18}  drifted, run `trs output-saver --refresh`",
                     display
                 );
                 drifted += 1;
@@ -271,7 +271,7 @@ fn agent_display(id: &str) -> &'static str {
 }
 
 fn run_scan(targets: &[&str]) {
-    println!("trs output-saver — scan\n");
+    println!("trs output-saver: scan\n");
     let mut installable = Vec::new();
     let mut already = 0;
     let mut unsupported = 0;
@@ -328,7 +328,7 @@ fn run_scan(targets: &[&str]) {
 }
 
 fn run_install(targets: &[&str]) {
-    println!("trs output-saver — install\n");
+    println!("trs output-saver: install\n");
     let mut wrote = 0;
     let mut skipped = 0;
     for id in targets {
@@ -371,7 +371,7 @@ fn run_install(targets: &[&str]) {
 /// this is the path `trs upgrade` calls to pick up template changes
 /// without adding the block to agents the user never opted in for.
 fn run_refresh(targets: &[&str]) {
-    println!("trs output-saver — refresh\n");
+    println!("trs output-saver: refresh\n");
     let mut refreshed = 0;
     let mut skipped_not_present = 0;
     let mut skipped_unsupported = 0;
@@ -412,7 +412,7 @@ fn run_refresh(targets: &[&str]) {
 }
 
 fn run_remove(targets: &[&str]) {
-    println!("trs output-saver — remove\n");
+    println!("trs output-saver: remove\n");
     let mut removed = 0;
     let mut skipped = 0;
     for id in targets {

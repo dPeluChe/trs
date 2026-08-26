@@ -187,7 +187,7 @@ fn parse_head_args(args: &[String]) -> Option<(usize, String)> {
         } else if file.is_none() {
             file = Some(arg.to_string());
         } else {
-            return None; // multiple files — bail
+            return None; // multiple files, bail
         }
         i += 1;
     }

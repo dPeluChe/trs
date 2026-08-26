@@ -16,7 +16,7 @@ use crate::init::{check_tool, AiTool};
 pub(crate) fn check_codex_hooks_orphan() -> Check {
     use std::fs;
     let Ok(home) = crate::init::home_dir() else {
-        return Check::pass("codex hooks.json", "no HOME — skipped".to_string());
+        return Check::pass("codex hooks.json", "no HOME, skipped".to_string());
     };
     let path = home.join(".codex").join("hooks.json");
     if !path.exists() {
@@ -24,7 +24,7 @@ pub(crate) fn check_codex_hooks_orphan() -> Check {
     }
     let content = match fs::read_to_string(&path) {
         Ok(c) => c,
-        Err(_) => return Check::pass("codex hooks.json", "unreadable — skipped".to_string()),
+        Err(_) => return Check::pass("codex hooks.json", "unreadable, skipped".to_string()),
     };
     if !content.contains("trs rewrite") {
         return Check::pass("codex hooks.json", "no trs entry".to_string());
@@ -68,7 +68,7 @@ pub(crate) fn check_devin_cli_hook() -> Check {
     if !AiTool::DevinCLI.detect_installed() {
         return Check::pass(
             "devin-cli hook",
-            "Devin CLI not detected — skipped".to_string(),
+            "Devin CLI not detected, skipped".to_string(),
         );
     }
     let mut paths: Vec<PathBuf> = vec![PathBuf::from(".devin/config.json")];
@@ -204,7 +204,7 @@ pub(crate) fn check_agent_docs_health() -> Check {
             .join(", ");
         Check::warn(
             "agent docs",
-            format!("{} — oversized: {}", summary, bloat_detail),
+            format!("{}, oversized: {}", summary, bloat_detail),
         )
         .with_hint("run `trs audit-docs` to find duplicates / dead refs / embedded bloat")
     }
@@ -278,7 +278,7 @@ pub(crate) fn check_path_accessible() -> Check {
                         ])
                         .with_hint(
                             "one trs binary, but its directory repeats in your shell PATH \
-                             config — remove the redundant `export PATH=` lines (commonly in \
+                             config, remove the redundant `export PATH=` lines (commonly in \
                              ~/.zshrc / ~/.zprofile when ~/.zshenv already adds it).",
                         )
                 }
@@ -288,7 +288,7 @@ pub(crate) fn check_path_accessible() -> Check {
                     sub.push(format!("shadowed: {}", p));
                 }
                 sub.push(format!(
-                    "{} distinct trs binaries in PATH — the first one wins",
+                    "{} distinct trs binaries in PATH, the first one wins",
                     unique.len()
                 ));
                 Check::warn("PATH", "multiple trs binaries found")

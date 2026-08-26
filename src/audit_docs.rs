@@ -207,7 +207,7 @@ pub(crate) fn estimate_tokens(text: &str) -> usize {
         } else if c.is_ascii_punctuation() {
             0.30
         } else if c as u32 > 0x3000 {
-            0.66 // CJK range — each char is ~1.5 tokens
+            0.66 // CJK range: each char is ~1.5 tokens
         } else {
             0.50
         };

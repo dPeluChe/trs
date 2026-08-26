@@ -10,7 +10,7 @@ use crate::init::{check_tool, AiTool};
 /// - `•` installed on system, not configured
 /// - `-` not detected (config still possible for future installs)
 pub(crate) fn show_status() {
-    println!("trs init — hook status\n");
+    println!("trs init: hook status\n");
 
     let tools = AiTool::all_tools();
     let name_width = tools.iter().map(|t| t.name().len()).max().unwrap_or(0);
@@ -65,7 +65,7 @@ pub(crate) fn show_status_and_usage() {
     println!("Collision handling:");
     println!("  trs init scans the target config for hooks from another compressor");
     println!("  tool (rtk, token-optimizer) before writing. Running two compressors");
-    println!("  on the same command risks double-compression — garbled output that");
+    println!("  on the same command risks double-compression, garbled output that");
     println!("  looks successful to the hook layer. By default trs aborts when it");
     println!("  finds a collision.");
     println!();

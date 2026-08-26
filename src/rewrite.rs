@@ -176,7 +176,7 @@ fn build_hook_response(
         // user's real history.jsonl.
         #[cfg(not(test))]
         crate::tracker::log_bypass(cmd, Some("unknown"));
-        eprintln!("trs rewrite: unrecognized hook_event_name \"{event_name}\" — passing through");
+        eprintln!("trs rewrite: unrecognized hook_event_name \"{event_name}\", passing through");
         return None;
     }
 

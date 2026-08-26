@@ -130,7 +130,7 @@ pub(crate) fn run_discover(all_projects: bool, since_days: usize) {
         .checked_div(total_commands)
         .unwrap_or(0);
 
-    println!("trs discover — missed savings\n");
+    println!("trs discover: missed savings\n");
     println!(
         "Commands: {} total, {} via trs ({}% adoption)",
         total_commands, trs_commands, adoption_pct

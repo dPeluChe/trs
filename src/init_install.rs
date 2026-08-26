@@ -222,10 +222,10 @@ fn ensure_parent(path: &Path) -> Result<(), String> {
 }
 
 /// Stable marker identifying a trs-authored plugin file (OpenCode/Kilo).
-/// Present in every version of the template, so we can recognize our own
-/// file and refresh it when the bundled template changes (e.g. the #53
-/// Windows fix) instead of leaving a stale copy in place.
-const TRS_PLUGIN_MARKER: &str = "trs plugin — route commands through trs";
+/// Deliberately short: the rest of that template line changed when the copy
+/// dropped em dashes, so matching the prefix still recognizes plugins written
+/// by older versions and refreshes them instead of erroring on "other config".
+const TRS_PLUGIN_MARKER: &str = "trs plugin";
 
 /// Route hook installs by file type. JSON → merge with existing user hooks;
 /// non-JSON (plugin .ts) → create, or refresh our own file on drift; never
