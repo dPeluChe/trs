@@ -86,9 +86,13 @@ The load-bearing entry points:
 - **Modular by design**: 210+ .rs files. Most stay well under 500 LOC; a handful of feature-complete modules (audit_docs, output_saver, init) are larger because splitting them would fragment a single feature across files for no benefit.
 - **Token tracking**: Every execution logged to ~/.trs/history.jsonl
 - **3-tier fallback**: parser OK → degraded → truncated passthrough with `[trs:passthrough]`
-- **Generic fallback**: commands without parser get whitespace/ANSI compression (20-40%)
+- **Generic fallback**: commands without parser get whitespace/ANSI compression (20-40%).
+  One class is exempt: commands whose output is a re-layout of their input
+  (`awk`, `cut`, `column`, `xxd`, `iconv`, `jq`, …) are handed back byte for
+  byte, because the runs of spaces and blank lines that the reducer collapses
+  are their payload. See [`docs/support/safety.md`](./docs/support/safety.md).
 - **Config system**: `~/.trs/config.toml` for tunable limits
-- **Agent integrations**: 9 agents supported across 3 integration types
+- **Agent integrations**: 16 agents supported across 3 integration types
   (hook / plugin / rules). Wire-format differs per hook agent
   (Claude/Gemini/Cursor), see [`docs/development/agent-integrations.md`](./docs/development/agent-integrations.md)
   for per-agent mechanism, quirks, and test prompts.

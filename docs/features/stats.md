@@ -57,27 +57,38 @@ to-do list that never forgets stops being a to-do list.
 ## Summary (default)
 
 ```
-trs savings: Apr 15 23:04 → Apr 20 17:12 (5 days)
-────────────────────────────────────────────────────
-  input:       4.2 MB    output:  930 KB     saved: 3.3 MB
-  tokens in:   1.0M      out:     232K        saved: 800K (77%)
-  commands:    1,247     today:   23          avg:   ~165k tokens/day
-  last:        git status (2m ago)
+trs Token Savings
+===================================
+Period:            Apr 15 23:04 → Aug 26 18:24 (133 days)
+Total commands:    69523
+Input tokens:      313.8M
+Output tokens:     204.3M
+Tokens saved:      109.5M (34.9%)
+Tokens per day:    823.0K (avg)
+Today:             6.7M saved across 468 commands
+Last 7  days:      11.9M saved · 94%
+Last 30 days:      32.8M saved · 82%
+Efficiency: ████████████████░░░░ 82% (last 30d)
+
+Last: git diff origin/main..HEAD (2m ago)
 
 Top Commands
-───────────────────────────────
+───────────────────────────────────
   cargo test              91x  -99%  95k saved
-  git status              203x -76%  42k saved
+  git status             203x  -76%  42k saved
   cargo clippy            34x  -89%  38k saved
   …
 
 For full history: trs stats --history
 ```
 
-Header explains the measurement period explicitly so you know whether
-you're looking at a week or a month of usage. Today's count and the
-period average are shown side-by-side for a quick "am I above or
-below average" read.
+The first block is cumulative and answers "was this worth installing?".
+The `Last 7 days` / `Last 30 days` lines and the efficiency bar answer
+"is it healthy now?", which is a different question with a different
+window (see [Time windows](#time-windows) above). The lifetime
+percentage sitting well below the recent one, as it does here, is the
+normal shape after a bad day early in the history: the cumulative mean
+never forgets it.
 
 ## History view
 

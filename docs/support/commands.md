@@ -59,12 +59,22 @@ cargo.
 |---|---|
 | `go` | `test`, `build`, `mod` |
 
+### Build: native (C, C++, Swift, Java)
+
+| Command | What gets parsed |
+|---|---|
+| `make` / `cmake` | warnings and errors kept, compile-command echoes dropped |
+| `gcc` / `g++` / `clang` / `javac` | `error:` / `warning:` lines, grouped |
+| `swift` | `build`, `test`, `run` |
+| `xcodebuild` | among the chattiest output there is: compile echoes, "Write auxiliary files" and dependency checks go, `error:` / `warning:` and the BUILD SUCCEEDED/FAILED sentinel stay |
+
 ### Build: Python
 
 | Command | Subcommands parsed |
 |---|---|
 | `pip` / `pip3` | `install`, `list`, `freeze`, `show` |
 | `uv` | `pip`, `sync`, `add`, `remove`, `run`, `tree` |
+| `poetry` | `install`, `add`, `update`, `remove`, `lock`; `poetry run <tool>` routes to the inner tool's parser |
 | `python3 -m <module>` | routed: `pytest` → test, `mypy` / `ruff` / `pylint` / `flake8` → lint, `unittest` → test |
 
 ### Tests
@@ -178,8 +188,9 @@ neither shape passes through untouched rather than being guessed at.
 | `du` | sorted by size descending, largest 15 kept, tail summarized |
 | `lsof` | one row per process instead of one per descriptor, address kept |
 | `pgrep` | identical command lines merged, `argv[0]` shortened to basename |
-| `env` | sorted, secrets masked |
+| `env` / `printenv` | sorted, secrets masked |
 | `wc` | line/word/byte totals |
+| `ping` | per-packet lines collapsed into one summary |
 | `brew` | `list`, `outdated`, `services` |
 | `curl` | headers + body compression; `curl -I` parses headers only |
 | `wget` | progress output stripped |
@@ -258,6 +269,10 @@ same combined stream the shell would have produced.
 Any command not listed above still flows through trs's generic
 reducer: ANSI strips, whitespace collapsed, repeated lines deduped.
 Typical reduction 30–40% for free with no format-specific knowledge.
+
+`kubectl` and `ollama` are routed and tracked in stats but have no
+dedicated parser yet: they get the generic reducer like anything else,
+and `trs stats --coverage` lists them as gaps.
 
 One class is exempt. Commands whose output is a re-layout of their
 input carry meaning in exactly the runs of spaces and blank lines the

@@ -243,7 +243,9 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         ]},
         stderr: Stderr::Never,
     },
-    CommandSpec { names: &["kubectl"], rewrite: true, known: true,
+    // `known: false` on purpose: no dedicated parser, only the generic
+    // reducer. Claiming otherwise hides a real gap from `stats --coverage`.
+    CommandSpec { names: &["kubectl"], rewrite: true, known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- GitHub CLI ----
@@ -292,7 +294,8 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- LLM tooling ----
-    CommandSpec { names: &["ollama"], rewrite: true, known: true,
+    // Same as kubectl: routed and tracked, but not parsed.
+    CommandSpec { names: &["ollama"], rewrite: true, known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Database clients (parser exists; never in rewrite/known lists) ----
