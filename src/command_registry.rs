@@ -243,7 +243,9 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         ]},
         stderr: Stderr::Never,
     },
-    CommandSpec { names: &["kubectl"], rewrite: true, known: true,
+    // `known: false` on purpose: no dedicated parser, only the generic
+    // reducer. Claiming otherwise hides a real gap from `stats --coverage`.
+    CommandSpec { names: &["kubectl"], rewrite: true, known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- GitHub CLI ----
@@ -251,6 +253,9 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         names: &["gh"], rewrite: true, known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("pr", 0.30), ("issue", 0.30), ("run", 0.30),
+            // Measured over pulls/repos/commits/issues responses: the link
+            // boilerplate is a consistent ~62% of a GitHub REST body.
+            ("api", 0.38),
         ]},
         stderr: Stderr::Never,
     },
@@ -289,7 +294,8 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- LLM tooling ----
-    CommandSpec { names: &["ollama"], rewrite: true, known: true,
+    // Same as kubectl: routed and tracked, but not parsed.
+    CommandSpec { names: &["ollama"], rewrite: true, known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Database clients (parser exists; never in rewrite/known lists) ----

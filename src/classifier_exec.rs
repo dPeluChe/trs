@@ -347,6 +347,14 @@ fn is_verbatim_invocation(cmd: &str, args: &[String]) -> bool {
     if is_verbatim_command(cmd) {
         return true;
     }
+    // `gh api --jq/-q/--template` already returns exactly the fields the
+    // caller asked for. There is nothing to drop, and what comes back can be
+    // a bare scalar whose spacing matters.
+    if cmd == "gh" && args.first().is_some_and(|a| a == "api") {
+        return args
+            .iter()
+            .any(|a| matches!(a.as_str(), "--jq" | "-q" | "--template" | "-t"));
+    }
     if !matches!(cmd, "bash" | "sh" | "zsh" | "dash") {
         return false;
     }

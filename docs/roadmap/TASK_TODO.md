@@ -201,9 +201,10 @@ Ranked `stats --coverage` by `count * avg_in * %low` over 27,696 runs.
   were there.
 - [x] **`du` / `lsof` / `pgrep` parsers** (#147): 73% / 83% / 94% on real
   output.
-- [ ] **`gh api`**: the largest remaining gap by far (229 runs, 10.5 KB
-  average, 45% low). JSON responses, so it needs actual design rather than a
-  row-folding parser. Kept separate on purpose.
+- [x] **`gh api`** (#148): the largest remaining gap (229 runs, 10.5 KB
+  average). It was compressing 0%, not 45%: `gh` emits minified JSON, so the
+  generic whitespace reducer had nothing to take. Dropping GitHub's link
+  boilerplate instead gives 62 to 67%, and the output stays valid JSON.
 
 Left alone deliberately:
 
@@ -212,6 +213,34 @@ Left alone deliberately:
 - `bash -c` / `sh` / `zsh` (534 runs, the largest single bucket): compound
   commands, which the shape gate refuses by design. `bash -c "<one simple
   command>"` already unwraps and routes to the inner parser.
+
+### Doc audit, 2026-08-26
+
+Checked every claim in the docs against the code rather than reading for
+typos. What the comparison turned up:
+
+- [x] `AGENTS.md` claimed **9 agents**; `ai_tool.rs` has 16.
+- [x] `docs/features/stats.md` showed a `trs savings:` summary block from a
+  pre-0.7 format. The real header is `trs Token Savings` with `Period:` /
+  `Total commands:` rows, and the sample predated the 7/30-day windows and
+  the efficiency bar entirely.
+- [x] 13 supported commands were absent from `docs/support/commands.md`:
+  `make`, `cmake`, `gcc`, `g++`, `clang`, `javac`, `swift`, `xcodebuild`
+  (there was no native-build section at all), `poetry`, `ping`, `printenv`,
+  plus `kubectl` / `ollama`.
+- [x] `kubectl` and `ollama` were marked `known: true` with no classifier
+  arm, so `stats --coverage` counted them as handled traffic and never
+  listed them as gaps. Now `known: false`, which is what they are.
+- [x] `AGENTS.md` described the generic fallback without the verbatim
+  exception added in #146.
+
+Still open from this audit:
+
+- [ ] `psql` / `mysql` / `sqlite3` / `mariadb` are `known: false` but DO have
+  a `Db` parser, the mirror of the `kubectl` bug. Left alone here because
+  flipping it changes what `--coverage` reports and deserves its own change
+  rather than riding along in a docs pass.
+- [ ] Parsers for `kubectl` and `ollama`, now that the gap is visible.
 
 ### Verbatim commands: known gap
 

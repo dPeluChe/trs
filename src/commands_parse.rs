@@ -188,6 +188,17 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse `gh api` JSON: drop GitHub's link boilerplate (`*_url`,
+    /// `node_id`, `_links`) and a commit's PGP verification blob. Output
+    /// stays valid JSON.
+    ///
+    /// Example: gh api repos/o/r/pulls/1 | trs parse gh-api
+    GhApi {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse `du` output: sort paths by size descending, keep the largest
     /// 15, and summarize the tail. Agents run `du` to find what is big.
     ///
@@ -444,6 +455,7 @@ impl ParseCommands {
             Self::Brew { .. } => Self::Brew { file: Some(path) },
             Self::PythonTraceback { .. } => Self::PythonTraceback { file: Some(path) },
             Self::Ps { .. } => Self::Ps { file: Some(path) },
+            Self::GhApi { .. } => Self::GhApi { file: Some(path) },
             Self::Du { .. } => Self::Du { file: Some(path) },
             Self::Lsof { .. } => Self::Lsof { file: Some(path) },
             Self::Pgrep { .. } => Self::Pgrep { file: Some(path) },

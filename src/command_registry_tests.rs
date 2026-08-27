@@ -221,8 +221,6 @@ const GOLDEN_KNOWN: &[&str] = &[
     "ruff",
     "pylint",
     "golangci-lint",
-    "ollama",
-    "kubectl",
     "swift",
     "xcodebuild",
     "ping",

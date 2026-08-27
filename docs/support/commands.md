@@ -59,12 +59,22 @@ cargo.
 |---|---|
 | `go` | `test`, `build`, `mod` |
 
+### Build: native (C, C++, Swift, Java)
+
+| Command | What gets parsed |
+|---|---|
+| `make` / `cmake` | warnings and errors kept, compile-command echoes dropped |
+| `gcc` / `g++` / `clang` / `javac` | `error:` / `warning:` lines, grouped |
+| `swift` | `build`, `test`, `run` |
+| `xcodebuild` | among the chattiest output there is: compile echoes, "Write auxiliary files" and dependency checks go, `error:` / `warning:` and the BUILD SUCCEEDED/FAILED sentinel stay |
+
 ### Build: Python
 
 | Command | Subcommands parsed |
 |---|---|
 | `pip` / `pip3` | `install`, `list`, `freeze`, `show` |
 | `uv` | `pip`, `sync`, `add`, `remove`, `run`, `tree` |
+| `poetry` | `install`, `add`, `update`, `remove`, `lock`; `poetry run <tool>` routes to the inner tool's parser |
 | `python3 -m <module>` | routed: `pytest` → test, `mypy` / `ruff` / `pylint` / `flake8` → lint, `unittest` → test |
 
 ### Tests
@@ -125,7 +135,20 @@ falls through to the subprocess path unchanged.
 | Command | Subcommands parsed |
 |---|---|
 | `docker` | `ps`, `logs`, `build` |
-| `gh` | `pr list`, `pr view`, `pr diff`, `pr checks`, `issue list`, `run list`, `run view`, plus `gh api <endpoint>` passthrough tracked in stats |
+| `gh` | `pr list`, `pr view`, `pr diff`, `pr checks`, `issue list`, `run list`, `run view`, `api` |
+
+`gh api` responses arrive minified, so there is no whitespace left to
+squeeze. What trs drops instead is GitHub's link boilerplate: every
+`*_url` key except `html_url`, the API self-link `url`, `node_id`,
+`gravatar_id`, the `_links` block that restates the URLs, and a
+commit's `verification.payload` / `verification.signature` (a PGP blob
+plus a raw copy of fields already present as structured keys;
+`verified` and `reason` stay). Measured 62 to 67% smaller on pulls,
+repos, commits and issues, and the output is still valid JSON.
+
+Two cases pass through untouched: a body that is not JSON, and
+`gh api --jq` / `--template`, where the caller already selected their
+fields. `trs diff gh api <endpoint>` shows exactly which keys went.
 
 `gh pr view` extracts title, state, author, url, labels, and a
 3-line body preview. `gh pr diff` routes to the git-diff parser
@@ -165,8 +188,9 @@ neither shape passes through untouched rather than being guessed at.
 | `du` | sorted by size descending, largest 15 kept, tail summarized |
 | `lsof` | one row per process instead of one per descriptor, address kept |
 | `pgrep` | identical command lines merged, `argv[0]` shortened to basename |
-| `env` | sorted, secrets masked |
+| `env` / `printenv` | sorted, secrets masked |
 | `wc` | line/word/byte totals |
+| `ping` | per-packet lines collapsed into one summary |
 | `brew` | `list`, `outdated`, `services` |
 | `curl` | headers + body compression; `curl -I` parses headers only |
 | `wget` | progress output stripped |
@@ -245,6 +269,10 @@ same combined stream the shell would have produced.
 Any command not listed above still flows through trs's generic
 reducer: ANSI strips, whitespace collapsed, repeated lines deduped.
 Typical reduction 30–40% for free with no format-specific knowledge.
+
+`kubectl` and `ollama` are routed and tracked in stats but have no
+dedicated parser yet: they get the generic reducer like anything else,
+and `trs stats --coverage` lists them as gaps.
 
 One class is exempt. Commands whose output is a re-layout of their
 input carry meaning in exactly the runs of spaces and blank lines the
