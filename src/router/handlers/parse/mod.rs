@@ -6,6 +6,8 @@ pub(crate) mod aws;
 pub(crate) mod brew;
 pub(crate) mod bun_format;
 pub(crate) mod bun_parse;
+pub(crate) mod bun_summary;
+pub(crate) mod extra_build;
 pub(crate) mod extra_cargo_test;
 pub(crate) mod extra_db;
 pub(crate) mod extra_download;
@@ -36,10 +38,13 @@ pub(crate) mod logs_format;
 pub(crate) mod logs_helpers;
 pub(crate) mod logs_json;
 pub(crate) mod ls;
+pub(crate) mod ls_format;
 pub(crate) mod npm_format;
 pub(crate) mod npm_parse;
+pub(crate) mod ollama;
 pub(crate) mod pnpm_format;
 pub(crate) mod pnpm_parse;
+pub(crate) mod pnpm_summary;
 pub(crate) mod ps;
 pub(crate) mod pytest_format;
 pub(crate) mod pytest_parse;
@@ -138,6 +143,7 @@ impl CommandHandler for ParseHandler {
             ParseCommands::PythonTraceback { file } => Self::handle_python_traceback(file, ctx),
             ParseCommands::Ps { file } => Self::handle_ps(file, ctx),
             ParseCommands::GhApi { file } => Self::handle_gh_api(file, ctx),
+            ParseCommands::Ollama { file } => Self::handle_ollama(file, ctx),
             ParseCommands::Du { file } => Self::handle_du(file, ctx),
             ParseCommands::Lsof { file } => Self::handle_lsof(file, ctx),
             ParseCommands::Pgrep { file } => Self::handle_pgrep(file, ctx),

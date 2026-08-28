@@ -188,6 +188,16 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse `ollama` output: `list` / `ps` tables lose the ID column and
+    /// the padding; `pull` folds its redrawn progress into the layer list.
+    ///
+    /// Example: ollama list | trs parse ollama
+    Ollama {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse `gh api` JSON: drop GitHub's link boilerplate (`*_url`,
     /// `node_id`, `_links`) and a commit's PGP verification blob. Output
     /// stays valid JSON.
@@ -456,6 +466,7 @@ impl ParseCommands {
             Self::PythonTraceback { .. } => Self::PythonTraceback { file: Some(path) },
             Self::Ps { .. } => Self::Ps { file: Some(path) },
             Self::GhApi { .. } => Self::GhApi { file: Some(path) },
+            Self::Ollama { .. } => Self::Ollama { file: Some(path) },
             Self::Du { .. } => Self::Du { file: Some(path) },
             Self::Lsof { .. } => Self::Lsof { file: Some(path) },
             Self::Pgrep { .. } => Self::Pgrep { file: Some(path) },

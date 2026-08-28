@@ -295,9 +295,12 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- LLM tooling ----
-    // Same as kubectl: routed and tracked, but not parsed.
-    CommandSpec { names: &["ollama"], rewrite: true, known: false,
-        keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
+    // `list`/`ps`/`pull` are parsed; `run`/`show`/`serve` fall to generic.
+    CommandSpec { names: &["ollama"], rewrite: true, known: true,
+        keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
+            ("list", 0.45), ("ls", 0.45), ("ps", 0.45), ("pull", 0.15),
+        ]},
+        stderr: Stderr::Never },
 
     // ---- Database clients: routed to the Db parser, so `known: true`.
     //      `rewrite: false` is separate and stays: these are reached through

@@ -20,12 +20,14 @@ mod format;
 mod format_html;
 mod format_html_util;
 mod format_tree;
+mod format_util;
 mod meta;
 mod mod_html;
 mod ollama;
 mod purpose;
 mod remote;
 mod resolve;
+mod signatures;
 mod store;
 
 pub use remote::{is_remote_ref, resolve_remote, TmpMode};

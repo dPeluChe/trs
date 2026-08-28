@@ -329,6 +329,13 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         // Network diagnostics
         "ping" => Some(ParseCommands::Ping { file: None }),
 
+        // `ollama list`/`ps` are padded tables, `pull` is redrawn progress.
+        // Everything else (run/show/serve) is model text: leave it alone.
+        "ollama" => match subcmd {
+            "list" | "ls" | "ps" | "pull" => Some(ParseCommands::Ollama { file: None }),
+            _ => None,
+        },
+
         // Process list — `ps aux` / `ps -ef` are the common forms.
         // Other ps invocations (e.g. `ps -o pid,cmd`) also route here;
         // the parser passes through when the header doesn't match.

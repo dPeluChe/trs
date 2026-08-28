@@ -243,6 +243,8 @@ const GOLDEN_KNOWN: &[&str] = &[
     // the db clients route to the Db parser. They are not in the explicit
     // rewrite set, which is a separate flag.
     "journalctl",
+    // `list`/`ps`/`pull` are parsed; the rest of ollama falls to generic.
+    "ollama",
     "psql",
     "mysql",
     "sqlite3",

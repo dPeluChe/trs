@@ -47,6 +47,8 @@ mod help;
 mod help_text;
 mod help_text_more;
 mod ingest;
+mod main_args;
+use main_args::is_external_fast_path;
 mod init;
 mod init_collision;
 mod init_install;
@@ -54,8 +56,10 @@ mod init_install_plugins;
 mod init_show;
 mod init_templates;
 mod init_templates_plugins;
+mod main_ingest;
 mod output_saver;
 mod output_saver_core;
+mod output_saver_write;
 mod parse_out;
 mod path_display;
 #[allow(dead_code)]
@@ -70,6 +74,7 @@ mod schema;
 mod text_util;
 pub(crate) mod tracker;
 mod uninstall;
+mod uninstall_scrub;
 mod upgrade;
 
 #[allow(unused_imports)]
@@ -274,101 +279,7 @@ fn run() {
         }) => {
             diff::run_diff(command, args, *json);
         }
-        Some(Commands::Ingest {
-            path,
-            list,
-            read,
-            level,
-            budget,
-            changed,
-            since,
-            exclude,
-            output,
-            ollama,
-            deps,
-            since_last,
-            fresh,
-            force,
-            print,
-            warn_at,
-            symbols,
-            html,
-            max_loc,
-            tmp,
-        }) => {
-            if *list {
-                ingest::list_ingests();
-            } else if let Some(read_name) = read {
-                let project_path = std::path::Path::new(path);
-                ingest::read_digest(read_name.as_deref(), project_path);
-            } else {
-                // Resolve remote inputs (URLs / owner/repo shorthands) to a
-                // local path. The guard keeps ephemeral clones alive until
-                // run_ingest finishes.
-                let remote_source = if ingest::is_remote_ref(path) {
-                    let mode = if *tmp {
-                        ingest::TmpMode::Force
-                    } else {
-                        ingest::TmpMode::Auto
-                    };
-                    match ingest::resolve_remote(path, mode) {
-                        Ok(src) => Some(src),
-                        Err(e) => {
-                            eprintln!("trs ingest: {}", e);
-                            std::process::exit(1);
-                        }
-                    }
-                } else {
-                    None
-                };
-                let input_path: std::path::PathBuf = match &remote_source {
-                    Some(src) => src.path.clone(),
-                    None => std::path::PathBuf::from(path),
-                };
-                let root = match ingest::resolve_project_root(&input_path) {
-                    Ok(r) => r,
-                    Err(e) => {
-                        eprintln!("trs ingest: {}", e);
-                        std::process::exit(1);
-                    }
-                };
-                let budget_tokens = budget.as_ref().map(|b| parse_token_budget(b));
-                let agent_mode = ctx.format == OutputFormat::Agent;
-                // Agent-first ergonomics: `--agent` emits the digest to stdout
-                // (implicit --print) instead of just the saved path — an agent
-                // asked for the content, not a file to re-read. Skipped when the
-                // caller explicitly writes a file with `-o`.
-                let print_content = *print || (agent_mode && output.is_none());
-                let config = ingest::IngestConfig {
-                    root,
-                    level: ingest::IngestLevel::from_str(level),
-                    budget_tokens,
-                    changed_only: *changed,
-                    since: since.clone(),
-                    exclude: exclude.clone(),
-                    output_file: output.as_ref().map(std::path::PathBuf::from),
-                    ollama_model: ollama.clone(),
-                    deps_only: *deps,
-                    since_last: *since_last,
-                    fresh_check: *fresh,
-                    force: *force,
-                    print_content,
-                    warn_at_tokens: {
-                        let n = parse_token_budget(warn_at);
-                        if n == 0 {
-                            None
-                        } else {
-                            Some(n)
-                        }
-                    },
-                    symbols_index: *symbols,
-                    html: *html,
-                    max_loc: max_loc.unwrap_or(500),
-                    agent_mode,
-                };
-                ingest::run_ingest(&config);
-            }
-        }
+        Some(cmd @ Commands::Ingest { .. }) => main_ingest::run(cmd, &ctx),
         Some(Commands::History {
             prune,
             older_than,
@@ -529,70 +440,6 @@ fn run() {
                 }
             }
         }
-    }
-}
-
-/// Check if args[1] is an external command (not a trs subcommand or flag).
-/// This allows bypassing the full clap parser for the hot path.
-fn is_external_fast_path(args: &[String]) -> bool {
-    if args.len() < 2 {
-        return false;
-    }
-    let first = args[1].as_str();
-    // Skip if it's a flag
-    if first.starts_with('-') {
-        return false;
-    }
-    // Known trs subcommands (and aliases) that must go through clap
-    !matches!(
-        first,
-        "parse"
-            | "search"
-            | "replace"
-            | "run"
-            | "tail"
-            | "clean"
-            | "trim"
-            | "html2md"
-            | "txt2md"
-            | "is-clean"
-            | "clean?"
-            | "repo-clean"
-            | "read"
-            | "json"
-            | "err"
-            | "rewrite"
-            | "discover"
-            | "init"
-            | "uninstall"
-            | "doctor"
-            | "benchmark"
-            | "diff"
-            | "ingest"
-            | "audit-docs"
-            | "output-saver"
-            | "upgrade"
-            | "debug-info"
-            | "history"
-            | "stats"
-            | "raw"
-            | "help"
-            | "--help"
-            | "-h"
-            | "--version"
-            | "-V"
-    )
-}
-
-/// Parse token budget string: "128k" -> 128000, "64000" -> 64000
-fn parse_token_budget(s: &str) -> usize {
-    let s = s.trim().to_lowercase();
-    if let Some(num) = s.strip_suffix('k') {
-        num.parse::<f64>().unwrap_or(0.0) as usize * 1000
-    } else if let Some(num) = s.strip_suffix('m') {
-        num.parse::<f64>().unwrap_or(0.0) as usize * 1_000_000
-    } else {
-        s.parse::<usize>().unwrap_or(128_000)
     }
 }
 
