@@ -73,9 +73,18 @@ $platform = "win32-$arch"
 if ($env:TRS_VERSION) {
     $version = $env:TRS_VERSION
 } else {
-    $releaseInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest"
-    $version = $releaseInfo.tag_name
-    if (-not $version) { Write-Err "could not resolve latest release (set `$env:TRS_VERSION)" }
+    # Unauthenticated callers get 60 API requests an hour per IP, and
+    # Invoke-RestMethod throws on the 403 rather than returning empty, so the
+    # user saw a PowerShell stack trace instead of our message. Catch it.
+    $version = $null
+    try {
+        $version = (Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest").tag_name
+    } catch {
+        $version = $null
+    }
+    if (-not $version) {
+        Write-Err "could not resolve the latest release. Retry, or pin one from https://github.com/$Repo/releases with `$env:TRS_VERSION='vX.Y.Z'"
+    }
 }
 
 $asset = "trs-windows-x64.exe"  # only x64 builds today; adjust when arm64 is published

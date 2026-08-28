@@ -240,6 +240,32 @@ filed as deferred. Nothing left open from that pass.
   where it used to be wrapped. Reachable only with tabs as argument
   separators, which agents do not emit.
 
+### Installer and instruction-file hygiene (2026-08-28)
+
+Both found while upgrading to v0.8.0 on a real machine.
+
+- [x] **`install.sh` resolved the release from one source.** The GitHub API
+  gives unauthenticated callers 60 requests an hour per IP and returns nothing
+  in the minute between a tag landing and its release publishing, so
+  `trs upgrade` failed once and worked on the retry. It now falls back to the
+  `/releases/latest` redirect, which costs no API quota. The error hint also
+  told users to `set TRS_VERSION=v0.5.2`, a version from long ago.
+- [x] **`install.ps1` threw instead of erroring.** `Invoke-RestMethod` raises
+  on a 403, so a rate-limited Windows user got a PowerShell stack trace rather
+  than trs's message. Wrapped, and the stale hint fixed.
+- [ ] **`install.ps1` has no redirect fallback yet.** Same fix as the shell
+  installer, not written: there is no PowerShell on this machine to test it,
+  and the property that holds the final redirect URI differs between Windows
+  PowerShell 5.1 and PowerShell 7. Guessing in the Windows install path is
+  not worth the four lines it saves.
+- [ ] **`trs init --force` cannot repair a legacy unsentineled block.**
+  `write_agents_md_block` returns "already configured" on any trs marker, so
+  a `~/.codex/AGENTS.md` carrying a pre-sentinel copy keeps it forever: found
+  one costing 2189 bytes on every Codex session. It cannot recur (the marker
+  list now includes the sentinel) but it does not self-heal either.
+  `trs audit-docs` does flag it, though it under-reports the size. A
+  `trs doctor` check would be the right home, since this is install health.
+
 ### Verbatim commands: known gap
 
 - [ ] A compound shell script (`bash -c "cd x && awk '{print}' f.py"`) still
