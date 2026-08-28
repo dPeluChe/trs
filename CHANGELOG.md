@@ -5,6 +5,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.0] - 2026-08-28
+
+### Features
+
+- **output-saver:** No em dashes, no slop, and stop shipping the tell (#143)
+- **parsers:** Compress du, lsof and pgrep (#147)
+- **parsers:** Gh api boilerplate, plus a full documentation audit (#148)
+
+### Bug Fixes
+
+- **compress:** Never compress commands whose output is their layout (#146)
+- **registry:** Stop the coverage report lying in both directions (#149)
+- **compress:** Sed transform forms were still corrupting output (#152)
+
+### Refactor
+
+- Split ten oversized files, and parse ollama (#150)
+
 ## [0.7.5] - 2026-08-13
 
 ### Features
