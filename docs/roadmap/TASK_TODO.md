@@ -258,10 +258,24 @@ fragment is only as good as the context it lands in.
   be located reliably and a bad cut eats the user's own instructions, so
   install reports it and points at `trs audit-docs`. A `trs doctor` check
   would be the better home, since this is install health.
-- [ ] **`install_rules` and `install_antigravity_rules` have the same
-  early return** and were not changed here. Their targets happened to be
-  clean on the machine audited, so the fix is unverified against a real stale
-  file for those two; worth doing with a reproduction rather than blind.
+- [x] **`install_antigravity_rules` had the same bug and it WAS reproducible.**
+  My reason for deferring it ("unverified without a real stale file") did not
+  survive review: the sentinel already existed, so a stale file was three
+  lines to make, and the fuzzy marker check ran first and short-circuited past
+  the comparison. Fixed and tested.
+- [ ] **`install_rules` still has the non-refreshing early return.** Its two
+  templates carry no sentinels, so there is nothing to refresh until they get
+  some. Correcting my earlier note: I claimed those targets are "files trs
+  creates whole", which is wrong, line 305 appends to an existing file
+  preserving user prose. I could not get install to take that branch on a
+  pre-existing `.windsurfrules` (file unchanged, no marker written), so the
+  append path and the whole-file delete in `delete_rules_file` may or may not
+  meet. Needs a reproduction before anyone acts on it.
+- [ ] **`trs doctor` should own the stale/legacy rules-block check.**
+  `check_output_saver_installed` already does exactly this for the other
+  block: walks every agent, compares against canonical, warns with a hint. A
+  sibling for rules blocks fits beside it. The current install-time message
+  is the wrong place for something a user wants to ask about on demand.
 
 Not a finding: four of the five inline targets (`opencode`, `kilo`, `droid`,
 `devin`) are files trs creates whole, so there is no foreign content to

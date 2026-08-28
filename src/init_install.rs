@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use crate::init::{file_has_any_trs_marker, has_trs_marker, home_dir, HookSpec, InstallOpts};
 use crate::init_collision;
 use crate::init_templates::{
-    ANTIGRAVITY_RULES_SECTION, CODEX_AGENTS_SECTION, CODEX_AGENTS_SENTINEL_END,
-    CODEX_AGENTS_SENTINEL_START, CODEX_HOOKS,
+    ANTIGRAVITY_RULES_SECTION, ANTIGRAVITY_RULES_SENTINEL_END, ANTIGRAVITY_RULES_SENTINEL_START,
+    CODEX_AGENTS_SECTION, CODEX_AGENTS_SENTINEL_END, CODEX_AGENTS_SENTINEL_START, CODEX_HOOKS,
 };
 
 /// Install via the data-driven `HookSpec`. JSON targets merge; non-JSON
@@ -80,6 +80,10 @@ pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> 
     Ok(rules_msg)
 }
 
+/// The heading a pre-sentinel trs rules block opens with. Specific enough to
+/// tell an old block apart from a file that merely mentions trs.
+const LEGACY_RULES_HEADING: &str = "## Terminal Output Optimization";
+
 /// Swap the text between two sentinels for the current template, leaving
 /// every byte outside them exactly as it was.
 ///
@@ -91,8 +95,24 @@ pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> 
 ///
 /// Returns None when there is no sentinel pair to replace.
 fn refresh_sentinel_block(content: &str, start: &str, end: &str, block: &str) -> Option<String> {
+    // Exactly one of each, or refuse. `find` would otherwise pair the FIRST
+    // start with the FIRST end after it without checking they belong to the
+    // same block, and replace everything between. A user who documents trs in
+    // their own rules file (a fenced example containing the marker) would have
+    // every line between that example and the real block silently deleted.
+    //
+    // Two well-formed blocks also land here: that is what the backticked-marker
+    // bug produced in the field, and refreshing only the first while leaving
+    // the second stale is a half-fix that reports success. Declining says so.
+    if content.matches(start).count() != 1 || content.matches(end).count() != 1 {
+        return None;
+    }
     let s = content.find(start)?;
     let e = content[s..].find(end).map(|pos| s + pos + end.len())?;
+    // A start after its end means the pair is not a block; leave it alone.
+    if e <= s {
+        return None;
+    }
     Some(format!("{}{}{}", &content[..s], block, &content[e..]))
 }
 
@@ -127,14 +147,23 @@ fn write_agents_md_block(path: &Path, opts: InstallOpts) -> Result<String, Strin
             return Ok(format!("{} (refreshed)", path.display()));
         }
 
-        if file_has_any_trs_marker(&content) {
-            // A trs block from before the sentinels existed. Its end cannot be
-            // located reliably, so say so rather than guess at a delete: a bad
-            // cut here eats the user's own instructions.
+        // A block from before the sentinels existed, recognised by the
+        // section's own heading rather than by "is trs mentioned anywhere".
+        // The crate-wide marker also matches `trs rewrite`, which any AGENTS.md
+        // that merely documents trs contains, including this repo's own: that
+        // turned a vague message into a confident wrong diagnosis.
+        if content.contains(LEGACY_RULES_HEADING) {
+            // Its end cannot be located reliably, so report rather than guess
+            // at a delete: a bad cut here eats the user's own instructions.
             return Ok(format!(
-                "{} (already configured; legacy block without sentinels, run `trs audit-docs` to review it)",
-                path.display()
+                "{} (already configured; a trs rules block from before the sentinels is in there, \
+                 look for \"{}\" and delete through the end of that section)",
+                path.display(),
+                LEGACY_RULES_HEADING
             ));
+        }
+        if file_has_any_trs_marker(&content) {
+            return Ok(format!("{} (already configured)", path.display()));
         }
         if opts.dry_run {
             return Ok(format!("{} (would append trs rules block)", path.display()));
@@ -188,9 +217,30 @@ pub(crate) fn install_antigravity_rules(opts: InstallOpts) -> Result<String, Str
 
     if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        if file_has_any_trs_marker(&content)
-            || content.contains(crate::init_templates::ANTIGRAVITY_RULES_SENTINEL_START)
-        {
+
+        // Same refresh-on-drift the codex block gets. The fuzzy marker used to
+        // be checked FIRST here, so a file with a perfectly good sentinel pair
+        // never reached the comparison and its block stayed frozen forever.
+        if let Some(updated) = refresh_sentinel_block(
+            &content,
+            ANTIGRAVITY_RULES_SENTINEL_START,
+            ANTIGRAVITY_RULES_SENTINEL_END,
+            ANTIGRAVITY_RULES_SECTION.trim(),
+        ) {
+            if updated == content {
+                return Ok(format!("{} (already configured)", path.display()));
+            }
+            if opts.dry_run {
+                return Ok(format!(
+                    "{} (would refresh trs rules block)",
+                    path.display()
+                ));
+            }
+            fs::write(&path, updated).map_err(|e| e.to_string())?;
+            return Ok(format!("{} (refreshed)", path.display()));
+        }
+
+        if file_has_any_trs_marker(&content) {
             return Ok(format!("{} (already configured)", path.display()));
         }
         if opts.dry_run {

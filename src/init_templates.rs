@@ -198,11 +198,8 @@ pub(crate) const CURSOR_HOOKS: &str = r#"{
 trs_sentinels!(
     CODEX_AGENTS_SENTINEL_START,
     CODEX_AGENTS_SENTINEL_END,
-    "codex-rules"
-);
-
-pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
-    "<!-- trs:codex-rules:start v1 -->\n",
+    CODEX_AGENTS_SECTION,
+    "codex-rules",
     r#"
 ## Terminal Output Optimization
 
@@ -247,8 +244,6 @@ already have definitions in the source tree, flagging them as "remove and
 link" vs "extract to a new file".
 
 See https://github.com/dPeluChe/trs for details.
-
-<!-- trs:codex-rules:end -->
 "#
 );
 
@@ -258,20 +253,8 @@ See https://github.com/dPeluChe/trs for details.
 trs_sentinels!(
     ANTIGRAVITY_RULES_SENTINEL_START,
     ANTIGRAVITY_RULES_SENTINEL_END,
-    "antigravity-rules"
-);
-
-/// Rules block appended to `~/.gemini/GEMINI.md` for both the Antigravity
-/// IDE and the Antigravity CLI (`agy`). Both products read this file at
-/// session start via the Gemini-style `@import` resolution.
-///
-/// The block is small on purpose — Antigravity sessions already consume a
-/// lot of context. We rely on the existing `@trs.md` import for the
-/// full output-saver / response shape rules; this block only documents
-/// the manual-prefix recommendation and explains why automatic
-/// rewriting is not active (jetski PreTool hooks aren't user-config).
-pub(crate) const ANTIGRAVITY_RULES_SECTION: &str = concat!(
-    "<!-- trs:antigravity-rules:start v1 -->\n",
+    ANTIGRAVITY_RULES_SECTION,
+    "antigravity-rules",
     r#"
 ## Terminal Output Optimization (Antigravity IDE + agy CLI)
 
@@ -299,8 +282,6 @@ parser still get ANSI stripping + whitespace collapse (~30-40% "free").
 
 See `docs/development/antigravity-hooks-research.md` in the trs repo
 for the investigation that led to this rules-only integration.
-
-<!-- trs:antigravity-rules:end -->
 "#
 );
 

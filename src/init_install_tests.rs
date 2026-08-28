@@ -84,6 +84,46 @@ fn refresh_sentinel_block_leaves_everything_outside_untouched() {
 }
 
 #[test]
+fn refresh_sentinel_block_refuses_to_pair_markers_from_different_blocks() {
+    // A user documenting trs in their own rules file has the start marker
+    // inside a fenced example. Pairing that first start with the real block's
+    // end deletes everything between, which here is the user's own rules. This
+    // was live and reported "(refreshed)" while doing it.
+    let content = "\
+```markdown
+<!-- s -->
+example
+```
+
+## MY CRITICAL RULES
+1. never rm -rf
+
+<!-- s -->
+stale
+<!-- e -->
+";
+    assert_eq!(
+        refresh_sentinel_block(
+            content,
+            "<!-- s -->",
+            "<!-- e -->",
+            "<!-- s -->\nnew\n<!-- e -->"
+        ),
+        None,
+        "two starts must decline, not splice across them"
+    );
+}
+
+#[test]
+fn refresh_sentinel_block_declines_two_well_formed_blocks() {
+    // What the backticked-marker bug produced in the field. Refreshing only
+    // the first and leaving the second stale is a half-fix that reports
+    // success; declining says so instead.
+    let content = "<!-- s -->\none\n<!-- e -->\n\n<!-- s -->\ntwo\n<!-- e -->\n";
+    assert!(refresh_sentinel_block(content, "<!-- s -->", "<!-- e -->", "x").is_none());
+}
+
+#[test]
 fn refresh_sentinel_block_declines_without_a_pair() {
     assert!(refresh_sentinel_block("no sentinels here", "<!-- s -->", "<!-- e -->", "x").is_none());
     // Opening sentinel but no close: replacing would swallow the rest of the
