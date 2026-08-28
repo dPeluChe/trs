@@ -234,13 +234,28 @@ typos. What the comparison turned up:
 - [x] `AGENTS.md` described the generic fallback without the verbatim
   exception added in #146.
 
-Still open from this audit:
+Resolved in the follow-up (#149):
 
-- [ ] `psql` / `mysql` / `sqlite3` / `mariadb` are `known: false` but DO have
-  a `Db` parser, the mirror of the `kubectl` bug. Left alone here because
-  flipping it changes what `--coverage` reports and deserves its own change
-  rather than riding along in a docs pass.
+- [x] `psql` / `mysql` / `sqlite3` / `mariadb` and `journalctl` were
+  `known: false` while their parsers (`Db`, `Logs`) run, the mirror of the
+  `kubectl` case. `is_known_binary` feeds only `stats --coverage`, so the
+  report was sending someone to write parsers that already exist. Both
+  directions are now honest, and the DB clients are documented for the first
+  time.
+- [x] `trs init --help` listed 6 of 16 agents, so ten integrations were
+  invisible to anyone reading the help. The list lives in a clap doc comment
+  that cannot call `AiTool::all_names()`, so `tests/cli_init_help_lists_
+  every_agent.rs` now pins the two together.
+
+Still open:
+
 - [ ] Parsers for `kubectl` and `ollama`, now that the gap is visible.
+- [ ] **11 files over the 500-line limit** in `CONTRIBUTING.md`, all
+  pre-existing: `commands.rs` 646, `main.rs` 601, `uninstall.rs` 556,
+  `handlers/common.rs` 545, `parse/extra_system.rs` 523, `parse/ls.rs` 517,
+  `ingest/format.rs` 517, `output_saver_core.rs` 515, `parse/bun_parse.rs`
+  513, `parse/pnpm_parse.rs` 503, `ingest/collect_compress.rs` 502. Nothing
+  added this cycle crossed the line; splitting these is its own cycle.
 
 ### Verbatim commands: known gap
 

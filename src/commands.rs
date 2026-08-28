@@ -60,9 +60,9 @@ pub enum Commands {
         since: usize,
     },
 
-    /// Install hooks for AI coding tools (claude, gemini, cursor, codex, opencode, kilo)
+    /// Install hooks for AI coding tools (claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, zed, devin-cli)
     Init {
-        /// Tool to configure (claude, gemini, cursor, codex, opencode, kilo)
+        /// Tool to configure (claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, zed, devin-cli)
         tool: Option<String>,
 
         /// Install globally (user-level) instead of project-level
@@ -530,8 +530,7 @@ pub enum Commands {
         /// it. The summary keeps lifetime totals unless this is passed.
         #[arg(long)]
         days: Option<u64>,
-        /// Break down totals by AI agent (claude, gemini, cursor,
-        /// opencode, kilo). Detected via the TRS_AGENT env var
+        /// Break down totals by AI agent. Detected via the TRS_AGENT env var
         /// injected by hook/plugin templates; rules-based agents
         /// (codex, antigravity, devin) show as "(untagged)".
         #[arg(long = "by-agent")]

@@ -180,6 +180,16 @@ generic error markers miss it and it is matched explicitly. JSON bodies
 are forwarded to the same compressor `gh api` uses; output that matches
 neither shape passes through untouched rather than being guessed at.
 
+### Database clients
+
+| Command | What gets parsed |
+|---|---|
+| `psql` / `mysql` / `mariadb` / `sqlite3` | the result grid: column headers, rows and the `(N rows)` footer, with the box-drawing borders dropped |
+
+Reached through the generic catch-all rather than the explicit rewrite
+set, which is why `trs stats --coverage` lists them under handled
+traffic but `trs init` does not name them.
+
 ### System & network
 
 | Command | What gets parsed |
