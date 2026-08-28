@@ -210,12 +210,28 @@ filed as deferred. Nothing left open from that pass.
 
 ### Found by the second quality pass, not fixed here (2026-08-28)
 
-- [ ] **`trs du` on a small input returns raw output while `--stats` reports
-  `Reducer: du` with the compressed byte count.** The parser runs and produces
-  the sorted view; something on the exec path emits the raw bytes anyway.
-  Verified identical on `main`, so it predates this cycle, and `trs parse du`
-  and larger inputs are both correct. Worth its own investigation rather than
-  a rushed fix before a release.
+- [ ] **`--stats` reports the parser's byte count even when the exec path
+  discarded it.** Root-caused: `classifier_exec.rs` has its own never-worse
+  guard (`parsed.len() < stdout_ref.len()`), and when it falls back to raw,
+  the parser has *already* printed its `CommandStats`. Those go to stderr via
+  `eprintln!`, so they escape `parse_out::capture` and reach the user showing
+  what the parser *would* have emitted. Measured: reports 139 bytes, emits 93.
+
+  Scope is narrower than it looks, and worth stating exactly: the **tracker is
+  correct** (`log_execution` receives `out_bytes`, which the fallback sets to
+  the raw length), so `trs stats` and every savings number are accurate. Only
+  the per-invocation `--stats` diagnostic is wrong, and only in the fallback
+  case. Confirmed `--stats` does NOT change the compression decision.
+
+  The fix is not a one-liner: the exec layer would have to suppress the
+  parser's stats and print its own, but it does not know the parser's reducer
+  name. Deferred on that basis, not on risk appetite.
+
+- [ ] **`trs du` / `trs pgrep` fall back to raw on very small inputs.** Same
+  exec guard, and here it is arguably right: for a 6-row `du` the compressed
+  form is genuinely longer (+4 bytes a row) and the agent sees every row
+  either way. Confirmed working from ~100 rows up (`du -ah src`, 251 rows,
+  sorts correctly). Listed so nobody re-reports it as a parser bug.
 - [ ] **The `-c` detector matches any token starting with `-` and ending in
   `c`**, so `bash --norc -c 'sort x'` consumes `--norc` as the flag and misses
   the inner `sort`. Pre-existing, and it now applies on the hook path too.
