@@ -105,3 +105,32 @@ fn the_trs_marker_catches_the_backticked_spelling() {
     ));
     assert!(!file_has_any_trs_marker("nothing to do with the tool"));
 }
+
+#[test]
+fn sentinel_markers_keep_their_exact_wire_form() {
+    // These strings are matched against files already installed on people's
+    // machines. Deriving them from a macro is fine; changing a byte is not,
+    // because every existing block stops being recognised and gets a second
+    // copy appended next to it.
+    use crate::init_templates::{
+        ANTIGRAVITY_RULES_SENTINEL_END, ANTIGRAVITY_RULES_SENTINEL_START,
+        CODEX_AGENTS_SENTINEL_END, CODEX_AGENTS_SENTINEL_START,
+    };
+    use crate::output_saver::{SENTINEL_END, SENTINEL_START};
+
+    assert_eq!(
+        CODEX_AGENTS_SENTINEL_START,
+        "<!-- trs:codex-rules:start v1 -->"
+    );
+    assert_eq!(CODEX_AGENTS_SENTINEL_END, "<!-- trs:codex-rules:end -->");
+    assert_eq!(
+        ANTIGRAVITY_RULES_SENTINEL_START,
+        "<!-- trs:antigravity-rules:start v1 -->"
+    );
+    assert_eq!(
+        ANTIGRAVITY_RULES_SENTINEL_END,
+        "<!-- trs:antigravity-rules:end -->"
+    );
+    assert_eq!(SENTINEL_START, "<!-- trs:output-saver:start v1 -->");
+    assert_eq!(SENTINEL_END, "<!-- trs:output-saver:end -->");
+}

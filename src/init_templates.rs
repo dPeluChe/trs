@@ -10,6 +10,7 @@
 //! every install target.
 
 use crate::output_saver_block_literal;
+use crate::sentinel::trs_sentinels;
 
 // Plugin/extension templates (TS/Python) live in their own module; re-export
 // so existing callers keep importing from init_templates.
@@ -194,8 +195,11 @@ pub(crate) const CURSOR_HOOKS: &str = r#"{
 /// prose uses backtick-wrapped `` `trs` `` which doesn't match the plain
 /// `trs (Token-Reducing Shell)` marker — without this sentinel re-runs
 /// duplicate the section.
-pub(crate) const CODEX_AGENTS_SENTINEL_START: &str = "<!-- trs:codex-rules:start v1 -->";
-pub(crate) const CODEX_AGENTS_SENTINEL_END: &str = "<!-- trs:codex-rules:end -->";
+trs_sentinels!(
+    CODEX_AGENTS_SENTINEL_START,
+    CODEX_AGENTS_SENTINEL_END,
+    "codex-rules"
+);
 
 pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
     "<!-- trs:codex-rules:start v1 -->\n",
@@ -251,8 +255,11 @@ See https://github.com/dPeluChe/trs for details.
 /// Sentinel that wraps the Antigravity rules block in `~/.gemini/GEMINI.md`.
 /// Lets re-runs and uninstall identify the block without false positives
 /// from prose mentions of `trs`.
-pub(crate) const ANTIGRAVITY_RULES_SENTINEL_START: &str = "<!-- trs:antigravity-rules:start v1 -->";
-pub(crate) const ANTIGRAVITY_RULES_SENTINEL_END: &str = "<!-- trs:antigravity-rules:end -->";
+trs_sentinels!(
+    ANTIGRAVITY_RULES_SENTINEL_START,
+    ANTIGRAVITY_RULES_SENTINEL_END,
+    "antigravity-rules"
+);
 
 /// Rules block appended to `~/.gemini/GEMINI.md` for both the Antigravity
 /// IDE and the Antigravity CLI (`agy`). Both products read this file at

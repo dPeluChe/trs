@@ -71,6 +71,7 @@ mod rewrite_decide;
 mod router;
 #[allow(dead_code)]
 mod schema;
+mod sentinel;
 mod text_util;
 pub(crate) mod tracker;
 mod uninstall;
