@@ -7,11 +7,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::init_collision;
-use crate::init_install::{
-    install_antigravity_rules, install_codex_agents, install_from_spec, install_rules,
-    install_zed_agents,
-};
+use crate::init_install::install_from_spec;
 use crate::init_install_plugins::{install_hermes_plugin, install_openclaw_plugin};
+use crate::init_install_rules::{
+    install_antigravity_rules, install_codex_agents, install_rules, install_zed_agents,
+};
 use crate::init_templates::{DEVIN_RULE, WINDSURF_RULES};
 
 /// Options for an install run. `global` picks home-dir vs project-local;
