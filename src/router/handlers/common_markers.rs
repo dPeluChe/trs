@@ -3,6 +3,15 @@
 //! redacted. Split out of `common.rs`, where it was more than a third of
 //! the file and unrelated to the context/stats types around it.
 
+/// Marker strings that flag a line as "this is an error". Covers English plus
+/// the locales most likely to surface in tool output (rustc/cargo, npm, pip,
+/// system utilities localized to the user's env).
+///
+/// Match is case-insensitive on an already-lowercased haystack — callers are
+/// expected to `.to_ascii_lowercase()` their line first (or use the helpers
+/// below which do it for them).
+///
+/// Non-ASCII scripts (Chinese/Japanese/Russian) keep their native casing
 /// because to_ascii_lowercase is a no-op on them.
 const ERROR_MARKERS: &[&str] = &[
     // English (canonical)

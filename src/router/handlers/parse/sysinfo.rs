@@ -14,7 +14,7 @@
 //! match, so an unusual flag combination degrades to raw rather than to a
 //! confidently wrong summary.
 
-use super::super::common::{CommandContext, CommandResult, CommandStats};
+use super::super::common::{CommandContext, CommandResult};
 use super::ParseHandler;
 
 const DU_ROWS: usize = 15;
@@ -41,21 +41,6 @@ fn size_bytes(cell: &str) -> Option<f64> {
     num.trim().parse::<f64>().ok().map(|n| n * mult)
 }
 
-fn human(bytes: f64) -> String {
-    const UNITS: [(&str, f64); 4] = [
-        ("T", 1024.0 * 1024.0 * 1024.0 * 1024.0),
-        ("G", 1024.0 * 1024.0 * 1024.0),
-        ("M", 1024.0 * 1024.0),
-        ("K", 1024.0),
-    ];
-    for (suffix, size) in UNITS {
-        if bytes >= size {
-            return format!("{:.1}{}", bytes / size, suffix);
-        }
-    }
-    format!("{:.0}B", bytes)
-}
-
 /// Shorten a command line: argv[0] to its basename, arguments kept, then a
 /// hard cap. A 200-char npx path says nothing the basename does not.
 fn short_cmd(cmd: &str) -> String {
@@ -74,30 +59,6 @@ fn short_cmd(cmd: &str) -> String {
     } else {
         joined
     }
-}
-
-/// Emit `compressed`, or the raw input when the compressor declined the
-/// shape. Declining is reported as `<name>-passthrough` so `--stats` shows
-/// which rows trs actually understood.
-fn emit(
-    input: &str,
-    compressed: Option<String>,
-    name: &str,
-    ctx: &CommandContext,
-) -> CommandResult {
-    let (out, reducer) = match compressed {
-        Some(c) => (c, name.to_string()),
-        None => (input.to_string(), format!("{name}-passthrough")),
-    };
-    crate::parse_out::emit(&out);
-    if ctx.stats {
-        CommandStats::new()
-            .with_reducer(reducer)
-            .with_input_bytes(input.len())
-            .with_output_bytes(out.len())
-            .print();
-    }
-    Ok(())
 }
 
 /// `du` rows sorted by size descending, tail summarized. None when the shape
@@ -121,20 +82,27 @@ fn compress_du(input: &str) -> Option<String> {
 
     let total: f64 = rows.iter().map(|(b, _)| b).sum();
     rows.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
-    let shown = rows.len().min(DU_ROWS);
     let mut out = String::new();
-    for (b, path) in rows.iter().take(shown) {
-        out.push_str(&format!("{:>7}  {}\n", human(*b), path));
-    }
-    if rows.len() > shown {
-        let rest: f64 = rows.iter().skip(shown).map(|(b, _)| b).sum();
+    for (b, path) in rows.iter().take(DU_ROWS) {
         out.push_str(&format!(
-            "… +{} smaller ({})\n",
-            rows.len() - shown,
-            human(rest)
+            "{:>7}  {}\n",
+            ParseHandler::format_human_size(*b as u64),
+            path
         ));
     }
-    out.push_str(&format!("{} entries, {} total\n", rows.len(), human(total)));
+    if rows.len() > DU_ROWS {
+        let rest: f64 = rows.iter().skip(DU_ROWS).map(|(b, _)| b).sum();
+        out.push_str(&format!(
+            "… +{} smaller ({})\n",
+            rows.len() - DU_ROWS,
+            ParseHandler::format_human_size(rest as u64)
+        ));
+    }
+    out.push_str(&format!(
+        "{} entries, {} total\n",
+        rows.len(),
+        ParseHandler::format_human_size(total as u64)
+    ));
     Some(out)
 }
 
@@ -150,8 +118,13 @@ fn compress_lsof(input: &str) -> Option<String> {
     // Without it, NODE is an inode number, which is not. Decide per row.
     let node_col = header.find("NODE");
 
-    // (command, pid, user) -> distinct NAME cells, insertion-ordered.
-    let mut groups: Vec<((String, String, String), Vec<String>)> = Vec::new();
+    // (command, pid, user) -> distinct NAME cells, insertion-ordered because
+    // the output should read in the order lsof reported. The map is an index
+    // into that Vec, not a replacement: a linear `find` per row is quadratic,
+    // and `lsof` bare is ~30k rows across ~900 processes.
+    let mut groups: Vec<((&str, &str, &str), Vec<String>)> = Vec::new();
+    let mut index: std::collections::HashMap<(&str, &str, &str), usize> =
+        std::collections::HashMap::new();
     let mut fds = 0usize;
     for line in lines {
         if line.trim().is_empty() {
@@ -177,14 +150,18 @@ fn compress_lsof(input: &str) -> Option<String> {
             None => addr.to_string(),
         };
         fds += 1;
-        let key = (cmd.to_string(), pid.to_string(), user.to_string());
-        match groups.iter_mut().find(|(k, _)| *k == key) {
-            Some((_, names)) => {
+        let key = (cmd, pid, user);
+        match index.get(&key) {
+            Some(&i) => {
+                let names = &mut groups[i].1;
                 if !names.contains(&name) {
                     names.push(name);
                 }
             }
-            None => groups.push((key, vec![name])),
+            None => {
+                index.insert(key, groups.len());
+                groups.push((key, vec![name]));
+            }
         }
     }
     if groups.is_empty() {
@@ -250,7 +227,7 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
-        emit(&input, compress_du(&input), "du", ctx)
+        Self::emit_compressed(&input, compress_du(&input), "du", ctx)
     }
 
     pub(crate) fn handle_lsof(
@@ -258,7 +235,7 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
-        emit(&input, compress_lsof(&input), "lsof", ctx)
+        Self::emit_compressed(&input, compress_lsof(&input), "lsof", ctx)
     }
 
     pub(crate) fn handle_pgrep(
@@ -266,7 +243,7 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
-        emit(&input, compress_pgrep(&input), "pgrep", ctx)
+        Self::emit_compressed(&input, compress_pgrep(&input), "pgrep", ctx)
     }
 }
 

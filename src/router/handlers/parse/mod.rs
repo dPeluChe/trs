@@ -1,4 +1,4 @@
-use super::common::{CommandContext, CommandError, CommandResult};
+use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::*;
 use crate::ParseCommands;
 
@@ -107,6 +107,35 @@ impl ParseHandler {
     }
 
     /// Format a byte size into a human-readable string (e.g. 1.2K, 3.5M).
+    /// Emit a compressor's result, falling back to the raw input when it
+    /// declined the shape OR when it did not actually shrink. Declining is
+    /// reported as `<name>-passthrough` so `--stats` shows what trs really
+    /// understood rather than claiming a win it did not get.
+    ///
+    /// The never-worse guard lives here on purpose: it was written three
+    /// different ways across three parsers in one release, and missing
+    /// entirely from a fourth.
+    pub(crate) fn emit_compressed(
+        input: &str,
+        compressed: Option<String>,
+        name: &str,
+        ctx: &CommandContext,
+    ) -> CommandResult {
+        let (out, reducer) = match compressed {
+            Some(c) if c.len() < input.len() => (c, name.to_string()),
+            _ => (input.to_string(), format!("{name}-passthrough")),
+        };
+        crate::parse_out::emit(&out);
+        if ctx.stats {
+            CommandStats::new()
+                .with_reducer(reducer)
+                .with_input_bytes(input.len())
+                .with_output_bytes(out.len())
+                .print();
+        }
+        Ok(())
+    }
+
     pub(crate) fn format_human_size(bytes: u64) -> String {
         if bytes < 1024 {
             format!("{}B", bytes)
@@ -114,8 +143,10 @@ impl ParseHandler {
             format!("{:.1}K", bytes as f64 / 1024.0)
         } else if bytes < 1024 * 1024 * 1024 {
             format!("{:.1}M", bytes as f64 / (1024.0 * 1024.0))
-        } else {
+        } else if bytes < 1024 * 1024 * 1024 * 1024 {
             format!("{:.1}G", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+        } else {
+            format!("{:.1}T", bytes as f64 / 1024.0f64.powi(4))
         }
     }
 }

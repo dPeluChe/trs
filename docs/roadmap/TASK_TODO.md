@@ -170,16 +170,9 @@ Context-compression layer (Python+Rust): compresses tool outputs / logs / files 
 ### Writing convention: no em dashes
 
 Rule added to the injected output-saver block in #143, then applied to the
-tool itself. The convention now lives in `CONTRIBUTING.md` § Writing.
+tool itself. The convention now lives in `CONTRIBUTING.md` § Writing. What
+shipped (#143, #144, #145) is in [`completed/2608.md`](./completed/2608.md).
 
-- [x] **CLI micro-copy** (#144): 92 strings across 28 modules. Two traps worth
-  remembering: `doctor.rs` wrote the dash as `\u{2014}` so a literal grep
-  missed it, and clap renders `///` doc comments into `--help`, so 19 lines
-  that look like internal comments are the most-read copy in the tool. Verify
-  against the built binary, not the source.
-- [x] **Documentation and repo governance** (#145): 628 conversions across the
-  docs, plus `README.es.md`, `npm/README.md`, `CONTRIBUTING.md`, `SECURITY.md`,
-  the issue/PR templates, the workflows, the hooks and the install scripts.
 - [ ] **Internal Rust comments** (~449) and test assertion messages. Being
   cleaned as we touch the files rather than in one sweep, agreed 2026-08-26.
 - [ ] **Regenerate `docs/development/codebase-digest.md`** after the next
@@ -190,68 +183,16 @@ Not swept, on purpose: `docs/roadmap/completed/*.md` and `CHANGELOG.md` are
 dated records of a past state, and rewriting a log falsifies it. Table cells
 holding `—` for "no value" are a glyph, not prose.
 
-### Coverage sweep, 2026-08-26
-
-Ranked `stats --coverage` by `count * avg_in * %low` over 27,696 runs.
-
-- [x] **Verbatim class** (#146): the sweep's real finding was a correctness
-  bug, not a missing parser. Generic compression was flattening the output of
-  commands whose layout is their payload.
-- [x] **`bunx`** (#146): missing from the registry while `npx`/`pnpm`/`yarn`
-  were there.
-- [x] **`du` / `lsof` / `pgrep` parsers** (#147): 73% / 83% / 94% on real
-  output.
-- [x] **`gh api`** (#148): the largest remaining gap (229 runs, 10.5 KB
-  average). It was compressing 0%, not 45%: `gh` emits minified JSON, so the
-  generic whitespace reducer had nothing to take. Dropping GitHub's link
-  boilerplate instead gives 62 to 67%, and the output stays valid JSON.
-
-Left alone deliberately:
-
-- `security` (17 runs): macOS keychain, output can carry credentials. A
-  parser there adds risk, not savings.
-- `bash -c` / `sh` / `zsh` (534 runs, the largest single bucket): compound
-  commands, which the shape gate refuses by design. `bash -c "<one simple
-  command>"` already unwraps and routes to the inner parser.
-
 ### Doc audit, 2026-08-26
 
 Checked every claim in the docs against the code rather than reading for
-typos. What the comparison turned up:
-
-- [x] `AGENTS.md` claimed **9 agents**; `ai_tool.rs` has 16.
-- [x] `docs/features/stats.md` showed a `trs savings:` summary block from a
-  pre-0.7 format. The real header is `trs Token Savings` with `Period:` /
-  `Total commands:` rows, and the sample predated the 7/30-day windows and
-  the efficiency bar entirely.
-- [x] 13 supported commands were absent from `docs/support/commands.md`:
-  `make`, `cmake`, `gcc`, `g++`, `clang`, `javac`, `swift`, `xcodebuild`
-  (there was no native-build section at all), `poetry`, `ping`, `printenv`,
-  plus `kubectl` / `ollama`.
-- [x] `kubectl` and `ollama` were marked `known: true` with no classifier
-  arm, so `stats --coverage` counted them as handled traffic and never
-  listed them as gaps. Now `known: false`, which is what they are.
-- [x] `AGENTS.md` described the generic fallback without the verbatim
-  exception added in #146.
+typos. What was corrected is in
+[`completed/2608.md`](./completed/2608.md). Still open:
 
 Resolved in the follow-up (#149):
 
-- [x] `psql` / `mysql` / `sqlite3` / `mariadb` and `journalctl` were
-  `known: false` while their parsers (`Db`, `Logs`) run, the mirror of the
-  `kubectl` case. `is_known_binary` feeds only `stats --coverage`, so the
-  report was sending someone to write parsers that already exist. Both
-  directions are now honest, and the DB clients are documented for the first
-  time.
-- [x] `trs init --help` listed 6 of 16 agents, so ten integrations were
-  invisible to anyone reading the help. The list lives in a clap doc comment
-  that cannot call `AiTool::all_names()`, so `tests/cli_init_help_lists_
-  every_agent.rs` now pins the two together.
-
 Still open:
 
-- [x] Parser for `ollama` (#150): `list`/`ps` tables lose the ID column and
-  the padding (54% on real output), `pull` folds its redrawn progress into
-  the layer list (89% on a cached pull, more on a real download).
 - [ ] Parser for `kubectl`. Deliberately not written blind: there is no
   cluster reachable here, so every shape would have been guessed. `kubectl
   get` is tabular and should fold like the others once real output exists.
@@ -260,6 +201,33 @@ Still open:
   of 610 lines and a Rust enum cannot span files, so splitting it for real
   means changing the CLI's subcommand structure, which is public surface.
   Not worth doing to satisfy a line count. The other ten were split in #150.
+
+### From the pre-release quality pass (2026-08-28)
+
+Four reviewers went over `v0.7.5..HEAD`. What they found and I fixed is in
+[`completed/2608.md`](./completed/2608.md). What I deliberately left:
+
+- [ ] **`CommandSpec::rewrite` is close to vestigial.** It has one production
+  caller, and `maybe_rewrite` produces the same `trs `-prefixed output whether
+  it is true or false, because the catch-all below it wraps everything anyway.
+  `psql`, `journalctl` and `sed` are all `rewrite: false` and all still get
+  wrapped. Either delete the field and derive the one env-assignment guard
+  from position, or rewrite its doc to say it is a documentation tag with no
+  wrapping authority. Removing a registry field is not a quality-pass change.
+- [ ] **The two verbatim gates are asymmetric.** The hook gate checks the
+  first token; the exec gate also sees through `bash -c` and knows about
+  `gh api --jq`. So `bash -c "column -t x"` is still wrapped by the hook, and
+  `column` loses the tty and falls back to 80 columns before the exec gate
+  passes it through. Sharing the looser predicate would fix it, and
+  `rewrite_decide.rs` already owns the quote-aware `split_and_chain` that
+  would close the compound-script limit too.
+- [ ] **`gh api --jq` is checked inside a function about shell wrappers.**
+  It is load-bearing (it catches `--jq '{name, url}'`, valid JSON where the
+  pruner would strip a key the caller asked for), but the `gh` knowledge
+  belongs with `gh`, near `has_structured_output_flag`.
+- [ ] **`captures_output` allocates a `Vec<char>` of the whole command on
+  every `maybe_rewrite`**, before any cheaper gate. Pre-existing, not from
+  this cycle, but it is the one real hot-path allocation in that file.
 
 ### Verbatim commands: known gap
 

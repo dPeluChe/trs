@@ -328,13 +328,4 @@ impl CommandStats {
 // Multilingual error / warning detection
 // ============================================================
 
-/// Marker strings that flag a line as "this is an error". Covers English plus
-/// the locales most likely to surface in tool output (rustc/cargo, npm, pip,
-/// system utilities localized to the user's env).
-///
-/// Match is case-insensitive on an already-lowercased haystack — callers are
-/// expected to `.to_ascii_lowercase()` their line first (or use the helpers
-/// below which do it for them).
-///
-/// Non-ASCII scripts (Chinese/Japanese/Russian) keep their native casing
 pub(crate) use super::common_markers::*;

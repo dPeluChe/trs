@@ -1,6 +1,7 @@
 //! The write half of `output-saver`: installing a block into an agent
 //! config and removing it again. Kept apart from the read half (verify and
-//! scan) in `output_saver_core.rs`, which never touches disk.
+//! scan) in `output_saver_core.rs`: the seam is mutating versus read-only,
+//! not disk versus no disk. Scanning reads files too.
 
 use std::fs;
 use std::path::PathBuf;

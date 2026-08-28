@@ -58,7 +58,7 @@ falls back to `./target/release/trs` if one isn't installed.
 
 ## Architecture
 
-`src/` is ~216 files. Rather than mirror the tree here (it drifts the
+`src/` is ~235 files. Rather than mirror the tree here (it drifts the
 moment anything moves), generate it on demand. trs does this itself:
 
     trs ingest --print          # structure + module roles + symbols
@@ -68,7 +68,7 @@ The load-bearing entry points:
 
 | Path | Role |
 |---|---|
-| `main.rs` / `cli.rs` / `commands.rs` | entry, flag precedence, command enums |
+| `main*.rs` / `cli.rs` / `commands*.rs` | entry, flag precedence, command enums |
 | `classifier*.rs` | command -> parser routing, subprocess execution |
 | `rewrite*.rs` | the hook: decides what gets wrapped with `trs` |
 | `router/handlers/` | one parser per command family |

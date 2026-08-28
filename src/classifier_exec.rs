@@ -328,9 +328,6 @@ fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()
     f.write_all(content)
 }
 
-/// Generic compression for commands without a dedicated parser.
-/// Collapses consecutive whitespace in tabular output, strips ANSI codes,
-/// removes carriage returns (progress bars), and collapses blank lines.
 /// Verbatim check that also sees through a shell wrapper, so an inner
 /// `awk`/`cut`/`column` is protected the same way a bare one is.
 ///
@@ -358,18 +355,16 @@ fn is_verbatim_invocation(cmd: &str, args: &[String]) -> bool {
     if !matches!(cmd, "bash" | "sh" | "zsh" | "dash") {
         return false;
     }
-    let mut it = args.iter().map(String::as_str);
-    while let Some(a) = it.next() {
-        if a.starts_with('-') && a.ends_with('c') {
-            return it
-                .next()
-                .and_then(|s| s.split_whitespace().next())
-                .is_some_and(is_verbatim_command);
-        }
-    }
-    false
+    args.iter()
+        .position(|a| a.starts_with('-') && a.ends_with('c'))
+        .and_then(|i| args.get(i + 1))
+        .and_then(|s| s.split_whitespace().next())
+        .is_some_and(is_verbatim_command)
 }
 
+/// Generic compression for commands without a dedicated parser.
+/// Collapses consecutive whitespace in tabular output, strips ANSI codes,
+/// removes carriage returns (progress bars), and collapses blank lines.
 fn generic_compress(input: &str) -> String {
     use crate::router::handlers::common::strip_ansi_codes;
 

@@ -368,5 +368,4 @@ fn format_file_entry(out: &mut String, name: &str, content: &str) {
 
 pub(crate) use super::format_tree::{build_symbol_index, build_tree};
 
-/// Strip HTML tags from markdown content (badges, images, formatting).
 pub(crate) use super::format_util::*;

@@ -322,8 +322,11 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         keep_ratio: KeepRatio::flat(1.0), stderr: Stderr::Never },
 
     // ---- Recognized-but-not-rewritten: intercepted in the fast path
-    //      (cat/head/sed) or shell builtins. Counted as known for coverage. ----
-    CommandSpec { names: &["cat", "head", "sed"], rewrite: false, known: true,
+    //      (cat/head) or shell builtins. Counted as known for coverage.
+    //      `sed` moved to VERBATIM_COMMANDS: read_intercept only catches
+    //      `sed -n X,Yp FILE`, so every transform form fell through to the
+    //      generic reducer and had its indentation flattened. ----
+    CommandSpec { names: &["cat", "head"], rewrite: false, known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
     CommandSpec { names: &["trs", "cd", "echo"], rewrite: false, known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
@@ -364,8 +367,8 @@ pub(crate) fn combine_stderr(cmd: &str, subcmd: &str) -> bool {
 /// Referenced by the `REGISTRY` row above, so the list lives in one place.
 pub(crate) const VERBATIM_COMMANDS: &[&str] = &[
     "awk", "base64", "basenc", "column", "comm", "cut", "expand", "fold", "hexdump", "iconv",
-    "join", "jq", "nl", "od", "paste", "printf", "rev", "sort", "strings", "tac", "tr", "unexpand",
-    "uniq", "xxd", "yq",
+    "join", "jq", "nl", "od", "paste", "printf", "rev", "sed", "sort", "strings", "tac", "tr",
+    "unexpand", "uniq", "xxd", "yq",
 ];
 
 /// Whether trs must hand this command's output back byte for byte.
