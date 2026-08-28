@@ -249,13 +249,17 @@ Resolved in the follow-up (#149):
 
 Still open:
 
-- [ ] Parsers for `kubectl` and `ollama`, now that the gap is visible.
-- [ ] **11 files over the 500-line limit** in `CONTRIBUTING.md`, all
-  pre-existing: `commands.rs` 646, `main.rs` 601, `uninstall.rs` 556,
-  `handlers/common.rs` 545, `parse/extra_system.rs` 523, `parse/ls.rs` 517,
-  `ingest/format.rs` 517, `output_saver_core.rs` 515, `parse/bun_parse.rs`
-  513, `parse/pnpm_parse.rs` 503, `ingest/collect_compress.rs` 502. Nothing
-  added this cycle crossed the line; splitting these is its own cycle.
+- [x] Parser for `ollama` (#150): `list`/`ps` tables lose the ID column and
+  the padding (54% on real output), `pull` folds its redrawn progress into
+  the layer list (89% on a cached pull, more on a real download).
+- [ ] Parser for `kubectl`. Deliberately not written blind: there is no
+  cluster reachable here, so every shape would have been guessed. `kubectl
+  get` is tabular and should fold like the others once real output exists.
+- [ ] **1 file over the 500-line limit** in `CONTRIBUTING.md`, all
+: `commands.rs` at 646. It is one `enum Commands`
+  of 610 lines and a Rust enum cannot span files, so splitting it for real
+  means changing the CLI's subcommand structure, which is public surface.
+  Not worth doing to satisfy a line count. The other ten were split in #150.
 
 ### Verbatim commands: known gap
 

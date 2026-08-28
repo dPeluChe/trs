@@ -280,9 +280,15 @@ Any command not listed above still flows through trs's generic
 reducer: ANSI strips, whitespace collapsed, repeated lines deduped.
 Typical reduction 30–40% for free with no format-specific knowledge.
 
-`kubectl` and `ollama` are routed and tracked in stats but have no
-dedicated parser yet: they get the generic reducer like anything else,
-and `trs stats --coverage` lists them as gaps.
+`ollama list` / `ls` / `ps` lose the ID column and the alignment
+padding (agents address models by name; the digest is only useful to
+`ollama rm`), and `ollama pull` folds its redrawn per-layer progress
+into the layer list plus the final verdict. `run`, `show` and `serve`
+pass through: their output is model text.
+
+`kubectl` is routed and tracked in stats but has no dedicated parser
+yet, so it gets the generic reducer and `trs stats --coverage` lists it
+as a gap.
 
 One class is exempt. Commands whose output is a re-layout of their
 input carry meaning in exactly the runs of spaces and blank lines the

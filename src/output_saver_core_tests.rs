@@ -1,4 +1,8 @@
 use super::*;
+// install/remove moved to `output_saver_write.rs` when `output_saver_core.rs`
+// was split; the tests exercise both halves.
+use crate::output_saver::sentinel_wrapped;
+use crate::output_saver_write::{install_agent_with_home, remove_agent_with_home};
 
 #[test]
 fn replace_between_swaps_segment() {
