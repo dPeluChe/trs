@@ -12,7 +12,7 @@
 //! Anything else (`show`, `run`, `serve`) passes through: their output is
 //! model text or free-form, and guessing at it is how a parser starts lying.
 
-use super::super::common::{CommandContext, CommandResult, CommandStats};
+use super::super::common::{strip_ansi_codes, CommandContext, CommandResult};
 use super::ParseHandler;
 
 /// Columns worth keeping from a `list` / `ps` table, by header name.
@@ -99,7 +99,7 @@ fn compress_pull(input: &str) -> Option<String> {
     let mut verdict = None;
     let mut saw_pull = false;
     for line in flat.lines() {
-        let t = strip_ansi(line);
+        let t = strip_ansi_codes(line);
         let t = t.trim();
         if t.starts_with("pulling manifest") {
             saw_pull = true;
@@ -109,13 +109,13 @@ fn compress_pull(input: &str) -> Option<String> {
             if let Some((digest, tail)) = rest.split_once(':') {
                 // The size is the trailing `4.9 GB`, two tokens: taking only
                 // the last one leaves the unit with no number attached.
-                let toks: Vec<&str> = tail.split_whitespace().collect();
-                let size = match toks.as_slice() {
-                    [.., n, unit] if n.chars().next().is_some_and(|c| c.is_ascii_digit()) => {
+                let mut back = tail.split_whitespace().rev();
+                let unit = back.next().unwrap_or("");
+                let size = match back.next() {
+                    Some(n) if n.starts_with(|c: char| c.is_ascii_digit()) => {
                         format!("{n} {unit}")
                     }
-                    [.., last] => (*last).to_string(),
-                    [] => String::new(),
+                    _ => unit.to_string(),
                 };
                 let entry = format!("{} {}", digest.trim(), size);
                 if !layers.contains(&entry) {
@@ -138,24 +138,6 @@ fn compress_pull(input: &str) -> Option<String> {
     Some(out)
 }
 
-/// Minimal CSI stripper: progress lines arrive wrapped in cursor controls.
-fn strip_ansi(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut chars = s.chars();
-    while let Some(c) = chars.next() {
-        if c == '\u{1b}' {
-            for c2 in chars.by_ref() {
-                if c2.is_ascii_alphabetic() {
-                    break;
-                }
-            }
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
-
 impl ParseHandler {
     pub(crate) fn handle_ollama(
         file: &Option<std::path::PathBuf>,
@@ -163,19 +145,7 @@ impl ParseHandler {
     ) -> CommandResult {
         let input = Self::read_input(file)?;
         let compressed = compress_pull(&input).or_else(|| compress_table(&input));
-        let (out, reducer) = match compressed {
-            Some(c) if c.len() < input.len() => (c, "ollama"),
-            _ => (input.clone(), "ollama-passthrough"),
-        };
-        crate::parse_out::emit(&out);
-        if ctx.stats {
-            CommandStats::new()
-                .with_reducer(reducer)
-                .with_input_bytes(input.len())
-                .with_output_bytes(out.len())
-                .print();
-        }
-        Ok(())
+        Self::emit_compressed(&input, compressed, "ollama", ctx)
     }
 }
 

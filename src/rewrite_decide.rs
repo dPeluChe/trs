@@ -146,21 +146,15 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         std::process::exit(2);
     }
 
-    // Commands the registry recognizes as rewrite-eligible get wrapped
-    // explicitly; everything else falls through to the generic-compression
-    // catch-all below (same result). The unified command registry
-    // (command_registry.rs) is the single source of truth for which binaries
-    // trs is designed to compress — no more parallel prefix list to drift.
     let first = trimmed.split_whitespace().next().unwrap_or("");
 
     // Verbatim commands re-layout bytes; the generic catch-all below would
-    // collapse the spacing that IS their output. Leave them unwrapped.
-    if crate::command_registry::is_verbatim_command(first) {
+    // collapse the spacing that IS their output. Leave them unwrapped, and
+    // see through `bash -c` too: wrapping there costs the child its tty, so
+    // `column` falls back to 80 columns before anything downstream can help.
+    let rest = &trimmed[first.len()..];
+    if crate::command_registry::is_verbatim_invocation(first, rest) {
         return None;
-    }
-
-    if crate::command_registry::is_rewrite_command(first) {
-        return Some(format!("trs {}", trimmed));
     }
 
     // Unknown command — generic compression (whitespace + ANSI). Skip
@@ -374,32 +368,36 @@ pub(super) fn captures_output(cmd: &str) -> bool {
     // A `>` / `>>` whose target is a real path. Two things don't count: an fd
     // duplication (`2>&1`) and a discard (`2>/dev/null`) — neither leaves a
     // copy anyone reads, and discarding stderr is a very common agent idiom.
-    let chars: Vec<char> = cmd.chars().collect();
+    // Byte scanning, not `chars().collect()`: this runs on every hook call,
+    // and collecting the whole command into a Vec<char> to compare four ASCII
+    // characters is the one real allocation on that path. Every byte compared
+    // here is ASCII, and an ASCII byte never occurs inside a multi-byte UTF-8
+    // sequence, so an index found this way is always a char boundary.
+    let b = cmd.as_bytes();
     let mut i = 0;
-    while i < chars.len() {
-        if chars[i] != '>' {
+    while i < b.len() {
+        if b[i] != b'>' {
             i += 1;
             continue;
         }
         let mut j = i + 1;
-        while j < chars.len() && chars[j] == '>' {
+        while j < b.len() && b[j] == b'>' {
             j += 1;
         }
-        while j < chars.len() && chars[j] == ' ' {
+        while j < b.len() && b[j] == b' ' {
             j += 1;
         }
-        if j >= chars.len() {
+        if j >= b.len() {
             return true;
         }
-        if chars[j] == '&' {
+        if b[j] == b'&' {
             i = j;
             continue;
         }
-        let target: String = chars[j..]
-            .iter()
-            .take_while(|c| !c.is_whitespace())
-            .collect();
-        if target != "/dev/null" {
+        let end = cmd[j..]
+            .find(char::is_whitespace)
+            .map_or(cmd.len(), |k| j + k);
+        if &cmd[j..end] != "/dev/null" {
             return true;
         }
         i = j;

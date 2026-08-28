@@ -2,8 +2,6 @@
 //! function/class declarations. Split out of `collect_compress.rs`, which
 //! is about reading and budgeting files rather than about parsing them.
 
-use super::collect_compress::{has_multiline_python_sig, join_python_multiline_sigs};
-
 /// Deduplicates repeated functions, adds spacing before classes.
 pub(super) fn extract_signatures(content: &str, ext: &str) -> String {
     let mut result = String::new();
@@ -218,4 +216,78 @@ fn clean_signature(line: &str) -> String {
     }
 
     s
+}
+
+/// Quick check: does this Python source have any multi-line `def`/`class`
+/// header that would benefit from the joining pass? If not, we can pipe the
+/// original content straight through and skip the allocation.
+fn has_multiline_python_sig(content: &str) -> bool {
+    let mut in_sig = false;
+    for line in content.lines() {
+        let t = line.trim_start();
+        if t.starts_with("def ") || t.starts_with("async def ") || t.starts_with("class ") {
+            let opens = t.matches('(').count();
+            let closes = t.matches(')').count();
+            if opens > closes {
+                return true;
+            }
+            in_sig = false;
+            // `def foo(` with comma-trailing on same line but no close: handled above.
+        } else if in_sig {
+            return true;
+        }
+    }
+    false
+}
+
+/// Join multi-line Python `def name(...)` signatures onto a single line.
+/// Only touches `def`/`async def`/`class` headers; other lines pass through.
+fn join_python_multiline_sigs(content: &str) -> String {
+    let mut out = String::with_capacity(content.len());
+    let mut lines = content.lines().peekable();
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim_start();
+        let is_sig = trimmed.starts_with("def ")
+            || trimmed.starts_with("async def ")
+            || trimmed.starts_with("class ");
+        if !is_sig {
+            out.push_str(line);
+            out.push('\n');
+            continue;
+        }
+        // Count parenthesis balance across lines until we close the signature
+        // and reach a colon or line end without an open paren.
+        let mut accumulated = String::from(line);
+        let mut depth: i32 =
+            trimmed.matches('(').count() as i32 - trimmed.matches(')').count() as i32;
+        let ends_with_colon = |s: &str| {
+            let t = s.trim_end();
+            t.ends_with(':') || t.ends_with(": ...")
+        };
+        while depth > 0 || (!ends_with_colon(&accumulated) && accumulated.trim_end().ends_with(','))
+        {
+            let Some(next) = lines.next() else {
+                break;
+            };
+            depth += next.matches('(').count() as i32 - next.matches(')').count() as i32;
+            // Collapse continuation whitespace.
+            let cont = next.trim_start();
+            accumulated.push(' ');
+            accumulated.push_str(cont);
+            if depth <= 0 && ends_with_colon(&accumulated) {
+                break;
+            }
+        }
+        // Tidy up the joined signature: remove redundant spaces around
+        // parens/brackets and trailing commas before closing brackets.
+        let tidy = accumulated
+            .replace("( ", "(")
+            .replace(" )", ")")
+            .replace(",)", ")")
+            .replace(", )", ")")
+            .replace("  ", " ");
+        out.push_str(&tidy);
+        out.push('\n');
+    }
+    out
 }

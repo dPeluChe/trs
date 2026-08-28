@@ -170,16 +170,9 @@ Context-compression layer (Python+Rust): compresses tool outputs / logs / files 
 ### Writing convention: no em dashes
 
 Rule added to the injected output-saver block in #143, then applied to the
-tool itself. The convention now lives in `CONTRIBUTING.md` § Writing.
+tool itself. The convention now lives in `CONTRIBUTING.md` § Writing. What
+shipped (#143, #144, #145) is in [`completed/2608.md`](./completed/2608.md).
 
-- [x] **CLI micro-copy** (#144): 92 strings across 28 modules. Two traps worth
-  remembering: `doctor.rs` wrote the dash as `\u{2014}` so a literal grep
-  missed it, and clap renders `///` doc comments into `--help`, so 19 lines
-  that look like internal comments are the most-read copy in the tool. Verify
-  against the built binary, not the source.
-- [x] **Documentation and repo governance** (#145): 628 conversions across the
-  docs, plus `README.es.md`, `npm/README.md`, `CONTRIBUTING.md`, `SECURITY.md`,
-  the issue/PR templates, the workflows, the hooks and the install scripts.
 - [ ] **Internal Rust comments** (~449) and test assertion messages. Being
   cleaned as we touch the files rather than in one sweep, agreed 2026-08-26.
 - [ ] **Regenerate `docs/development/codebase-digest.md`** after the next
@@ -190,68 +183,16 @@ Not swept, on purpose: `docs/roadmap/completed/*.md` and `CHANGELOG.md` are
 dated records of a past state, and rewriting a log falsifies it. Table cells
 holding `—` for "no value" are a glyph, not prose.
 
-### Coverage sweep, 2026-08-26
-
-Ranked `stats --coverage` by `count * avg_in * %low` over 27,696 runs.
-
-- [x] **Verbatim class** (#146): the sweep's real finding was a correctness
-  bug, not a missing parser. Generic compression was flattening the output of
-  commands whose layout is their payload.
-- [x] **`bunx`** (#146): missing from the registry while `npx`/`pnpm`/`yarn`
-  were there.
-- [x] **`du` / `lsof` / `pgrep` parsers** (#147): 73% / 83% / 94% on real
-  output.
-- [x] **`gh api`** (#148): the largest remaining gap (229 runs, 10.5 KB
-  average). It was compressing 0%, not 45%: `gh` emits minified JSON, so the
-  generic whitespace reducer had nothing to take. Dropping GitHub's link
-  boilerplate instead gives 62 to 67%, and the output stays valid JSON.
-
-Left alone deliberately:
-
-- `security` (17 runs): macOS keychain, output can carry credentials. A
-  parser there adds risk, not savings.
-- `bash -c` / `sh` / `zsh` (534 runs, the largest single bucket): compound
-  commands, which the shape gate refuses by design. `bash -c "<one simple
-  command>"` already unwraps and routes to the inner parser.
-
 ### Doc audit, 2026-08-26
 
 Checked every claim in the docs against the code rather than reading for
-typos. What the comparison turned up:
-
-- [x] `AGENTS.md` claimed **9 agents**; `ai_tool.rs` has 16.
-- [x] `docs/features/stats.md` showed a `trs savings:` summary block from a
-  pre-0.7 format. The real header is `trs Token Savings` with `Period:` /
-  `Total commands:` rows, and the sample predated the 7/30-day windows and
-  the efficiency bar entirely.
-- [x] 13 supported commands were absent from `docs/support/commands.md`:
-  `make`, `cmake`, `gcc`, `g++`, `clang`, `javac`, `swift`, `xcodebuild`
-  (there was no native-build section at all), `poetry`, `ping`, `printenv`,
-  plus `kubectl` / `ollama`.
-- [x] `kubectl` and `ollama` were marked `known: true` with no classifier
-  arm, so `stats --coverage` counted them as handled traffic and never
-  listed them as gaps. Now `known: false`, which is what they are.
-- [x] `AGENTS.md` described the generic fallback without the verbatim
-  exception added in #146.
+typos. What was corrected is in
+[`completed/2608.md`](./completed/2608.md). Still open:
 
 Resolved in the follow-up (#149):
 
-- [x] `psql` / `mysql` / `sqlite3` / `mariadb` and `journalctl` were
-  `known: false` while their parsers (`Db`, `Logs`) run, the mirror of the
-  `kubectl` case. `is_known_binary` feeds only `stats --coverage`, so the
-  report was sending someone to write parsers that already exist. Both
-  directions are now honest, and the DB clients are documented for the first
-  time.
-- [x] `trs init --help` listed 6 of 16 agents, so ten integrations were
-  invisible to anyone reading the help. The list lives in a clap doc comment
-  that cannot call `AiTool::all_names()`, so `tests/cli_init_help_lists_
-  every_agent.rs` now pins the two together.
-
 Still open:
 
-- [x] Parser for `ollama` (#150): `list`/`ps` tables lose the ID column and
-  the padding (54% on real output), `pull` folds its redrawn progress into
-  the layer list (89% on a cached pull, more on a real download).
 - [ ] Parser for `kubectl`. Deliberately not written blind: there is no
   cluster reachable here, so every shape would have been guessed. `kubectl
   get` is tabular and should fold like the others once real output exists.
@@ -260,6 +201,44 @@ Still open:
   of 610 lines and a Rust enum cannot span files, so splitting it for real
   means changing the CLI's subcommand structure, which is public surface.
   Not worth doing to satisfy a line count. The other ten were split in #150.
+
+### From the pre-release quality pass (2026-08-28)
+
+Four reviewers went over `v0.7.5..HEAD`. All of it is done and recorded in
+[`completed/2608.md`](./completed/2608.md), including the four items first
+filed as deferred. Nothing left open from that pass.
+
+### Found by the second quality pass, not fixed here (2026-08-28)
+
+- [ ] **`--stats` reports the parser's byte count even when the exec path
+  discarded it.** Root-caused: `classifier_exec.rs` has its own never-worse
+  guard (`parsed.len() < stdout_ref.len()`), and when it falls back to raw,
+  the parser has *already* printed its `CommandStats`. Those go to stderr via
+  `eprintln!`, so they escape `parse_out::capture` and reach the user showing
+  what the parser *would* have emitted. Measured: reports 139 bytes, emits 93.
+
+  Scope is narrower than it looks, and worth stating exactly: the **tracker is
+  correct** (`log_execution` receives `out_bytes`, which the fallback sets to
+  the raw length), so `trs stats` and every savings number are accurate. Only
+  the per-invocation `--stats` diagnostic is wrong, and only in the fallback
+  case. Confirmed `--stats` does NOT change the compression decision.
+
+  The fix is not a one-liner: the exec layer would have to suppress the
+  parser's stats and print its own, but it does not know the parser's reducer
+  name. Deferred on that basis, not on risk appetite.
+
+- [ ] **`trs du` / `trs pgrep` fall back to raw on very small inputs.** Same
+  exec guard, and here it is arguably right: for a 6-row `du` the compressed
+  form is genuinely longer (+4 bytes a row) and the agent sees every row
+  either way. Confirmed working from ~100 rows up (`du -ah src`, 251 rows,
+  sorts correctly). Listed so nobody re-reports it as a parser bug.
+- [ ] **The `-c` detector matches any token starting with `-` and ending in
+  `c`**, so `bash --norc -c 'sort x'` consumes `--norc` as the flag and misses
+  the inner `sort`. Pre-existing, and it now applies on the hook path too.
+- [ ] **`captures_output`'s `=` guard tests for a space, not any whitespace**,
+  so a tab-separated line like `cargo\tbuild\t--release=x` now returns None
+  where it used to be wrapped. Reachable only with tabs as argument
+  separators, which agents do not emit.
 
 ### Verbatim commands: known gap
 

@@ -3,6 +3,7 @@
 //! markdown. Split out of `format.rs`, which is about assembling the
 //! digest, not about rendering individual values.
 
+/// Strip HTML tags from markdown content (badges, images, formatting).
 /// Preserves markdown content, removes <p>, <a>, <img>, etc.
 pub(crate) fn strip_html_from_markdown(content: &str) -> String {
     let mut result = String::with_capacity(content.len());

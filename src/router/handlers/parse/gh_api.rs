@@ -18,7 +18,7 @@
 //! JSON so `jq` and friends keep working on it. `trs diff gh api <path>`
 //! shows exactly which keys went.
 
-use super::super::common::{CommandContext, CommandResult, CommandStats};
+use super::super::common::{CommandContext, CommandResult};
 use super::ParseHandler;
 use serde_json::Value;
 
@@ -42,9 +42,10 @@ fn prune(value: &mut Value, parent: &str) {
     match value {
         Value::Object(map) => {
             map.retain(|k, _| !drops(k, parent));
+            // `iter_mut` yields the key and value as independent borrows,
+            // so the key needs no clone.
             for (k, v) in map.iter_mut() {
-                let key = k.clone();
-                prune(v, &key);
+                prune(v, k);
             }
         }
         Value::Array(items) => {
@@ -68,13 +69,15 @@ pub(super) fn compress_gh_api(input: &str) -> Option<String> {
     }
     let mut value: Value = serde_json::from_str(trimmed).ok()?;
     prune(&mut value, "");
-    let out = serde_json::to_string(&value).ok()?;
-    // Never-worse guard: a response with no boilerplate (or one already
-    // filtered server-side) must not come back longer than it went in.
+    let mut out = serde_json::to_string(&value).ok()?;
+    // `emit_compressed` guards this too, as the floor for every parser. Kept
+    // here as well so the compressor's own contract stays "None means I have
+    // nothing to offer", which is what its tests pin.
     if out.len() >= trimmed.len() {
         return None;
     }
-    Some(format!("{}\n", out))
+    out.push('\n');
+    Some(out)
 }
 
 impl ParseHandler {
@@ -83,19 +86,7 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
-        let (out, reducer) = match compress_gh_api(&input) {
-            Some(c) => (c, "gh-api"),
-            None => (input.clone(), "gh-api-passthrough"),
-        };
-        crate::parse_out::emit(&out);
-        if ctx.stats {
-            CommandStats::new()
-                .with_reducer(reducer)
-                .with_input_bytes(input.len())
-                .with_output_bytes(out.len())
-                .print();
-        }
-        Ok(())
+        Self::emit_compressed(&input, compress_gh_api(&input), "gh-api", ctx)
     }
 }
 
