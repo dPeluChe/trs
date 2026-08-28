@@ -191,10 +191,10 @@ pub(crate) const CURSOR_HOOKS: &str = r#"{
   }
 }"#;
 
-/// Sentinel that marks the Codex AGENTS.md block on re-runs. The block's
-/// prose uses backtick-wrapped `` `trs` `` which doesn't match the plain
-/// `trs (Token-Reducing Shell)` marker — without this sentinel re-runs
-/// duplicate the section.
+// Sentinel that marks the Codex AGENTS.md block on re-runs. The block's
+// prose uses backtick-wrapped `` `trs` `` which doesn't match the plain
+// `trs (Token-Reducing Shell)` marker, and without this sentinel re-runs
+// duplicate the section.
 trs_sentinels!(
     CODEX_AGENTS_SENTINEL_START,
     CODEX_AGENTS_SENTINEL_END,
@@ -252,9 +252,9 @@ See https://github.com/dPeluChe/trs for details.
 "#
 );
 
-/// Sentinel that wraps the Antigravity rules block in `~/.gemini/GEMINI.md`.
-/// Lets re-runs and uninstall identify the block without false positives
-/// from prose mentions of `trs`.
+// Sentinel that wraps the Antigravity rules block in `~/.gemini/GEMINI.md`.
+// Lets re-runs and uninstall identify the block without false positives
+// from prose mentions of `trs`.
 trs_sentinels!(
     ANTIGRAVITY_RULES_SENTINEL_START,
     ANTIGRAVITY_RULES_SENTINEL_END,
