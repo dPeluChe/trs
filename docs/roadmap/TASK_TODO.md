@@ -240,6 +240,34 @@ filed as deferred. Nothing left open from that pass.
   where it used to be wrapped. Reachable only with tabs as argument
   separators, which agents do not emit.
 
+### What trs writes into agent configs (2026-08-28)
+
+Audited the emitted artifact, not the templates, after noticing that a prompt
+fragment is only as good as the context it lands in.
+
+- [x] **Rules blocks never refreshed.** `write_agents_md_block` returned
+  "already configured" on any trs marker, so the em-dash sweep never reached
+  installed blocks: one `~/.codex/AGENTS.md` had trs saying "No em dashes"
+  fifty lines above trs's own prose using three. It refreshes on drift now,
+  the way the plugin installer always has.
+- [x] **The marker missed the backticked spelling.** The codex prose writes
+  `` `trs` (Token-Reducing Shell) `` while the check looked only for the
+  unbackticked form. That is how a second copy of the block got appended to a
+  file that already had one, 2189 bytes on every Codex session.
+- [ ] **A legacy block without sentinels still needs a human.** Its end cannot
+  be located reliably and a bad cut eats the user's own instructions, so
+  install reports it and points at `trs audit-docs`. A `trs doctor` check
+  would be the better home, since this is install health.
+- [ ] **`install_rules` and `install_antigravity_rules` have the same
+  early return** and were not changed here. Their targets happened to be
+  clean on the machine audited, so the fix is unverified against a real stale
+  file for those two; worth doing with a reproduction rather than blind.
+
+Not a finding: four of the five inline targets (`opencode`, `kilo`, `droid`,
+`devin`) are files trs creates whole, so there is no foreign content to
+concatenate against. Only `~/.codex/AGENTS.md` mixes trs blocks with the
+user's own rules, which is why it was the one that broke.
+
 ### Verbatim commands: known gap
 
 - [ ] A compound shell script (`bash -c "cd x && awk '{print}' f.py"`) still
