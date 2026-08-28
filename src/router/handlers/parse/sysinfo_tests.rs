@@ -132,3 +132,24 @@ fn size_bytes_reads_both_human_and_block_forms() {
     assert_eq!(size_bytes("nope"), None);
     assert_eq!(size_bytes(""), None);
 }
+
+#[test]
+fn restructuring_output_may_be_longer_than_its_input() {
+    // du sorts and totals, pgrep groups: for both, the reordering IS the
+    // product, so a size guard would hand back the raw output and throw the
+    // ordering away. These handlers use `emit_restructured` for that reason;
+    // this test pins the case that would silently regress if one of them were
+    // switched to `emit_compressed`.
+    let du_in = "4.0K\ta\n8.0K\tb\n";
+    let du_out = compress_du(du_in).unwrap();
+    assert!(du_out.len() > du_in.len(), "the guard would suppress this");
+    assert!(
+        du_out.lines().next().unwrap().ends_with("8.0K  b"),
+        "largest first: {du_out}"
+    );
+
+    let pg_in = "101 node\n102 node\n103 python3\n";
+    let pg_out = compress_pgrep(pg_in).unwrap();
+    assert!(pg_out.len() > pg_in.len(), "the guard would suppress this");
+    assert!(pg_out.contains("101,102"), "grouping lost: {pg_out}");
+}

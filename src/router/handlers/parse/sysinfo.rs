@@ -227,7 +227,7 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
-        Self::emit_compressed(&input, compress_du(&input), "du", ctx)
+        Self::emit_restructured(&input, compress_du(&input), "du", ctx)
     }
 
     pub(crate) fn handle_lsof(
@@ -235,7 +235,7 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
-        Self::emit_compressed(&input, compress_lsof(&input), "lsof", ctx)
+        Self::emit_restructured(&input, compress_lsof(&input), "lsof", ctx)
     }
 
     pub(crate) fn handle_pgrep(
@@ -243,7 +243,7 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
-        Self::emit_compressed(&input, compress_pgrep(&input), "pgrep", ctx)
+        Self::emit_restructured(&input, compress_pgrep(&input), "pgrep", ctx)
     }
 }
 

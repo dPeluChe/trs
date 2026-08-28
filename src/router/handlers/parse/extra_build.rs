@@ -16,15 +16,7 @@ impl ParseHandler {
         // fatal), don't let our signature/error extraction drop context the
         // user needs to debug. Pass through verbatim.
         if super::super::common::output_has_failure_signal(&input) {
-            crate::parse_out::emit(&input);
-            if ctx.stats {
-                CommandStats::new()
-                    .with_reducer("build-passthrough")
-                    .with_input_bytes(input_bytes)
-                    .with_output_bytes(input_bytes)
-                    .print();
-            }
-            return Ok(());
+            return Self::emit_compressed(&input, None, "build", ctx);
         }
 
         let mut errors: Vec<String> = Vec::new();

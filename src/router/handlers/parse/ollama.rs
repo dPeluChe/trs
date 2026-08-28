@@ -12,7 +12,7 @@
 //! Anything else (`show`, `run`, `serve`) passes through: their output is
 //! model text or free-form, and guessing at it is how a parser starts lying.
 
-use super::super::common::{strip_ansi_codes, CommandContext, CommandResult, CommandStats};
+use super::super::common::{strip_ansi_codes, CommandContext, CommandResult};
 use super::ParseHandler;
 
 /// Columns worth keeping from a `list` / `ps` table, by header name.
@@ -145,19 +145,7 @@ impl ParseHandler {
     ) -> CommandResult {
         let input = Self::read_input(file)?;
         let compressed = compress_pull(&input).or_else(|| compress_table(&input));
-        let (out, reducer) = match compressed {
-            Some(c) if c.len() < input.len() => (c, "ollama"),
-            _ => (input.clone(), "ollama-passthrough"),
-        };
-        crate::parse_out::emit(&out);
-        if ctx.stats {
-            CommandStats::new()
-                .with_reducer(reducer)
-                .with_input_bytes(input.len())
-                .with_output_bytes(out.len())
-                .print();
-        }
-        Ok(())
+        Self::emit_compressed(&input, compressed, "ollama", ctx)
     }
 }
 

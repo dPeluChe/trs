@@ -1,6 +1,6 @@
 //! Golden tests pinning the registry to the exact behavior of the four
 //! hand-maintained tables it replaced. If any ratio / stderr policy / known
-//! / rewrite flag drifts, these fail.
+//! drifts, these fail.
 
 use super::*;
 
@@ -113,7 +113,7 @@ fn keep_ratio_misc_overrides() {
 #[test]
 fn keep_ratio_default_for_unknown_and_no_entry_commands() {
     assert_eq!(r("totally-unknown", ""), 0.50);
-    // Commands present in classify/rewrite but never in keep_ratio → default.
+    // Commands present in classify but never in keep_ratio → default.
     assert_eq!(r("ack", ""), 0.50);
     assert_eq!(r("tail", ""), 0.50);
     assert_eq!(r("cmake", ""), 0.50);
@@ -233,15 +233,13 @@ const GOLDEN_KNOWN: &[&str] = &[
     "trs",
     "cat",
     "head",
-    "sed",
     "cd",
     "echo",
     "go",
     "poetry",
     "aws",
     // Parsed, so counted as handled: journalctl shares the Logs parser and
-    // the db clients route to the Db parser. They are not in the explicit
-    // rewrite set, which is a separate flag.
+    // the db clients route to the Db parser.
     "journalctl",
     // `list`/`ps`/`pull` are parsed; the rest of ollama falls to generic.
     "ollama",
@@ -255,8 +253,9 @@ const GOLDEN_KNOWN: &[&str] = &[
     "pgrep",
     // Verbatim: handled by being left alone, so coverage counts them as
     // handled rather than reporting them as missing parsers. Same treatment
-    // cat/head/sed/echo already get above.
+    // cat/head/echo already get above.
     "awk",
+    "sed",
     "base64",
     "basenc",
     "column",
@@ -310,29 +309,6 @@ fn is_known_binary_matches_golden_set_exactly() {
 }
 
 #[test]
-fn every_registered_name_resolves_to_its_row() {
-    // Replaces `rewrite_eligibility_matches_legacy_prefixes`, which asserted
-    // on `CommandSpec::rewrite`. That field was deleted: it had one caller,
-    // and `maybe_rewrite` emitted the same wrapped command whether it was
-    // true or false, because the catch-all wraps everything anyway.
-    for name in [
-        "git",
-        "cargo",
-        "npm",
-        "psql",
-        "journalctl",
-        "poetry",
-        "bunx",
-    ] {
-        assert!(
-            spec(name).is_some(),
-            "{name} should resolve to a registry row"
-        );
-    }
-    assert!(spec("totally-unknown").is_none());
-}
-
-#[test]
 fn no_duplicate_command_names() {
     let mut seen: Vec<&str> = Vec::new();
     for spec in REGISTRY {
@@ -344,9 +320,8 @@ fn no_duplicate_command_names() {
 }
 
 #[test]
-fn verbatim_commands_are_known_and_never_rewritten() {
+fn verbatim_commands_are_counted_as_known() {
     for name in VERBATIM_COMMANDS {
-        assert!(is_verbatim_command(name), "not verbatim: {name}");
         // Declared as known so `stats --coverage` stops reporting them as
         // parser gaps: trs handles them, by deliberately not touching them.
         assert!(is_known_binary(name), "should be known: {name}");
@@ -369,7 +344,15 @@ fn a_caller_selected_field_list_is_left_alone() {
     ));
     // Without a selector the response is GitHub's full body: prune it.
     assert!(!is_verbatim_invocation("gh", " api repos/o/r"));
-    // The flag table is keyed by binary, so it does not leak to other tools.
+    // Keyed by subcommand, not just binary: `-t` is `--template` on `gh api`
+    // but `--title` on these three, which would otherwise lose compression.
+    assert!(!is_verbatim_invocation("gh", " pr create -t Title -b body"));
+    assert!(!is_verbatim_invocation(
+        "gh",
+        " release create v1.0 -t Title"
+    ));
+    assert!(!is_verbatim_invocation("gh", " issue create -t Title"));
+    // And it does not leak to other tools.
     assert!(!is_verbatim_invocation("npm", " test --jq x"));
 }
 

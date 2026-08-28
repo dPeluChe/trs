@@ -5,21 +5,23 @@
 //! hand — and the code comments admitted as much ("keep loosely in sync with
 //! classifier.rs"):
 //!
-//! - `rewrite_decide.rs`  → `REWRITE_PREFIXES`     (is the command rewrite-eligible?)
+//! - `rewrite_decide.rs`  → `is_verbatim_invocation` (leave these bytes alone?)
 //! - `classifier.rs`      → `keep_ratio()`         (how much output survives compression?)
 //! - `classifier_exec.rs` → `combine_stderr` match (does primary output go to stderr?)
 //! - `stats_coverage.rs`  → `is_known_binary()`    (does trs compress this beyond ANSI?)
 //!
 //! Adding a single new command meant editing all four, and forgetting one was
-//! easy. This table centralizes the four *flat* per-command facts so a new
-//! command is one row.
+//! easy. This table centralizes the *flat* per-command facts so a new command
+//! is one row. (It held a fourth, `rewrite`, until it turned out to gate
+//! nothing: the catch-all wrapped every command either way.)
 //!
 //! What intentionally stays OUT of this table: the subcommand → parser dispatch
 //! (`classify_command` in `classifier.rs`). That logic is genuinely
 //! command-specific control flow (`git stash show -p`, `npm run build|test|lint`,
 //! `python -m <module>`), not a flat lookup, and forcing it into data would be
-//! over-engineering. The invariant test below pins that every command with a
-//! parser is at least *registered* here, so the two never silently drift.
+//! over-engineering. Keeping the two in sync is a review-time concern: there
+//! is no test that walks `classify_command`, so adding a parser means adding
+//! its row by hand.
 
 /// Keep-ratio used for commands with no registry entry (generic compression).
 pub(crate) const DEFAULT_KEEP_RATIO: f64 = 0.50;
@@ -186,8 +188,8 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     },
     CommandSpec { names: &["uv"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
-    // `poetry` was never in the rewrite list (it is reached via `poetry run`
-    // transparent-prefix handling) but is a known binary with ratio overrides.
+    // Reached through `poetry run` transparent-prefix handling rather than
+    // directly, but a known binary with ratio overrides.
     CommandSpec {
         names: &["poetry"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
@@ -302,8 +304,8 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     CommandSpec { names: &["psql", "mysql", "sqlite3", "mariadb"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
-    // ---- Generic CLIs: rewrite-eligible for ANSI/whitespace compression,
-    //      but no dedicated parser and not counted in coverage stats. ----
+    // ---- Generic CLIs: no dedicated parser, so `known: false` and
+    //      `stats --coverage` lists them as gaps. ----
     CommandSpec { names: &["bash", "node"], known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
@@ -377,14 +379,23 @@ pub(crate) fn is_verbatim_command(cmd: &str) -> bool {
 ///
 /// A table rather than an inline `cmd == "gh"` check, so the next tool with a
 /// selector is one row and not another special case in a shared predicate.
-const FIELD_SELECTOR_FLAGS: &[(&str, &[&str])] = &[("gh", &["--jq", "-q", "--template", "-t"])];
+/// Keyed by `(binary, subcommand)`: the same short flag means different things
+/// under different subcommands of the same tool.
+const FIELD_SELECTOR_FLAGS: &[(&str, &str, &[&str])] =
+    &[("gh", "api", &["--jq", "-q", "--template", "-t"])];
 
 /// Whether the caller pre-selected their fields on this command line.
 fn caller_selected_fields(cmd: &str, rest: &str) -> bool {
-    FIELD_SELECTOR_FLAGS
-        .iter()
-        .find(|(bin, _)| *bin == cmd)
-        .is_some_and(|(_, flags)| rest.split_whitespace().any(|t| flags.contains(&t)))
+    // Gated on the subcommand, not just the binary: `-t` is `--template` on
+    // `gh api` but `--title` on `gh pr create`, `gh release create` and
+    // `gh issue create`, which would otherwise lose their compression.
+    let mut toks = rest.split_whitespace();
+    let Some(sub) = toks.next() else {
+        return false;
+    };
+    FIELD_SELECTOR_FLAGS.iter().any(|(bin, subcmd, flags)| {
+        *bin == cmd && *subcmd == sub && toks.clone().any(|t| flags.contains(&t))
+    })
 }
 
 /// Same question, seeing through a shell wrapper: `bash -c "column -t x"`
@@ -409,10 +420,10 @@ pub(crate) fn is_verbatim_invocation(cmd: &str, rest: &str) -> bool {
     let mut toks = rest.split_whitespace();
     while let Some(t) = toks.next() {
         if t.starts_with('-') && t.ends_with('c') {
+            // `toks` already yields whitespace-free tokens, so no second split.
             return toks
                 .next()
                 .map(|s| s.trim_start_matches(['"', '\'']))
-                .and_then(|s| s.split_whitespace().next())
                 .is_some_and(is_verbatim_command);
         }
     }

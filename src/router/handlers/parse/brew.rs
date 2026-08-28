@@ -23,15 +23,7 @@ impl ParseHandler {
         // Fail-open: brew crashes leak useful recovery info we don't want
         // to compress away (e.g. "Permission denied", Ruby stack traces).
         if super::super::common::output_has_failure_signal(&input) {
-            crate::parse_out::emit(&input);
-            if ctx.stats {
-                CommandStats::new()
-                    .with_reducer("brew-passthrough")
-                    .with_input_bytes(input_bytes)
-                    .with_output_bytes(input_bytes)
-                    .print();
-            }
-            return Ok(());
+            return Self::emit_compressed(&input, None, "brew", ctx);
         }
 
         let mut installed: Vec<String> = Vec::new();

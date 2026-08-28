@@ -110,15 +110,7 @@ impl ParseHandler {
 
         if verbs.is_empty() && problems.is_empty() {
             // Nothing recognized — don't pretend. Pass through untouched.
-            crate::parse_out::emit(&input);
-            if ctx.stats {
-                CommandStats::new()
-                    .with_reducer("aws-passthrough")
-                    .with_input_bytes(input_bytes)
-                    .with_output_bytes(input_bytes)
-                    .print();
-            }
-            return Ok(());
+            return Self::emit_compressed(&input, None, "aws", ctx);
         }
 
         let total: usize = verbs.values().map(|(n, _)| n).sum();

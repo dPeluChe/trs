@@ -208,6 +208,22 @@ Four reviewers went over `v0.7.5..HEAD`. All of it is done and recorded in
 [`completed/2608.md`](./completed/2608.md), including the four items first
 filed as deferred. Nothing left open from that pass.
 
+### Found by the second quality pass, not fixed here (2026-08-28)
+
+- [ ] **`trs du` on a small input returns raw output while `--stats` reports
+  `Reducer: du` with the compressed byte count.** The parser runs and produces
+  the sorted view; something on the exec path emits the raw bytes anyway.
+  Verified identical on `main`, so it predates this cycle, and `trs parse du`
+  and larger inputs are both correct. Worth its own investigation rather than
+  a rushed fix before a release.
+- [ ] **The `-c` detector matches any token starting with `-` and ending in
+  `c`**, so `bash --norc -c 'sort x'` consumes `--norc` as the flag and misses
+  the inner `sort`. Pre-existing, and it now applies on the hook path too.
+- [ ] **`captures_output`'s `=` guard tests for a space, not any whitespace**,
+  so a tab-separated line like `cargo\tbuild\t--release=x` now returns None
+  where it used to be wrapped. Reachable only with tabs as argument
+  separators, which agents do not emit.
+
 ### Verbatim commands: known gap
 
 - [ ] A compound shell script (`bash -c "cd x && awk '{print}' f.py"`) still

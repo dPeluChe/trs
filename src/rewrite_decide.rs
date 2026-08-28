@@ -152,7 +152,7 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // collapse the spacing that IS their output. Leave them unwrapped, and
     // see through `bash -c` too: wrapping there costs the child its tty, so
     // `column` falls back to 80 columns before anything downstream can help.
-    let rest = trimmed.strip_prefix(first).unwrap_or("");
+    let rest = &trimmed[first.len()..];
     if crate::command_registry::is_verbatim_invocation(first, rest) {
         return None;
     }

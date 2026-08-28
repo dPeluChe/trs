@@ -106,15 +106,16 @@ impl ParseHandler {
         crate::formatter::helpers::truncate(s, max_len)
     }
 
-    /// Format a byte size into a human-readable string (e.g. 1.2K, 3.5M).
     /// Emit a compressor's result, falling back to the raw input when it
     /// declined the shape OR when it did not actually shrink. Declining is
     /// reported as `<name>-passthrough` so `--stats` shows what trs really
     /// understood rather than claiming a win it did not get.
     ///
-    /// The never-worse guard lives here on purpose: it was written three
-    /// different ways across three parsers in one release, and missing
-    /// entirely from a fourth.
+    /// The size guard lives here on purpose: it was written three different
+    /// ways across three parsers in one release. Use this for parsers whose
+    /// product IS fewer bytes (pruning, folding). For parsers whose product
+    /// is a reordering, use `emit_restructured`: sorting `du` by size costs
+    /// four bytes a row and is still what the caller wanted.
     pub(crate) fn emit_compressed(
         input: &str,
         compressed: Option<String>,
@@ -136,6 +137,33 @@ impl ParseHandler {
         Ok(())
     }
 
+    /// Emit a parser whose value is the restructuring, not the byte count.
+    /// `du` sorts by size and adds a total, `pgrep` groups pids under one
+    /// command line: both can be LONGER than their input and still be the
+    /// answer. Guarding those on size hands back the raw output and throws
+    /// the ordering away, which is the whole reason the parser exists.
+    pub(crate) fn emit_restructured(
+        input: &str,
+        restructured: Option<String>,
+        name: &str,
+        ctx: &CommandContext,
+    ) -> CommandResult {
+        let (out, reducer) = match restructured {
+            Some(c) => (c, name.to_string()),
+            None => (input.to_string(), format!("{name}-passthrough")),
+        };
+        crate::parse_out::emit(&out);
+        if ctx.stats {
+            CommandStats::new()
+                .with_reducer(reducer)
+                .with_input_bytes(input.len())
+                .with_output_bytes(out.len())
+                .print();
+        }
+        Ok(())
+    }
+
+    /// Format a byte size into a human-readable string (e.g. 1.2K, 3.5M).
     pub(crate) fn format_human_size(bytes: u64) -> String {
         if bytes < 1024 {
             format!("{}B", bytes)
