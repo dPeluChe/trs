@@ -368,7 +368,11 @@ pub(crate) fn has_trs_marker(content: &str) -> bool {
 /// `trs rewrite` hook-command, and the Codex sentinel (needed because the
 /// codex rules block prose uses `` `trs` `` with backticks).
 pub(crate) fn file_has_any_trs_marker(content: &str) -> bool {
+    // Both spellings: the codex rules prose writes it as `trs` with
+    // backticks, and missing that is what let a second copy of the block get
+    // appended to an AGENTS.md that already had one.
     content.contains("trs (Token-Reducing Shell)")
+        || content.contains("`trs` (Token-Reducing Shell)")
         || content.contains("trs (TARS CLI)")
         || content.contains("trs rewrite")
         || content.contains(crate::init_templates::CODEX_AGENTS_SENTINEL_START)

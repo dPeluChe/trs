@@ -7,7 +7,10 @@ use std::path::{Path, PathBuf};
 
 use crate::init::{file_has_any_trs_marker, has_trs_marker, home_dir, HookSpec, InstallOpts};
 use crate::init_collision;
-use crate::init_templates::{ANTIGRAVITY_RULES_SECTION, CODEX_AGENTS_SECTION, CODEX_HOOKS};
+use crate::init_templates::{
+    ANTIGRAVITY_RULES_SECTION, CODEX_AGENTS_SECTION, CODEX_AGENTS_SENTINEL_END,
+    CODEX_AGENTS_SENTINEL_START, CODEX_HOOKS,
+};
 
 /// Install via the data-driven `HookSpec`. JSON targets merge; non-JSON
 /// targets create-only (refuse to overwrite foreign content).
@@ -77,13 +80,61 @@ pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> 
     Ok(rules_msg)
 }
 
+/// Swap the text between two sentinels for the current template, leaving
+/// every byte outside them exactly as it was.
+///
+/// Deliberately not `output_saver_core::replace_between`: that one collapses
+/// the newlines after the closing sentinel, which is right for the block it
+/// owns and wrong here. This file holds two trs blocks plus the user's own
+/// rules, and eating the blank line between them runs three separate sets of
+/// instructions together into one wall of prose.
+///
+/// Returns None when there is no sentinel pair to replace.
+fn refresh_sentinel_block(content: &str, start: &str, end: &str, block: &str) -> Option<String> {
+    let s = content.find(start)?;
+    let e = content[s..].find(end).map(|pos| s + pos + end.len())?;
+    Some(format!("{}{}{}", &content[..s], block, &content[e..]))
+}
+
 /// Append the trs sentinel block to an `AGENTS.md`. Shared write path for
 /// Codex (project + global) and Zed (project only) — one template, no copies.
 fn write_agents_md_block(path: &Path, opts: InstallOpts) -> Result<String, String> {
     if path.exists() {
         let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+
+        // Sentinel block present: refresh it when the template moved, the way
+        // the plugin installer already does. Without this a rules-text fix
+        // never reaches anyone who installed before it, and `--force` does not
+        // help either. That is not hypothetical: after the em-dash sweep,
+        // installed blocks kept using em dashes while the output-saver block
+        // sitting 50 lines above them told the agent never to write one.
+        if let Some(updated) = refresh_sentinel_block(
+            &content,
+            CODEX_AGENTS_SENTINEL_START,
+            CODEX_AGENTS_SENTINEL_END,
+            CODEX_AGENTS_SECTION.trim(),
+        ) {
+            if updated == content {
+                return Ok(format!("{} (already configured)", path.display()));
+            }
+            if opts.dry_run {
+                return Ok(format!(
+                    "{} (would refresh trs rules block)",
+                    path.display()
+                ));
+            }
+            fs::write(path, updated).map_err(|e| e.to_string())?;
+            return Ok(format!("{} (refreshed)", path.display()));
+        }
+
         if file_has_any_trs_marker(&content) {
-            return Ok(format!("{} (already configured)", path.display()));
+            // A trs block from before the sentinels existed. Its end cannot be
+            // located reliably, so say so rather than guess at a delete: a bad
+            // cut here eats the user's own instructions.
+            return Ok(format!(
+                "{} (already configured; legacy block without sentinels, run `trs audit-docs` to review it)",
+                path.display()
+            ));
         }
         if opts.dry_run {
             return Ok(format!("{} (would append trs rules block)", path.display()));
