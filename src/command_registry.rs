@@ -81,10 +81,6 @@ pub(crate) struct CommandSpec {
     /// Canonical name plus aliases that share identical handling
     /// (e.g. `["ls", "lsd", "exa", "eza"]`).
     pub names: &'static [&'static str],
-    /// Eligible for explicit `trs` rewrite wrapping. (Unknown commands are
-    /// still wrapped by the generic catch-all in `maybe_rewrite`; this flag
-    /// records the documented intent and drives `is_rewrite_command`.)
-    pub rewrite: bool,
     /// Counted as a "known binary" in coverage stats — trs compresses its
     /// output beyond plain ANSI/whitespace stripping.
     pub known: bool,
@@ -100,7 +96,7 @@ pub(crate) struct CommandSpec {
 pub(crate) static REGISTRY: &[CommandSpec] = &[
     // ---- Git ----
     CommandSpec {
-        names: &["git"], rewrite: true, known: true,
+        names: &["git"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("status", 0.20), ("diff", 0.10), ("log", 0.10), ("branch", 0.11),
             ("show", 0.10), ("stash", 0.10), ("pull", 0.15), ("fetch", 0.15),
@@ -110,33 +106,33 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     },
 
     // ---- File listing ----
-    CommandSpec { names: &["ls", "lsd", "exa", "eza"], rewrite: true, known: true,
+    CommandSpec { names: &["ls", "lsd", "exa", "eza"], known: true,
         keep_ratio: KeepRatio::flat(0.18), stderr: Stderr::Never },
-    CommandSpec { names: &["tree"], rewrite: true, known: true,
+    CommandSpec { names: &["tree"], known: true,
         keep_ratio: KeepRatio::flat(0.30), stderr: Stderr::Never },
 
     // ---- Search ----
-    CommandSpec { names: &["grep", "rg", "ag"], rewrite: true, known: true,
+    CommandSpec { names: &["grep", "rg", "ag"], known: true,
         keep_ratio: KeepRatio::flat(0.40), stderr: Stderr::Never },
     // `ack` shares the Grep parser but historically had no keep_ratio entry,
     // so it keeps the default ratio — kept separate to preserve that.
-    CommandSpec { names: &["ack"], rewrite: true, known: true,
+    CommandSpec { names: &["ack"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
-    CommandSpec { names: &["find", "fd"], rewrite: true, known: true,
+    CommandSpec { names: &["find", "fd"], known: true,
         keep_ratio: KeepRatio::flat(0.52), stderr: Stderr::Never },
 
     // ---- Logs ----
-    CommandSpec { names: &["tail"], rewrite: true, known: true,
+    CommandSpec { names: &["tail"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
     // `journalctl` shares the Logs parser. `known: true` because it is
     // parsed: `is_known_binary` feeds only `stats --coverage`, and reporting
     // a parsed command as a gap sends someone to write one that exists.
-    CommandSpec { names: &["journalctl"], rewrite: false, known: true,
+    CommandSpec { names: &["journalctl"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Rust / Cargo ----
     CommandSpec {
-        names: &["cargo"], rewrite: true, known: true,
+        names: &["cargo"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("clippy", 0.15), ("build", 0.10), ("check", 0.10), ("test", 0.05),
             ("install", 0.20), ("i", 0.20), ("fmt", 0.10),
@@ -147,7 +143,7 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
 
     // ---- JS package managers ----
     CommandSpec {
-        names: &["npm"], rewrite: true, known: true,
+        names: &["npm"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("install", 0.20), ("i", 0.20),
             ("ls", 0.40), ("list", 0.40), ("tree", 0.40), ("freeze", 0.40),
@@ -156,44 +152,44 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         stderr: Stderr::Never,
     },
     CommandSpec {
-        names: &["pnpm"], rewrite: true, known: true,
+        names: &["pnpm"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("install", 0.20), ("i", 0.20), ("test", 0.10), ("run", 0.15),
         ]},
         stderr: Stderr::Never,
     },
     CommandSpec {
-        names: &["bun"], rewrite: true, known: true,
+        names: &["bun"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("test", 0.10), ("run", 0.15),
         ]},
         stderr: Stderr::Never,
     },
     CommandSpec {
-        names: &["yarn"], rewrite: true, known: true,
+        names: &["yarn"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("install", 0.20), ("i", 0.20), ("test", 0.10), ("run", 0.15),
         ]},
         stderr: Stderr::Never,
     },
-    CommandSpec { names: &["npx", "bunx"], rewrite: true, known: true,
+    CommandSpec { names: &["npx", "bunx"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Python package managers ----
     CommandSpec {
-        names: &["pip", "pip3"], rewrite: true, known: true,
+        names: &["pip", "pip3"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("install", 0.20), ("i", 0.20),
             ("ls", 0.40), ("list", 0.40), ("tree", 0.40), ("freeze", 0.40),
         ]},
         stderr: Stderr::Never,
     },
-    CommandSpec { names: &["uv"], rewrite: true, known: true,
+    CommandSpec { names: &["uv"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
     // `poetry` was never in the rewrite list (it is reached via `poetry run`
     // transparent-prefix handling) but is a known binary with ratio overrides.
     CommandSpec {
-        names: &["poetry"], rewrite: false, known: true,
+        names: &["poetry"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("install", 0.20), ("add", 0.20), ("update", 0.20), ("run", 0.15),
         ]},
@@ -201,44 +197,44 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     },
 
     // ---- Test runners ----
-    CommandSpec { names: &["pytest"], rewrite: true, known: true,
+    CommandSpec { names: &["pytest"], known: true,
         keep_ratio: KeepRatio::flat(0.10), stderr: Stderr::Never },
-    CommandSpec { names: &["jest"], rewrite: true, known: true,
+    CommandSpec { names: &["jest"], known: true,
         keep_ratio: KeepRatio::flat(0.10), stderr: Stderr::Never },
-    CommandSpec { names: &["vitest"], rewrite: true, known: true,
+    CommandSpec { names: &["vitest"], known: true,
         keep_ratio: KeepRatio::flat(0.10), stderr: Stderr::Never },
 
     // ---- Build tools / compilers ----
-    CommandSpec { names: &["make"], rewrite: true, known: true,
+    CommandSpec { names: &["make"], known: true,
         keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Always },
     // `cmake` merges stderr but had no keep_ratio entry (default ratio).
-    CommandSpec { names: &["cmake"], rewrite: true, known: true,
+    CommandSpec { names: &["cmake"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Always },
-    CommandSpec { names: &["tsc"], rewrite: true, known: true,
+    CommandSpec { names: &["tsc"], known: true,
         keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Never },
-    CommandSpec { names: &["gcc", "g++"], rewrite: true, known: true,
+    CommandSpec { names: &["gcc", "g++"], known: true,
         keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Always },
     // `clang`/`javac` merge stderr but had no keep_ratio entry (default ratio).
-    CommandSpec { names: &["clang", "javac"], rewrite: true, known: true,
+    CommandSpec { names: &["clang", "javac"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Always },
     CommandSpec {
-        names: &["go"], rewrite: false, known: true,
+        names: &["go"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[("test", 0.08)] },
         stderr: Stderr::Subcmds(&["build"]),
     },
-    CommandSpec { names: &["swift"], rewrite: true, known: true,
+    CommandSpec { names: &["swift"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Subcmds(&["build"]) },
-    CommandSpec { names: &["xcodebuild"], rewrite: true, known: true,
+    CommandSpec { names: &["xcodebuild"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Always },
 
     // ---- Linters ----
     CommandSpec { names: &["eslint", "biome", "ruff", "pylint", "golangci-lint"],
-        rewrite: true, known: true,
+        known: true,
         keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Always },
 
     // ---- Containers / orchestration ----
     CommandSpec {
-        names: &["docker"], rewrite: true, known: true,
+        names: &["docker"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("ps", 0.30), ("logs", 0.50),
         ]},
@@ -246,12 +242,12 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     },
     // `known: false` on purpose: no dedicated parser, only the generic
     // reducer. Claiming otherwise hides a real gap from `stats --coverage`.
-    CommandSpec { names: &["kubectl"], rewrite: true, known: false,
+    CommandSpec { names: &["kubectl"], known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- GitHub CLI ----
     CommandSpec {
-        names: &["gh"], rewrite: true, known: true,
+        names: &["gh"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("pr", 0.30), ("issue", 0.30), ("run", 0.30),
             // Measured over pulls/repos/commits/issues responses: the link
@@ -265,60 +261,58 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     // Recursive s3 output is ~1 line per object: the most compressible shape
     // trs sees, hence the very low keep ratio.
     CommandSpec {
-        names: &["aws"], rewrite: true, known: true,
+        names: &["aws"], known: true,
         keep_ratio: KeepRatio { default: 0.30, overrides: &[("s3", 0.01)] },
         stderr: Stderr::Always,
     },
 
     // ---- Environment / misc utilities ----
-    CommandSpec { names: &["env", "printenv"], rewrite: true, known: true,
+    CommandSpec { names: &["env", "printenv"], known: true,
         keep_ratio: KeepRatio::flat(0.32), stderr: Stderr::Never },
-    CommandSpec { names: &["wc"], rewrite: true, known: true,
+    CommandSpec { names: &["wc"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
-    CommandSpec { names: &["ps"], rewrite: true, known: true,
+    CommandSpec { names: &["ps"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
-    CommandSpec { names: &["ping"], rewrite: true, known: true,
+    CommandSpec { names: &["ping"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Downloads ----
-    CommandSpec { names: &["wget"], rewrite: true, known: true,
+    CommandSpec { names: &["wget"], known: true,
         keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Never },
-    CommandSpec { names: &["curl"], rewrite: true, known: true,
+    CommandSpec { names: &["curl"], known: true,
         keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Never },
 
     // ---- Package managers (system) ----
-    CommandSpec { names: &["brew"], rewrite: true, known: true,
+    CommandSpec { names: &["brew"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Python interpreter ----
-    CommandSpec { names: &["python", "python3"], rewrite: true, known: true,
+    CommandSpec { names: &["python", "python3"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- LLM tooling ----
     // `list`/`ps`/`pull` are parsed; `run`/`show`/`serve` fall to generic.
-    CommandSpec { names: &["ollama"], rewrite: true, known: true,
+    CommandSpec { names: &["ollama"], known: true,
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("list", 0.45), ("ls", 0.45), ("ps", 0.45), ("pull", 0.15),
         ]},
         stderr: Stderr::Never },
 
-    // ---- Database clients: routed to the Db parser, so `known: true`.
-    //      `rewrite: false` is separate and stays: these are reached through
-    //      the catch-all, not the explicit rewrite set. ----
-    CommandSpec { names: &["psql", "mysql", "sqlite3", "mariadb"], rewrite: false, known: true,
+    // ---- Database clients: routed to the Db parser, so `known: true`. ----
+    CommandSpec { names: &["psql", "mysql", "sqlite3", "mariadb"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Generic CLIs: rewrite-eligible for ANSI/whitespace compression,
     //      but no dedicated parser and not counted in coverage stats. ----
-    CommandSpec { names: &["bash", "node"], rewrite: true, known: false,
+    CommandSpec { names: &["bash", "node"], known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- System inventory: many rows, few columns that matter. ----
-    CommandSpec { names: &["du", "lsof", "pgrep"], rewrite: true, known: true,
+    CommandSpec { names: &["du", "lsof", "pgrep"], known: true,
         keep_ratio: KeepRatio::flat(0.35), stderr: Stderr::Never },
 
     // ---- Verbatim: output is the payload, never compressed. ----
-    CommandSpec { names: VERBATIM_COMMANDS, rewrite: false, known: true,
+    CommandSpec { names: VERBATIM_COMMANDS, known: true,
         keep_ratio: KeepRatio::flat(1.0), stderr: Stderr::Never },
 
     // ---- Recognized-but-not-rewritten: intercepted in the fast path
@@ -326,9 +320,9 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     //      `sed` moved to VERBATIM_COMMANDS: read_intercept only catches
     //      `sed -n X,Yp FILE`, so every transform form fell through to the
     //      generic reducer and had its indentation flattened. ----
-    CommandSpec { names: &["cat", "head"], rewrite: false, known: true,
+    CommandSpec { names: &["cat", "head"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
-    CommandSpec { names: &["trs", "cd", "echo"], rewrite: false, known: true,
+    CommandSpec { names: &["trs", "cd", "echo"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 ];
 
@@ -376,11 +370,53 @@ pub(crate) fn is_verbatim_command(cmd: &str) -> bool {
     VERBATIM_COMMANDS.contains(&cmd)
 }
 
-/// Whether the command is explicitly rewrite-eligible. Unknown commands are
-/// still wrapped by the generic catch-all in `maybe_rewrite`; this records the
-/// documented set trs is designed to compress.
-pub(crate) fn is_rewrite_command(cmd: &str) -> bool {
-    spec(cmd).map_or(false, |s| s.rewrite)
+/// Flags by which a caller says "give me exactly these fields and nothing
+/// else". Their output is already the answer, so a parser that prunes it
+/// removes something the caller named on purpose: `gh api --jq '{name, url}'`
+/// returns valid JSON that the gh-api pruner would strip `url` out of.
+///
+/// A table rather than an inline `cmd == "gh"` check, so the next tool with a
+/// selector is one row and not another special case in a shared predicate.
+const FIELD_SELECTOR_FLAGS: &[(&str, &[&str])] = &[("gh", &["--jq", "-q", "--template", "-t"])];
+
+/// Whether the caller pre-selected their fields on this command line.
+fn caller_selected_fields(cmd: &str, rest: &str) -> bool {
+    FIELD_SELECTOR_FLAGS
+        .iter()
+        .find(|(bin, _)| *bin == cmd)
+        .is_some_and(|(_, flags)| rest.split_whitespace().any(|t| flags.contains(&t)))
+}
+
+/// Same question, seeing through a shell wrapper: `bash -c "column -t x"`
+/// must be left alone exactly like a bare `column -t x`. `rest` is whatever
+/// follows the binary, either the raw remainder of the line (the hook, which
+/// has not tokenized yet) or the joined argv (the executor, which has).
+///
+/// Deliberately looser than `unwrap_shell_c`: that gate has to be strict
+/// because it picks a parser, and the wrong pick produces garbage. Here the
+/// only decision is "leave the bytes alone", where a false positive costs
+/// some compression and a false negative corrupts output.
+///
+/// Known limit: a compound script (`cd x && awk …`) reports its first token,
+/// so an inner verbatim command later in the chain is not seen.
+pub(crate) fn is_verbatim_invocation(cmd: &str, rest: &str) -> bool {
+    if is_verbatim_command(cmd) || caller_selected_fields(cmd, rest) {
+        return true;
+    }
+    if !matches!(cmd, "bash" | "sh" | "zsh" | "dash") {
+        return false;
+    }
+    let mut toks = rest.split_whitespace();
+    while let Some(t) = toks.next() {
+        if t.starts_with('-') && t.ends_with('c') {
+            return toks
+                .next()
+                .map(|s| s.trim_start_matches(['"', '\'']))
+                .and_then(|s| s.split_whitespace().next())
+                .is_some_and(is_verbatim_command);
+        }
+    }
+    false
 }
 
 /// Binaries trs knows how to handle (compresses output beyond ANSI stripping).

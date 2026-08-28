@@ -310,90 +310,26 @@ fn is_known_binary_matches_golden_set_exactly() {
 }
 
 #[test]
-fn rewrite_eligibility_matches_legacy_prefixes() {
-    // Commands that were in REWRITE_PREFIXES.
-    for cmd in [
+fn every_registered_name_resolves_to_its_row() {
+    // Replaces `rewrite_eligibility_matches_legacy_prefixes`, which asserted
+    // on `CommandSpec::rewrite`. That field was deleted: it had one caller,
+    // and `maybe_rewrite` emitted the same wrapped command whether it was
+    // true or false, because the catch-all wraps everything anyway.
+    for name in [
         "git",
-        "ls",
-        "lsd",
-        "exa",
-        "eza",
-        "tree",
-        "find",
-        "fd",
-        "grep",
-        "rg",
-        "ag",
-        "ack",
-        "tail",
         "cargo",
         "npm",
-        "pnpm",
-        "bun",
-        "yarn",
-        "pip",
-        "pip3",
-        "pytest",
-        "jest",
-        "vitest",
-        "make",
-        "cmake",
-        "tsc",
-        "gcc",
-        "g++",
-        "clang",
-        "javac",
-        "docker",
-        "gh",
-        "env",
-        "printenv",
-        "wc",
-        "wget",
-        "curl",
-        "eslint",
-        "biome",
-        "ruff",
-        "pylint",
-        "golangci-lint",
-        "ollama",
-        "kubectl",
-        "swift",
-        "xcodebuild",
-        "ping",
-        "brew",
-        "python",
-        "python3",
-        "npx",
-        "ps",
-        "uv",
-        "bash",
-        "node",
-        "du",
-        "lsof",
-        "pgrep",
+        "psql",
+        "journalctl",
+        "poetry",
         "bunx",
     ] {
-        assert!(is_rewrite_command(cmd), "{cmd} should be rewrite-eligible");
-    }
-    // `jq` and `awk` were here until the verbatim class landed: generic
-    // compression collapsed the runs of spaces and blank lines that carry
-    // their meaning, so they are now handled by being left alone.
-    for cmd in ["jq", "awk"] {
         assert!(
-            !is_rewrite_command(cmd),
-            "{cmd} moved to the verbatim class"
+            spec(name).is_some(),
+            "{name} should resolve to a registry row"
         );
     }
-    // Commands that were NOT in REWRITE_PREFIXES (still wrapped by catch-all,
-    // but not part of the documented explicit set).
-    for cmd in ["go", "poetry", "psql", "journalctl", "cat", "cd"] {
-        // Reminder: this asserts the REWRITE flag, not `known`. psql and
-        // journalctl are parsed (known: true) but reached via the catch-all.
-        assert!(
-            !is_rewrite_command(cmd),
-            "{cmd} should not be in explicit set"
-        );
-    }
+    assert!(spec("totally-unknown").is_none());
 }
 
 #[test]
@@ -414,8 +350,42 @@ fn verbatim_commands_are_known_and_never_rewritten() {
         // Declared as known so `stats --coverage` stops reporting them as
         // parser gaps: trs handles them, by deliberately not touching them.
         assert!(is_known_binary(name), "should be known: {name}");
-        assert!(!is_rewrite_command(name), "should not rewrite: {name}");
     }
+}
+
+#[test]
+fn a_caller_selected_field_list_is_left_alone() {
+    // `gh api --jq '{name, url}'` returns valid JSON, so the gh-api pruner
+    // would happily strip `url` back out: a key the caller named on purpose.
+    // Caught as a live regression while sharing the verbatim predicate.
+    assert!(is_verbatim_invocation(
+        "gh",
+        " api repos/o/r --jq '{name, url}'"
+    ));
+    assert!(is_verbatim_invocation("gh", " api repos/o/r -q .name"));
+    assert!(is_verbatim_invocation(
+        "gh",
+        " api repos/o/r --template '{{.name}}'"
+    ));
+    // Without a selector the response is GitHub's full body: prune it.
+    assert!(!is_verbatim_invocation("gh", " api repos/o/r"));
+    // The flag table is keyed by binary, so it does not leak to other tools.
+    assert!(!is_verbatim_invocation("npm", " test --jq x"));
+}
+
+#[test]
+fn verbatim_gate_sees_through_a_shell_wrapper() {
+    // `bash -c "column -t x"` must be left alone like a bare `column -t x`:
+    // wrapping costs the child its tty, so `column` falls back to 80 columns
+    // before anything downstream can help it.
+    assert!(is_verbatim_invocation("column", " -t data.tsv"));
+    assert!(is_verbatim_invocation("bash", " -c \"column -t data.tsv\""));
+    assert!(is_verbatim_invocation("sh", " -c 'awk NR<=4 f.py'"));
+    assert!(is_verbatim_invocation("bash", " -lc \"cut -c1-20 f.py\""));
+    // Still compressible: the inner command is not verbatim.
+    assert!(!is_verbatim_invocation("bash", " -c \"ls -la src\""));
+    assert!(!is_verbatim_invocation("bash", " script.sh"));
+    assert!(!is_verbatim_invocation("npm", " test"));
 }
 
 #[test]

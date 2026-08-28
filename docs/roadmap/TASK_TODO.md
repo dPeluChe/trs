@@ -204,30 +204,9 @@ Still open:
 
 ### From the pre-release quality pass (2026-08-28)
 
-Four reviewers went over `v0.7.5..HEAD`. What they found and I fixed is in
-[`completed/2608.md`](./completed/2608.md). What I deliberately left:
-
-- [ ] **`CommandSpec::rewrite` is close to vestigial.** It has one production
-  caller, and `maybe_rewrite` produces the same `trs `-prefixed output whether
-  it is true or false, because the catch-all below it wraps everything anyway.
-  `psql`, `journalctl` and `sed` are all `rewrite: false` and all still get
-  wrapped. Either delete the field and derive the one env-assignment guard
-  from position, or rewrite its doc to say it is a documentation tag with no
-  wrapping authority. Removing a registry field is not a quality-pass change.
-- [ ] **The two verbatim gates are asymmetric.** The hook gate checks the
-  first token; the exec gate also sees through `bash -c` and knows about
-  `gh api --jq`. So `bash -c "column -t x"` is still wrapped by the hook, and
-  `column` loses the tty and falls back to 80 columns before the exec gate
-  passes it through. Sharing the looser predicate would fix it, and
-  `rewrite_decide.rs` already owns the quote-aware `split_and_chain` that
-  would close the compound-script limit too.
-- [ ] **`gh api --jq` is checked inside a function about shell wrappers.**
-  It is load-bearing (it catches `--jq '{name, url}'`, valid JSON where the
-  pruner would strip a key the caller asked for), but the `gh` knowledge
-  belongs with `gh`, near `has_structured_output_flag`.
-- [ ] **`captures_output` allocates a `Vec<char>` of the whole command on
-  every `maybe_rewrite`**, before any cheaper gate. Pre-existing, not from
-  this cycle, but it is the one real hot-path allocation in that file.
+Four reviewers went over `v0.7.5..HEAD`. All of it is done and recorded in
+[`completed/2608.md`](./completed/2608.md), including the four items first
+filed as deferred. Nothing left open from that pass.
 
 ### Verbatim commands: known gap
 
