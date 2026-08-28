@@ -128,9 +128,10 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     // ---- Logs ----
     CommandSpec { names: &["tail"], rewrite: true, known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
-    // `journalctl` shares the Logs parser but was never in the rewrite/known
-    // lists — registered so the parser-coverage invariant holds.
-    CommandSpec { names: &["journalctl"], rewrite: false, known: false,
+    // `journalctl` shares the Logs parser. `known: true` because it is
+    // parsed: `is_known_binary` feeds only `stats --coverage`, and reporting
+    // a parsed command as a gap sends someone to write one that exists.
+    CommandSpec { names: &["journalctl"], rewrite: false, known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Rust / Cargo ----
@@ -298,8 +299,10 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     CommandSpec { names: &["ollama"], rewrite: true, known: false,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
-    // ---- Database clients (parser exists; never in rewrite/known lists) ----
-    CommandSpec { names: &["psql", "mysql", "sqlite3", "mariadb"], rewrite: false, known: false,
+    // ---- Database clients: routed to the Db parser, so `known: true`.
+    //      `rewrite: false` is separate and stays: these are reached through
+    //      the catch-all, not the explicit rewrite set. ----
+    CommandSpec { names: &["psql", "mysql", "sqlite3", "mariadb"], rewrite: false, known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Never },
 
     // ---- Generic CLIs: rewrite-eligible for ANSI/whitespace compression,

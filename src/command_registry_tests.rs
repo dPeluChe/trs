@@ -239,6 +239,14 @@ const GOLDEN_KNOWN: &[&str] = &[
     "go",
     "poetry",
     "aws",
+    // Parsed, so counted as handled: journalctl shares the Logs parser and
+    // the db clients route to the Db parser. They are not in the explicit
+    // rewrite set, which is a separate flag.
+    "journalctl",
+    "psql",
+    "mysql",
+    "sqlite3",
+    "mariadb",
     "bunx",
     "du",
     "lsof",
@@ -291,9 +299,11 @@ fn is_known_binary_matches_golden_set_exactly() {
         }
     }
     // A clearly-unknown binary is not known.
-    assert!(!is_known_binary("psql"));
+    // `bash` stays unknown on purpose: the classifier arm only helps for
+    // `bash -c "<one simple command>"`; `bash script.sh` gets the generic
+    // reducer like anything else.
     assert!(!is_known_binary("bash"));
-    assert!(!is_known_binary("journalctl"));
+    assert!(!is_known_binary("kubectl"));
     assert!(!is_known_binary("totally-unknown"));
 }
 
@@ -375,6 +385,8 @@ fn rewrite_eligibility_matches_legacy_prefixes() {
     // Commands that were NOT in REWRITE_PREFIXES (still wrapped by catch-all,
     // but not part of the documented explicit set).
     for cmd in ["go", "poetry", "psql", "journalctl", "cat", "cd"] {
+        // Reminder: this asserts the REWRITE flag, not `known`. psql and
+        // journalctl are parsed (known: true) but reached via the catch-all.
         assert!(
             !is_rewrite_command(cmd),
             "{cmd} should not be in explicit set"
