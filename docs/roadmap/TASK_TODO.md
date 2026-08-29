@@ -20,7 +20,8 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ## Phase 2: New Parsers
 
-- [ ] kubectl (pods, services, deployments, logs)
+- [ ] kubectl (pods, services, deployments, logs). See the Doc-audit section
+      for why it is not written yet: no cluster to capture real output from.
 - [ ] AWS CLI (s3 ls, ec2 describe-instances, cloudwatch)
 - [ ] next build / prisma generate
 - [ ] playwright test (E2E summaries)
@@ -244,15 +245,6 @@ filed as deferred. Nothing left open from that pass.
 
 Both found while upgrading to v0.8.0 on a real machine.
 
-- [x] **`install.sh` resolved the release from one source.** The GitHub API
-  gives unauthenticated callers 60 requests an hour per IP and returns nothing
-  in the minute between a tag landing and its release publishing, so
-  `trs upgrade` failed once and worked on the retry. It now falls back to the
-  `/releases/latest` redirect, which costs no API quota. The error hint also
-  told users to `set TRS_VERSION=v0.5.2`, a version from long ago.
-- [x] **`install.ps1` threw instead of erroring.** `Invoke-RestMethod` raises
-  on a 403, so a rate-limited Windows user got a PowerShell stack trace rather
-  than trs's message. Wrapped, and the stale hint fixed.
 - [ ] **`install.ps1` has no redirect fallback yet.** Same fix as the shell
   installer, not written: there is no PowerShell on this machine to test it,
   and the property that holds the final redirect URI differs between Windows
@@ -264,25 +256,11 @@ Both found while upgrading to v0.8.0 on a real machine.
 Audited the emitted artifact, not the templates, after noticing that a prompt
 fragment is only as good as the context it lands in.
 
-- [x] **Rules blocks never refreshed.** `write_agents_md_block` returned
-  "already configured" on any trs marker, so the em-dash sweep never reached
-  installed blocks: one `~/.codex/AGENTS.md` had trs saying "No em dashes"
-  fifty lines above trs's own prose using three. It refreshes on drift now,
-  the way the plugin installer always has.
-- [x] **The marker missed the backticked spelling.** The codex prose writes
-  `` `trs` (Token-Reducing Shell) `` while the check looked only for the
-  unbackticked form. That is how a second copy of the block got appended to a
-  file that already had one, 2189 bytes on every Codex session.
 - [ ] **A legacy block without sentinels still needs a human.** Its end cannot
   be located reliably and a bad cut eats the user's own instructions, so
   install names the heading to look for and stops there. It used to point at
   `trs audit-docs`, which scans a project root and cannot see
   `~/.codex/AGENTS.md` at all. A `trs doctor` check is the right home.
-- [x] **`install_antigravity_rules` had the same bug and it WAS reproducible.**
-  My reason for deferring it ("unverified without a real stale file") did not
-  survive review: the sentinel already existed, so a stale file was three
-  lines to make, and the fuzzy marker check ran first and short-circuited past
-  the comparison. Fixed and tested.
 - [ ] **`install_rules` still has the non-refreshing early return.** Its two
   templates carry no sentinels, so there is nothing to refresh until they get
   some. Correcting my earlier note: I claimed those targets are "files trs
@@ -291,11 +269,6 @@ fragment is only as good as the context it lands in.
   pre-existing `.windsurfrules` (file unchanged, no marker written), so the
   append path and the whole-file delete in `delete_rules_file` may or may not
   meet. Needs a reproduction before anyone acts on it.
-- [ ] **`trs doctor` should own the stale/legacy rules-block check.**
-  `check_output_saver_installed` already does exactly this for the other
-  block: walks every agent, compares against canonical, warns with a hint. A
-  sibling for rules blocks fits beside it. The current install-time message
-  is the wrong place for something a user wants to ask about on demand.
 
 Not a finding: four of the five inline targets (`opencode`, `kilo`, `droid`,
 `devin`) are files trs creates whole, so there is no foreign content to
@@ -370,23 +343,33 @@ classifier / rewrite_decide / classifier_exec / stats_coverage.
 
 ---
 
-## Phase 3.5: Codex integration (stale, needs rework)
+## Phase 3.5: Codex integration (mostly shipped, re-checked 2026-08-29)
 
-Field finding (May 2026): the Codex integration is out of date in the code.
+Field finding (May 2026), re-checked 2026-08-29 against a live install. Most
+of this shipped without the section being updated, and one item sat here
+describing a bug we then rediscovered the hard way three months later.
 
-- [ ] **Re-enable Codex PreToolUse hook for `codex >= 0.129/0.130`.** The repo
+- [x] **Re-enable Codex PreToolUse hook.** Live: `trs doctor` reports
+      `trs rewrite hook active (codex-cli 0.147.0)`.
+- [ ] ~~superseded~~ The repo
   asserts Codex doesn't support `updatedInput`
   (`src/init_templates.rs`, `src/init.rs`, `docs/features/init.md`), but current
   official Codex docs say `PreToolUse` *does* accept `updatedInput.command` with
   `permissionDecision: "allow"` (https://developers.openai.com/codex/hooks).
   Today Codex relies on rules/manual-prefix, not a real hook.
-- [ ] **Keep AGENTS.md as fallback + output-saver only** once the hook works.
+- [x] **Keep AGENTS.md as fallback + output-saver only.** That is the current
+      shape: the hook rewrites, AGENTS.md carries rules plus the output-saver
+      block.
 - [ ] **`doctor`: warn when modern Codex exists without a `trs rewrite` hook.**
   Currently doctor only flags *legacy* orphan entries; it doesn't notice a modern
   Codex that *could* use a hook but has none.
-- [ ] **`uninstall`: don't delete valid Codex hooks** by assuming they're legacy.
-- [ ] **Output-saver dedup**: a duplicate "Output saver" section was observed in
-  `~/.codex/AGENTS.md`, installer should be idempotent / detect existing block.
+- [x] **`uninstall`: don't delete valid Codex hooks.** `scrub_legacy_codex_hook`
+      keeps user entries in the same event, with a test pinning it.
+- [x] **Output-saver dedup** (#155). Filed here in May and rediscovered in
+  August by hitting it: the marker looked for `trs (Token-Reducing Shell)`
+  while the codex prose writes it with backticks, so a second copy got
+  appended, 2189 bytes on every session. Worth remembering that the backlog
+  knew and the section title said "stale", so nobody read it.
 - [ ] **ChatGPT**: no direct `trs` install path for the ChatGPT desktop app (no
   shell-hook contract). Don't promise "ChatGPT" support except via Codex / Codex
   CLI. Audit any docs that imply otherwise.
