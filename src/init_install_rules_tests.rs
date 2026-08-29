@@ -111,3 +111,57 @@ fn the_trs_marker_catches_the_backticked_spelling() {
     ));
     assert!(!file_has_any_trs_marker("nothing to do with the tool"));
 }
+
+#[test]
+fn block_status_tells_the_four_states_apart() {
+    use std::io::Write;
+    let dir = std::env::temp_dir().join("trs_block_status_test");
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("AGENTS.md");
+    let start = "<!-- s -->";
+    let end = "<!-- e -->";
+    let section = "<!-- s -->\ncurrent\n<!-- e -->";
+
+    let write = |body: &str| {
+        let mut f = std::fs::File::create(&path).unwrap();
+        f.write_all(body.as_bytes()).unwrap();
+    };
+
+    write("# just my own notes\n");
+    assert_eq!(block_status(&path, start, end, section), RulesBlock::Absent);
+
+    write("<!-- s -->\ncurrent\n<!-- e -->");
+    assert_eq!(
+        block_status(&path, start, end, section),
+        RulesBlock::Current
+    );
+
+    write("<!-- s -->\nolder text\n<!-- e -->");
+    assert_eq!(
+        block_status(&path, start, end, section),
+        RulesBlock::Drifted
+    );
+
+    // The case that cost 2189 bytes a session and was invisible until someone
+    // opened the file: two blocks, which refresh refuses to splice across.
+    write("<!-- s -->\none\n<!-- e -->\n\n<!-- s -->\ntwo\n<!-- e -->");
+    assert_eq!(
+        block_status(&path, start, end, section),
+        RulesBlock::Duplicated
+    );
+
+    write("## Terminal Output Optimization\n\nprose from before the sentinels\n");
+    assert_eq!(block_status(&path, start, end, section), RulesBlock::Legacy);
+
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn block_status_reports_a_missing_file_as_absent() {
+    let missing = std::env::temp_dir().join("trs_no_such_agents_file_xyz.md");
+    let _ = std::fs::remove_file(&missing);
+    assert_eq!(
+        block_status(&missing, "<!-- s -->", "<!-- e -->", "x"),
+        RulesBlock::Absent
+    );
+}

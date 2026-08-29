@@ -26,6 +26,7 @@ trs doctor --json   # machine-readable; exits non-zero on any Fail
 | `stdin pipeline functional` | Pipes `"doctor probe\n"` through `trs clean` and confirms roundtrip. Catches PATH vs executable-bit issues. |
 | `AI tool hooks` | Count of detected agents with trs hooks installed (see [`trs init`](init.md)). |
 | `output saver` | Count of agents with the output-saver block installed (see [`trs output-saver`](output-saver.md)). Warns if zero. |
+| `rules blocks` | the rules sections trs splices into `~/.codex/AGENTS.md` and `~/.gemini/GEMINI.md`: current, written by an older trs, duplicated, or from before the sentinels |
 | `agent docs` | Scans CLAUDE.md / AGENTS.md / rules files in cwd and reports total token budget. Warns if any single file exceeds ~5k tokens. |
 
 ## Reading the report
@@ -106,3 +107,22 @@ fi
 - [`trs audit-docs`](audit-docs.md): the tool that fixes the
   oversized-docs warning.
 - [`trs upgrade`](upgrade.md): re-run the install pipeline.
+
+### What `rules blocks` is for
+
+`output saver` already answered "is that block current?" for one of the two
+things trs writes. This is the other half. A rules block installs once and
+then freezes unless something checks it, and a frozen block is worse than no
+block: a text fix ships and reaches nobody, and the stale copy can end up
+contradicting the block beside it in the same file.
+
+Four states, three of them actionable:
+
+- **current**: matches the template this binary ships.
+- **written by an older trs**: `trs init --all --global` refreshes it.
+- **duplicated**: two marker pairs in one file. trs refuses to splice across
+  them rather than risk deleting what sits between, so this one needs you to
+  open the file and remove the older block.
+- **pre-sentinel**: prose from before the markers existed. Its end cannot be
+  located reliably, same conclusion.
+
