@@ -240,6 +240,25 @@ filed as deferred. Nothing left open from that pass.
   where it used to be wrapped. Reachable only with tabs as argument
   separators, which agents do not emit.
 
+### Installer and instruction-file hygiene (2026-08-28)
+
+Both found while upgrading to v0.8.0 on a real machine.
+
+- [x] **`install.sh` resolved the release from one source.** The GitHub API
+  gives unauthenticated callers 60 requests an hour per IP and returns nothing
+  in the minute between a tag landing and its release publishing, so
+  `trs upgrade` failed once and worked on the retry. It now falls back to the
+  `/releases/latest` redirect, which costs no API quota. The error hint also
+  told users to `set TRS_VERSION=v0.5.2`, a version from long ago.
+- [x] **`install.ps1` threw instead of erroring.** `Invoke-RestMethod` raises
+  on a 403, so a rate-limited Windows user got a PowerShell stack trace rather
+  than trs's message. Wrapped, and the stale hint fixed.
+- [ ] **`install.ps1` has no redirect fallback yet.** Same fix as the shell
+  installer, not written: there is no PowerShell on this machine to test it,
+  and the property that holds the final redirect URI differs between Windows
+  PowerShell 5.1 and PowerShell 7. Guessing in the Windows install path is
+  not worth the four lines it saves.
+
 ### What trs writes into agent configs (2026-08-28)
 
 Audited the emitted artifact, not the templates, after noticing that a prompt
@@ -256,8 +275,9 @@ fragment is only as good as the context it lands in.
   file that already had one, 2189 bytes on every Codex session.
 - [ ] **A legacy block without sentinels still needs a human.** Its end cannot
   be located reliably and a bad cut eats the user's own instructions, so
-  install reports it and points at `trs audit-docs`. A `trs doctor` check
-  would be the better home, since this is install health.
+  install names the heading to look for and stops there. It used to point at
+  `trs audit-docs`, which scans a project root and cannot see
+  `~/.codex/AGENTS.md` at all. A `trs doctor` check is the right home.
 - [x] **`install_antigravity_rules` had the same bug and it WAS reproducible.**
   My reason for deferring it ("unverified without a real stale file") did not
   survive review: the sentinel already existed, so a stale file was three

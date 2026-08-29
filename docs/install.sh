@@ -81,11 +81,21 @@ resolve_version() {
         return
     fi
     # Fetch latest release tag. Avoid jq dependency.
+    # Two sources, because one is not enough in practice. The API is
+    # authoritative but unauthenticated callers get 60 requests an hour per
+    # IP, and it returns nothing for the minute or two between a tag landing
+    # and its release being published. The /releases/latest redirect answers
+    # the same question, costs no API quota, and is served from the web tier.
     tag=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
         | grep -o '"tag_name": *"[^"]*"' \
         | head -1 \
         | sed -E 's/.*"tag_name": *"([^"]*)".*/\1/')
-    [ -n "$tag" ] || error "could not resolve latest release (set TRS_VERSION=v0.5.2)"
+    if [ -z "$tag" ]; then
+        tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            "https://github.com/${REPO}/releases/latest" 2>/dev/null \
+            | sed -nE 's#.*/releases/tag/(.+)$#\1#p')
+    fi
+    [ -n "$tag" ] || error "could not resolve the latest release. Retry, or pin one from https://github.com/${REPO}/releases with TRS_VERSION=vX.Y.Z"
     echo "$tag"
 }
 
