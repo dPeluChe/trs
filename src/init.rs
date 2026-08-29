@@ -7,11 +7,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::init_collision;
-use crate::init_install::{
-    install_antigravity_rules, install_codex_agents, install_from_spec, install_rules,
-    install_zed_agents,
-};
+use crate::init_install::install_from_spec;
 use crate::init_install_plugins::{install_hermes_plugin, install_openclaw_plugin};
+use crate::init_install_rules::{
+    install_antigravity_rules, install_codex_agents, install_rules, install_zed_agents,
+};
 use crate::init_templates::{DEVIN_RULE, WINDSURF_RULES};
 
 /// Options for an install run. `global` picks home-dir vs project-local;
@@ -368,7 +368,11 @@ pub(crate) fn has_trs_marker(content: &str) -> bool {
 /// `trs rewrite` hook-command, and the Codex sentinel (needed because the
 /// codex rules block prose uses `` `trs` `` with backticks).
 pub(crate) fn file_has_any_trs_marker(content: &str) -> bool {
+    // Both spellings: the codex rules prose writes it as `trs` with
+    // backticks, and missing that is what let a second copy of the block get
+    // appended to an AGENTS.md that already had one.
     content.contains("trs (Token-Reducing Shell)")
+        || content.contains("`trs` (Token-Reducing Shell)")
         || content.contains("trs (TARS CLI)")
         || content.contains("trs rewrite")
         || content.contains(crate::init_templates::CODEX_AGENTS_SENTINEL_START)

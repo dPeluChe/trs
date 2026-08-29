@@ -53,6 +53,7 @@ mod init;
 mod init_collision;
 mod init_install;
 mod init_install_plugins;
+mod init_install_rules;
 mod init_show;
 mod init_templates;
 mod init_templates_plugins;
@@ -71,6 +72,7 @@ mod rewrite_decide;
 mod router;
 #[allow(dead_code)]
 mod schema;
+mod sentinel;
 mod text_util;
 pub(crate) mod tracker;
 mod uninstall;

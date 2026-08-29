@@ -111,6 +111,11 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
             }),
         // Devin Desktop (ex-Windsurf): the legacy `~/.codeium` global memory
         // is still read by Devin, so it remains the global output-saver target.
+        // Checked 2026-08-28 on a machine running both apps: `~/.codeium` had
+        // non-trs writes that same day while `~/.windsurf` had gone quiet in
+        // June, so the tree is live rather than merely present. `trs init`
+        // targets `.devin/rules/trs.md` instead, but that one is project-local
+        // and output-saver installs globally, which is why they differ.
         "devin" => push_home(".codeium/windsurf/memories/global_rules.md")
             .map(|path| Target::InlineFile { path })
             .unwrap_or(Target::NotSupported {

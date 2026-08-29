@@ -10,6 +10,7 @@
 //! every install target.
 
 use crate::output_saver_block_literal;
+use crate::sentinel::trs_sentinels;
 
 // Plugin/extension templates (TS/Python) live in their own module; re-export
 // so existing callers keep importing from init_templates.
@@ -190,15 +191,15 @@ pub(crate) const CURSOR_HOOKS: &str = r#"{
   }
 }"#;
 
-/// Sentinel that marks the Codex AGENTS.md block on re-runs. The block's
-/// prose uses backtick-wrapped `` `trs` `` which doesn't match the plain
-/// `trs (Token-Reducing Shell)` marker — without this sentinel re-runs
-/// duplicate the section.
-pub(crate) const CODEX_AGENTS_SENTINEL_START: &str = "<!-- trs:codex-rules:start v1 -->";
-pub(crate) const CODEX_AGENTS_SENTINEL_END: &str = "<!-- trs:codex-rules:end -->";
-
-pub(crate) const CODEX_AGENTS_SECTION: &str = concat!(
-    "<!-- trs:codex-rules:start v1 -->\n",
+// Sentinel that marks the Codex AGENTS.md block on re-runs. The block's
+// prose uses backtick-wrapped `` `trs` `` which doesn't match the plain
+// `trs (Token-Reducing Shell)` marker, and without this sentinel re-runs
+// duplicate the section.
+trs_sentinels!(
+    CODEX_AGENTS_SENTINEL_START,
+    CODEX_AGENTS_SENTINEL_END,
+    CODEX_AGENTS_SECTION,
+    "codex-rules",
     r#"
 ## Terminal Output Optimization
 
@@ -243,28 +244,17 @@ already have definitions in the source tree, flagging them as "remove and
 link" vs "extract to a new file".
 
 See https://github.com/dPeluChe/trs for details.
-
-<!-- trs:codex-rules:end -->
 "#
 );
 
-/// Sentinel that wraps the Antigravity rules block in `~/.gemini/GEMINI.md`.
-/// Lets re-runs and uninstall identify the block without false positives
-/// from prose mentions of `trs`.
-pub(crate) const ANTIGRAVITY_RULES_SENTINEL_START: &str = "<!-- trs:antigravity-rules:start v1 -->";
-pub(crate) const ANTIGRAVITY_RULES_SENTINEL_END: &str = "<!-- trs:antigravity-rules:end -->";
-
-/// Rules block appended to `~/.gemini/GEMINI.md` for both the Antigravity
-/// IDE and the Antigravity CLI (`agy`). Both products read this file at
-/// session start via the Gemini-style `@import` resolution.
-///
-/// The block is small on purpose — Antigravity sessions already consume a
-/// lot of context. We rely on the existing `@trs.md` import for the
-/// full output-saver / response shape rules; this block only documents
-/// the manual-prefix recommendation and explains why automatic
-/// rewriting is not active (jetski PreTool hooks aren't user-config).
-pub(crate) const ANTIGRAVITY_RULES_SECTION: &str = concat!(
-    "<!-- trs:antigravity-rules:start v1 -->\n",
+// Sentinel that wraps the Antigravity rules block in `~/.gemini/GEMINI.md`.
+// Lets re-runs and uninstall identify the block without false positives
+// from prose mentions of `trs`.
+trs_sentinels!(
+    ANTIGRAVITY_RULES_SENTINEL_START,
+    ANTIGRAVITY_RULES_SENTINEL_END,
+    ANTIGRAVITY_RULES_SECTION,
+    "antigravity-rules",
     r#"
 ## Terminal Output Optimization (Antigravity IDE + agy CLI)
 
@@ -292,8 +282,6 @@ parser still get ANSI stripping + whitespace collapse (~30-40% "free").
 
 See `docs/development/antigravity-hooks-research.md` in the trs repo
 for the investigation that led to this rules-only integration.
-
-<!-- trs:antigravity-rules:end -->
 "#
 );
 

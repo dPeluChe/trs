@@ -258,13 +258,49 @@ Both found while upgrading to v0.8.0 on a real machine.
   and the property that holds the final redirect URI differs between Windows
   PowerShell 5.1 and PowerShell 7. Guessing in the Windows install path is
   not worth the four lines it saves.
-- [ ] **`trs init --force` cannot repair a legacy unsentineled block.**
-  `write_agents_md_block` returns "already configured" on any trs marker, so
-  a `~/.codex/AGENTS.md` carrying a pre-sentinel copy keeps it forever: found
-  one costing 2189 bytes on every Codex session. It cannot recur (the marker
-  list now includes the sentinel) but it does not self-heal either.
-  `trs audit-docs` does flag it, though it under-reports the size. A
-  `trs doctor` check would be the right home, since this is install health.
+
+### What trs writes into agent configs (2026-08-28)
+
+Audited the emitted artifact, not the templates, after noticing that a prompt
+fragment is only as good as the context it lands in.
+
+- [x] **Rules blocks never refreshed.** `write_agents_md_block` returned
+  "already configured" on any trs marker, so the em-dash sweep never reached
+  installed blocks: one `~/.codex/AGENTS.md` had trs saying "No em dashes"
+  fifty lines above trs's own prose using three. It refreshes on drift now,
+  the way the plugin installer always has.
+- [x] **The marker missed the backticked spelling.** The codex prose writes
+  `` `trs` (Token-Reducing Shell) `` while the check looked only for the
+  unbackticked form. That is how a second copy of the block got appended to a
+  file that already had one, 2189 bytes on every Codex session.
+- [ ] **A legacy block without sentinels still needs a human.** Its end cannot
+  be located reliably and a bad cut eats the user's own instructions, so
+  install names the heading to look for and stops there. It used to point at
+  `trs audit-docs`, which scans a project root and cannot see
+  `~/.codex/AGENTS.md` at all. A `trs doctor` check is the right home.
+- [x] **`install_antigravity_rules` had the same bug and it WAS reproducible.**
+  My reason for deferring it ("unverified without a real stale file") did not
+  survive review: the sentinel already existed, so a stale file was three
+  lines to make, and the fuzzy marker check ran first and short-circuited past
+  the comparison. Fixed and tested.
+- [ ] **`install_rules` still has the non-refreshing early return.** Its two
+  templates carry no sentinels, so there is nothing to refresh until they get
+  some. Correcting my earlier note: I claimed those targets are "files trs
+  creates whole", which is wrong, line 305 appends to an existing file
+  preserving user prose. I could not get install to take that branch on a
+  pre-existing `.windsurfrules` (file unchanged, no marker written), so the
+  append path and the whole-file delete in `delete_rules_file` may or may not
+  meet. Needs a reproduction before anyone acts on it.
+- [ ] **`trs doctor` should own the stale/legacy rules-block check.**
+  `check_output_saver_installed` already does exactly this for the other
+  block: walks every agent, compares against canonical, warns with a hint. A
+  sibling for rules blocks fits beside it. The current install-time message
+  is the wrong place for something a user wants to ask about on demand.
+
+Not a finding: four of the five inline targets (`opencode`, `kilo`, `droid`,
+`devin`) are files trs creates whole, so there is no foreign content to
+concatenate against. Only `~/.codex/AGENTS.md` mixes trs blocks with the
+user's own rules, which is why it was the one that broke.
 
 ### Verbatim commands: known gap
 

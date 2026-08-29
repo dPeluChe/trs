@@ -296,14 +296,20 @@ fn refresh_configs() {
     }
     println!("  ok  existing hook configs parse as valid JSON");
 
+    // State both commands once, up front, then let each subcommand's own
+    // output follow. Echoing each command right before running it put two
+    // lines starting with "trs init" back to back at different indents, one
+    // of them the echo and one the subcommand's header, which read as
+    // duplicated text rather than as a command and its result.
     println!();
     println!(
-        "Refreshing agent integrations with v{} templates...",
+        "Refreshing agent integrations with v{} templates:",
         new_version
     );
+    println!("  trs init --all --global --force");
+    println!("  trs output-saver --refresh");
     println!();
 
-    println!("  trs init --all --global --force");
     let init_ok = Command::new("trs")
         .args(["init", "--all", "--global", "--force"])
         .status()
@@ -314,7 +320,6 @@ fn refresh_configs() {
     }
 
     println!();
-    println!("  trs output-saver --refresh");
     let refresh_ok = Command::new("trs")
         .args(["output-saver", "--refresh"])
         .status()

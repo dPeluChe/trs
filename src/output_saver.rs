@@ -35,6 +35,7 @@
 /// `&str` constants cannot be composed in `concat!` across modules in
 /// Rust, hence the macro form. `BLOCK` below re-materializes the same
 /// literal for runtime callers.
+use crate::sentinel::trs_sentinels;
 #[macro_export]
 macro_rules! output_saver_block_literal {
     () => {
@@ -90,8 +91,7 @@ User instructions always override these rules."#
 
 pub(crate) const BLOCK: &str = output_saver_block_literal!();
 
-pub(crate) const SENTINEL_START: &str = "<!-- trs:output-saver:start v1 -->";
-pub(crate) const SENTINEL_END: &str = "<!-- trs:output-saver:end -->";
+trs_sentinels!(SENTINEL_START, SENTINEL_END, "output-saver");
 
 /// Import filename used by Claude Code and Gemini CLI when we install
 /// as a standalone file + `@import` line.
