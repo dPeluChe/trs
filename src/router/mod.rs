@@ -65,6 +65,9 @@ impl Router {
     /// Route a command to its handler and execute it.
     pub fn route(&self, command: &Commands, ctx: &CommandContext) -> CommandResult {
         match command {
+            // Handled in main before routing: it prints a payload and may
+            // prompt, neither of which belongs behind the parse router.
+            Commands::Report { .. } => Ok(()),
             Commands::Run {
                 command,
                 args,

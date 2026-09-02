@@ -138,6 +138,16 @@ pub enum Commands {
         output: Option<String>,
     },
 
+    /// Turn a local diagnostic into something a maintainer can act on.
+    /// Both reports are built from your machine, so both print the whole
+    /// payload first: home paths become `~` and credential shapes are
+    /// masked, but an internal hostname is not something redaction can
+    /// detect. Nothing is sent without `--submit` and a confirmation.
+    Report {
+        #[command(subcommand)]
+        kind: ReportKind,
+    },
+
     /// Detect how trs was installed and re-run the matching install path
     /// to pick up the latest release. Supports npm and the curl|sh script;
     /// flags the cargo / Homebrew channels as manual-only for now. After
@@ -643,4 +653,36 @@ pub enum TestRunner {
     Pnpm,
     /// bun test
     Bun,
+}
+
+/// Which report `trs report` builds.
+#[derive(Subcommand, Debug, Clone)]
+pub enum ReportKind {
+    /// Which commands trs sees often and compresses badly. This is the
+    /// input a parser request needs, so it is worth sending after a week
+    /// of normal work rather than on day one.
+    Coverage {
+        /// Window in days (default 30).
+        #[arg(long)]
+        days: Option<u64>,
+        /// Write the report to PATH instead of a temp file.
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Offer to open a PUBLIC GitHub issue after you confirm.
+        #[arg(long)]
+        submit: bool,
+    },
+    /// Version, platform, doctor results and recent history, in the shape
+    /// a maintainer can read without a round trip.
+    Bug {
+        /// One line on what happened. Prefills the issue body.
+        #[arg(short, long)]
+        summary: Option<String>,
+        /// Write the report to PATH instead of a temp file.
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Offer to open a PUBLIC GitHub issue after you confirm.
+        #[arg(long)]
+        submit: bool,
+    },
 }

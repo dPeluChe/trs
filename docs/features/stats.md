@@ -246,10 +246,15 @@ gh issue create --repo dPeluChe/trs --title "parser-gap: poetry run" --body-file
 ```
 
 The JSON is self-contained (`trs_version`, entry range, tier rows with
-binary/sub/count/in_bytes/avg_in/low_pct/sample). No cwd paths or
-secrets leak, `sample` is truncated to 70 chars and may include flag
-patterns, so glance over it before sharing if your project layouts
-contain sensitive names.
+binary/sub/count/in_bytes/avg_in/low_pct/sample).
+
+`sample` is a real command line off your machine, truncated to 70
+chars. It routinely contains home paths and internal hostnames: a
+sweep of one developer's report found `ssh <internal-host> sudo cat
+/etc/nftables.conf` and a full `/Users/<name>/...` path among eleven
+samples. Use `trs report coverage`, which redacts what is
+mechanically detectable and shows you the whole payload before
+anything is sent.
 
 ## JSON mode
 
@@ -311,3 +316,44 @@ few months of heavy use.
   writability.
 - [`trs discover`](../../README.md): scans your prior shell history
   for commands where trs would have saved tokens but wasn't used.
+
+## `trs report coverage`
+
+The coverage view answers "which commands should trs learn next", which is
+only useful to a maintainer if someone sends it. This does both steps:
+
+```bash
+trs report coverage              # build it, print it, save it, send nothing
+trs report coverage --submit     # same, then offer to open a public issue
+trs report coverage --days 90    # widen the window
+```
+
+It is worth running after a week of normal work, not on day one: the value is
+in what you actually run and how badly it compresses, and one day of history
+answers neither.
+
+### What it does about your data
+
+`sample` fields are real command lines off your machine. The report rewrites
+your home directory to `~` and masks credential shapes (tokens, `-u user:pass`,
+`Authorization:` headers), then prints the entire payload before anything
+happens.
+
+That printing is the point. Redaction catches patterns; it cannot know that
+`ssh prod-db-01` names your infrastructure or that a directory is a client's
+name. Read it. Nothing is sent without `--submit` and a `y` at the prompt, and
+without `--submit` the command just tells you the `gh issue create` line so
+you can post it yourself.
+
+## `trs report bug`
+
+Same posture, different payload: version, platform, doctor results, recent
+history and the most recent tee logs.
+
+```bash
+trs report bug --summary "gh api output comes back empty"
+trs report bug --summary "..." --submit
+```
+
+The tee-log excerpts are real command output, which is what makes the report
+useful and also what makes it worth reading first.

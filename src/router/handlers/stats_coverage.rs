@@ -51,6 +51,27 @@ impl Agg {
 /// `aws` still ranked first at 0%, because the bytes it counted were spent
 /// before the fix existed. A gap list that never forgets stops being a to-do
 /// list. Callers pass `days`; the CLI defaults it to 30.
+/// The `--json` payload for a window, without printing. `trs report coverage`
+/// uses this so the report and the flag can never describe different data.
+/// None when the window holds no history.
+pub(crate) fn coverage_json_for(
+    entries: &[HistoryEntry],
+    limit: usize,
+    days: u64,
+) -> Option<String> {
+    let cutoff = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+        .saturating_sub(days * 86_400);
+    let windowed: Vec<HistoryEntry> = entries.iter().filter(|e| e.ts >= cutoff).cloned().collect();
+    if windowed.is_empty() {
+        return None;
+    }
+    let (binaries, sub_cmds) = aggregate(&windowed);
+    Some(coverage_json(&windowed, &binaries, &sub_cmds, limit))
+}
+
 pub(crate) fn print_coverage(entries: &[HistoryEntry], limit: usize, json: bool, days: u64) {
     let cutoff = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -342,7 +363,14 @@ fn is_leap(y: i32) -> bool {
     (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 }
 
-fn print_json(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, limit: usize) {
+/// Build the `--json` payload. Split from the printer so
+/// `trs report coverage` can take the same string without capturing stdout.
+fn coverage_json(
+    entries: &[HistoryEntry],
+    binaries: &AggMap,
+    sub_cmds: &SubMap,
+    limit: usize,
+) -> String {
     let (tier_a, tier_b, tier_c) = classify(binaries, sub_cmds, limit);
     let oldest = entries.iter().map(|e| e.ts).min().unwrap_or(0);
     let newest = entries.iter().map(|e| e.ts).max().unwrap_or(0);
@@ -385,7 +413,11 @@ fn print_json(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, li
         "unrecognized": to_bin_json(&tier_b),
         "well_covered": to_sub_json(&tier_c),
     });
-    println!("{}", serde_json::to_string_pretty(&out).unwrap_or_default());
+    serde_json::to_string_pretty(&out).unwrap_or_default()
+}
+
+fn print_json(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, limit: usize) {
+    println!("{}", coverage_json(entries, binaries, sub_cmds, limit));
 }
 
 #[cfg(test)]
