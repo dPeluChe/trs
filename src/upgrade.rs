@@ -248,6 +248,10 @@ fn run_shell(cmd: &str) -> bool {
 ///
 /// Failures surface as explicit warnings; the binary upgrade itself
 /// has already happened and the refresh commands are idempotent, so
+/// Set on every `trs` process upgrade spawns. Those children inherit stdout,
+/// so anything they print lands inside upgrade's own output.
+pub(crate) const CHILD_ENV: &str = "TRS_UPGRADE_CHILD";
+
 /// the user can always re-run them manually.
 fn refresh_configs() {
     let old_version = env!("CARGO_PKG_VERSION");
@@ -312,6 +316,7 @@ fn refresh_configs() {
 
     let init_ok = Command::new("trs")
         .args(["init", "--all", "--global", "--force"])
+        .env(CHILD_ENV, "1")
         .status()
         .map(|s| s.success())
         .unwrap_or(false);
@@ -331,6 +336,7 @@ fn refresh_configs() {
 
     println!();
     println!("upgrade complete. Restart any open shells to pick up the new binary.");
+    crate::report::print_hint();
 }
 
 /// Return the first hook-config JSON file in `$HOME` that fails to

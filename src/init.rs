@@ -268,6 +268,15 @@ pub(crate) fn install_all(opts: InstallOpts) {
         println!();
         println!("  trs init --all --global --force");
     }
+    install_finished(opts);
+}
+
+/// The tail every user-invoked install path ends with. One owner, so `--all`
+/// and single-tool init cannot disagree about when the hint appears.
+pub(crate) fn install_finished(opts: InstallOpts) {
+    if !opts.dry_run {
+        crate::report::print_hint();
+    }
 }
 
 /// Check if trs binary is available in PATH.
