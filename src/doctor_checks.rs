@@ -150,6 +150,72 @@ pub(crate) fn check_output_saver_installed() -> Check {
     }
 }
 
+/// State of the rules blocks trs splices into agent config files.
+///
+/// The sibling of `check_output_saver_installed`, and it exists because the
+/// other half of what trs writes had no such check: a rules block that
+/// installed once and then froze was invisible until someone read the file
+/// and found trs contradicting itself in it.
+pub(crate) fn check_rules_blocks() -> Check {
+    use crate::init_install_rules::{global_rules_blocks, RulesBlock};
+
+    let blocks = global_rules_blocks();
+    let mut current = 0;
+    let mut drifted: Vec<&str> = Vec::new();
+    let mut needs_hand: Vec<(&str, String, &str)> = Vec::new();
+
+    for (name, path, status) in &blocks {
+        match status {
+            RulesBlock::Current => current += 1,
+            RulesBlock::Drifted => drifted.push(name),
+            RulesBlock::Duplicated => {
+                needs_hand.push((name, path.display().to_string(), "two blocks"))
+            }
+            RulesBlock::Legacy => {
+                needs_hand.push((name, path.display().to_string(), "pre-sentinel block"))
+            }
+            RulesBlock::Absent => {}
+        }
+    }
+
+    if !needs_hand.is_empty() {
+        let (name, path, what) = &needs_hand[0];
+        let more = if needs_hand.len() > 1 {
+            format!(" (+{} more)", needs_hand.len() - 1)
+        } else {
+            String::new()
+        };
+        return Check::warn(
+            "rules blocks",
+            format!("rules blocks ({} has {} in {}){}", name, what, path, more),
+        )
+        .with_hint(
+            "trs will not splice across those on its own; open the file and delete the older block",
+        );
+    }
+    if !drifted.is_empty() {
+        return Check::warn(
+            "rules blocks",
+            format!(
+                "rules blocks ({} written by an older trs: {})",
+                drifted.len(),
+                drifted.join(", ")
+            ),
+        )
+        .with_hint("run `trs init --all --global` to refresh them");
+    }
+    if current == 0 {
+        return Check::pass("rules blocks", "rules blocks: none installed".to_string());
+    }
+    Check::pass(
+        "rules blocks",
+        format!(
+            "rules blocks ({} installed, content matches this version)",
+            current
+        ),
+    )
+}
+
 /// Scan cwd for agent instruction files and surface a token budget summary.
 /// Always visible when any file exists — the `trs audit-docs` suggestion
 /// belongs on the happy path too, not only when docs are already bloated.

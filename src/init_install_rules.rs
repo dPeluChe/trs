@@ -287,3 +287,68 @@ pub(crate) fn install_rules(
 #[cfg(test)]
 #[path = "init_install_rules_tests.rs"]
 mod tests;
+
+/// What state a managed rules block is in on disk. `trs doctor` reports these;
+/// nothing here writes.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum RulesBlock {
+    /// No trs rules block, and no sign there ever was one.
+    Absent,
+    /// Present and byte-identical to the template this binary ships.
+    Current,
+    /// Present but written by an older binary. `trs init` refreshes it.
+    Drifted,
+    /// More than one marker pair. Refresh refuses to touch this rather than
+    /// risk splicing across two blocks, so it needs a human.
+    Duplicated,
+    /// Prose from before the sentinels existed. Its end cannot be located,
+    /// so it also needs a human.
+    Legacy,
+}
+
+fn block_status(path: &Path, start: &str, end: &str, section: &str) -> RulesBlock {
+    let Ok(content) = fs::read_to_string(path) else {
+        return RulesBlock::Absent;
+    };
+    if content.matches(start).count() > 1 || content.matches(end).count() > 1 {
+        return RulesBlock::Duplicated;
+    }
+    match refresh_sentinel_block(&content, start, end, section.trim()) {
+        Some(updated) if updated == content => RulesBlock::Current,
+        Some(_) => RulesBlock::Drifted,
+        None if content.contains(LEGACY_RULES_HEADING) => RulesBlock::Legacy,
+        None => RulesBlock::Absent,
+    }
+}
+
+/// The global rules blocks trs manages, with the state of each. Used by
+/// `trs doctor`: a block that installs once and then freezes is invisible
+/// otherwise, which is how one sat contradicting its neighbour for weeks.
+pub(crate) fn global_rules_blocks() -> Vec<(&'static str, PathBuf, RulesBlock)> {
+    let Ok(home) = home_dir() else {
+        return Vec::new();
+    };
+    let targets: [(&str, PathBuf, &str, &str, &str); 2] = [
+        (
+            "Codex",
+            home.join(".codex").join("AGENTS.md"),
+            CODEX_AGENTS_SENTINEL_START,
+            CODEX_AGENTS_SENTINEL_END,
+            CODEX_AGENTS_SECTION,
+        ),
+        (
+            "Antigravity",
+            home.join(".gemini").join("GEMINI.md"),
+            ANTIGRAVITY_RULES_SENTINEL_START,
+            ANTIGRAVITY_RULES_SENTINEL_END,
+            ANTIGRAVITY_RULES_SECTION,
+        ),
+    ];
+    targets
+        .into_iter()
+        .map(|(name, path, start, end, section)| {
+            let status = block_status(&path, start, end, section);
+            (name, path, status)
+        })
+        .collect()
+}
