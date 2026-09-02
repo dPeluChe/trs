@@ -268,6 +268,9 @@ pub(crate) fn install_all(opts: InstallOpts) {
         println!();
         println!("  trs init --all --global --force");
     }
+    if !opts.dry_run {
+        crate::report::print_hint();
+    }
 }
 
 /// Check if trs binary is available in PATH.

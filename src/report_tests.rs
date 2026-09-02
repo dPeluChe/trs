@@ -35,3 +35,47 @@ fn scrub_leaves_ordinary_command_lines_alone() {
         assert_eq!(scrub(line), line);
     }
 }
+
+/// The install and upgrade tails print this hint, and #158 shipped a `trs
+/// report` that answered "Command not found". Anything the hint tells a user
+/// to run is resolved against the real clap tree, so advertising a command
+/// that does not exist fails here instead of in someone's terminal.
+#[test]
+fn every_command_the_install_hint_advertises_exists() {
+    use clap::CommandFactory;
+
+    let hint = crate::report::hint();
+    let advertised: Vec<Vec<&str>> = hint
+        .lines()
+        .filter_map(|l| l.trim().strip_prefix("trs "))
+        .map(|l| {
+            l.split("  ")
+                .next()
+                .unwrap_or("")
+                .split_whitespace()
+                .collect()
+        })
+        .filter(|w: &Vec<&str>| !w.is_empty())
+        .collect();
+    assert_eq!(
+        advertised.len(),
+        2,
+        "hint should advertise both reports:\n{hint}"
+    );
+
+    for path in &advertised {
+        let mut node = crate::cli::Cli::command();
+        for (depth, name) in path.iter().enumerate() {
+            let found = node.find_subcommand(name).cloned();
+            match found {
+                Some(sub) => node = sub,
+                None => panic!(
+                    "the install hint advertises `trs {}`, but `{name}` is not a subcommand of \
+                     `trs {}`. Either fix the hint in src/report.rs or add the command.",
+                    path.join(" "),
+                    path[..depth].join(" ")
+                ),
+            }
+        }
+    }
+}

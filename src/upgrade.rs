@@ -331,6 +331,7 @@ fn refresh_configs() {
 
     println!();
     println!("upgrade complete. Restart any open shells to pick up the new binary.");
+    crate::report::print_hint();
 }
 
 /// Return the first hook-config JSON file in `$HOME` that fails to

@@ -167,3 +167,19 @@ pub(crate) fn run_bug(summary: Option<&str>, output: Option<&str>, submit: bool)
 #[cfg(test)]
 #[path = "report_tests.rs"]
 mod tests;
+
+/// Both install paths end by pointing here: these commands only help if people
+/// know they exist, and each line says WHEN it is worth running.
+pub(crate) fn hint() -> String {
+    [
+        "Help improve trs (both show the full report and ask before sending):",
+        "  trs report coverage   after a week of use: commands trs does not compress yet",
+        "  trs report bug        when something misbehaves: a diagnostic for a maintainer",
+    ]
+    .join("\n")
+}
+
+pub(crate) fn print_hint() {
+    println!();
+    println!("{}", hint());
+}
