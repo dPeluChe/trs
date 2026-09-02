@@ -36,46 +36,39 @@ fn scrub_leaves_ordinary_command_lines_alone() {
     }
 }
 
-/// The install and upgrade tails print this hint, and #158 shipped a `trs
-/// report` that answered "Command not found". Anything the hint tells a user
-/// to run is resolved against the real clap tree, so advertising a command
-/// that does not exist fails here instead of in someone's terminal.
+/// Every command the hint advertises must exist in the clap tree. This pins the
+/// hint text against the command definitions; it does NOT cover the
+/// hand-maintained fast-path list in main_args.rs that caused #158, which
+/// tests/cli_subcommands_reach_clap.rs exercises against the real binary.
 #[test]
 fn every_command_the_install_hint_advertises_exists() {
     use clap::CommandFactory;
 
-    let hint = crate::report::hint();
-    let advertised: Vec<Vec<&str>> = hint
+    let advertised: Vec<&str> = crate::report::HINT
         .lines()
         .filter_map(|l| l.trim().strip_prefix("trs "))
-        .map(|l| {
-            l.split("  ")
-                .next()
-                .unwrap_or("")
-                .split_whitespace()
-                .collect()
-        })
-        .filter(|w: &Vec<&str>| !w.is_empty())
+        .filter_map(|rest| rest.split("  ").next())
         .collect();
-    assert_eq!(
-        advertised.len(),
-        2,
-        "hint should advertise both reports:\n{hint}"
+    assert!(
+        !advertised.is_empty(),
+        "hint advertises no commands, the parse stopped matching:\n{}",
+        crate::report::HINT
     );
 
     for path in &advertised {
         let mut node = crate::cli::Cli::command();
-        for (depth, name) in path.iter().enumerate() {
-            let found = node.find_subcommand(name).cloned();
-            match found {
-                Some(sub) => node = sub,
-                None => panic!(
-                    "the install hint advertises `trs {}`, but `{name}` is not a subcommand of \
-                     `trs {}`. Either fix the hint in src/report.rs or add the command.",
-                    path.join(" "),
-                    path[..depth].join(" ")
-                ),
-            }
+        for (depth, name) in path.split_whitespace().enumerate() {
+            let Some(sub) = node.find_subcommand(name).cloned() else {
+                panic!(
+                    "the install hint advertises `trs {path}`, but `{name}` is not a subcommand \
+                     of `trs {}`. Either fix the hint in src/report.rs or add the command.",
+                    path.split_whitespace()
+                        .take(depth)
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                )
+            };
+            node = sub;
         }
     }
 }

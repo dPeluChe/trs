@@ -197,7 +197,9 @@ fn run() {
             } else if let Some(tool_name) = tool {
                 match init::AiTool::from_str(tool_name) {
                     Some(t) => {
-                        init::install_hook(&t, opts, false);
+                        if init::install_hook(&t, opts, false) {
+                            init::install_finished(opts);
+                        }
                     }
                     None => eprintln!(
                         "Unknown tool: '{}'. Supported: {}",
