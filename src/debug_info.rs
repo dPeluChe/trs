@@ -52,7 +52,7 @@ pub(crate) fn run(output: Option<&str>) {
     }
 }
 
-fn build_report() -> String {
+pub(crate) fn build_report() -> String {
     let mut out = String::new();
     out.push_str("=== trs debug-info ===\n");
     out.push_str(

@@ -67,6 +67,7 @@ mod path_display;
 mod process;
 #[allow(dead_code)]
 mod reducer;
+mod report;
 mod rewrite;
 mod rewrite_decide;
 mod router;
@@ -260,6 +261,18 @@ fn run() {
         }) => {
             upgrade::run_upgrade(*check, *yes, *binary_only);
         }
+        Some(Commands::Report { kind }) => match kind {
+            crate::commands::ReportKind::Coverage {
+                days,
+                output,
+                submit,
+            } => report::run_coverage(*days, output.as_deref(), *submit),
+            crate::commands::ReportKind::Bug {
+                summary,
+                output,
+                submit,
+            } => report::run_bug(summary.as_deref(), output.as_deref(), *submit),
+        },
         Some(Commands::DebugInfo { output }) => {
             debug_info::run(output.as_deref());
         }

@@ -13,7 +13,10 @@ pub(crate) fn is_external_fast_path(args: &[String]) -> bool {
     if first.starts_with('-') {
         return false;
     }
-    // Known trs subcommands (and aliases) that must go through clap
+    // Known trs subcommands (and aliases) that must go through clap.
+    // `every_clap_subcommand_takes_the_clap_path` pins this against the clap
+    // definition: a name missing here does not error, it silently becomes an
+    // external command lookup and the subcommand appears not to exist.
     !matches!(
         first,
         "parse"
@@ -23,6 +26,7 @@ pub(crate) fn is_external_fast_path(args: &[String]) -> bool {
             | "tail"
             | "clean"
             | "trim"
+            | "report"
             | "html2md"
             | "txt2md"
             | "is-clean"
