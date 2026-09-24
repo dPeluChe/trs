@@ -46,7 +46,11 @@ jobs:
     # Dependabot skips this tier: the Tenki pool is 5 concurrent jobs on
     # Starter and shared across repos, so a weekly bump should not take a slot
     # from interactive work. The GitHub-hosted matrix below still gates it.
-    if: github.actor != 'dependabot[bot]'
+    #
+    # Opt-in via the USE_TENKI repo variable. When the pool is saturated the
+    # Tenki bot cancels the WHOLE run, GitHub jobs included, and required
+    # checks never report (2026-09-24). Unset, the GitHub gate runs alone.
+    if: vars.USE_TENKI == 'true' && github.actor != 'dependabot[bot]'
     runs-on: tenki-standard-small-2c-4g
     steps:
       - uses: actions/checkout@v7
