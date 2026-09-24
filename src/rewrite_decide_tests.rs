@@ -190,33 +190,46 @@ fn test_stderr_redirects_survive_rewrite() {
         maybe_rewrite("git status 2>/dev/null"),
         Some("trs git status 2>/dev/null".into())
     );
-    assert_eq!(
-        maybe_rewrite("cargo test 2>&1 | head -5"),
-        Some("trs cargo test 2>&1 | head -5".into())
-    );
+}
+
+/// Every pipeline here returned a wrong answer through trs before this was
+/// fixed, measured against the raw command on the trs repo itself: `find | wc
+/// -l` said 14 instead of 241, `git diff | grep -c '^+'` said 0 instead of
+/// 804, `ps aux | grep` missed a running process, `gh --json | python3` threw.
+#[test]
+fn test_piped_output_is_left_raw() {
+    for cmd in [
+        "git log | grep fix",
+        "find . -name '*.rs' | xargs wc",
+        "find src -name '*.rs' | wc -l",
+        "git diff HEAD~3 | grep -c '^+'",
+        "git diff --stat | tail -1",
+        "ps aux | grep zellij",
+        "gh pr view 1 --json title | python3 -c 'import json,sys; json.load(sys.stdin)'",
+        "cargo test 2>&1 | grep 'test result'",
+        "git status | head -3",
+        "git log | head -5 | tail -1",
+        "cargo test 2>&1 | tail -30",
+        "git status |& head",
+        "cd /tmp && git log | head",
+    ] {
+        assert_eq!(maybe_rewrite(cmd), None, "must not rewrite: {}", cmd);
+    }
 }
 
 #[test]
-fn test_rewrite_pipe_first_segment() {
+fn test_pipe_characters_that_are_not_pipes_still_rewrite() {
     assert_eq!(
-        maybe_rewrite("git log | grep fix"),
-        Some("trs git log | grep fix".into())
+        maybe_rewrite("grep -n \"a|b\" src/main.rs"),
+        Some("trs grep -n \"a|b\" src/main.rs".into())
     );
     assert_eq!(
-        maybe_rewrite("find . -name '*.rs' | xargs wc"),
-        Some("trs find . -name '*.rs' | xargs wc".into())
+        maybe_rewrite("git log --grep='x|y'"),
+        Some("trs git log --grep='x|y'".into())
     );
     assert_eq!(
-        maybe_rewrite("git status | head -3"),
-        Some("trs git status | head -3".into())
-    );
-}
-
-#[test]
-fn test_rewrite_multi_pipe_first_segment_only() {
-    assert_eq!(
-        maybe_rewrite("git log | head -5 | tail -1"),
-        Some("trs git log | head -5 | tail -1".into())
+        maybe_rewrite("cargo test || echo failed"),
+        Some("trs cargo test || echo failed".into())
     );
 }
 
@@ -242,12 +255,7 @@ fn test_captured_output_is_left_raw() {
 }
 
 #[test]
-fn test_pipes_and_discards_still_rewrite() {
-    // These still reach the agent as text — the case trs compresses for.
-    assert_eq!(
-        maybe_rewrite("npm run build | head -5"),
-        Some("trs npm run build | head -5".into())
-    );
+fn test_discards_still_rewrite() {
     // /dev/null is a discard, not a capture — nobody reads it back.
     assert_eq!(
         maybe_rewrite("git status 2>/dev/null"),
@@ -422,10 +430,6 @@ fn test_simple_commands_still_compress() {
     assert_eq!(
         maybe_rewrite("cd /tmp && git status"),
         Some("cd /tmp && trs git status".into())
-    );
-    assert_eq!(
-        maybe_rewrite("cargo test | head -5"),
-        Some("trs cargo test | head -5".into())
     );
 }
 

@@ -94,7 +94,7 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // SKIP_PREFIXES so `cd X && git Y` doesn't get short-circuited by `cd`.
     // The split is quote-aware: a ` && ` inside `-m "fix a && b"` is text the
     // user is passing along, not an operator to slice on.
-    if has_shell_op && find_unquoted_str(trimmed, " && ").is_some() && !trimmed.contains(" | ") {
+    if has_shell_op && find_unquoted_str(trimmed, " && ").is_some() {
         let segments: Vec<&str> = split_and_chain(trimmed);
         let mut any_changed = false;
         let mut rewritten: Vec<String> = Vec::with_capacity(segments.len());
@@ -122,16 +122,6 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // `;` chains are independent commands — too unpredictable to rewrite.
     if has_shell_op && trimmed.contains(" ; ") {
         return None;
-    }
-
-    // Pipe/redirect: rewrite ONLY the first segment. Agents routinely
-    // append `| head -N`, `| grep X`, or `> file` — rewriting the data
-    // producer preserves shell semantics while keeping compression.
-    if has_shell_op {
-        if let Some((first, rest)) = split_at_shell_op(trimmed) {
-            let rewritten = maybe_rewrite(first)?;
-            return Some(format!("{}{}", rewritten, rest));
-        }
     }
 
     if trimmed.contains("$(") || trimmed.contains('`') {
@@ -323,46 +313,50 @@ fn split_and_chain(cmd: &str) -> Vec<&str> {
     }
 }
 
-/// Byte offset of the first unquoted occurrence of `needle` (multi-char).
-fn find_unquoted_str(cmd: &str, needle: &str) -> Option<usize> {
-    let mut single = false;
-    let mut double = false;
-    let mut escaped = false;
-    for (i, c) in cmd.char_indices() {
+/// Byte offsets of characters outside any quote and not escaped.
+fn unquoted_indices(cmd: &str) -> impl Iterator<Item = usize> + '_ {
+    let (mut single, mut double, mut escaped) = (false, false, false);
+    cmd.char_indices().filter_map(move |(i, c)| {
         if escaped {
             escaped = false;
-            continue;
+            return None;
         }
         match c {
             '\\' if !single => escaped = true,
             '\'' if !double => single = !single,
             '"' if !single => double = !double,
-            _ if !single && !double && cmd[i..].starts_with(needle) => return Some(i),
+            _ if !single && !double => return Some(i),
             _ => {}
         }
-    }
-    None
+        None
+    })
 }
 
-/// True when the command routes its output somewhere the caller reads raw:
-/// a file redirect, `| tee`, or command substitution. Rewriting those would
-/// capture trs's compressed summary instead of the command's real output —
-/// silently turning redirection from an escape hatch into a lossy filter.
-///
-/// Deliberately NOT flagged: `| head`, `| grep`, and fd duplications like
-/// `2>&1`. Those still reach the agent as text, which is what trs compresses
-/// for. A `>` inside a quoted argument reads as a redirect here; erring
-/// toward "leave it raw" is the safe direction.
+/// Byte offset of the first unquoted occurrence of `needle` (multi-char).
+fn find_unquoted_str(cmd: &str, needle: &str) -> Option<usize> {
+    unquoted_indices(cmd).find(|&i| cmd[i..].starts_with(needle))
+}
+
+/// An unquoted `|` or `|&` that is not half of `||`. `grep "a|b"` is an
+/// argument, not a pipe.
+fn pipes_output(cmd: &str) -> bool {
+    let b = cmd.as_bytes();
+    unquoted_indices(cmd)
+        .any(|i| b[i] == b'|' && b.get(i + 1) != Some(&b'|') && (i == 0 || b[i - 1] != b'|'))
+}
+
+/// True when something other than the agent consumes the output: a file
+/// redirect, a pipe, or command substitution. Each expects the command's real
+/// bytes, so handing it trs's summary returns a wrong answer, not a shorter one.
+/// Not flagged: fd duplication (`2>&1`) and discards (`2>/dev/null`).
 pub(super) fn captures_output(cmd: &str) -> bool {
     // Command substitution — the caller consumes the value directly.
     if cmd.contains("$(") || cmd.contains('`') {
         return true;
     }
-    // `| tee file` writes a raw copy the caller will read.
-    if cmd.split('|').skip(1).any(|seg| {
-        let t = seg.trim_start();
-        t == "tee" || t.starts_with("tee ")
-    }) {
+    // A pipe hands stdout to a program that parses the real bytes: `| grep`
+    // searched trs's summary, `| wc -l` counted it, `| jq` failed on it.
+    if pipes_output(cmd) {
         return true;
     }
     // A `>` / `>>` whose target is a real path. Two things don't count: an fd
@@ -403,17 +397,6 @@ pub(super) fn captures_output(cmd: &str) -> bool {
         i = j;
     }
     false
-}
-
-/// Split a command at the first shell operator (pipe or redirect) so the
-/// left side can be rewritten independently. Longer delimiters (`" >> "`)
-/// are tried before their prefixes (`" > "`) so we don't misclassify them.
-fn split_at_shell_op(s: &str) -> Option<(&str, &str)> {
-    [" | ", " >> ", " > ", " < "]
-        .iter()
-        .filter_map(|op| s.find(op).map(|pos| (pos, *op)))
-        .min_by_key(|(pos, _)| *pos)
-        .map(|(pos, _)| (&s[..pos], &s[pos..]))
 }
 
 #[cfg(test)]
