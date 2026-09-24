@@ -70,6 +70,11 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 - [ ] **Resolve every suggested command against clap, not just the install hint**. 37 places across 13 files print a runnable `trs ...` for the user to type (`doctor_checks.rs` has 9, `upgrade.rs` 8, `init_show.rs` 4). #158 shipped a `trs report` that answered "Command not found", so a printed command is a promise that can be broken silently. v0.8.2 pins 2 of the 37, and only the subcommand path: the suggestions elsewhere carry flags (`--all --global --force`, `--budget`, `--coverage --json`) that the walk would not catch. `doctor::Check::hint` already funnels 9 of them through one field, which is the seam a shared resolver should use. Sized as its own cycle because fixing whatever it finds is the real work.
 - [ ] **No end-to-end test for the install tails**. `trs init <tool>` shipped without the hint in v0.8.2 and only a manual run caught it; the paths are `--all`, single-tool, `--dry-run`, unknown-tool, and upgrade-child. Pinning them means a test that installs into a temp `$HOME`, and no test in the repo overrides `$HOME` today. windows-latest is a blocking job, so this needs to be written cross-platform on purpose rather than bolted on.
 
+- [ ] **Decide: truncate long `git log` bodies?** trs keeps every commit body whole: 17-22% cut with 100% of anchors kept. Similar tools cut 77-98% by keeping each body's first lines plus `[+N lines omitted]`, and they keep 12-47% of anchors. Measured on this repo, where commit bodies are unusually long. The tradeoff is a product call, not a bug.
+- [ ] **grep: group only when a file has 2+ matches, and strip match indentation.** Measured on 6 real searches: 5-10% fewer tokens with no match dropped. One case (`unwrap()`, 13.9K tokens) got worse, because trs already does something extra there. Look into why before changing it.
+- [ ] **Small `git diff` drops context lines.** At a 17-22% cut it keeps 50-64% of anchors, and a same-size `tail` keeps more. Try keeping one context line on each side of a hunk.
+- [ ] **docker ps drops container IDs.** Names work for every docker command, but a short ID costs ~3 tokens a row, and agents paste IDs from earlier output.
+
 ### VSCode ecosystem (vanilla, not the forks)
 
 - [x] **GitHub Copilot (VSCode), researched 2026-06, implementation turnkey,
