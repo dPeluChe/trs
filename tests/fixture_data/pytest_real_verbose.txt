@@ -1,0 +1,102 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.10, pytest-7.4.3, pluggy-1.6.0 -- /Users/peluche/.pyenv/versions/3.11.10/bin/python3.11
+rootdir: /tmp/proj
+plugins: anyio-4.10.0
+asyncio: mode=Mode.STRICT
+collecting ... collected 72 items
+
+test_app.py::test_ok_0 PASSED                                            [  1%]
+test_app.py::test_ok_1 PASSED                                            [  2%]
+test_app.py::test_ok_2 PASSED                                            [  4%]
+test_app.py::test_ok_3 PASSED                                            [  5%]
+test_app.py::test_ok_4 PASSED                                            [  6%]
+test_app.py::test_ok_5 PASSED                                            [  8%]
+test_app.py::test_ok_6 PASSED                                            [  9%]
+test_app.py::test_ok_7 PASSED                                            [ 11%]
+test_app.py::test_ok_8 PASSED                                            [ 12%]
+test_app.py::test_ok_9 PASSED                                            [ 13%]
+test_app.py::test_ok_10 PASSED                                           [ 15%]
+test_app.py::test_ok_11 PASSED                                           [ 16%]
+test_app.py::test_ok_12 PASSED                                           [ 18%]
+test_app.py::test_ok_13 PASSED                                           [ 19%]
+test_app.py::test_ok_14 PASSED                                           [ 20%]
+test_app.py::test_ok_15 PASSED                                           [ 22%]
+test_app.py::test_ok_16 PASSED                                           [ 23%]
+test_app.py::test_ok_17 PASSED                                           [ 25%]
+test_app.py::test_ok_18 PASSED                                           [ 26%]
+test_app.py::test_ok_19 PASSED                                           [ 27%]
+test_app.py::test_ok_20 PASSED                                           [ 29%]
+test_app.py::test_ok_21 PASSED                                           [ 30%]
+test_app.py::test_ok_22 PASSED                                           [ 31%]
+test_app.py::test_ok_23 PASSED                                           [ 33%]
+test_app.py::test_ok_24 PASSED                                           [ 34%]
+test_app.py::test_ok_25 PASSED                                           [ 36%]
+test_app.py::test_ok_26 PASSED                                           [ 37%]
+test_app.py::test_ok_27 PASSED                                           [ 38%]
+test_app.py::test_ok_28 PASSED                                           [ 40%]
+test_app.py::test_ok_29 PASSED                                           [ 41%]
+test_app.py::test_ok_30 PASSED                                           [ 43%]
+test_app.py::test_ok_31 PASSED                                           [ 44%]
+test_app.py::test_ok_32 PASSED                                           [ 45%]
+test_app.py::test_ok_33 PASSED                                           [ 47%]
+test_app.py::test_ok_34 PASSED                                           [ 48%]
+test_app.py::test_ok_35 PASSED                                           [ 50%]
+test_app.py::test_ok_36 PASSED                                           [ 51%]
+test_app.py::test_ok_37 PASSED                                           [ 52%]
+test_app.py::test_ok_38 PASSED                                           [ 54%]
+test_app.py::test_ok_39 PASSED                                           [ 55%]
+test_app.py::test_ok_40 PASSED                                           [ 56%]
+test_app.py::test_ok_41 PASSED                                           [ 58%]
+test_app.py::test_ok_42 PASSED                                           [ 59%]
+test_app.py::test_ok_43 PASSED                                           [ 61%]
+test_app.py::test_ok_44 PASSED                                           [ 62%]
+test_app.py::test_ok_45 PASSED                                           [ 63%]
+test_app.py::test_ok_46 PASSED                                           [ 65%]
+test_app.py::test_ok_47 PASSED                                           [ 66%]
+test_app.py::test_ok_48 PASSED                                           [ 68%]
+test_app.py::test_ok_49 PASSED                                           [ 69%]
+test_app.py::test_ok_50 PASSED                                           [ 70%]
+test_app.py::test_ok_51 PASSED                                           [ 72%]
+test_app.py::test_ok_52 PASSED                                           [ 73%]
+test_app.py::test_ok_53 PASSED                                           [ 75%]
+test_app.py::test_ok_54 PASSED                                           [ 76%]
+test_app.py::test_ok_55 PASSED                                           [ 77%]
+test_app.py::test_ok_56 PASSED                                           [ 79%]
+test_app.py::test_ok_57 PASSED                                           [ 80%]
+test_app.py::test_ok_58 PASSED                                           [ 81%]
+test_app.py::test_ok_59 PASSED                                           [ 83%]
+test_app.py::test_ok_60 PASSED                                           [ 84%]
+test_app.py::test_ok_61 PASSED                                           [ 86%]
+test_app.py::test_ok_62 PASSED                                           [ 87%]
+test_app.py::test_ok_63 PASSED                                           [ 88%]
+test_app.py::test_ok_64 PASSED                                           [ 90%]
+test_app.py::test_ok_65 PASSED                                           [ 91%]
+test_app.py::test_ok_66 PASSED                                           [ 93%]
+test_app.py::test_ok_67 PASSED                                           [ 94%]
+test_app.py::test_ok_68 PASSED                                           [ 95%]
+test_app.py::test_ok_69 PASSED                                           [ 97%]
+test_app.py::test_invoice_total_rounding FAILED                          [ 98%]
+test_app.py::test_user_lookup_missing FAILED                             [100%]
+
+=================================== FAILURES ===================================
+_________________________ test_invoice_total_rounding __________________________
+
+    def test_invoice_total_rounding():
+        total = round(0.1 + 0.2, 2)
+>       assert total == 0.31, f'expected 0.31, got {total}'
+E       AssertionError: expected 0.31, got 0.3
+E       assert 0.3 == 0.31
+
+test_app.py:215: AssertionError
+___________________________ test_user_lookup_missing ___________________________
+
+    def test_user_lookup_missing():
+        users = {'ana': 1}
+>       assert users['beto'] == 2
+E       KeyError: 'beto'
+
+test_app.py:219: KeyError
+=========================== short test summary info ============================
+FAILED test_app.py::test_invoice_total_rounding - AssertionError: expected 0....
+FAILED test_app.py::test_user_lookup_missing - KeyError: 'beto'
+========================= 2 failed, 70 passed in 0.07s =========================

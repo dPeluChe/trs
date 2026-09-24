@@ -327,8 +327,10 @@ E       assert 1 == 2"#;
         .stdout(predicate::str::contains("FAIL:"))
         .stdout(predicate::str::contains("1 passed, 1 failed"))
         .stdout(predicate::str::contains("failed (1):"))
-        // Should show error message (first line)
-        .stdout(predicate::str::contains("def test_subtract():"));
+        // The `E` line is the verdict; the block's first line is only the
+        // test's own source.
+        .stdout(predicate::str::contains("E       assert 1 == 2"))
+        .stdout(predicate::str::contains("def test_subtract():").not());
 }
 
 #[test]

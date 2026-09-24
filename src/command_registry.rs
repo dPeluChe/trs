@@ -410,8 +410,18 @@ fn caller_selected_fields(cmd: &str, rest: &str) -> bool {
 ///
 /// Known limit: a compound script (`cd x && awk …`) reports its first token,
 /// so an inner verbatim command later in the chain is not seen.
+/// `git show <rev>:<path>` prints a file, and a file's whitespace is its
+/// layout: the generic pass flattened YAML and Python indentation to one space.
+fn git_show_blob(cmd: &str, rest: &str) -> bool {
+    if cmd != "git" {
+        return false;
+    }
+    let mut after_show = rest.split_whitespace().skip_while(|t| *t != "show");
+    after_show.next().is_some() && after_show.any(|t| !t.starts_with('-') && t.contains(':'))
+}
+
 pub(crate) fn is_verbatim_invocation(cmd: &str, rest: &str) -> bool {
-    if is_verbatim_command(cmd) || caller_selected_fields(cmd, rest) {
+    if is_verbatim_command(cmd) || caller_selected_fields(cmd, rest) || git_show_blob(cmd, rest) {
         return true;
     }
     if !matches!(cmd, "bash" | "sh" | "zsh" | "dash") {
