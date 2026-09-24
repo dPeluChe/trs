@@ -404,3 +404,7 @@ pub(super) fn captures_output(cmd: &str) -> bool {
 #[cfg(test)]
 #[path = "rewrite_decide_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "rewrite_decide_capture_tests.rs"]
+mod capture_tests;
