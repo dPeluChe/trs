@@ -50,11 +50,14 @@ CASES=(
     "triple chain¦cd /tmp && git status && git log¦rewritten"
     "mixed chain¦cd /tmp && echo hello¦passthrough"
     "chain with pipe¦cd /tmp && git status | less¦passthrough"
-    # Pipes/redirects rewrite the FIRST segment only (trs rewrites the
-    # data-producing command, leaves head/grep/file untouched).
-    "pure pipe¦git log | grep fix¦rewritten"
+    # Anything that consumes stdout besides the agent gets the real bytes:
+    # `| grep` would search trs's summary, `> file` would save it.
+    "pure pipe¦git log | grep fix¦passthrough"
+    "pipe into counter¦find src -name '*.rs' | wc -l¦passthrough"
+    "quoted bar is not a pipe¦grep -n \"a|b\" src/main.rs¦rewritten"
+    "or-chain is not a pipe¦cargo test || echo failed¦rewritten"
     "semicolon chain¦git status ; git log¦passthrough"
-    "redirection¦git diff > out.txt¦rewritten"
+    "redirection¦git diff > out.txt¦passthrough"
     "already trs¦trs git status¦passthrough"
     "env assignment¦FOO=bar¦passthrough"
     # Transparent prefixes: wrapper stays in front; trs slots in front of the inner cmd.
@@ -83,9 +86,9 @@ CASES=(
     # These get generic ANSI/whitespace compression even without a parser.
     "bash inline¦bash -c \"git status\"¦rewritten"
     "node inline¦node -e \"console.log(1)\"¦rewritten"
-    "awk filter¦awk /pattern/ file.txt¦rewritten"
+    "awk filter (verbatim)¦awk /pattern/ file.txt¦passthrough"
     "du size¦du -h dist/¦rewritten"
-    "jq query¦jq -r .name package.json¦rewritten"
+    "jq query (verbatim)¦jq -r .name package.json¦passthrough"
     # Bypass channels: v0.6.2 adds TRS_DISABLE alias + env-wrapped form.
     "bypass trs_skip¦TRS_SKIP=1 git status¦passthrough"
     "bypass trs_disable¦TRS_DISABLE=1 npx tsc¦passthrough"
@@ -106,8 +109,11 @@ for case in "${CASES[@]}"; do
     IFS='¦' read -r desc input expected <<< "$case"
     total=$((total + 1))
 
-    # Wrap as Claude Code hook JSON input
-    input_json=$(printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$input")
+    # Wrap as Claude Code hook JSON input. Escape \ and " first: unescaped,
+    # every case with a quoted argument sent invalid JSON and read as passthrough.
+    esc=${input//\\/\\\\}
+    esc=${esc//\"/\\\"}
+    input_json=$(printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$esc")
 
     output=$(printf '%s' "$input_json" | "$TRS_BIN" rewrite 2>/dev/null)
 
