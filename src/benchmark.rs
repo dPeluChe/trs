@@ -6,7 +6,7 @@
 use std::process::{Command, Stdio};
 use std::time::Instant;
 
-use crate::classifier::{full_cmd, keep_ratio};
+use crate::classifier::full_cmd;
 
 /// Estimated bytes per token (rough GPT/Claude average).
 const BYTES_PER_TOKEN: f64 = 4.0;
@@ -112,7 +112,7 @@ fn run_once(cmd: &str, args: &[String]) -> Option<IterResult> {
     let raw_bytes = raw_stdout.len() + raw_stderr.len();
 
     // Step 2: Execute the same command through trs to get compressed output
-    let compressed_bytes = run_through_trs(cmd, args, raw_bytes);
+    let compressed_bytes = run_through_trs(cmd, args)?;
 
     let time_ms = start.elapsed().as_millis() as u64;
 
@@ -123,48 +123,22 @@ fn run_once(cmd: &str, args: &[String]) -> Option<IterResult> {
     })
 }
 
-/// Run the command through trs and return the compressed byte count.
-///
-/// Locates the current trs binary and invokes `trs <cmd> [args...]`,
-/// capturing stdout+stderr to measure compressed output size.
-/// Falls back to estimation if the trs binary cannot be found.
-fn run_through_trs(cmd: &str, args: &[String], raw_bytes: usize) -> usize {
-    // Find our own binary path
-    let trs_bin = match std::env::current_exe() {
-        Ok(p) => p,
-        Err(_) => return estimate_compressed_size(cmd, args, raw_bytes),
-    };
-
-    // Build trs invocation: trs <cmd> [args...]
-    let mut trs_args: Vec<&str> = Vec::with_capacity(args.len() + 1);
-    trs_args.push(cmd);
-    for a in args {
-        trs_args.push(a);
-    }
-
-    let output = match Command::new(&trs_bin)
-        .args(&trs_args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-    {
-        Ok(o) => o,
-        Err(_) => return estimate_compressed_size(cmd, args, raw_bytes),
-    };
-
-    let compressed = output.stdout.len() + output.stderr.len();
-    // Sanity check: if compressed is somehow larger, use estimation
-    if compressed > raw_bytes && raw_bytes > 0 {
-        return estimate_compressed_size(cmd, args, raw_bytes);
-    }
-    compressed
-}
-
-/// Fallback: estimate compressed size using the shared keep_ratio table.
-fn estimate_compressed_size(cmd: &str, args: &[String], raw_bytes: usize) -> usize {
-    let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
-    let ratio = keep_ratio(cmd, subcmd);
-    (raw_bytes as f64 * ratio).max(1.0) as usize
+/// Byte count of `trs <cmd> [args...]`, measured. Never estimated: a
+/// benchmark that swaps in a table value when trs loses reports a win it
+/// did not get.
+fn run_through_trs(cmd: &str, args: &[String]) -> Option<usize> {
+    let output = std::env::current_exe()
+        .and_then(|trs| {
+            Command::new(trs)
+                .arg(cmd)
+                .args(args)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output()
+        })
+        .map_err(|e| eprintln!("Failed to run '{}' through trs: {}", cmd, e))
+        .ok()?;
+    Some(output.stdout.len() + output.stderr.len())
 }
 
 fn print_json(r: &BenchReport) {
@@ -190,7 +164,14 @@ fn print_table(r: &BenchReport) {
         "Compressed:   {:>8} bytes",
         format_number(r.compressed_bytes)
     );
-    println!("Reduction:    {:>7.1}%", r.reduction_pct);
+    if r.reduction_pct < 0.0 {
+        println!(
+            "Grew:         {:>7.1}%  (trs output is larger)",
+            -r.reduction_pct
+        );
+    } else {
+        println!("Reduction:    {:>7.1}%", r.reduction_pct);
+    }
     println!(
         "Est. tokens:  {:>5} -> {} (saved {})",
         r.raw_tokens, r.compressed_tokens, r.saved_tokens
@@ -232,21 +213,6 @@ mod tests {
         assert_eq!(format_number(1000), "1,000");
         assert_eq!(format_number(1247), "1,247");
         assert_eq!(format_number(1_000_000), "1,000,000");
-    }
-
-    #[test]
-    fn test_estimate_compressed_size() {
-        let args = vec!["status".to_string()];
-        let result = estimate_compressed_size("git", &args, 1000);
-        assert_eq!(result, 200); // 20% keep ratio
-
-        let args = vec!["log".to_string()];
-        let result = estimate_compressed_size("git", &args, 1000);
-        assert_eq!(result, 100); // 10% keep ratio
-
-        let args: Vec<String> = vec![];
-        let result = estimate_compressed_size("unknown-cmd", &args, 1000);
-        assert_eq!(result, 500); // 50% default keep ratio
     }
 
     #[test]
