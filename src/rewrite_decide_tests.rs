@@ -496,3 +496,11 @@ fn verbatim_gate_does_not_swallow_compressible_commands() {
         );
     }
 }
+
+#[test]
+fn ssh_is_left_alone() {
+    assert_eq!(maybe_rewrite("ssh prod 'docker ps'"), None);
+    assert_eq!(maybe_rewrite("ssh -o BatchMode=yes host uptime"), None);
+    // Only the remote shell is skipped, not every word that starts with ssh.
+    assert!(maybe_rewrite("sshfs host:/ /mnt").is_some());
+}
