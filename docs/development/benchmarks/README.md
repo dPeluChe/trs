@@ -102,3 +102,58 @@ What the rows mean, read by eye:
 
 Anchor matching tolerates trs regrouping `grep` under file headers and `find`
 under directories, so "kept" is a ceiling: a low number is a real loss.
+
+## Seven tools, one scoring rule
+
+2026-09-24, same repo state, `o200k_base` tokens, scored by `truth.py`'s
+anchor and pipeline checks. trs is main at #163. Each tool runs through its own
+agent hook where it has one (trs, rtk 0.42.3, token-saver, squeez 1.48.9,
+token-optimizer at fbe2070), else its text API on the command's output
+(claw-compactor 7.1.0, headroom 0.38.0 with the downloaded ML model off). Clones
+live under the spark root, tagged `trs` (`spark tag list trs`); the adapters are
+per-machine and not in this repo.
+
+| tool | tokens cut | anchors kept | RISK rows | pipelines correct |
+|---|---:|---:|---:|---:|
+| trs | 69% | 66% | 2 | 9/9 |
+| rtk | 67% | 45% | 2 | 5/9 |
+| token-saver | 54% | 43% | 1 | 9/9 |
+| squeez | 87% | 29% | 2 | 9/9 |
+| token-optimizer | 65% | 41% | 1 | 9/9 |
+| claw-compactor | 17% | 87% | 0 | 8/9 |
+| headroom | 2% | 92% | 0 | 9/9 |
+
+Per command, `cut / anchors kept`:
+
+| command | trs | rtk | token-saver | squeez | token-optimizer | claw-compactor | headroom |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `git log -10` | 16% / 100% | 91% / 23% | 95% / 3% | 94% / 23% | 0% / 100% | 40% / 75% | 0% / 100% |
+| `git log --oneline -30` | 0% / 100% | 0% / 100% | 68% / 32% | 58% / 39% | 0% / 100% | 0% / 100% | 0% / 100% |
+| `git diff HEAD~1` | 29% / 59% | 17% / 62% | 9% / 68% | 19% / 88% | 59% / 53% | 8% / 97% | 0% / 100% |
+| `git diff HEAD~5` | 99% / 42% | 68% / 55% | 38% / 66% | 98% / 7% | 98% / 10% | 10% / 88% | 2% / 73% |
+| `git show HEAD --stat` | 91% / 67% | 0% / 100% | 0% / 100% | 52% / 44% | 51% / 11% | 29% / 89% | 0% / 100% |
+| `git status` | 83% / 100% | 48% / 100% | 4% / 100% | -78% / 100% | 78% / 100% | 4% / 100% | 0% / 100% |
+| `ls -la src` | 66% / 100% | 60% / 100% | 80% / 66% | 60% / 39% | 36% / 64% | 12% / 100% | 0% / 100% |
+| `find src -name '*.rs'` | 84% / 50% | 91% / 0% | 85% / 17% | 83% / 18% | 80% / 23% | 12% / 100% | 0% / 100% |
+| `grep -rn 'fn main' src` | 8% / 100% | 0% / 100% | 42% / 68% | 42% / 63% | 36% / 71% | 15% / 32% | 20% / 100% |
+| `grep -rn 'emit_compressed' src` | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | -8% / 47% | 20% / 47% |
+| `cargo clippy --all-targets` | 93% / 100% | 86% / 100% | 61% / 100% | 59% / 100% | 59% / 100% | 66% / 100% | 59% / 100% |
+
+Read by eye before trusting a cell:
+
+- **Cut and kept trade off, and nobody escapes it.** squeez cuts most (87%) and
+  keeps least (29%); its own header agrees (`[anchors: 7%]` on the big diff).
+  headroom keeps 92% by barely compressing shell output (2%): its text
+  compressor is an ML model that needs a download. trs sits at 69% cut, 66%
+  kept, the best kept figure among the tools that cut over half.
+- **Recoverable is not the same as kept.** squeez and token-optimizer store the
+  full output and tell the agent how to fetch it (`squeez_retrieve`,
+  `expand <key>`). trs's big-diff summary drops the hunks with no way back.
+  That is the gap worth closing first.
+- **Pipelines.** Scored on whitespace-normalized output. token-saver passes
+  the whole pipeline to its wrapper and compresses the final text, so filters
+  see raw bytes: 9/9, an approach trs's backlog already lists. One tool still
+  compresses a pipeline's first command: `git diff | grep -c '^+'` gives 0
+  instead of 804, the bug #162 removed from trs.
+- **Where trs loses outright:** `git log -10` (16% cut, where others cut 90%+
+  by truncating bodies) and `grep` (8% cut vs ~40% for three others).
