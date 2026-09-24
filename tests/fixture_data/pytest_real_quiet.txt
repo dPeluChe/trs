@@ -1,0 +1,23 @@
+......................................................................FF [100%]
+=================================== FAILURES ===================================
+_________________________ test_invoice_total_rounding __________________________
+
+    def test_invoice_total_rounding():
+        total = round(0.1 + 0.2, 2)
+>       assert total == 0.31, f'expected 0.31, got {total}'
+E       AssertionError: expected 0.31, got 0.3
+E       assert 0.3 == 0.31
+
+test_app.py:215: AssertionError
+___________________________ test_user_lookup_missing ___________________________
+
+    def test_user_lookup_missing():
+        users = {'ana': 1}
+>       assert users['beto'] == 2
+E       KeyError: 'beto'
+
+test_app.py:219: KeyError
+=========================== short test summary info ============================
+FAILED test_app.py::test_invoice_total_rounding - AssertionError: expected 0....
+FAILED test_app.py::test_user_lookup_missing - KeyError: 'beto'
+2 failed, 70 passed in 0.07s

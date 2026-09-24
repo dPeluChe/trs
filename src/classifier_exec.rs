@@ -160,6 +160,19 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             if parsed.len() < stdout_ref.len() && !summary_hides_failure {
                 print!("{}", parsed);
                 out_bytes = parsed.len();
+                // A summary that dropped most of a large output must say where
+                // the rest is, or the only way back is re-running the command.
+                // Failures already get this from the footer below.
+                if output.status.success()
+                    && stdout_ref.len() >= RECOVERABLE_MIN_BYTES
+                    && parsed.len() * 10 <= stdout_ref.len()
+                {
+                    if let Some(path) = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr) {
+                        let line = format!("[trs] full output: {}\n", path);
+                        print!("{}", line);
+                        out_bytes += line.len();
+                    }
+                }
             } else {
                 print!("{}", stdout_ref);
                 out_bytes = stdout_ref.len();
@@ -168,7 +181,11 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             // Tier 3: Passthrough with truncation (parser failed)
             let passthrough_max = crate::config::config().limits.passthrough_max_chars;
             let truncated = if stdout_ref.len() > passthrough_max {
-                let cut = &stdout_ref[..passthrough_max];
+                let mut end = passthrough_max;
+                while !stdout_ref.is_char_boundary(end) {
+                    end -= 1;
+                }
+                let cut = &stdout_ref[..end];
                 format!(
                     "{}\n[trs:passthrough truncated at {} chars, full output: {} chars]",
                     cut,
@@ -198,6 +215,10 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
     }
 }
+
+/// Raw size from which a >=90% cut also saves the raw output and prints its
+/// path. Below ~4k tokens re-running is cheap; above it the pointer pays.
+const RECOVERABLE_MIN_BYTES: usize = 16 * 1024;
 
 /// Does this compressed output actually show that something went wrong?
 /// Backstop for parsers that summarize without consulting the exit status —

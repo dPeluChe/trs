@@ -172,7 +172,9 @@ impl ParseHandler {
     }
 
     /// Parse `gh pr view N` output.
-    /// Keeps title, state, author, url, labels, and first 3 lines of body.
+    /// Keeps the non-empty metadata and the whole body: reading the
+    /// description is why an agent runs `gh pr view`. Non-TTY gh separates
+    /// the two with a `--` line, not a `body:` key.
     pub(crate) fn handle_gh_pr_view(
         file: &Option<std::path::PathBuf>,
         ctx: &CommandContext,
@@ -186,10 +188,15 @@ impl ParseHandler {
 
         for line in input.lines() {
             if in_body {
-                let trimmed = line.trim();
-                if !trimmed.is_empty() && body_lines.len() < 3 {
-                    body_lines.push(trimmed.to_string());
+                let blank_run = line.trim().is_empty()
+                    && body_lines.last().is_none_or(|l: &String| l.is_empty());
+                if !blank_run {
+                    body_lines.push(line.trim_end().to_string());
                 }
+                continue;
+            }
+            if line.trim() == "--" {
+                in_body = true;
                 continue;
             }
             if let Some((key, val)) = line.split_once(':') {
@@ -208,14 +215,24 @@ impl ParseHandler {
                     "url" => {
                         fields.insert("url", v);
                     }
-                    "labels" if !v.is_empty() => {
-                        fields.insert("labels", v);
-                    }
                     "number" => {
                         fields.insert("number", v);
                     }
                     "body" => {
                         in_body = true;
+                    }
+                    _ if !v.is_empty() => {
+                        const KEPT: [&str; 6] = [
+                            "labels",
+                            "reviewers",
+                            "assignees",
+                            "milestone",
+                            "additions",
+                            "deletions",
+                        ];
+                        if let Some(key) = KEPT.iter().find(|x| **x == k) {
+                            fields.insert(key, v);
+                        }
                     }
                     _ => {}
                 }
@@ -228,11 +245,9 @@ impl ParseHandler {
                 for (k, v) in &fields {
                     obj.insert(k.to_string(), serde_json::Value::String(v.clone()));
                 }
-                if !body_lines.is_empty() {
-                    obj.insert(
-                        "body_preview".to_string(),
-                        serde_json::Value::String(body_lines.join(" ")),
-                    );
+                let body = strip_html_comments(&body_lines.join("\n"));
+                if !body.trim().is_empty() {
+                    obj.insert("body".to_string(), serde_json::Value::String(body));
                 }
                 serde_json::Value::Object(obj).to_string()
             }
@@ -248,11 +263,22 @@ impl ParseHandler {
                 if !labels.is_empty() {
                     out.push_str(&format!("labels: {}\n", labels));
                 }
+                if let (Some(a), Some(d)) = (fields.get("additions"), fields.get("deletions")) {
+                    out.push_str(&format!("changes: +{} -{}\n", a, d));
+                }
+                for k in ["reviewers", "assignees", "milestone"] {
+                    if let Some(v) = fields.get(k) {
+                        out.push_str(&format!("{}: {}\n", k, v));
+                    }
+                }
                 if !url.is_empty() {
                     out.push_str(&format!("url: {}\n", url));
                 }
-                if !body_lines.is_empty() {
-                    out.push_str(&format!("body: {}\n", body_lines.join(" | ")));
+                let body = strip_html_comments(&body_lines.join("\n"));
+                if !body.trim().is_empty() {
+                    out.push_str("--\n");
+                    out.push_str(body.trim());
+                    out.push('\n');
                 }
                 out
             }
@@ -394,4 +420,19 @@ impl ParseHandler {
         }
         Ok(())
     }
+}
+
+/// PR templates leave `<!-- ... -->` guidance the author never deleted.
+fn strip_html_comments(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find("<!--") {
+        out.push_str(&rest[..start]);
+        match rest[start..].find("-->") {
+            Some(end) => rest = &rest[start + end + 3..],
+            None => return out,
+        }
+    }
+    out.push_str(rest);
+    out
 }

@@ -1,5 +1,6 @@
 use super::super::types::*;
 use super::ParseHandler;
+use crate::formatter::helpers::truncate;
 use crate::OutputFormat;
 
 impl ParseHandler {
@@ -123,14 +124,8 @@ impl ParseHandler {
             for test in failed_tests {
                 result.push_str(&format!("  {}\n", test.name));
                 if let Some(ref msg) = test.error_message {
-                    // Show first line of error message
-                    if let Some(first_line) = msg.lines().next() {
-                        let truncated = if first_line.len() > 80 {
-                            format!("{}...", &first_line[..77])
-                        } else {
-                            first_line.to_string()
-                        };
-                        result.push_str(&format!("    {}\n", truncated));
+                    for line in failure_signal(msg) {
+                        result.push_str(&format!("    {}\n", truncate(line, 160)));
                     }
                 }
             }
@@ -220,5 +215,28 @@ impl ParseHandler {
         }
 
         result
+    }
+}
+
+/// The lines of a pytest failure block that carry the verdict: pytest marks
+/// them `E `, and the `file.py:N: Error` line says where. The block opens with
+/// the test's source (`def test_x():`), which is what a first-line cut showed.
+fn failure_signal(msg: &str) -> Vec<&str> {
+    let lines: Vec<&str> = msg.lines().map(str::trim).collect();
+    let errors = lines.iter().filter(|l| l.starts_with("E ")).take(3);
+    let place = lines.iter().rev().find(|l| {
+        l.split(':')
+            .nth(1)
+            .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
+    });
+    let picked: Vec<&str> = errors.chain(place).copied().collect();
+    if picked.is_empty() {
+        lines
+            .into_iter()
+            .filter(|l| !l.is_empty())
+            .take(1)
+            .collect()
+    } else {
+        picked
     }
 }

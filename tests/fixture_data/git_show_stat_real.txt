@@ -1,0 +1,35 @@
+commit 465e586c22797e1597557b9c3e2d2b4532b8201c
+Author: dPeluChe <antonio@iteris.tech>
+Date:   Thu Sep 24 10:06:44 2026 -0600
+
+    fix(benchmark): report what trs printed, and add a check for what it kept (#163)
+    
+    `trs benchmark` replaced its own measurement with a table estimate
+    whenever trs printed more than the raw command. A failing `ls` with the
+    exit footer (42 bytes raw, 124 through trs) reported "Compressed: 7
+    bytes, Reduction: 83.3%". It also estimated silently when it couldn't
+    run trs at all. It now reports measured bytes, prints "Grew" when trs
+    loses, and fails loudly when it can't run.
+    
+    Bytes saved is also the only thing the benchmark scripts check, so a
+    lossy result scores as a win. truth.py measures the other half:
+    
+    - pipelines go through the real hook and must print what raw prints
+      (1/9 on v0.8.1, 9/9 with the pipe fix)
+    - paths, file:line refs, hashes and error lines from the raw output
+      must survive; a big cut that keeps under 70% of them is flagged
+    - a plain `tail` cut to trs's size is the control, so trs has to beat
+      truncation, not just shrink
+    
+    Its first run found two real losses in `git show --stat` (the commit
+    header is dropped; a modified file shows as `+`), a large `git diff`
+    that turns into a file list with no hint, and `find` hiding entries
+    behind `+58 more`. Results are in the benchmarks README; the parser
+    fixes are separate work.
+    
+    Claude-Session: https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7
+
+ docs/development/benchmarks/README.md |  46 +++++++-
+ docs/development/benchmarks/truth.py  | 192 ++++++++++++++++++++++++++++++++++
+ src/benchmark.rs                      |  86 +++++----------
+ 3 files changed, 263 insertions(+), 61 deletions(-)

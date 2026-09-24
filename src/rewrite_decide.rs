@@ -3,9 +3,11 @@
 //! Wire-format envelopes (Claude / Gemini / Cursor) live in `rewrite.rs`.
 
 /// Commands that should NEVER be rewritten (internal, cd, pipes, etc.)
+// `ssh `: 537 wraps in 30 days of real use saved 1.9%. The remote command is
+// opaque to trs, and wrapping holds a long session's output until it exits.
 const SKIP_PREFIXES: &[&str] = &[
     "trs ", "cd ", "echo ", "cat ", "head ", "tail -f", "export ", "source ", ".", "set ",
-    "unset ", "alias ", "which ", "type ", "true", "false", "exit", "return",
+    "unset ", "alias ", "which ", "type ", "true", "false", "exit", "return", "ssh ",
 ];
 
 /// Always-on wrappers stripped before routing and re-prepended on the
@@ -402,3 +404,7 @@ pub(super) fn captures_output(cmd: &str) -> bool {
 #[cfg(test)]
 #[path = "rewrite_decide_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "rewrite_decide_capture_tests.rs"]
+mod capture_tests;

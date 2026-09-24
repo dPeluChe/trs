@@ -109,6 +109,9 @@ impl ParseHandler {
             for test in &suite.tests {
                 if test.status == BunTestStatus::Failed {
                     result.push_str(&format!("  ✖ {}\n", test.test_name));
+                    for line in test.error_message.iter().flat_map(|m| m.lines()) {
+                        result.push_str(&format!("      {}\n", line));
+                    }
                 }
             }
         }

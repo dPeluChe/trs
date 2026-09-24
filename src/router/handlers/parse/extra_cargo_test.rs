@@ -26,6 +26,9 @@ impl ParseHandler {
             std::collections::HashMap::new();
         let mut panic_test: Option<String> = None;
         let mut awaiting_panic_msg = false;
+        // assert_eq!/assert_ne! print the two values on the lines after the
+        // message; they are what the fix needs, so they ride along.
+        let mut awaiting_values = false;
 
         for line in input.lines() {
             let trimmed = line.trim();
@@ -35,6 +38,7 @@ impl ParseHandler {
                 if let Some(name) = rest.strip_suffix(" stdout ----") {
                     panic_test = Some(name.to_string());
                     awaiting_panic_msg = false;
+                    awaiting_values = false;
                     continue;
                 }
             }
@@ -55,7 +59,25 @@ impl ParseHandler {
                         entry.push_str(trimmed);
                     }
                     awaiting_panic_msg = false;
+                    awaiting_values = true;
                     continue;
+                }
+                if awaiting_values {
+                    if let Some(side) = ["left:", "right:"]
+                        .iter()
+                        .find(|p| trimmed.starts_with(**p))
+                    {
+                        if let Some(entry) = panic_info.get_mut(name) {
+                            let value = trimmed[side.len()..].trim();
+                            entry.push_str(&format!(
+                                " ({} {})",
+                                side,
+                                crate::formatter::helpers::truncate(value, 80)
+                            ));
+                        }
+                        continue;
+                    }
+                    awaiting_values = false;
                 }
             }
 

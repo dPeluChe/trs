@@ -386,3 +386,48 @@ fn bunx_dispatches_like_npx() {
     let bunx = spec("bunx").expect("bunx in registry");
     assert!(std::ptr::eq(npx, bunx), "bunx must share npx's spec row");
 }
+
+#[test]
+fn git_show_of_a_file_is_verbatim() {
+    for rest in [
+        "show HEAD:.github/workflows/ci.yml",
+        "show origin/main:src/app.py",
+        "-C ../other show main:README.md",
+    ] {
+        assert!(
+            is_verbatim_invocation("git", rest),
+            "must be verbatim: git {rest}"
+        );
+    }
+    for rest in [
+        "show HEAD",
+        "show --stat HEAD~2",
+        "log --format=%h:%s",
+        "show",
+    ] {
+        assert!(
+            !is_verbatim_invocation("git", rest),
+            "must still compress: git {rest}"
+        );
+    }
+}
+
+#[test]
+fn tail_is_verbatim_unless_it_reads_a_log() {
+    for rest in [
+        "-50 .github/workflows/ci.yml",
+        "-n 20 src/main.rs",
+        "README.md",
+    ] {
+        assert!(
+            is_verbatim_invocation("tail", rest),
+            "must be verbatim: tail {rest}"
+        );
+    }
+    for rest in ["-100 app.log", "-f server.log", "-n 50"] {
+        assert!(
+            !is_verbatim_invocation("tail", rest),
+            "log parser still applies: tail {rest}"
+        );
+    }
+}

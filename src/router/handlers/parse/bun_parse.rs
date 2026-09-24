@@ -34,6 +34,9 @@ impl ParseHandler {
         let mut current_test: Option<BunTest> = None;
         let mut in_error_details = false;
         let mut error_buffer = String::new();
+        // Non-TTY bun prints a failure's details BEFORE its `(fail)` line, so
+        // everything since the last result belongs to the next one.
+        let mut preceding: Vec<&str> = Vec::new();
         let mut indent_stack: Vec<String> = Vec::new();
         let mut in_suite = false;
 
@@ -167,12 +170,21 @@ impl ParseHandler {
                 }
 
                 // Parse test line
-                if let Some(test) = Self::parse_bun_test_line(trimmed, &indent_stack) {
+                if let Some(mut test) = Self::parse_bun_test_line(trimmed, &indent_stack) {
                     let test_name = test.test_name.clone();
                     let is_failed = test.status == BunTestStatus::Failed;
+                    let before = Self::failure_signal(&preceding);
+                    preceding.clear();
 
-                    // Check for failed test to start collecting error details
-                    if is_failed {
+                    // Details that came first are this failure's; only when
+                    // there were none do the following lines get collected.
+                    if is_failed && !before.is_empty() {
+                        test.error_message = Some(before);
+                        in_error_details = false;
+                        if let Some(ref mut suite) = current_suite {
+                            suite.tests.push(test);
+                        }
+                    } else if is_failed {
                         in_error_details = true;
                         error_buffer.clear();
                         current_test = Some(test);
@@ -185,6 +197,8 @@ impl ParseHandler {
 
                     // Track nested test names
                     indent_stack.push(test_name);
+                } else {
+                    preceding.push(trimmed);
                 }
             }
         }
@@ -225,6 +239,27 @@ impl ParseHandler {
             output.summary.tests_failed == 0 && output.test_suites.iter().all(|s| s.passed);
 
         Ok(output)
+    }
+
+    /// The verdict lines of a bun failure block: the `error:` line, expected
+    /// vs received, and where. Drops the numbered source context and caret.
+    fn failure_signal(block: &[&str]) -> String {
+        block
+            .iter()
+            .filter(|l| {
+                let numbered = l
+                    .split_once(" | ")
+                    .is_some_and(|(n, _)| n.trim().parse::<u32>().is_ok());
+                !numbered && !l.chars().all(|c| c == '^' || c == ' ')
+            })
+            .take(10)
+            // `at … (path:line:col)` ends in the location: never cut it.
+            .map(|l| match l.starts_with("at ") {
+                true => l.to_string(),
+                false => crate::formatter::helpers::truncate(l, 160),
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     /// Parse a single Bun test result line.

@@ -1,0 +1,87 @@
+
+running 62 tests
+test tests::passes_1 ... ok
+test tests::passes_0 ... ok
+test tests::passes_10 ... ok
+test tests::passes_12 ... ok
+test tests::passes_11 ... ok
+test tests::passes_13 ... ok
+test tests::passes_15 ... ok
+test tests::passes_14 ... ok
+test tests::passes_16 ... ok
+test tests::passes_17 ... ok
+test tests::passes_18 ... ok
+test tests::passes_19 ... ok
+test tests::passes_2 ... ok
+test tests::passes_20 ... ok
+test tests::fails_on_overflow_boundary ... FAILED
+test tests::fails_parsing_config ... FAILED
+test tests::passes_21 ... ok
+test tests::passes_22 ... ok
+test tests::passes_23 ... ok
+test tests::passes_24 ... ok
+test tests::passes_25 ... ok
+test tests::passes_26 ... ok
+test tests::passes_27 ... ok
+test tests::passes_28 ... ok
+test tests::passes_29 ... ok
+test tests::passes_3 ... ok
+test tests::passes_30 ... ok
+test tests::passes_31 ... ok
+test tests::passes_32 ... ok
+test tests::passes_33 ... ok
+test tests::passes_34 ... ok
+test tests::passes_35 ... ok
+test tests::passes_36 ... ok
+test tests::passes_37 ... ok
+test tests::passes_38 ... ok
+test tests::passes_39 ... ok
+test tests::passes_4 ... ok
+test tests::passes_40 ... ok
+test tests::passes_41 ... ok
+test tests::passes_42 ... ok
+test tests::passes_43 ... ok
+test tests::passes_44 ... ok
+test tests::passes_45 ... ok
+test tests::passes_46 ... ok
+test tests::passes_47 ... ok
+test tests::passes_48 ... ok
+test tests::passes_49 ... ok
+test tests::passes_5 ... ok
+test tests::passes_50 ... ok
+test tests::passes_51 ... ok
+test tests::passes_52 ... ok
+test tests::passes_53 ... ok
+test tests::passes_54 ... ok
+test tests::passes_55 ... ok
+test tests::passes_56 ... ok
+test tests::passes_57 ... ok
+test tests::passes_58 ... ok
+test tests::passes_59 ... ok
+test tests::passes_6 ... ok
+test tests::passes_7 ... ok
+test tests::passes_8 ... ok
+test tests::passes_9 ... ok
+
+failures:
+
+---- tests::fails_on_overflow_boundary stdout ----
+
+thread 'tests::fails_on_overflow_boundary' (63599508) panicked at src/main.rs:67:45:
+assertion `left == right` failed: addition drifted
+  left: 4
+ right: 5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::fails_parsing_config stdout ----
+
+thread 'tests::fails_parsing_config' (63599509) panicked at src/main.rs:68:86:
+called `Result::unwrap()` on an `Err` value: ParseIntError { kind: InvalidDigit }
+
+
+failures:
+    tests::fails_on_overflow_boundary
+    tests::fails_parsing_config
+
+test result: FAILED. 60 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

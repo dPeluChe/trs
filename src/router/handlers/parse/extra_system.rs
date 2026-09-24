@@ -78,6 +78,10 @@ impl ParseHandler {
         let input_bytes = input.len();
         let mut containers: Vec<serde_json::Value> = Vec::new();
         let lines: Vec<&str> = input.lines().collect();
+        // PORTS is a fixed-width column between STATUS and NAMES; its cells
+        // contain spaces, so only the header's offsets can cut it out.
+        let header = lines.first().copied().unwrap_or("");
+        let ports_col = header.find("PORTS").zip(header.find("NAMES"));
         if lines.len() > 1 {
             for line in &lines[1..] {
                 let parts: Vec<&str> = line.split_whitespace().collect();
@@ -90,7 +94,11 @@ impl ParseHandler {
                         .map(|s| line[s..].split("  ").next().unwrap_or("").trim())
                         .unwrap_or("unknown");
                     let name = parts.last().unwrap_or(&"");
-                    containers.push(serde_json::json!({"id": id, "image": image, "status": status, "name": name}));
+                    let ports = ports_col
+                        .and_then(|(a, b)| line.get(a..b.min(line.len())))
+                        .map(compact_ports)
+                        .unwrap_or_default();
+                    containers.push(serde_json::json!({"id": id, "image": image, "status": status, "name": name, "ports": ports}));
                 }
             }
         }
@@ -104,12 +112,16 @@ impl ParseHandler {
                     let st = c["status"].as_str().unwrap_or("");
                     let mk = if st.starts_with("Up") { "+" } else { "-" };
                     out.push_str(&format!(
-                        "  {} {} {} ({})\n",
+                        "  {} {} {} ({})",
                         mk,
                         c["name"].as_str().unwrap_or(""),
                         c["image"].as_str().unwrap_or(""),
                         st
                     ));
+                    match c["ports"].as_str() {
+                        Some(p) if !p.is_empty() => out.push_str(&format!(" {}\n", p)),
+                        _ => out.push('\n'),
+                    }
                 }
                 out
             }
@@ -258,4 +270,20 @@ impl ParseHandler {
         }
         Ok(())
     }
+}
+
+/// `0.0.0.0:5442->5432/tcp, [::]:5442->5432/tcp` -> `5442->5432/tcp`: the
+/// IPv4 and IPv6 bindings of one mapping say the same thing twice.
+fn compact_ports(cell: &str) -> String {
+    let mut seen: Vec<&str> = Vec::new();
+    for p in cell.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+        let p = p
+            .strip_prefix("0.0.0.0:")
+            .or_else(|| p.strip_prefix("[::]:"))
+            .unwrap_or(p);
+        if !seen.contains(&p) {
+            seen.push(p);
+        }
+    }
+    seen.join(", ")
 }

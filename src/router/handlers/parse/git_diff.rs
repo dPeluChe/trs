@@ -1,6 +1,7 @@
 use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::super::types::*;
 use super::ParseHandler;
+use crate::OutputFormat;
 
 impl ParseHandler {
     pub(crate) fn handle_git_diff(
@@ -13,8 +14,17 @@ impl ParseHandler {
         // Parse the git diff output
         let diff = Self::parse_git_diff(&input)?;
 
-        // Format output based on the requested format
-        let output = Self::format_git_diff(&diff, ctx.format);
+        // Format output based on the requested format. `git show` opens
+        // with the commit itself, which the diff grammar has no place for.
+        let mut output = Self::format_git_diff(&diff, ctx.format);
+        if !matches!(
+            ctx.format,
+            OutputFormat::Json | OutputFormat::Csv | OutputFormat::Tsv
+        ) {
+            if let Some(header) = commit_header(&input) {
+                output = format!("{}\n{}", header, output);
+            }
+        }
 
         // Print stats if requested
         if ctx.stats {
@@ -106,6 +116,7 @@ impl ParseHandler {
                     additions: 0,
                     deletions: 0,
                     is_binary: false,
+                    stat_total: None,
                     hunks: Vec::new(),
                 });
                 in_hunk = false;
@@ -277,25 +288,14 @@ impl ParseHandler {
                 let path = trimmed[..pipe_pos].trim().to_string();
                 let rest = trimmed[pipe_pos + 3..].trim();
                 let is_binary = rest.starts_with("Bin ");
-                let additions = rest.chars().filter(|c| *c == '+').count();
-                let deletions = rest.chars().filter(|c| *c == '-').count();
-                let change_type = if is_binary {
-                    "M"
-                } else if deletions == 0 && additions > 0 {
-                    "A"
-                } else if additions == 0 && deletions > 0 {
-                    "D"
-                } else {
-                    "M"
-                };
+                let total = rest.split_whitespace().next().and_then(|n| n.parse().ok());
                 diff.files.push(GitDiffEntry {
                     path,
                     new_path: None,
-                    change_type: change_type.to_string(),
-                    additions,
-                    deletions,
+                    change_type: String::new(),
                     is_binary,
-                    hunks: Vec::new(),
+                    stat_total: if is_binary { None } else { total },
+                    ..Default::default()
                 });
             }
         }
@@ -315,4 +315,41 @@ impl ParseHandler {
             diff.files.truncate(max_files);
         }
     }
+}
+
+/// `commit <hash>` / Author / Date / indented message, up to the first diff or
+/// stat line, as `<short hash> · <author> · <date>` plus the message.
+fn commit_header(input: &str) -> Option<String> {
+    let mut lines = input.lines();
+    let hash = lines
+        .next()?
+        .strip_prefix("commit ")?
+        .split_whitespace()
+        .next()?;
+    let (mut author, mut date, mut message) = ("", "", Vec::new());
+    for line in lines {
+        if line.starts_with("diff --git") || (line.starts_with(' ') && line.contains(" | ")) {
+            break;
+        }
+        if let Some(a) = line.strip_prefix("Author:") {
+            author = a.split(" <").next().unwrap_or(a).trim();
+        } else if let Some(d) = line.strip_prefix("Date:") {
+            date = d.trim();
+        } else if let Some(m) = line.strip_prefix("    ") {
+            message.push(m);
+        } else if line.trim().is_empty() && !message.is_empty() {
+            message.push("");
+        }
+    }
+    while message.last() == Some(&"") {
+        message.pop();
+    }
+    let short = &hash[..hash.len().min(7)];
+    Some(format!(
+        "{} · {} · {}\n{}\n",
+        short,
+        author,
+        date,
+        message.join("\n")
+    ))
 }

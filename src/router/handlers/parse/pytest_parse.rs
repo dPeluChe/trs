@@ -90,21 +90,23 @@ impl ParseHandler {
                 continue;
             }
 
-            // Detect failure section start
-            // "=== FAILURES ===" or "=== short test summary info ==="
-            if trimmed.starts_with("=== FAILURES") || trimmed.starts_with("FAILURES") {
-                in_failure_section = true;
-                continue;
-            }
-            if trimmed.starts_with("=== short test summary info ===") {
-                in_failure_section = true;
-                continue;
-            }
-
-            // Detect error section
-            // "=== ERRORS ==="
-            if trimmed.starts_with("=== ERRORS") || trimmed.starts_with("ERRORS") {
-                in_failure_section = true;
+            // Section banners are padded to the terminal width
+            // (`====== FAILURES ======`), so compare the title, not a prefix.
+            let title = trimmed.trim_matches('=').trim();
+            if matches!(title, "FAILURES" | "ERRORS")
+                || title.starts_with("short test summary info")
+            {
+                // The last verbose result is still pending here; its failure
+                // block is next, so it must be in the list to receive it.
+                if let Some(test) = current_test.take() {
+                    output.tests.push(test);
+                }
+                if let Some(name) = current_failed_test_name.take() {
+                    Self::attach_failure(&mut output.tests, name, &failure_buffer);
+                }
+                failure_buffer.clear();
+                // The short summary repeats what FAILURES already gave.
+                in_failure_section = !title.starts_with("short test summary info");
                 continue;
             }
 
@@ -116,13 +118,7 @@ impl ParseHandler {
                     if let Some(name) = current_failed_test_name.take() {
                         // Find test by matching the name at the end (after ::)
                         // "____ test_name ____" matches "file.py::test_name"
-                        if let Some(test) = output
-                            .tests
-                            .iter_mut()
-                            .find(|t| t.name == name || t.name.ends_with(&format!("::{}", name)))
-                        {
-                            test.error_message = Some(failure_buffer.trim().to_string());
-                        }
+                        Self::attach_failure(&mut output.tests, name, &failure_buffer);
                     }
                     let name = trimmed.trim_matches('_').trim().to_string();
                     current_failed_test_name = Some(name);
@@ -136,13 +132,7 @@ impl ParseHandler {
                     in_failure_section = true;
                     if let Some(name) = current_failed_test_name.take() {
                         // Find test by matching the name at the end (after ::)
-                        if let Some(test) = output
-                            .tests
-                            .iter_mut()
-                            .find(|t| t.name == name || t.name.ends_with(&format!("::{}", name)))
-                        {
-                            test.error_message = Some(failure_buffer.trim().to_string());
-                        }
+                        Self::attach_failure(&mut output.tests, name, &failure_buffer);
                     }
                     // Extract test name from error line
                     let name = if trimmed.starts_with("ERROR at setup of ") {
@@ -184,13 +174,7 @@ impl ParseHandler {
         if let Some(name) = current_failed_test_name.take() {
             // Find test by matching the name at the end (after ::)
             // "____ test_name ____" matches "file.py::test_name"
-            if let Some(test) = output
-                .tests
-                .iter_mut()
-                .find(|t| t.name == name || t.name.ends_with(&format!("::{}", name)))
-            {
-                test.error_message = Some(failure_buffer.trim().to_string());
-            }
+            Self::attach_failure(&mut output.tests, name, &failure_buffer);
         }
 
         // Calculate totals if not already in summary
@@ -236,6 +220,23 @@ impl ParseHandler {
         Ok(output)
     }
 
+    /// Attach a FAILURES-section block to its test. Verbose runs match by name;
+    /// quiet runs have unnamed failures, which take the name in order.
+    fn attach_failure(tests: &mut [TestResult], name: String, message: &str) {
+        let suffix = format!("::{}", name);
+        let failed = |t: &TestResult| matches!(t.status, TestStatus::Failed | TestStatus::Error);
+        let idx = tests
+            .iter()
+            .position(|t| t.name == name || t.name.ends_with(&suffix))
+            .or_else(|| tests.iter().position(|t| failed(t) && t.name.is_empty()));
+        if let Some(i) = idx {
+            if tests[i].name.is_empty() {
+                tests[i].name = name;
+            }
+            tests[i].error_message = Some(message.trim().to_string());
+        }
+    }
+
     /// Parse a pytest quiet-mode progress line (e.g. ".....F..x.s  [100%]").
     /// Returns individual test results inferred from the progress characters.
     fn parse_pytest_quiet_progress(line: &str) -> Vec<TestResult> {
@@ -256,8 +257,7 @@ impl ParseHandler {
 
         chars_part
             .chars()
-            .enumerate()
-            .map(|(i, c)| {
+            .map(|c| {
                 let status = match c {
                     '.' => TestStatus::Passed,
                     'F' => TestStatus::Failed,
@@ -267,8 +267,10 @@ impl ParseHandler {
                     'E' => TestStatus::Error,
                     _ => TestStatus::Passed,
                 };
+                // Quiet mode prints no names. Leave it empty: attach_failure
+                // fills in the real one from the FAILURES section.
                 TestResult {
-                    name: format!("test_{}", i + 1),
+                    name: String::new(),
                     status,
                     duration: None,
                     file: None,
@@ -295,35 +297,19 @@ impl ParseHandler {
             return None;
         }
 
-        // Look for PASSED, FAILED, SKIPPED, XFAIL, XPASS, ERROR
-        let (status_str, remainder) = if line.ends_with(" PASSED") {
-            ("PASSED", &line[..line.len() - 7])
-        } else if line.ends_with(" FAILED") {
-            ("FAILED", &line[..line.len() - 7])
-        } else if line.ends_with(" SKIPPED") {
-            ("SKIPPED", &line[..line.len() - 8])
-        } else if line.ends_with(" XFAIL") {
-            ("XFAIL", &line[..line.len() - 6])
-        } else if line.ends_with(" XPASS") {
-            ("XPASS", &line[..line.len() - 6])
-        } else if line.ends_with(" ERROR") {
-            ("ERROR", &line[..line.len() - 6])
-        } else {
-            // Check for inline format: "PASSED [50%]" or "FAILED [50%]"
-            if let Some(pos) = line.find(" PASSED [") {
-                ("PASSED", &line[..pos])
-            } else if let Some(pos) = line.find(" FAILED [") {
-                ("FAILED", &line[..pos])
-            } else if let Some(pos) = line.find(" SKIPPED [") {
-                ("SKIPPED", &line[..pos])
-            } else if let Some(pos) = line.find(" XFAIL [") {
-                ("XFAIL", &line[..pos])
-            } else if let Some(pos) = line.find(" XPASS [") {
-                ("XPASS", &line[..pos])
-            } else {
-                ("ERROR", &line[..line.find(" ERROR [")?])
-            }
+        // Real runs pad the status to a column and append progress:
+        // `a.py::t FAILED            [ 98%]`. Drop the progress, then the pad.
+        let core = match line.rfind(" [") {
+            Some(pos) if line.ends_with("%]") => line[..pos].trim_end(),
+            _ => line,
         };
+        let (status_str, remainder) = ["PASSED", "FAILED", "SKIPPED", "XFAIL", "XPASS", "ERROR"]
+            .iter()
+            .find_map(|st| {
+                core.strip_suffix(st)
+                    .filter(|r| r.ends_with(' '))
+                    .map(|r| (*st, r))
+            })?;
 
         let status = match status_str {
             "PASSED" => TestStatus::Passed,
@@ -402,10 +388,9 @@ impl ParseHandler {
     /// Parse pytest summary line into TestSummary.
     pub(crate) fn parse_pytest_summary(line: &str) -> TestSummary {
         let mut summary = TestSummary::default();
-        let lower = line.to_lowercase();
-
-        // Remove wrapper like "=== ... ==="
-        let cleaned = line.trim_matches('=').trim();
+        // Search and slice the same string: an index into the padded line
+        // used on the trimmed one read the wrong bytes, or panicked.
+        let lower = line.trim_matches('=').trim().to_lowercase();
 
         // Parse counts
         // Pattern: "N passed", "N failed", "N skipped", etc.
@@ -440,7 +425,7 @@ impl ParseHandler {
         // Parse duration
         // "in 0.01s" or "in 1.23 seconds"
         if let Some(pos) = lower.find(" in ") {
-            let after_in = &cleaned[pos + 4..];
+            let after_in = &lower[pos + 4..];
             // Extract number before 's' or 'seconds'
             let duration_str: String = after_in
                 .chars()

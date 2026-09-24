@@ -165,7 +165,8 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("test", 0.10), ("run", 0.15),
         ]},
-        stderr: Stderr::Never,
+        // bun test writes its whole report to stderr.
+        stderr: Stderr::Subcmds(&["test"]),
     },
     CommandSpec {
         names: &["yarn"], known: true,
@@ -410,8 +411,32 @@ fn caller_selected_fields(cmd: &str, rest: &str) -> bool {
 ///
 /// Known limit: a compound script (`cd x && awk …`) reports its first token,
 /// so an inner verbatim command later in the chain is not seen.
+/// `git show <rev>:<path>` prints a file, and a file's whitespace is its
+/// layout: the generic pass flattened YAML and Python indentation to one space.
+fn git_show_blob(cmd: &str, rest: &str) -> bool {
+    if cmd != "git" {
+        return false;
+    }
+    let mut after_show = rest.split_whitespace().skip_while(|t| *t != "show");
+    after_show.next().is_some() && after_show.any(|t| !t.starts_with('-') && t.contains(':'))
+}
+
+/// `tail` of anything but a `.log` is a file's last lines, not a log: the log
+/// parser tagged a YAML comment containing "failure" with a leading `ERR`.
+fn tail_of_a_file(cmd: &str, rest: &str) -> bool {
+    cmd == "tail"
+        && rest
+            .split_whitespace()
+            .filter(|t| !t.starts_with('-') && t.parse::<i64>().is_err())
+            .any(|t| !t.ends_with(".log"))
+}
+
 pub(crate) fn is_verbatim_invocation(cmd: &str, rest: &str) -> bool {
-    if is_verbatim_command(cmd) || caller_selected_fields(cmd, rest) {
+    if is_verbatim_command(cmd)
+        || caller_selected_fields(cmd, rest)
+        || git_show_blob(cmd, rest)
+        || tail_of_a_file(cmd, rest)
+    {
         return true;
     }
     if !matches!(cmd, "bash" | "sh" | "zsh" | "dash") {
