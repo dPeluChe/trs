@@ -1,0 +1,43 @@
+bun test v1.2.23 (cf136713)
+
+math.test.ts:
+77 | test('adds case 75', () => { expect(75+1).toBe(76); });
+78 | test('adds case 76', () => { expect(76+1).toBe(77); });
+79 | test('adds case 77', () => { expect(77+1).toBe(78); });
+80 | test('adds case 78', () => { expect(78+1).toBe(79); });
+81 | test('adds case 79', () => { expect(79+1).toBe(80); });
+82 | test('formats currency for MXN locale', () => { expect((1234.5).toFixed(1)).toBe('1,234.50'); });
+                                                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: "1,234.50"
+Received: "1234.5"
+
+      at <anonymous> (/tmp/proj/math.test.ts:82:77)
+(fail) formats currency for MXN locale [0.55ms]
+78 | test('adds case 76', () => { expect(76+1).toBe(77); });
+79 | test('adds case 77', () => { expect(77+1).toBe(78); });
+80 | test('adds case 78', () => { expect(78+1).toBe(79); });
+81 | test('adds case 79', () => { expect(79+1).toBe(80); });
+82 | test('formats currency for MXN locale', () => { expect((1234.5).toFixed(1)).toBe('1,234.50'); });
+83 | test('rejects expired token', () => { expect({ ok: true, reason: 'valid' }).toEqual({ ok: false, reason: 'expired' }); });
+                                                                                 ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "ok": false,
+-   "reason": "expired",
++   "ok": true,
++   "reason": "valid",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/tmp/proj/math.test.ts:83:77)
+(fail) rejects expired token [0.11ms]
+
+ 80 pass
+ 2 fail
+ 82 expect() calls
+Ran 82 tests across 1 file. [7.00ms]

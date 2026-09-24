@@ -165,7 +165,8 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[
             ("test", 0.10), ("run", 0.15),
         ]},
-        stderr: Stderr::Never,
+        // bun test writes its whole report to stderr.
+        stderr: Stderr::Subcmds(&["test"]),
     },
     CommandSpec {
         names: &["yarn"], known: true,
