@@ -411,3 +411,23 @@ fn git_show_of_a_file_is_verbatim() {
         );
     }
 }
+
+#[test]
+fn tail_is_verbatim_unless_it_reads_a_log() {
+    for rest in [
+        "-50 .github/workflows/ci.yml",
+        "-n 20 src/main.rs",
+        "README.md",
+    ] {
+        assert!(
+            is_verbatim_invocation("tail", rest),
+            "must be verbatim: tail {rest}"
+        );
+    }
+    for rest in ["-100 app.log", "-f server.log", "-n 50"] {
+        assert!(
+            !is_verbatim_invocation("tail", rest),
+            "log parser still applies: tail {rest}"
+        );
+    }
+}

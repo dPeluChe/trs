@@ -59,6 +59,10 @@ impl ParseHandler {
     fn build_file_summary(diff: &GitDiff) -> String {
         let mut summary = String::from("--- file summary ---\n");
         for file in &diff.files {
+            if let Some(n) = file.stat_total {
+                summary.push_str(&format!("  {} | {}\n", file.path, n));
+                continue;
+            }
             let indicator = match file.change_type.as_str() {
                 "A" => "+",
                 "D" => "-",
@@ -111,6 +115,10 @@ impl ParseHandler {
         ));
 
         for file in &diff.files {
+            if let Some(n) = file.stat_total {
+                output.push_str(&format!("{} | {}\n", file.path, n));
+                continue;
+            }
             let indicator = match file.change_type.as_str() {
                 "A" => "+",
                 "D" => "-",

@@ -8,10 +8,11 @@ use crate::OutputFormat;
 /// 3 is the smallest count where listing is clearly worse than a summary.
 const COLLAPSE_THRESHOLD: usize = 3;
 
-/// Always show at most this many individual names inside a collapsed group
-/// before switching to "+N more" — keeps output bounded on repos with huge
-/// branch lists.
-const NAMES_SHOWN_PER_GROUP: usize = 2;
+/// Names listed inside one `prefix/{a, b, c}` group before "+N more". The
+/// braces already save the repeated prefix without losing a name; the cap is
+/// only for repos with hundreds of branches. At 2, `git branch -a` hid 33 of
+/// 36 remote branches from an agent looking for one.
+const NAMES_SHOWN_PER_GROUP: usize = 50;
 
 impl ParseHandler {
     pub(crate) fn handle_git_branch(

@@ -1,0 +1,57 @@
+title:	fix(rewrite): never compress output that another program reads
+state:	MERGED
+author:	dPeluChe (dPeluChe)
+labels:	
+assignees:	
+reviewers:	
+projects:	
+milestone:	
+number:	162
+url:	https://github.com/dPeluChe/trs/pull/162
+additions:	76
+deletions:	83
+auto-merge:	disabled
+--
+Since v0.5.6 the hook rewrote the **first segment** of a pipeline: `ps aux | grep x` became `trs ps aux | grep x`. The downstream program then parsed trs's summary instead of the command's output, and the agent got a wrong answer with nothing to suggest it was wrong.
+
+## Evidence
+
+Measured on this repo, the raw pipeline against the same pipeline through `trs rewrite`:
+
+| pipeline | raw | before | after |
+|---|---|---|---|
+| `find src -name '*.rs' \| wc -l` | 241 | **14** | 241 |
+| `git diff HEAD~3 \| grep -c '^+'` | 804 | **0** | 804 |
+| `grep -rhoE 'fn [a-z_]+' src \| sort -u \| wc -l` | 1960 | **1** | 1960 |
+| `git log -10 \| grep -c Claude-Session` | 3 | **2** | 3 |
+| `git diff --stat \| tail -1` | `19 files changed…` | **a filename** | same as raw |
+| `ps aux \| grep -c zellij` | 4 | **0** | 4 |
+| `gh pr view --json additions \| python3 json.load` | `{'additions': 74}` | **Traceback** | same as raw |
+| `cargo test … \| grep 'test result'` | `ok. 1 passed` | **(empty)** | same as raw |
+
+After the fix all 9 tested pipelines match raw. Commands with no pipe still compress as before.
+
+## How common this was
+
+Over 14 days of real Claude Code sessions on one machine: 49,104 Bash calls, 4,831 of them rewritten by trs. **3,344 (69%) of those rewrites were pipelines**: 950 fed a filter (grep, wc, sort, awk, jq, python3) and 2,324 fed head or tail.
+
+## The change
+
+`captures_output` already meant "something other than the agent reads this output." A pipe is exactly that, and `| tee` was just one special case of it. It now flags any unquoted `|` or `|&` that isn't half of a `||`. Two things still compress:
+
+- `grep -n "a|b" file` and `git log --grep='x|y'`: the `|` is inside an argument, so it isn't a pipe.
+- `cargo test || echo failed`: `||` runs the second command on failure. Its stdout still goes to the agent.
+
+The first-segment splitter is deleted, and so is the doc comment that said `| grep` output "still reaches the agent as text."
+
+## What this gives up
+
+Less than the stats suggest. For a piped command, the tracker compared the producer's full output with trs's output. But `| tail -30` would have cut the raw output to 30 lines anyway, so most of that recorded saving was never real. Historical `trs stats` totals are inflated by it. New entries won't be.
+
+## Also fixed: the rewrite benchmark was silently broken
+
+`docs/development/benchmarks/chain-rewrite.sh` was failing **5/40 on main**. It built the hook JSON with an unescaped `printf`, so every case with a quoted argument sent invalid JSON and was read as passthrough. Two cases also still expected `awk` and `jq` to be rewritten, though both have been verbatim for a while. Now 43/43, with new cases for pipes, a quoted `|`, and `||`.
+
+Gate: fmt, clippy `-D warnings`, full suite green.
+
+https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7

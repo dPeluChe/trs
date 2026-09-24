@@ -1,0 +1,3 @@
+CONTAINER ID   IMAGE                               COMMAND                  CREATED        STATUS                  PORTS                                         NAMES
+be1bf01e1e17   timescale/timescaledb:2.17.2-pg16   "docker-entrypoint.s…"   19 hours ago   Up 19 hours (healthy)   0.0.0.0:5442->5432/tcp, [::]:5442->5432/tcp   app-postgres-1
+1627afd5b848   redis:7.4-alpine                    "docker-entrypoint.s…"   19 hours ago   Up 19 hours (healthy)   0.0.0.0:6389->6379/tcp, [::]:6389->6379/tcp   app-redis-1

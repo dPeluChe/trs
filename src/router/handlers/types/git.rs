@@ -87,6 +87,9 @@ pub(crate) struct GitDiffEntry {
     pub(crate) deletions: usize,
     /// Binary file flag.
     pub(crate) is_binary: bool,
+    /// From `--stat`: git's exact changed-line count. The +/- bar beside it is
+    /// scaled to the terminal, so it gives neither the split nor the status.
+    pub(crate) stat_total: Option<usize>,
     /// Parsed hunks with their lines (for compact output with context compression).
     pub(crate) hunks: Vec<GitDiffHunk>,
 }

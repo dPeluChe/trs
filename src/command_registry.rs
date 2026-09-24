@@ -421,8 +421,22 @@ fn git_show_blob(cmd: &str, rest: &str) -> bool {
     after_show.next().is_some() && after_show.any(|t| !t.starts_with('-') && t.contains(':'))
 }
 
+/// `tail` of anything but a `.log` is a file's last lines, not a log: the log
+/// parser tagged a YAML comment containing "failure" with a leading `ERR`.
+fn tail_of_a_file(cmd: &str, rest: &str) -> bool {
+    cmd == "tail"
+        && rest
+            .split_whitespace()
+            .filter(|t| !t.starts_with('-') && t.parse::<i64>().is_err())
+            .any(|t| !t.ends_with(".log"))
+}
+
 pub(crate) fn is_verbatim_invocation(cmd: &str, rest: &str) -> bool {
-    if is_verbatim_command(cmd) || caller_selected_fields(cmd, rest) || git_show_blob(cmd, rest) {
+    if is_verbatim_command(cmd)
+        || caller_selected_fields(cmd, rest)
+        || git_show_blob(cmd, rest)
+        || tail_of_a_file(cmd, rest)
+    {
         return true;
     }
     if !matches!(cmd, "bash" | "sh" | "zsh" | "dash") {
