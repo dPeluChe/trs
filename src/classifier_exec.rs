@@ -108,7 +108,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         if ratio > 0.90 {
             let compressed = generic_compress(stdout_ref);
             print!("{}", compressed);
-            out_bytes = compressed.len();
+            out_bytes =
+                compressed.len() + point_to_raw(&output.status, cmd, args, &stdout, &stderr);
             let duration_ms = start.elapsed().as_millis() as u64;
             let fcmd = full_cmd(cmd, args);
             crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
@@ -205,7 +206,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         // No parser matched — apply generic compression (collapse whitespace, strip ANSI)
         let compressed = generic_compress(stdout_ref);
         print!("{}", compressed);
-        out_bytes = compressed.len();
+        out_bytes = compressed.len() + point_to_raw(&output.status, cmd, args, &stdout, &stderr);
     }
 
     // Track execution (fire-and-forget)
@@ -216,6 +217,28 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     // Tee system: on failure, save full raw output for recovery
     if !output.status.success() {
         emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
+    }
+}
+
+/// When the generic pass cut a dense line from a successful command, save the
+/// raw and print where; failures get this from the footer. Returns bytes added.
+fn point_to_raw(
+    status: &std::process::ExitStatus,
+    cmd: &str,
+    args: &[String],
+    stdout: &str,
+    stderr: &str,
+) -> usize {
+    if !crate::parse_out::take_dropped() || !status.success() {
+        return 0;
+    }
+    match save_tee_output(&full_cmd(cmd, args), stdout, stderr) {
+        Some(path) => {
+            let line = format!("[trs] full output: {}\n", path);
+            print!("{}", line);
+            line.len()
+        }
+        None => 0,
     }
 }
 
@@ -402,8 +425,10 @@ fn generic_compress(input: &str) -> String {
         result.pop();
     }
 
-    // Collapse consecutive identical lines (e.g., repeated log entries)
-    let result = collapse_repeated_lines(&result);
+    // Repeats fold to `line (xN)`, checked by undoing it; dense lines keep a
+    // head and tail and flag the output so the raw is saved.
+    let (result, cut) = crate::safe_folds::elide_dense(&result);
+    let result = crate::safe_folds::fold_repeats(&result);
 
     // Ratio threshold: if compression savings are below the configured minimum,
     // return the original input instead (compression not worth the fidelity loss).
@@ -412,48 +437,9 @@ fn generic_compress(input: &str) -> String {
     if result.len() > threshold {
         return input.to_string();
     }
-
-    result
-}
-
-/// Collapse consecutive identical lines into `line\n  ...(N more identical lines)`.
-/// Minimum 3 consecutive identical lines to trigger collapse.
-pub(crate) fn collapse_repeated_lines(input: &str) -> String {
-    let lines: Vec<&str> = input.lines().collect();
-    if lines.len() < 3 {
-        return input.to_string();
+    if cut {
+        crate::parse_out::mark_dropped();
     }
-
-    let mut result = String::with_capacity(input.len());
-    let mut i = 0;
-
-    while i < lines.len() {
-        let line = lines[i];
-        let mut count = 1;
-
-        // Count consecutive identical lines
-        while i + count < lines.len() && lines[i + count] == line {
-            count += 1;
-        }
-
-        if count >= 3 {
-            // Show the line once, then a collapsed marker
-            result.push_str(line);
-            result.push('\n');
-            result.push_str(&format!("  ...({} more identical lines)\n", count - 1));
-            i += count;
-        } else {
-            result.push_str(line);
-            result.push('\n');
-            i += 1;
-        }
-    }
-
-    // Remove trailing newline if input didn't end with one
-    if !input.ends_with('\n') && result.ends_with('\n') {
-        result.pop();
-    }
-
     result
 }
 

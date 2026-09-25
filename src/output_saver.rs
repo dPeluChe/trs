@@ -128,11 +128,14 @@ pub(crate) fn standalone_file() -> String {
          `@{}` import line in the parent config.\n\n\
          ## Shell output\n\n\
          Shell command output is automatically routed through trs (a\n\
-         token-reduction hook) and may appear in compact form. The\n\
-         compression is purely presentational: repetition and noise\n\
-         collapsed; signal preserved. There is no detail in raw output\n\
-         that the compressed form hides from you, so treat what arrives\n\
-         as authoritative and write normal shell commands.\n\n\
+         token-reduction hook) and may appear in compact form: repetition\n\
+         and noise collapsed, signal kept. When trs leaves something out\n\
+         it says so, and where the rest is: `(x3)` is a line repeated 3\n\
+         times in a row, `…[minified, 4184 chars]…` is a cut dense line,\n\
+         and a `[trs] full output: <path>` line says where the raw\n\
+         output is saved. Treat what arrives as authoritative and write\n\
+         normal shell commands; if you need what was cut, read that path\n\
+         instead of re-running the command.\n\n\
          A failed command always says so: the summary never reports\n\
          success for a non-zero exit, and a `[trs] exit N` line carries\n\
          the real status plus a path to the full raw output. Redirecting\n\

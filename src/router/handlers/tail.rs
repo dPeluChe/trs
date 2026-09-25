@@ -354,7 +354,7 @@ impl TailHandler {
                 body.push('\n');
             }
         }
-        crate::classifier_exec::collapse_repeated_lines(&body)
+        crate::safe_folds::fold_repeats(&body)
     }
 
     /// Format tail output as agent-optimized format.
