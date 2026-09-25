@@ -213,6 +213,7 @@ fn format_go_test_compact(r: &GoTestResult) -> String {
             out.push_str(&format!("  {}\n", err));
         }
         if r.compile_errors.len() > 10 {
+            crate::parse_out::mark_dropped();
             out.push_str(&format!("  ...+{} more\n", r.compile_errors.len() - 10));
         }
     }

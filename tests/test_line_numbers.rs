@@ -176,8 +176,16 @@ fn test_line_numbers_with_context() {
         .any(|line| line.chars().any(|c| c.is_ascii_digit()) && line.contains(':'));
     assert!(has_line_number, "Output should contain line numbers");
 
-    // Context lines should be indicated with ellipsis
-    assert!(output_str.contains("..."));
+    // Requested context lines print, marked `N-` the way grep marks them
+    let has_context = output_str.lines().any(|l| {
+        l.trim_start()
+            .split_once("- ")
+            .is_some_and(|(n, _)| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
+    });
+    assert!(
+        has_context,
+        "context lines should print with a `-` marker:\n{output_str}"
+    );
 }
 
 /// Test that line numbers are accurate across multiple matches

@@ -103,6 +103,7 @@ impl ParseHandler {
 
         // For very large diffs (>500 change lines), show summary only
         if total_change_lines > 500 {
+            crate::parse_out::mark_dropped();
             return Self::build_file_summary(diff);
         }
 
@@ -151,6 +152,7 @@ impl ParseHandler {
 
         if diff.is_truncated {
             let hidden = diff.total_files.saturating_sub(diff.files_shown);
+            crate::parse_out::mark_dropped();
             output.push_str(&format!("\n... {} more file(s) not shown\n", hidden));
         }
 
@@ -174,6 +176,7 @@ impl ParseHandler {
         // Show truncation warning if applicable
         if diff.is_truncated {
             let hidden = diff.total_files.saturating_sub(diff.files_shown);
+            crate::parse_out::mark_dropped();
             output.push_str(&format!("... {} more file(s) truncated\n", hidden));
         }
 

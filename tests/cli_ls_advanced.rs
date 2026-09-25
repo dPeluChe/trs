@@ -326,7 +326,7 @@ fn test_parse_grep_compact_line_numbers_multiple_files() {
         .success()
         // Verify line numbers for each file
         .stdout(predicate::str::contains("10: line one"))
-        .stdout(predicate::str::contains("25: line two"))
+        .stdout(predicate::str::contains("src/lib.rs:25:line two"))
         .stdout(predicate::str::contains("30: line three"));
 }
 
@@ -345,8 +345,8 @@ fn test_parse_grep_groups_interleaved_files() {
         .stdout(predicate::str::contains("matches: 2 files, 3 results"))
         // main.rs should show both matches grouped (2)
         .stdout(predicate::str::contains("src/main.rs (2):"))
-        // lib.rs should show 1 match
-        .stdout(predicate::str::contains("src/lib.rs (1):"));
+        // A single match needs no header: one grep-style line
+        .stdout(predicate::str::contains("src/lib.rs:25:line two"));
 }
 
 #[test]

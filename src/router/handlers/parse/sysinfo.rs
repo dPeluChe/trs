@@ -179,6 +179,7 @@ fn compress_lsof(input: &str) -> Option<String> {
         ));
     }
     if groups.len() > LSOF_ROWS {
+        crate::parse_out::mark_dropped();
         out.push_str(&format!("… +{} more processes\n", groups.len() - LSOF_ROWS));
     }
     out.push_str(&format!(
@@ -215,6 +216,7 @@ fn compress_pgrep(input: &str) -> Option<String> {
         out.push_str(&format!("{}  {}\n", pids.join(","), cmd));
     }
     if groups.len() > PGREP_ROWS {
+        crate::parse_out::mark_dropped();
         out.push_str(&format!("… +{} more\n", groups.len() - PGREP_ROWS));
     }
     out.push_str(&format!("{} processes\n", total));

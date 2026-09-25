@@ -382,8 +382,28 @@ pub(crate) fn is_verbatim_command(cmd: &str) -> bool {
 /// selector is one row and not another special case in a shared predicate.
 /// Keyed by `(binary, subcommand)`: the same short flag means different things
 /// under different subcommands of the same tool.
-const FIELD_SELECTOR_FLAGS: &[(&str, &str, &[&str])] =
-    &[("gh", "api", &["--jq", "-q", "--template", "-t"])];
+const FIELD_SELECTOR_FLAGS: &[(&str, &str, &[&str])] = &[
+    ("gh", "api", &["--jq", "-q", "--template", "-t"]),
+    // A patch, a stat table, a graph or a custom format is the layout the
+    // caller asked for. The log parser flattened each into one line.
+    (
+        "git",
+        "log",
+        &[
+            "-p",
+            "--patch",
+            "-u",
+            "--stat",
+            "--numstat",
+            "--shortstat",
+            "--name-only",
+            "--name-status",
+            "--format",
+            "--pretty",
+            "--graph",
+        ],
+    ),
+];
 
 /// Whether the caller pre-selected their fields on this command line.
 fn caller_selected_fields(cmd: &str, rest: &str) -> bool {
@@ -395,7 +415,12 @@ fn caller_selected_fields(cmd: &str, rest: &str) -> bool {
         return false;
     };
     FIELD_SELECTOR_FLAGS.iter().any(|(bin, subcmd, flags)| {
-        *bin == cmd && *subcmd == sub && toks.clone().any(|t| flags.contains(&t))
+        *bin == cmd
+            && *subcmd == sub
+            && toks.clone().any(|t| {
+                let flag = t.split_once('=').map_or(t, |(f, _)| f);
+                flags.contains(&flag)
+            })
     })
 }
 
