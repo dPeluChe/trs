@@ -210,6 +210,7 @@ fn render_compact(procs: &[Proc]) -> String {
         ));
     }
     if sorted.len() > 30 {
+        crate::parse_out::mark_dropped();
         out.push_str(&format!(
             "  ... {} more (use --raw or --json for the full list)\n",
             sorted.len() - 30

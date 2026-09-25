@@ -402,7 +402,7 @@ fn git_show_of_a_file_is_verbatim() {
     for rest in [
         "show HEAD",
         "show --stat HEAD~2",
-        "log --format=%h:%s",
+        "log -5 --grep=fix:",
         "show",
     ] {
         assert!(
@@ -428,6 +428,28 @@ fn tail_is_verbatim_unless_it_reads_a_log() {
         assert!(
             !is_verbatim_invocation("tail", rest),
             "log parser still applies: tail {rest}"
+        );
+    }
+}
+
+#[test]
+fn git_log_with_a_chosen_layout_is_verbatim() {
+    for rest in [
+        "log -p -1",
+        "log --stat -3",
+        "log --format=%h%x09%s",
+        "log --pretty=oneline",
+        "log --graph",
+    ] {
+        assert!(
+            is_verbatim_invocation("git", rest),
+            "must be verbatim: git {rest}"
+        );
+    }
+    for rest in ["log -5", "log --oneline -20", "log origin/main..HEAD"] {
+        assert!(
+            !is_verbatim_invocation("git", rest),
+            "must still compress: git {rest}"
         );
     }
 }

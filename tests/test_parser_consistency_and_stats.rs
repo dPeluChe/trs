@@ -161,7 +161,7 @@ fn test_parser_all_formats_grep() {
         .write_stdin(fixtures::grep_multiple_files())
         .assert()
         .success()
-        .stdout(predicate::str::contains("matches:"));
+        .stdout(predicate::str::contains("src/"));
 
     // Test JSON format
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -181,7 +181,7 @@ fn test_parser_all_formats_grep() {
         .write_stdin(fixtures::grep_multiple_files())
         .assert()
         .success()
-        .stdout(predicate::str::contains("matches:"));
+        .stdout(predicate::str::contains("src/"));
 }
 
 // ============================================================

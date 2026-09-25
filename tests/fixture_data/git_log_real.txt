@@ -1,0 +1,166 @@
+commit 0175ae73f36709fd4a9242b2e431d026d6f82bb3
+Author: dPeluChe <antonio@iteris.tech>
+Date:   Thu Sep 24 14:26:29 2026 -0600
+
+    fix(parse): what trs lost or invented, found by benchmarking against real output (#166)
+    
+    * fix(parse): stop pytest inventing test names, and git show altering files
+    
+    Found by benchmarking trs against real command output instead of fixtures.
+    
+    `git show <rev>:<path>` prints a file. The classifier returned "no parser"
+    for it and its test called that safe, but no parser means the generic pass,
+    which collapsed every run of spaces: YAML and Python came back with their
+    indentation flattened to one space, and the CI workflow no longer parsed.
+    It is now verbatim, like cat, in both the hook and the executor.
+    
+    pytest never matched a real run. Its fixtures were written by hand with
+    `=== FAILURES ===`; real banners are padded to the terminal width, so:
+    
+    - the failure section was never read, so no error message ever surfaced
+    - quiet mode named failures by position: `test_71`, `test_72`
+    - the default mode panicked on the padded summary line (an index found in
+      the padded line was used to slice the trimmed one)
+    - verbose mode dropped the failed list: `name FAILED     [ 98%]` is padded
+      too, and the last result was still pending when its failure arrived
+    - the "error" shown was the block's first line, `def test_x():`, sliced
+      by bytes (a panic on non-ASCII)
+    
+    Now banners compare their title, quiet failures take their real name from
+    the FAILURES section, and the message is the `E` lines plus `file.py:N`.
+    New fixtures are captured from real pytest runs, in all three modes.
+    
+    Claude-Session: https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7
+    
+    * fix(parse): bun and cargo test failures keep the reason they failed
+    
+    bun test writes its whole report to stderr, and bun's registry row said
+    never to combine stderr, so the bun parser never received any input: trs
+    passed the report through raw and added its footer, making it larger.
+    
+    With the input routed, the parser still read it wrong. Non-TTY bun prints
+    a failure's details BEFORE its `(fail)` line; the parser collected the
+    lines AFTER one, so the second failure's diff was pinned to the first.
+    It now attributes the preceding block, keeps the `error:`, Expected and
+    Received lines and the `at file:line:col`, drops the numbered source
+    context, and the compact view prints them. 1884 bytes -> 911.
+    
+    cargo test kept each panic's location and message but not the two values
+    assert_eq! prints under it; `(left: 4) (right: 5)` now rides along.
+    
+    Both are pinned by fixtures captured from real runs.
+    
+    Claude-Session: https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7
+    
+    * fix(parse): keep what agents run these commands for, and say where the rest is
+    
+    Each loss was found by running the real command and comparing, not by
+    reading the parser.
+    
+    - gh pr view: non-TTY gh separates metadata from the body with `--`, not a
+      `body:` key, so the body never surfaced; an agent got the title only. The
+      whole body is kept now (HTML template comments dropped), plus the change
+      counts and any reviewers, assignees or milestone.
+    - docker ps: the PORTS column was dropped, the one an agent needs to
+      connect. It is cut from the header's offsets, IPv4/IPv6 duplicates folded.
+    - git show: the commit header (hash, author, date, message) was dropped;
+      it now opens the output. With --stat, per-file counts came from counting
+      the +/- bar, which git scales to the terminal (README.md +7/-1 for a
+      +45/-1 change), and a file with only insertions was marked new. It now
+      prints git's own number per file and no guessed status.
+    - git branch -a: groups of 3+ showed 2 names and "+N more", hiding 33 of
+      36 remote branches. The braces already save the prefix; all names show.
+    - tail: the hook routed `tail -N file` to the log tail, which prefixes lines
+      containing "failure" with `ERR`, inside a YAML file. tail of anything but
+      a .log is now verbatim, like head.
+    
+    And one general rule in the executor: when a parser cuts a successful
+    output of 16 KB or more by 90% or more, the raw output is saved and its
+    path printed, the way failures already are. A large diff summary, ps aux,
+    and a CI log stop being dead ends. Also fixes a byte slice in passthrough
+    truncation that would panic mid UTF-8 character.
+    
+    Claude-Session: https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7
+    
+    * perf(rewrite): stop wrapping ssh
+    
+    ssh was the command family trs wrapped most in real sessions: 537 times
+    in 30 days, saving 1.9% of its bytes. The remote command is opaque to trs,
+    so every call paid the wrapper (a process and a capture) for nothing, and
+    a long remote session's output was held until it exited instead of
+    streaming. `sshfs` and friends are unaffected.
+    
+    Claude-Session: https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7
+    
+    * docs(tasks): the benchmark findings that need a product decision
+    
+    Claude-Session: https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7
+    
+    * test(rewrite): the leave-it-alone cases get their own file
+    
+    rewrite_decide_tests.rs crossed the repo's 500-line limit with the ssh
+    case. Pipes and ssh, the commands whose output trs must not touch, now
+    live together in rewrite_decide_capture_tests.rs.
+    
+    Claude-Session: https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7
+
+commit c07875f85ca1037faf6b11cc6b268740c3ace0bc
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Thu Sep 24 12:45:47 2026 -0600
+
+    chore(deps): bump the cargo-minor group across 1 directory with 3 updates (#161)
+    
+    Bumps the cargo-minor group with 3 updates in the / directory: [clap](https://github.com/clap-rs/clap), [ureq](https://github.com/algesten/ureq) and [toml](https://github.com/toml-rs/toml).
+    
+    
+    Updates `clap` from 4.6.6 to 4.6.7
+    - [Release notes](https://github.com/clap-rs/clap/releases)
+    - [Changelog](https://github.com/clap-rs/clap/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/clap-rs/clap/compare/clap_complete-v4.6.6...clap_complete-v4.6.7)
+    
+    Updates `ureq` from 3.4.0 to 3.4.2
+    - [Changelog](https://github.com/algesten/ureq/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/algesten/ureq/compare/3.4.0...3.4.2)
+    
+    Updates `toml` from 1.1.4+spec-1.1.0 to 1.1.6+spec-1.1.0
+    - [Commits](https://github.com/toml-rs/toml/compare/toml-v1.1.4...toml-v1.1.6)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: clap
+      dependency-version: 4.6.7
+      dependency-type: direct:production
+      update-type: version-update:semver-patch
+      dependency-group: cargo-minor
+    - dependency-name: ureq
+      dependency-version: 3.4.2
+      dependency-type: direct:production
+      update-type: version-update:semver-patch
+      dependency-group: cargo-minor
+    - dependency-name: toml
+      dependency-version: 1.1.6+spec-1.1.0
+      dependency-type: direct:production
+      update-type: version-update:semver-patch
+      dependency-group: cargo-minor
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+    Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+commit 787156f11311215629cca96da0f66d8bdd11377b
+Author: dPeluChe <antonio@iteris.tech>
+Date:   Thu Sep 24 12:45:31 2026 -0600
+
+    docs(benchmarks): trs against six similar tools, scored for what survives (#165)
+    
+    Same repo state, o200k tokens, truth.py's anchor and pipeline checks,
+    each tool through its own agent hook where it has one. trs cuts 69% of
+    tokens and keeps 66% of anchors, the best kept figure among tools that
+    cut over half; the most aggressive cuts 87% and keeps 29%.
+    
+    Two lessons for trs's backlog: tools that drop a large diff also store
+    it and tell the agent how to fetch it, and trs does neither; and
+    wrapping the whole pipeline keeps filters correct while still
+    compressing the final text.
+    
+    Claude-Session: https://claude.ai/code/session_01GkgHj56hmkHb2a1syzJwA7

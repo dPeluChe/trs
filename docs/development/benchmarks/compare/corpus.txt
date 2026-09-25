@@ -1,0 +1,42 @@
+# cwd::command. Shapes drawn from 14 days of real agent sessions (grep, git,
+# ls, find, gh, docker, ps, test runners). {repo} is this repo; {fixtures} is
+# what setup.sh builds. Git rows move with the repo: compare runs at one commit.
+# [docker] rows run only when the daemon answers.
+{repo}::grep -n "fn " src/report.rs
+{repo}::grep -rn "emit_compressed" src
+{repo}::grep -rn "fn main" src
+{repo}::grep -rn -A3 "pub(crate) fn" src/report.rs
+{repo}::grep -rn -C2 "is_verbatim_invocation" src
+{repo}::grep -rn "TODO\|FIXME" src
+{repo}::rg -n "captures_output" src
+{repo}::git log -5
+{repo}::git log -20
+{repo}::git log --oneline -30
+{repo}::git log --stat -3
+{repo}::git diff HEAD~1
+{repo}::git diff HEAD~5
+{repo}::git diff HEAD~3 --stat
+{repo}::git show HEAD
+{repo}::git show HEAD --stat
+{repo}::git show HEAD~2:src/report.rs
+{repo}::git status
+{repo}::git branch -a
+{repo}::ls -la
+{repo}::ls -la src
+{repo}::find src -name "*.rs"
+{repo}::find . -name "*.md" -not -path "./target/*"
+{repo}::wc -l src/rewrite.rs src/rewrite_decide.rs src/report.rs src/init.rs
+{repo}::tail -50 src/rewrite_decide.rs
+{repo}::cargo build
+{repo}::cargo clippy --all-targets
+{repo}::gh pr list --state all --limit 30
+{repo}::gh pr view 162
+{repo}::gh run list --limit 10
+{repo}::ps aux
+[docker] {repo}::docker ps -a
+[docker] {repo}::docker images
+{fixtures}/cargofail::cargo test
+{fixtures}/cargofail::cargo build
+{fixtures}/buntest::bun test
+{fixtures}/pyfail::pytest
+{fixtures}/pyfail::pytest -q

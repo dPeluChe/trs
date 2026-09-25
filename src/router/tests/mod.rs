@@ -25,6 +25,7 @@ mod malformed_input;
 mod parse_bun;
 mod parse_db;
 mod parse_grep;
+mod parse_grep_limits;
 mod parse_jest;
 mod parse_logs;
 mod parse_logs_levels;
