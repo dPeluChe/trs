@@ -53,7 +53,13 @@ fn a_summarized_diff_points_to_the_identical_raw_output() {
         .find_map(|l| l.strip_prefix("[trs] full output: "))
         .unwrap_or_else(|| panic!("no pointer to the dropped hunks:\n{out}"));
     let saved = std::fs::read_to_string(path.trim()).unwrap();
-    assert_eq!(saved, git(repo.path(), &["--no-pager", "diff"]));
+    // stdout and stderr are both saved, as the agent saw them; on Windows git
+    // adds a CRLF warning on stderr, so the diff is contained, not equal.
+    let diff = git(repo.path(), &["--no-pager", "diff"]);
+    assert!(
+        diff.len() > 10_000 && saved.contains(&diff),
+        "saved output lacks the full diff"
+    );
 }
 
 #[test]
