@@ -175,3 +175,28 @@ fn verify_agent_reports_loaded_drifted_and_not_installed() {
 
     fs::remove_dir_all(&dir).ok();
 }
+
+/// The hook-context text must not claim trs hides nothing: it does cut
+/// (dense lines, capped lists, long commit bodies), and every cut is marked
+/// with where the rest is. The agent needs to read those markers, and must
+/// not be told that piping bypasses compression, which is the bypass habit
+/// the test above guards against.
+#[test]
+fn standalone_file_explains_cuts_without_advertising_pipes_as_bypass() {
+    let s = standalone_file();
+    assert!(
+        !s.contains("no detail in raw output"),
+        "claims nothing is hidden"
+    );
+    for marker in ["(x3)", "…[minified,", "[trs] full output: <path>"] {
+        assert!(s.contains(marker), "missing marker explanation: {marker}");
+    }
+    assert!(
+        s.contains("path\ninstead of re-running"),
+        "should steer to the saved path"
+    );
+    assert!(
+        !s.contains("Piping") && !s.contains("| cat"),
+        "advertises pipes as a bypass"
+    );
+}
