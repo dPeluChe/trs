@@ -75,6 +75,8 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 - [ ] **Small `git diff` drops context lines.** At a 17-22% cut it keeps 50-64% of anchors, and a same-size `tail` keeps more. Try keeping one context line on each side of a hunk.
 - [ ] **docker ps drops container IDs.** Names work for every docker command, but a short ID costs ~3 tokens a row, and agents paste IDs from earlier output.
 
+- [ ] **Evaluate: fold near-identical lines beyond timestamps (spacing, symbols, accents, numbers).** Measured 2026-09-25 on 49,532 real Bash results (46 MB), consecutive lines equal after each normalization: exact 177 KB (done), + whitespace +30 KB, + symbols +4 KB, + accents/case +1 KB, + digits +647 KB, timestamps only +30 KB (done: `(xN, until <time>)`). Not done because the matches were mostly code, where they destroy content: whitespace joins `  }` with `}` (indentation), digits join `152-  }` with `153-}` (line numbers). Revisit only if the fold can tell code from logs (e.g. only lines with a log level or timestamp prefix), and fold digits only inside known volatile fields (durations, PIDs, request ids) with first and last value kept.
+
 ### VSCode ecosystem (vanilla, not the forks)
 
 - [x] **GitHub Copilot (VSCode), researched 2026-06, implementation turnkey,

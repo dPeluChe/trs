@@ -106,3 +106,48 @@ fn eliding_is_safe_on_multibyte_text() {
     let (out, cut) = elide_dense(&line);
     assert!(cut && out.contains("[minified, 800 chars]"), "{out}");
 }
+
+#[test]
+fn log_lines_equal_but_for_the_time_keep_first_line_count_and_last_time() {
+    let text = "boot\n[runner] 19:56:09 quota full for opencode\n[runner] 19:56:20 quota full for opencode\n[runner] 19:56:31 quota full for opencode\ndone";
+    let (out, cut) = fold_timestamped(text);
+    assert!(cut);
+    assert_eq!(
+        out,
+        "boot\n[runner] 19:56:09 quota full for opencode (x3, until 19:56:31)\ndone"
+    );
+}
+
+#[test]
+fn iso_timestamps_fold_too() {
+    let text = "2026-09-24T19:56:09Z retry\n2026-09-24T19:56:10.512Z retry";
+    let (out, _) = fold_timestamped(text);
+    assert_eq!(
+        out,
+        "2026-09-24T19:56:09Z retry (x2, until 2026-09-24T19:56:10.512Z)"
+    );
+}
+
+#[test]
+fn only_times_may_differ_not_spacing_numbers_or_symbols() {
+    // Line numbers and indentation are content in code listings.
+    for text in [
+        "152-  }\n153-}",
+        "10:00:01 took 5 ms\n10:00:02 took 9 ms",
+        "10:00:01 ok - a\n10:00:02 ok   a",
+        "no time here\nno time here",
+    ] {
+        assert_eq!(
+            fold_timestamped(text),
+            (text.to_string(), false),
+            "{text:?}"
+        );
+    }
+}
+
+#[test]
+fn identical_timestamped_lines_are_left_to_the_lossless_fold() {
+    let text = "10:00:01 same\n10:00:01 same";
+    assert_eq!(fold_timestamped(text), (text.to_string(), false));
+    assert_eq!(fold_repeats(text), "10:00:01 same (x2)");
+}

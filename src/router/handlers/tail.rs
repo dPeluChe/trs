@@ -354,7 +354,7 @@ impl TailHandler {
                 body.push('\n');
             }
         }
-        crate::safe_folds::fold_repeats(&body)
+        crate::safe_folds::fold_repeats(&crate::safe_folds::fold_timestamped(&body).0)
     }
 
     /// Format tail output as agent-optimized format.

@@ -59,3 +59,26 @@ fn a_minified_line_in_a_diff_is_cut_and_recoverable() {
         .unwrap()
         .contains(&minified));
 }
+
+#[test]
+fn log_lines_that_differ_only_in_time_fold_with_their_range() {
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("runner.log");
+    std::fs::write(
+        &log,
+        "[runner] 19:56:09 quota full for opencode\n[runner] 19:56:20 quota full for opencode\n[runner] 19:56:31 quota full for opencode\n[runner] 19:57:02 lease granted\n",
+    )
+    .unwrap();
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .arg("tail")
+        .arg(&log)
+        .output()
+        .unwrap();
+    let out = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.contains("19:56:09 quota full for opencode (x3, until 19:56:31)"),
+        "{out}"
+    );
+    assert!(out.contains("19:57:02 lease granted"), "{out}");
+}
