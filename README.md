@@ -55,7 +55,7 @@ src/main.rs (3):
 # 55 KB → 5.5 KB (90% reduction)
 ```
 
-Commands without a dedicated parser still get generic compression (whitespace collapse, ANSI stripping), ~30–40% for free.
+Commands without a dedicated parser get whitespace and ANSI cleanup, which saves little on its own (2-16% on real traffic); `trs stats --coverage` shows which commands deserve a parser.
 
 ## Install
 

@@ -36,8 +36,8 @@ update it as new tools appear.
   agent *emits*. Most alternatives cover only one side.
 - **Nine agents supported.** See [`agents.md`](./agents.md).
 - **30+ dedicated parsers.** Plus generic compression fallback so
-  unknown commands still save ~30–40%.
-- **Single static binary.** No Node / Python / Ruby runtime. ~12 ms
+  unknown commands still get cleanup (it saves little: 2-16% measured).
+- **Single static binary.** No Node / Python / Ruby runtime. ~4 ms
   startup.
 
 ## Installing alongside another tool

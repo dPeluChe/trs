@@ -3,14 +3,14 @@
 Every command supported by trs falls into one of four levels.
 
 1. **Dedicated parser.** trs spawns the tool, parses its native output,
-   and emits a structured compact form. Typical reduction **68–99%**.
+   and emits a structured compact form. See the measured numbers per command in [the benchmarks](../development/benchmarks/README.md).
 2. **Dispatched alias.** A different binary with the same semantics
    (e.g. `rg` for `grep`, `eza` for `ls`) gets routed to the same
    parser. No configuration, the dispatcher recognizes the binary
    name.
 3. **Generic compression.** Commands without a parser still get ANSI
    stripping, whitespace collapse, and repeated-line deduplication.
-   Typical reduction **30–40%** "free."
+   It saves little on its own: 2-16% measured on real traffic.
 4. **Passthrough.** Commands where trs detects a flag that already
    produces structured output (`--json`, `--porcelain`) are passed
    through untouched, the agent gets the raw structured form.
@@ -278,7 +278,7 @@ same combined stream the shell would have produced.
 
 Any command not listed above still flows through trs's generic
 reducer: ANSI strips, whitespace collapsed, repeated lines deduped.
-Typical reduction 30–40% for free with no format-specific knowledge.
+On its own it saves little (2-16% measured on real traffic): the win comes from a parser.
 
 `ollama list` / `ls` / `ps` lose the ID column and the alignment
 padding (agents address models by name; the digest is only useful to
