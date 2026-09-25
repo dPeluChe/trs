@@ -103,57 +103,90 @@ What the rows mean, read by eye:
 Anchor matching tolerates trs regrouping `grep` under file headers and `find`
 under directories, so "kept" is a ceiling: a low number is a real loss.
 
-## Seven tools, one scoring rule
+## trs against similar tools
 
-2026-09-24, same repo state, `o200k_base` tokens, scored by `truth.py`'s
-anchor and pipeline checks. trs is main at #163. Each tool runs through its own
-agent hook where it has one (trs, rtk 0.42.3, token-saver, squeez 1.48.9,
-token-optimizer at fbe2070), else its text API on the command's output
-(claw-compactor 7.1.0, headroom 0.38.0 with the downloaded ML model off). Clones
-live under the spark root, tagged `trs` (`spark tag list trs`); the adapters are
-per-machine and not in this repo.
+2026-09-24, one repo state, all tools on one machine. Reproduce:
 
-| tool | tokens cut | anchors kept | RISK rows | pipelines correct |
-|---|---:|---:|---:|---:|
-| trs | 69% | 66% | 2 | 9/9 |
-| rtk | 67% | 45% | 2 | 5/9 |
-| token-saver | 54% | 43% | 1 | 9/9 |
-| squeez | 87% | 29% | 2 | 9/9 |
-| token-optimizer | 65% | 41% | 1 | 9/9 |
-| claw-compactor | 17% | 87% | 0 | 8/9 |
-| headroom | 2% | 92% | 0 | 9/9 |
+```bash
+bash docs/development/benchmarks/compare/setup.sh     # builds the others from their clones
+python3 docs/development/benchmarks/compare/compare.py
+```
+
+Every hook-based tool runs through its own agent hook: the hook decides
+(`hook ms`, paid on every agent call), then the shell runs what it returned
+(`exec +ms` over raw). claw-compactor has no hook, so its text API compresses
+the output instead. Anchors are paths, `file:line` refs, hashes and error lines
+taken from the raw output. "pipelines" counts the 9 checks from `truth.py`,
+compared after whitespace normalization.
+
+36 commands, tokens: o200k_base
+
+| tool | tokens cut | anchors kept | RISK | grew | pipelines | hook ms | exec +ms |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| trs | 81% | 60% | 2 | 2 | 9/9 | 4.5 | 4.6 |
+| rtk | 79% | 44% | 3 | 4 | 5/9 | 11.4 | 5.1 |
+| token-saver | 28% | 58% | 4 | 0 | 9/9 | 41.6 | 50.2 |
+| squeez | 89% | 29% | 5 | 1 | 9/9 | 3.8 | 48.7 |
+| token-optimizer | 36% | 43% | 3 | 0 | 9/9 | 25.6 | 58.6 |
+| claw-compactor | 30% | 83% | 0 | 2 | n/a | 0.0 | 0.0 |
 
 Per command, `cut / anchors kept`:
 
-| command | trs | rtk | token-saver | squeez | token-optimizer | claw-compactor | headroom |
+| command | raw tok | trs | rtk | token-saver | squeez | token-optimizer | claw-compactor |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `git log -10` | 16% / 100% | 91% / 23% | 95% / 3% | 94% / 23% | 0% / 100% | 40% / 75% | 0% / 100% |
-| `git log --oneline -30` | 0% / 100% | 0% / 100% | 68% / 32% | 58% / 39% | 0% / 100% | 0% / 100% | 0% / 100% |
-| `git diff HEAD~1` | 29% / 59% | 17% / 62% | 9% / 68% | 19% / 88% | 59% / 53% | 8% / 97% | 0% / 100% |
-| `git diff HEAD~5` | 99% / 42% | 68% / 55% | 38% / 66% | 98% / 7% | 98% / 10% | 10% / 88% | 2% / 73% |
-| `git show HEAD --stat` | 91% / 67% | 0% / 100% | 0% / 100% | 52% / 44% | 51% / 11% | 29% / 89% | 0% / 100% |
-| `git status` | 83% / 100% | 48% / 100% | 4% / 100% | -78% / 100% | 78% / 100% | 4% / 100% | 0% / 100% |
-| `ls -la src` | 66% / 100% | 60% / 100% | 80% / 66% | 60% / 39% | 36% / 64% | 12% / 100% | 0% / 100% |
-| `find src -name '*.rs'` | 84% / 50% | 91% / 0% | 85% / 17% | 83% / 18% | 80% / 23% | 12% / 100% | 0% / 100% |
-| `grep -rn 'fn main' src` | 8% / 100% | 0% / 100% | 42% / 68% | 42% / 63% | 36% / 71% | 15% / 32% | 20% / 100% |
-| `grep -rn 'emit_compressed' src` | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | -8% / 47% | 20% / 47% |
-| `cargo clippy --all-targets` | 93% / 100% | 86% / 100% | 61% / 100% | 59% / 100% | 59% / 100% | 66% / 100% | 59% / 100% |
+| `grep -n "fn " src/report.rs` | 145 | 0% / 100% | -24% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% |
+| `grep -rn "emit_compressed" src` | 228 | -2% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | -8% / 47% |
+| `grep -rn "fn main" src` | 1236 | 15% / 100% | 0% / 100% | 42% / 68% | 42% / 63% | 36% / 71% | 15% / 32% |
+| `grep -rn -A3 "pub(crate) fn" src/report.rs` | 331 | 9% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 4% / 100% |
+| `grep -rn -C2 "is_verbatim_invocation" src` | 1784 | 22% / 100% | 0% / 100% | 88% / 44% | 25% / 39% | 77% / 44% | 13% / 100% |
+| `grep -rn "TODO\|FIXME" src` | 596 | 10% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 11% / 33% |
+| `rg -n "captures_output" src` | 40 | 2% / 100% | -15% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | -20% / 33% |
+| `git log -5` | 3162 | 84% / 42% | 85% / 19% | 96% / 16% | 84% / 16% | 0% / 100% | 35% / 52% |
+| `git log -20` | 15494 | 87% / 59% | 88% / 28% | 98% / 11% | 96% / 9% | 0% / 100% | 40% / 64% |
+| `git log --oneline -30` | 635 | 0% / 100% | 0% / 100% | 65% / 36% | 54% / 43% | 0% / 100% | 0% / 100% |
+| `git log --stat -3` | 1764 | 0% / 100% | 82% / 35% | 96% / 11% | 83% / 8% | 0% / 100% | 28% / 97% |
+| `git diff HEAD~1` | 6450 | 8% / 80% | 25% / 80% | 40% / 77% | 93% / 24% | 94% / 16% | 4% / 93% |
+| `git diff HEAD~5` | 39946 | 98% / 24% | 79% / 33% | 27% / 72% | 99% / 7% | 99% / 3% | 9% / 77% |
+| `git diff HEAD~3 --stat` | 534 | 20% / 100% | 0% / 100% | 52% / 50% | 0% / 100% | 0% / 100% | 23% / 100% |
+| `git show HEAD` | 6796 | 8% / 80% | 29% / 80% | 38% / 78% | 94% / 25% | 94% / 17% | 8% / 93% |
+| `git show HEAD --stat` | 527 | 18% / 100% | 0% / 100% | 0% / 100% | 40% / 77% | 0% / 100% | 22% / 100% |
+| `git show HEAD~2:src/report.rs` | 1675 | 0% / 100% | 0% / 100% | 0% / 100% | 82% / 25% | 77% / 0% | 34% / 100% |
+| `git status` | 17 | 47% / 100% | 18% / 100% | 6% / 100% | -153% / 100% | 0% / 100% | 6% / 100% |
+| `git branch -a` | 544 | 41% / 100% | 77% / 50% | 88% / 0% | 39% / 100% | 74% / 0% | 18% / 100% |
+| `ls -la` | 1108 | 69% / 100% | 68% / 100% | 74% / 100% | 21% / 100% | 0% / 100% | 12% / 100% |
+| `ls -la src` | 2245 | 65% / 100% | 60% / 100% | 80% / 65% | 60% / 38% | 36% / 63% | 12% / 100% |
+| `find src -name "*.rs"` | 1955 | 83% / 49% | 91% / 0% | 85% / 17% | 83% / 18% | 80% / 23% | 12% / 100% |
+| `find . -name "*.md" -not -path "./target/*"` | 1314 | 48% / 100% | 98% / 0% | 4% / 87% | 74% / 42% | 64% / 57% | 8% / 96% |
+| `wc -l src/rewrite.rs src/rewrite_decide.rs src/report.rs src/init.rs` | 38 | -3% / 100% | 40% / 0% | 0% / 100% | 0% / 100% | 0% / 100% | 29% / 100% |
+| `tail -50 src/rewrite_decide.rs` | 401 | 0% / 100% | 0% / 100% | 0% / 100% | 39% / 100% | 0% / 100% | 46% / 100% |
+| `cargo build` | 24 | 0% / 100% | -25% / 100% | 4% / 100% | 0% / 100% | 0% / 100% | 17% / 100% |
+| `cargo clippy --all-targets` | 24 | 83% / 100% | 67% / 100% | 4% / 100% | 0% / 100% | 0% / 100% | 17% / 100% |
+| `gh pr list --state all --limit 30` | 1238 | 52% / 0% | 56% / 0% | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% |
+| `gh pr view 162` | 922 | 4% / 100% | 0% / 100% | 50% / 0% | 0% / 100% | 0% / 100% | 22% / 75% |
+| `gh run list --limit 10` | 459 | 69% / 100% | 73% / 100% | 0% / 100% | 0% / 100% | 0% / 100% | 0% / 100% |
+| `ps aux` | 68382 | 99% / 0% | 98% / 0% | 0% / 100% | 95% / 33% | 0% / 100% | 50% / 100% |
+| `cargo test` | 832 | 76% / 56% | 77% / 67% | 65% / 100% | 75% / 50% | 0% / 100% | 64% / 89% |
+| `cargo build` | 24 | 0% / 100% | -25% / 100% | 4% / 100% | 0% / 100% | 0% / 100% | 17% / 100% |
+| `bun test` | 548 | 55% / 70% | 0% / 90% | 90% / 50% | 15% / 90% | 0% / 90% | 22% / 100% |
+| `pytest` | 372 | 67% / 58% | 59% / 42% | 41% / 92% | 73% / 42% | 0% / 100% | 7% / 100% |
+| `pytest -q` | 223 | 44% / 64% | 32% / 45% | 9% / 91% | 0% / 100% | 0% / 100% | 8% / 91% |
 
 Read by eye before trusting a cell:
 
-- **Cut and kept trade off, and nobody escapes it.** squeez cuts most (87%) and
-  keeps least (29%); its own header agrees (`[anchors: 7%]` on the big diff).
-  headroom keeps 92% by barely compressing shell output (2%): its text
-  compressor is an ML model that needs a download. trs sits at 69% cut, 66%
-  kept, the best kept figure among the tools that cut over half.
-- **Recoverable is not the same as kept.** squeez and token-optimizer store the
-  full output and tell the agent how to fetch it (`squeez_retrieve`,
-  `expand <key>`). trs's big-diff summary drops the hunks with no way back.
-  That is the gap worth closing first.
-- **Pipelines.** Scored on whitespace-normalized output. token-saver passes
-  the whole pipeline to its wrapper and compresses the final text, so filters
-  see raw bytes: 9/9, an approach trs's backlog already lists. One tool still
-  compresses a pipeline's first command: `git diff | grep -c '^+'` gives 0
-  instead of 804, the bug #162 removed from trs.
-- **Where trs loses outright:** `git log -10` (16% cut, where others cut 90%+
-  by truncating bodies) and `grep` (8% cut vs ~40% for three others).
+- **No tool gets both.** squeez cuts the most (89%) and keeps the fewest anchors
+  (29%). claw-compactor keeps the most (83%) and cuts 30%. Among the tools that
+  cut more than half, trs keeps the most anchors (60%).
+- **Speed.** trs has the fastest hook plus run: 4.5 ms to decide, 4.6 ms over
+  raw. The Python hooks cost 25-42 ms to decide and ~50 ms to run.
+- **Pipelines.** One tool still compresses the first command of a pipeline:
+  `git diff | grep -c '^+'` gives 0. trs had this bug until #162.
+- **Where trs cuts little, on purpose.** `grep` keeps every match and the
+  context lines the caller asked for. `gh pr view` keeps the PR body. `git log
+  --stat`/`-p`, `tail` and `git show rev:file` are passed through verbatim.
+- **Where trs still loses anchors.** `git diff` on a large range becomes a
+  summary (now with a pointer to the full output). `find` over a big tree lists
+  per directory. `ps aux` keeps the top processes. `gh pr list` omits branch
+  names.
+- **Zero-anchor rows are not always a loss.** For `ps aux`, the anchors are
+  PIDs in a list the agent rarely reads whole, and the full list is one path
+  away.
