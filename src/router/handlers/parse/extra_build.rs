@@ -128,6 +128,7 @@ impl ParseHandler {
                         out.push_str(&format!("  {}\n", e));
                     }
                     if errors.len() > 20 {
+                        crate::parse_out::mark_dropped();
                         out.push_str(&format!("  ...+{} more\n", errors.len() - 20));
                     }
                 }
@@ -137,6 +138,7 @@ impl ParseHandler {
                         out.push_str(&format!("  {}\n", w));
                     }
                     if warnings.len() > 10 {
+                        crate::parse_out::mark_dropped();
                         out.push_str(&format!("  ...+{} more\n", warnings.len() - 10));
                     }
                 }

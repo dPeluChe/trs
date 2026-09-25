@@ -93,6 +93,7 @@ fn format_fmt_compact(files: &[FmtFile], input: &str) -> String {
         out.push_str(&format!("  {} ({} {})\n", f.path, f.diffs, diffs));
     }
     if files.len() > MAX_FILES_SHOWN {
+        crate::parse_out::mark_dropped();
         out.push_str(&format!("  ...+{} more\n", files.len() - MAX_FILES_SHOWN));
     }
     out.push_str("fix: cargo fmt\n");

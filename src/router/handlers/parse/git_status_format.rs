@@ -222,6 +222,7 @@ impl ParseHandler {
             }
         }
         if entries.len() > max {
+            crate::parse_out::mark_dropped();
             output.push_str(&format!("  ...+{} more\n", entries.len() - max));
         }
     }

@@ -145,6 +145,7 @@ impl ParseHandler {
                         .collect::<Vec<_>>()
                         .join(", ");
                     let more = if ranked.len() > PREFIXES_SHOWN {
+                        crate::parse_out::mark_dropped();
                         format!(" +{} more prefixes", ranked.len() - PREFIXES_SHOWN)
                     } else {
                         String::new()
@@ -157,6 +158,7 @@ impl ParseHandler {
                         out.push_str(&format!("  {}\n", p));
                     }
                     if problems.len() > 20 {
+                        crate::parse_out::mark_dropped();
                         out.push_str(&format!("  ...+{} more\n", problems.len() - 20));
                     }
                 }
@@ -164,6 +166,7 @@ impl ParseHandler {
                     out.push_str(&format!("{}\n", line));
                 }
                 if other.len() > 10 {
+                    crate::parse_out::mark_dropped();
                     out.push_str(&format!("... +{} more lines\n", other.len() - 10));
                 }
                 out

@@ -145,6 +145,7 @@ fn format_brew_compact(installed: &[String], errors: &[String], warnings: &[Stri
             out.push_str(&format!("  {}\n", w));
         }
         if warnings.len() > 5 {
+            crate::parse_out::mark_dropped();
             out.push_str(&format!("  ... +{} more\n", warnings.len() - 5));
         }
     }
@@ -154,6 +155,7 @@ fn format_brew_compact(installed: &[String], errors: &[String], warnings: &[Stri
             out.push_str(&format!("  {}\n", e));
         }
         if errors.len() > 10 {
+            crate::parse_out::mark_dropped();
             out.push_str(&format!("  ... +{} more\n", errors.len() - 10));
         }
     }

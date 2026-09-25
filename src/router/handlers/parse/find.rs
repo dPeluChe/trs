@@ -261,10 +261,12 @@ impl ParseHandler {
             // See the tier constants: full names, capped names, or counts only.
             let total = find_output.total_count;
             let shown: Vec<String> = if total > COUNTS_ONLY_TOTAL {
+                crate::parse_out::mark_dropped();
                 vec![format!("({})", display_files.len())]
             } else if total > CAP_TOTAL && display_files.len() > NAMES_PER_DIR {
                 let mut v: Vec<String> =
                     display_files.iter().take(NAMES_PER_DIR).cloned().collect();
+                crate::parse_out::mark_dropped();
                 v.push(format!("+{} more", display_files.len() - NAMES_PER_DIR));
                 v
             } else {

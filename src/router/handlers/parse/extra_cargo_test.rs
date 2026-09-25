@@ -175,6 +175,7 @@ impl ParseHandler {
                         out.push_str(&format!("  {}\n", err));
                     }
                     if compile_errors.len() > 10 {
+                        crate::parse_out::mark_dropped();
                         out.push_str(&format!("  ...+{} more\n", compile_errors.len() - 10));
                     }
                 }

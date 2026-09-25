@@ -402,7 +402,7 @@ fn git_show_of_a_file_is_verbatim() {
     for rest in [
         "show HEAD",
         "show --stat HEAD~2",
-        "log --format=%h:%s",
+        "log -5 --grep=fix:",
         "show",
     ] {
         assert!(

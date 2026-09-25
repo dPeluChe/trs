@@ -163,10 +163,10 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                 // A summary that dropped most of a large output must say where
                 // the rest is, or the only way back is re-running the command.
                 // Failures already get this from the footer below.
-                if output.status.success()
-                    && stdout_ref.len() >= RECOVERABLE_MIN_BYTES
-                    && parsed.len() * 10 <= stdout_ref.len()
-                {
+                let dropped = crate::parse_out::take_dropped();
+                let mostly_cut = stdout_ref.len() >= RECOVERABLE_MIN_BYTES
+                    && parsed.len() * 10 <= stdout_ref.len();
+                if output.status.success() && (dropped || mostly_cut) {
                     if let Some(path) = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr) {
                         let line = format!("[trs] full output: {}\n", path);
                         print!("{}", line);
@@ -217,7 +217,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 }
 
 /// Raw size from which a >=90% cut also saves the raw output and prints its
-/// path. Below ~4k tokens re-running is cheap; above it the pointer pays.
+/// path, for parsers that summarize without saying so. Ones that drop content
+/// on purpose call `parse_out::mark_dropped` and get the pointer at any size.
 const RECOVERABLE_MIN_BYTES: usize = 16 * 1024;
 
 /// Does this compressed output actually show that something went wrong?

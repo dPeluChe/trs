@@ -10,11 +10,24 @@
 //! correct if parsing ever runs off-thread. Falls back to stdout when no
 //! capture is active, so `trs parse …` run directly is unaffected.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::io::Write;
 
 thread_local! {
     static SINK: RefCell<Option<String>> = const { RefCell::new(None) };
+    static DROPPED: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Called by a parser that left content out ("+N more", a result cap). The
+/// executor then saves the raw output and prints where it is, so the summary
+/// is never a dead end.
+pub(crate) fn mark_dropped() {
+    DROPPED.with(|d| d.set(true));
+}
+
+/// Whether the last captured parse dropped content; resets the flag.
+pub(crate) fn take_dropped() -> bool {
+    DROPPED.with(|d| d.replace(false))
 }
 
 /// Emit parser output — into the active capture buffer if one is set, else
@@ -36,6 +49,7 @@ pub(crate) fn emit(s: &str) {
 /// inner call would simply reset the buffer.
 pub(crate) fn capture<F: FnOnce()>(f: F) -> String {
     SINK.with(|sink| *sink.borrow_mut() = Some(String::new()));
+    DROPPED.with(|d| d.set(false));
     f();
     SINK.with(|sink| sink.borrow_mut().take().unwrap_or_default())
 }

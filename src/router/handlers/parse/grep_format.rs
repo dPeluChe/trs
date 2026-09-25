@@ -151,86 +151,47 @@ impl ParseHandler {
 
         for file in &grep_output.files {
             let non_context_count = file.matches.iter().filter(|m| !m.is_context).count();
-            output.push_str(&format!("{} ({}):\n", file.path, non_context_count));
-
-            // Track consecutive context lines for collapsing
-            let mut context_start: Option<usize> = None;
-            let mut context_count = 0;
-
-            for m in &file.matches {
-                if m.is_context {
-                    // Start or continue a context block
-                    if context_start.is_none() {
-                        context_start = m.line_number;
-                    }
-                    context_count += 1;
-                } else {
-                    // Output any accumulated context lines first
-                    if context_count > 0 {
-                        if context_count == 1 {
-                            // Single context line - show it
-                            if let Some(ln) = context_start {
-                                output.push_str(&format!("  {}: ...\n", ln));
-                            }
-                        } else {
-                            // Multiple context lines - collapse
-                            if let Some(start) = context_start {
-                                output.push_str(&format!(
-                                    "  {}-{}: ... ({} context lines)\n",
-                                    start,
-                                    start + context_count - 1,
-                                    context_count
-                                ));
-                            }
-                        }
-                        context_start = None;
-                        context_count = 0;
-                    }
-
-                    // Output the match line with excerpt if available
-                    if let Some(ln) = m.line_number {
-                        if let Some(col) = m.column {
-                            let excerpt_str = m
-                                .excerpt
-                                .as_ref()
-                                .map(|e| format!(" [{}]", e))
-                                .unwrap_or_default();
-                            output.push_str(&format!(
-                                "  {}:{}: {}{}\n",
-                                ln, col, m.line, excerpt_str
-                            ));
-                        } else {
-                            let excerpt_str = m
-                                .excerpt
-                                .as_ref()
-                                .map(|e| format!(" [{}]", e))
-                                .unwrap_or_default();
-                            output.push_str(&format!("  {}: {}{}\n", ln, m.line, excerpt_str));
-                        }
-                    } else {
-                        let excerpt_str = m
-                            .excerpt
-                            .as_ref()
-                            .map(|e| format!(" [{}]", e))
-                            .unwrap_or_default();
-                        output.push_str(&format!("  {}{}\n", m.line, excerpt_str));
-                    }
-                }
+            // Context lines were asked for with -A/-B/-C, so they print; `-`
+            // marks them as grep does. Collapsing them to "... (N context
+            // lines)" dropped exactly what the caller requested.
+            let rows: Vec<(String, &str, String)> = file
+                .matches
+                .iter()
+                .map(|m| {
+                    let sep = if m.is_context { "-" } else { ":" };
+                    let at = match (m.line_number, m.column) {
+                        (Some(ln), Some(col)) => format!("{}:{}{}", ln, col, sep),
+                        (Some(ln), None) => format!("{}{}", ln, sep),
+                        _ => String::new(),
+                    };
+                    let excerpt = m
+                        .excerpt
+                        .as_ref()
+                        .map(|e| format!(" [{}]", e))
+                        .unwrap_or_default();
+                    (at, m.line.as_str(), excerpt)
+                })
+                .collect();
+            // Indentation shared by every line says nothing; dropping only the
+            // common part keeps the block's shape.
+            let indent = rows
+                .iter()
+                .filter(|(_, t, _)| !t.trim().is_empty())
+                .map(|(_, t, _)| t.len() - t.trim_start().len())
+                .min()
+                .unwrap_or(0);
+            let body = |t: &str| t.get(indent..).unwrap_or(t.trim_start()).to_string();
+            if rows.len() == 1 && non_context_count == 1 {
+                let (at, t, ex) = &rows[0];
+                output.push_str(&format!("{}:{} {}{}\n", file.path, at, body(t), ex));
+                continue;
             }
-
-            // Handle any trailing context lines
-            if context_count > 0 {
-                if context_count == 1 {
-                    if let Some(ln) = context_start {
-                        output.push_str(&format!("  {}: ...\n", ln));
-                    }
-                } else if let Some(start) = context_start {
-                    output.push_str(&format!(
-                        "  {}-{}: ... ({} context lines)\n",
-                        start,
-                        start + context_count - 1,
-                        context_count
-                    ));
+            output.push_str(&format!("{} ({}):\n", file.path, non_context_count));
+            for (at, t, ex) in &rows {
+                if at.is_empty() {
+                    output.push_str(&format!("  {}{}\n", body(t), ex));
+                } else {
+                    output.push_str(&format!("  {} {}{}\n", at, body(t), ex));
                 }
             }
         }
@@ -244,6 +205,7 @@ impl ParseHandler {
                 .total_matches
                 .saturating_sub(grep_output.matches_shown);
             if hidden_files > 0 {
+                crate::parse_out::mark_dropped();
                 output.push_str(&format!("  ... {} more file(s) not shown\n", hidden_files));
             }
             if hidden_matches > 0 && hidden_files == 0 {
@@ -305,6 +267,7 @@ impl ParseHandler {
                 .total_matches
                 .saturating_sub(grep_output.matches_shown);
             if hidden_files > 0 {
+                crate::parse_out::mark_dropped();
                 output.push_str(&format!("... {} more file(s) truncated\n", hidden_files));
             }
             if hidden_matches > 0 && hidden_files == 0 {

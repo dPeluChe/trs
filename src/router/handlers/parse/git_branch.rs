@@ -120,6 +120,9 @@ fn render_group(out: &mut String, branches: &[&String], indent: &str) {
         // Collapse: show first NAMES_SHOWN_PER_GROUP tails + count of the rest.
         let shown: Vec<&&str> = children.iter().take(NAMES_SHOWN_PER_GROUP).collect();
         let hidden = children.len() - shown.len();
+        if hidden > 0 {
+            crate::parse_out::mark_dropped();
+        }
         let tail_list: Vec<String> = shown.iter().map(|s| s.to_string()).collect();
         out.push_str(&format!(
             "{}  {}/{{{}}} (+{} more)\n",

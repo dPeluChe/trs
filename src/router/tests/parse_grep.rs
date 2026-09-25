@@ -247,15 +247,21 @@ fn test_parse_grep_context_is_context_flag_false_for_matches() {
 }
 
 #[test]
-fn test_format_grep_compact_collapse_context_lines() {
-    // Multiple consecutive context lines should be collapsed
+fn test_format_grep_compact_keeps_requested_context_lines() {
+    // -A/-B/-C lines were asked for: collapsing them to "... (3 context
+    // lines)" dropped exactly what the caller requested.
     let input = "src/main.rs-10-context 1\nsrc/main.rs-11-context 2\nsrc/main.rs-12-context 3\nsrc/main.rs:13:match line";
     let result = ParseHandler::parse_grep(input).unwrap();
     let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
 
-    // Should collapse 3 context lines into a summary
-    assert!(output.contains("10-12: ... (3 context lines)"));
-    assert!(output.contains("13: match line"));
+    for line in [
+        "10- context 1",
+        "11- context 2",
+        "12- context 3",
+        "13: match line",
+    ] {
+        assert!(output.contains(line), "missing `{line}` in\n{output}");
+    }
 }
 
 #[test]
@@ -265,8 +271,8 @@ fn test_format_grep_compact_single_context_line() {
     let result = ParseHandler::parse_grep(input).unwrap();
     let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
 
-    assert!(output.contains("10: ..."));
-    assert!(output.contains("11: match line"));
+    assert!(output.contains("10- context line"), "{output}");
+    assert!(output.contains("11: match line"), "{output}");
 }
 
 #[test]
@@ -276,9 +282,9 @@ fn test_format_grep_compact_context_before_and_after() {
     let result = ParseHandler::parse_grep(input).unwrap();
     let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
 
-    assert!(output.contains("10: ..."));
-    assert!(output.contains("11: match"));
-    assert!(output.contains("12: ..."));
+    assert!(output.contains("10- before"), "{output}");
+    assert!(output.contains("11: match"), "{output}");
+    assert!(output.contains("12- after"), "{output}");
 }
 
 #[test]
@@ -294,13 +300,16 @@ fn test_format_grep_compact_count_excludes_context() {
 
 #[test]
 fn test_format_grep_compact_trailing_context() {
-    // Context lines at the end should be collapsed
+    // Trailing context lines print too
     let input = "src/main.rs:10:match\nsrc/main.rs-11-context 1\nsrc/main.rs-12-context 2";
     let result = ParseHandler::parse_grep(input).unwrap();
     let output = ParseHandler::format_grep(&result, OutputFormat::Compact);
 
-    assert!(output.contains("10: match"));
-    assert!(output.contains("11-12: ... (2 context lines)"));
+    assert!(output.contains("10: match"), "{output}");
+    assert!(
+        output.contains("11- context 1") && output.contains("12- context 2"),
+        "{output}"
+    );
 }
 
 #[test]
