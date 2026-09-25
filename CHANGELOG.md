@@ -5,6 +5,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.2] - 2026-09-25
+
+### Features
+
+- **doctor:** Report the state of the rules blocks (#157)
+- **report:** One command to send a coverage report, and one for a bug (#158)
+- **report:** Point at the two report commands from install and upgrade (#159)
+- **parse:** Condensed git log, grep that keeps context, and no silent drops (#167)
+
+### Bug Fixes
+
+- **rewrite:** Never compress output that another program reads (#162)
+- **benchmark:** Report what trs printed, and add a check for what it kept (#163)
+- **parse:** What trs lost or invented, found by benchmarking against real output (#166)
+
+### Documentation
+
+- **benchmarks:** Trs against six similar tools, scored for what survives (#165)
+- **site:** Publish measured numbers instead of best cases (#168)
+
+### CI / Build
+
+- Make the Tenki tier opt-in, the GitHub gate runs alone by default (#164)
+
+### Dependencies
+
+- **deps:** Bump the cargo-minor group across 1 directory with 3 updates (#161)
+
 ## [0.8.1] - 2026-08-29
 
 ### Bug Fixes
