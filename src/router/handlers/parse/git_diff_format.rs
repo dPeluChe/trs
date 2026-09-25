@@ -49,7 +49,12 @@ impl ParseHandler {
         // Only keep change lines (+/-), drop context lines entirely
         for line in &hunk.lines {
             if line.starts_with('+') || line.starts_with('-') {
-                result.push(line.clone());
+                // A changed minified bundle or lockfile blob: keep its ends.
+                let (line, cut) = crate::safe_folds::elide_dense(line);
+                if cut {
+                    crate::parse_out::mark_dropped();
+                }
+                result.push(line);
             }
         }
 

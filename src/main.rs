@@ -71,6 +71,7 @@ mod report;
 mod rewrite;
 mod rewrite_decide;
 mod router;
+mod safe_folds;
 #[allow(dead_code)]
 mod schema;
 mod sentinel;

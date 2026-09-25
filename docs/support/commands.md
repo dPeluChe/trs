@@ -9,8 +9,14 @@ Every command supported by trs falls into one of four levels.
    parser. No configuration, the dispatcher recognizes the binary
    name.
 3. **Generic compression.** Commands without a parser still get ANSI
-   stripping, whitespace collapse, and repeated-line deduplication.
-   It saves little on its own: 2-16% measured on real traffic.
+   stripping and whitespace collapse. Consecutive repeats fold to
+   `line (x3)`, or `(last 2 lines x3)` for a repeated block; each fold is
+   undone and compared before it is used, and non-consecutive repeats are
+   left alone because their order is information. A 300+ char line with
+   almost no spaces (minified code, base64, a data URI) keeps its head
+   and tail around `…[minified, 4184 chars]…`, and the full output is
+   saved with its path printed. It saves little on its own: 2-16%
+   measured on real traffic.
 4. **Passthrough.** Commands where trs detects a flag that already
    produces structured output (`--json`, `--porcelain`) are passed
    through untouched, the agent gets the raw structured form.
