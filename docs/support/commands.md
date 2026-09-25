@@ -12,7 +12,10 @@ Every command supported by trs falls into one of four levels.
    stripping and whitespace collapse. Consecutive repeats fold to
    `line (x3)`, or `(last 2 lines x3)` for a repeated block; each fold is
    undone and compared before it is used, and non-consecutive repeats are
-   left alone because their order is information. A 300+ char line with
+   left alone because their order is information. Log lines equal but
+   for their timestamps keep the first line plus `(x3, until 19:56:31)`;
+   spacing, symbols and numbers still have to match, because in code they
+   are content. A 300+ char line with
    almost no spaces (minified code, base64, a data URI) keeps its head
    and tail around `…[minified, 4184 chars]…`, and the full output is
    saved with its path printed. It saves little on its own: 2-16%

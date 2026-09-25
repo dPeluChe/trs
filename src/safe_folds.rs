@@ -4,6 +4,8 @@
 //! - `fold_repeats`: consecutive identical lines become `line (xN)`, and a
 //!   block of 2-4 lines repeated back to back is kept once plus
 //!   `(last K lines xN)`. Undone and compared before it is trusted.
+//! - `fold_timestamped`: log lines equal but for their timestamps keep the
+//!   first line plus `(xN, until <last time>)`; the raw is kept.
 //! - `elide_dense`: a 300+ char line with almost no spaces (minified code,
 //!   base64, a data URI) keeps its head and tail around a label saying what
 //!   was cut. The caller marks the output as dropped so the raw is saved.
@@ -112,6 +114,56 @@ fn unfold(folded: &str) -> String {
         out.push(line);
     }
     out.join("\n")
+}
+
+fn timestamp_re() -> &'static regex::Regex {
+    use std::sync::OnceLock;
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        regex::Regex::new(
+            r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?|\b\d{2}:\d{2}:\d{2}(?:[.,]\d+)?\b",
+        )
+        .expect("static timestamp pattern")
+    })
+}
+
+/// Consecutive log lines equal except for their timestamps become the first
+/// line plus `(xN, until <last timestamp>)`. Only times are compared as
+/// equal: spacing, symbols and numbers still have to match, since in code
+/// indentation and line numbers are content. The times in between are
+/// dropped, so the caller keeps the raw output.
+pub(crate) fn fold_timestamped(text: &str) -> (String, bool) {
+    if text.contains(", until ") {
+        return (text.to_string(), false);
+    }
+    let re = timestamp_re();
+    let lines: Vec<&str> = text.split('\n').collect();
+    let keys: Vec<Option<String>> = lines
+        .iter()
+        .map(|l| {
+            re.is_match(l)
+                .then(|| re.replace_all(l, "\u{0}").into_owned())
+        })
+        .collect();
+    let mut out: Vec<String> = Vec::with_capacity(lines.len());
+    let mut cut = false;
+    let mut i = 0;
+    while i < lines.len() {
+        let mut j = i;
+        while keys[i].is_some() && j + 1 < lines.len() && keys[j + 1] == keys[i] {
+            j += 1;
+        }
+        // Identical lines are fold_repeats' job, and stay lossless there.
+        if j > i && lines[i..=j].iter().any(|l| *l != lines[i]) {
+            let until = re.find(lines[j]).map_or("", |m| m.as_str());
+            out.push(format!("{} (x{}, until {})", lines[i], j - i + 1, until));
+            cut = true;
+        } else {
+            out.extend(lines[i..=j].iter().map(|l| l.to_string()));
+        }
+        i = j + 1;
+    }
+    (out.join("\n"), cut)
 }
 
 const DENSE_MIN: usize = 300;

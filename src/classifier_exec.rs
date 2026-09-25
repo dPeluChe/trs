@@ -427,7 +427,9 @@ fn generic_compress(input: &str) -> String {
 
     // Repeats fold to `line (xN)`, checked by undoing it; dense lines keep a
     // head and tail and flag the output so the raw is saved.
-    let (result, cut) = crate::safe_folds::elide_dense(&result);
+    let (result, dense_cut) = crate::safe_folds::elide_dense(&result);
+    let (result, times_cut) = crate::safe_folds::fold_timestamped(&result);
+    let cut = dense_cut || times_cut;
     let result = crate::safe_folds::fold_repeats(&result);
 
     // Ratio threshold: if compression savings are below the configured minimum,
