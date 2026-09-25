@@ -8,7 +8,7 @@
 
   <!-- Primary -->
   <title>trs (Token-Reducing Shell): Terminal compression for AI agents</title>
-  <meta name="description" content="Rust CLI that compresses noisy terminal output 68–99% for AI agents and humans. ~12ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
+  <meta name="description" content="Rust CLI that cuts ~70% of the tokens AI agents spend on terminal output, measured on real sessions. ~4 ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
   <meta name="keywords" content="trs, token-reducing shell, terminal, CLI, token reduction, AI agents, Claude Code, Gemini, LLM, compression, ingest, digest, Rust">
   <meta name="author" content="Iteris">
   <link rel="canonical" href="https://usetrs.dev/">
@@ -20,7 +20,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="trs (Token-Reducing Shell)">
   <meta property="og:title" content="trs: Terminal compression for AI agents">
-  <meta property="og:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Pi, Droid, Codex, VS Code Copilot, Devin CLI, OpenClaw, Hermes, Zed, Devin Desktop (ex-Windsurf), Antigravity (IDE + CLI / agy).">
+  <meta property="og:description" content="Rust CLI that cuts ~70% of the tokens AI agents spend on terminal output. Single 6 MB binary, ~4 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Pi, Droid, Codex, VS Code Copilot, Devin CLI, OpenClaw, Hermes, Zed, Devin Desktop (ex-Windsurf), Antigravity (IDE + CLI / agy).">
   <meta property="og:url" content="https://usetrs.dev/">
   <meta property="og:image" content="https://usetrs.dev/og-image.png">
   <meta property="og:image:alt" content="trs: Terminal compression for AI agents">
@@ -34,7 +34,7 @@
   <meta name="twitter:site" content="@dPeluChe">
   <meta name="twitter:creator" content="@dPeluChe">
   <meta name="twitter:title" content="trs: Terminal compression for AI agents">
-  <meta name="twitter:description" content="Rust CLI that compresses terminal output 68–99% for AI agents and humans. Single 6 MB binary, ~12 ms startup.">
+  <meta name="twitter:description" content="Rust CLI that cuts ~70% of the tokens AI agents spend on terminal output. Single 6 MB binary, ~4 ms startup.">
   <meta name="twitter:image" content="https://usetrs.dev/og-image.png">
   <meta name="twitter:image:alt" content="trs: Terminal compression for AI agents">
 
@@ -53,7 +53,7 @@
     "@type": "SoftwareApplication",
     "name": "trs (Token-Reducing Shell)",
     "alternateName": "trs",
-    "description": "Rust CLI that compresses noisy terminal output 68–99% for AI agents and humans. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
+    "description": "Rust CLI that cuts ~70% of the tokens AI agents spend on terminal output, measured on real sessions. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
     "url": "https://usetrs.dev/",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "macOS, Linux, Windows",
@@ -704,7 +704,7 @@
 
     <div class="hero-tagline">
       Terminal compression for AI agents.
-      <span class="muted">68&ndash;99% smaller output, same signal.</span>
+      <span class="muted">~70% fewer tokens on real agent commands. What it leaves out, it says where to find.</span>
     </div>
 
     <div class="hero-cta">
@@ -719,7 +719,7 @@
 
     <div class="hero-stats">
       <span class="hero-stat"><strong>6 MB</strong> single binary</span>
-      <span class="hero-stat"><span class="accent">~12 ms</span> startup</span>
+      <span class="hero-stat"><span class="accent">~4 ms</span> startup</span>
       <span class="hero-stat"><strong>9</strong> AI tool hooks</span>
       <span class="hero-stat"><strong>30+</strong> parsers</span>
       <span class="hero-stat">zero Node overhead</span>
@@ -762,7 +762,7 @@
         </div>
         <p class="install-note">
           Downloads the right binary into <code class="inline">~/.trs/bin/trs</code>.
-          Zero runtime deps, no Node overhead, ~12ms startup.
+          Zero runtime deps, no Node overhead, ~4 ms startup.
         </p>
       </div>
       <div class="install-pane" data-pane="windows">
@@ -831,7 +831,7 @@
       <rect class="box-accent" x="330" y="50" width="220" height="100" rx="8"/>
       <text class="box-title accent" x="440" y="90" text-anchor="middle">trs</text>
       <text class="box-sub" x="440" y="112" text-anchor="middle">spawn · parse · reshape</text>
-      <text class="box-sub" x="440" y="128" text-anchor="middle">~12 ms · native binary</text>
+      <text class="box-sub" x="440" y="128" text-anchor="middle">~4 ms · native binary</text>
       <text class="label" x="440" y="170" text-anchor="middle">zero runtime deps</text>
 
       <!-- Arrow 2 -->
@@ -905,7 +905,7 @@
 <section id="commands">
   <div class="container">
     <h2>Supported commands</h2>
-    <p class="section-intro">Thirty-plus dedicated parsers. Anything else falls to generic compression (~30&ndash;40% free) and still tracks in stats.</p>
+    <p class="section-intro">Thirty-plus dedicated parsers. Anything else falls to generic compression (which saves little on its own, 2&ndash;16% measured) and still tracks in stats.</p>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 24px;">
       <div class="feature"><div class="feature-title">VCS</div><div class="feature-desc"><code class="inline">git</code> &mdash; status, diff, log, branch, push, pull, fetch, show, stash.</div></div>
@@ -974,9 +974,9 @@
   <div class="container">
     <h2>Before / with trs</h2>
     <p class="section-intro">
-      Raw output vs what trs emits. Token counts are rough
-      (<code class="inline">bytes / 4</code>) but directionally accurate.
-      Click any row to see the actual before/after.
+      Illustrative raw output vs what trs emits, token counts estimated as
+      <code class="inline">bytes / 4</code>. The measured numbers are in the
+      table below. Click any row to see the before/after.
     </p>
 
     <div class="compare-grid">
@@ -1236,40 +1236,49 @@ ad55480 feat(init): smart JSON merge
   <div class="container">
     <h2>Compression reference</h2>
     <p class="section-intro">
-      Typical reductions on commands run dozens of times a day. Use these as
-      rough expectations &mdash; not as a leaderboard.
+      Measured on 36 command shapes taken from real agent sessions, tokens
+      counted with <code class="inline">o200k_base</code>. Across them trs cuts
+      ~70% of tokens (81% with <code class="inline">ps aux</code>, which alone
+      weighs more than the rest). &ldquo;Anchors kept&rdquo; is the share of
+      paths, <code class="inline">file:line</code> refs, hashes and error lines
+      from the raw output that survive. Some rows cut little on purpose.
+      <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/benchmarks/README.md" target="_blank" rel="noopener">Methodology and how to reproduce &rarr;</a>
     </p>
 
     <div style="overflow-x: auto;">
       <table>
         <thead>
-          <tr><th>Command</th><th>Raw</th><th>trs</th><th>Reduction</th></tr>
+          <tr><th>Command</th><th>Raw tokens</th><th>trs tokens</th><th>Cut</th><th>Anchors kept</th><th>What stays</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>cargo test</code></td><td>8.1 KB</td><td>58 B</td><td class="winner">99%</td></tr>
-          <tr><td><code>cargo clippy</code></td><td>55 KB</td><td>5.5 KB</td><td class="winner">90%</td></tr>
-          <tr><td><code>git log -10</code></td><td>7.6 KB</td><td>689 B</td><td class="winner">91%</td></tr>
-          <tr><td><code>git status</code></td><td>1.4 KB</td><td>336 B</td><td class="winner">76%</td></tr>
-          <tr><td><code>git diff</code></td><td>14.6 KB</td><td>8.0 KB</td><td class="winner">45%</td></tr>
-          <tr><td><code>gh pr list</code></td><td>560 B</td><td>348 B</td><td class="winner">38%</td></tr>
-          <tr><td><code>env</code></td><td>2.9 KB</td><td>728 B</td><td class="winner">75%</td></tr>
-          <tr><td><code>trs ingest</code> (this repo)</td><td>600+ KB raw source</td><td>16 KB digest</td><td class="winner">97%</td></tr>
+          <tr><td><code>git log -20</code></td><td>15,494</td><td>1,958</td><td class="winner">87%</td><td>59%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
+          <tr><td><code>git diff</code> (large range)<code></code></td><td>39,946</td><td>953</td><td class="winner">98%</td><td>24%</td><td>file summary; full diff saved, path printed</td></tr>
+          <tr><td><code>find src -name '*.rs'</code></td><td>1,955</td><td>335</td><td class="winner">83%</td><td>49%</td><td>grouped by directory; full list saved</td></tr>
+          <tr><td><code>ls -la src</code></td><td>2,245</td><td>777</td><td class="winner">65%</td><td>100%</td><td></td></tr>
+          <tr><td><code>cargo test</code> (2 failing)<code></code></td><td>832</td><td>200</td><td class="winner">76%</td><td>56%</td><td>each failure: location, message, left/right</td></tr>
+          <tr><td><code>pytest</code> (2 failing)<code></code></td><td>372</td><td>122</td><td class="winner">67%</td><td>58%</td><td>names, <code>E</code> lines, <code>file.py:N</code></td></tr>
+          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>548</td><td>249</td><td class="winner">55%</td><td>70%</td><td>expected vs received, location</td></tr>
+          <tr><td><code>gh run list</code></td><td>459</td><td>143</td><td class="winner">69%</td><td>100%</td><td></td></tr>
+          <tr><td><code>grep -rn -C2</code></td><td>1,784</td><td>1,388</td><td class="winner">22%</td><td>100%</td><td>every match and every context line</td></tr>
+          <tr><td><code>gh pr view</code></td><td>922</td><td>881</td><td class="winner">4%</td><td>100%</td><td>the whole PR body</td></tr>
+          <tr><td><code>ps aux</code></td><td>68,382</td><td>900</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
+          <tr><td><code>git show rev:file</code></td><td>1,675</td><td>1,675</td><td class="winner">0%</td><td>100%</td><td>verbatim: it is a file</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="bench-summary">
       <div class="bench-card">
-        <div class="num">~12ms</div>
-        <div class="label">startup on macOS / Linux</div>
+        <div class="num">~4 ms</div>
+        <div class="label">startup on macOS (median)</div>
       </div>
       <div class="bench-card">
         <div class="num">0ms</div>
         <div class="label">Node overhead (shell launcher)</div>
       </div>
       <div class="bench-card">
-        <div class="num">68&ndash;99%</div>
-        <div class="label">output compression range</div>
+        <div class="num">~70%</div>
+        <div class="label">fewer tokens, measured</div>
       </div>
       <div class="bench-card">
         <div class="num">30+</div>
@@ -1401,7 +1410,7 @@ ad55480 feat(init): smart JSON merge
       <p class="install-note">
         Downloads the right binary for your platform into
         <code class="inline">~/.trs/bin/trs</code>. Zero runtime dependencies,
-        no Node overhead, ~12ms startup. Pin a version with
+        no Node overhead, ~4 ms startup. Pin a version with
         <code class="inline">TRS_VERSION=v0.5.12</code>.
       </p>
     </div>

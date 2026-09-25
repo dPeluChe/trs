@@ -3,7 +3,7 @@
 ## What is trs
 
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
-Reduces token consumption by 68-99% for developers, AI agents, and automation pipelines.
+Cuts ~70% of the tokens AI agents spend on terminal output, measured on real sessions (see docs/development/benchmarks/).
 
 ## Pre-generated codebase digest
 
@@ -86,7 +86,7 @@ The load-bearing entry points:
 - **Modular by design**: 210+ .rs files. Most stay well under 500 LOC; a handful of feature-complete modules (audit_docs, output_saver, init) are larger because splitting them would fragment a single feature across files for no benefit.
 - **Token tracking**: Every execution logged to ~/.trs/history.jsonl
 - **3-tier fallback**: parser OK → degraded → truncated passthrough with `[trs:passthrough]`
-- **Generic fallback**: commands without parser get whitespace/ANSI compression (20-40%).
+- **Generic fallback**: commands without a parser get whitespace/ANSI cleanup, which saves little (2-16% measured).
   One class is exempt: commands whose output is a re-layout of their input
   (`awk`, `cut`, `column`, `xxd`, `iconv`, `jq`, …) are handed back byte for
   byte, because the runs of spaces and blank lines that the reducer collapses
