@@ -116,7 +116,7 @@ Sixteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini C
 | OpenCode · Kilo Code | plugin template | ✓ | ✓ | `opencode` / `kilo` |
 | Pi Coding Agent | programmatic hook (extension) | ✓ | — | `pi` |
 | Factory Droid | programmatic hook | ✓ | ✓ | `droid` |
-| VS Code Copilot / Copilot CLI | programmatic hook | ✓ | — | `vscode` / `copilot-cli` |
+| VS Code Copilot / Copilot CLI | programmatic hook | ✓ | ✓ | `vscode` / `copilot-cli` |
 | OpenClaw · Hermes | plugin template | ✓ | — | `openclaw` / `hermes` |
 | Codex CLI | programmatic hook (≥ 0.134), rules fallback | ✓ | ✓ | `codex` (fallback `(untagged)`) |
 | Antigravity IDE · Antigravity CLI (`agy`) | rules file ([see notes](docs/development/antigravity-hooks-research.md)) | — | ✓ | `antigravity` (env fallback) |

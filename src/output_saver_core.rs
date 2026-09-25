@@ -13,8 +13,9 @@ pub(crate) enum Target {
     /// to `dir/root_file` (creating the root file if missing).
     Imported { dir: PathBuf, root_file: String },
     /// Drop a standalone file into a rules directory that the agent
-    /// auto-loads. No root-config edit needed.
-    RulesDir { path: PathBuf },
+    /// auto-loads. No root-config edit needed. `header` goes before the
+    /// file (frontmatter some agents need to apply it automatically).
+    RulesDir { path: PathBuf, header: &'static str },
     /// Append the block inline to a single rules file, wrapped in
     /// sentinels for idempotent re-installs.
     InlineFile { path: PathBuf },
@@ -74,7 +75,24 @@ pub(crate) const AGENTS: &[Agent] = &[
         id: "antigravity-cli",
         display: "Antigravity CLI",
     },
+    // VS Code Copilot and Copilot CLI both load user instructions from
+    // `~/.copilot/instructions/*.instructions.md` (validated live with
+    // Copilot CLI 1.0.88: loaded even with no file in play). trs owns the
+    // file, so nothing is spliced into a user's own instructions.
+    Agent {
+        id: "copilot",
+        display: "VS Code Copilot / Copilot CLI",
+    },
 ];
+
+/// VS Code applies an `.instructions.md` file automatically only when its
+/// `applyTo` matches; without it the file is manual-only.
+pub(crate) const COPILOT_HEADER: &str = "---\napplyTo: \"**\"\n---\n\n";
+
+/// What a rules-dir file holds: the agent's header, then the standalone text.
+pub(crate) fn rules_dir_content(header: &str) -> String {
+    format!("{}{}", header, standalone_file())
+}
 
 /// Resolve the install target for `agent_id`. `home` is injectable so
 /// parallel tests don't race on `std::env::set_var("HOME", …)`;
@@ -100,7 +118,7 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
                 reason: "HOME not set",
             }),
         "cursor" => push_home(".cursor/rules/trs-output-saver.mdc")
-            .map(|path| Target::RulesDir { path })
+            .map(|path| Target::RulesDir { path, header: "" })
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
             }),
@@ -159,6 +177,18 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
             .map(|dir| Target::Imported {
                 dir,
                 root_file: "GEMINI.md".into(),
+            })
+            .unwrap_or(Target::NotSupported {
+                reason: "HOME not set",
+            }),
+        // Copilot CLI moves its whole home with COPILOT_HOME; VS Code reads
+        // `~/.copilot/instructions` either way.
+        "copilot" => std::env::var_os("COPILOT_HOME")
+            .map(PathBuf::from)
+            .or_else(|| push_home(".copilot"))
+            .map(|dir| Target::RulesDir {
+                path: dir.join("instructions/trs.instructions.md"),
+                header: COPILOT_HEADER,
             })
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
@@ -229,14 +259,14 @@ fn verify_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> Ver
                 Err(_) => VerifyStatus::Drifted,
             }
         }
-        Target::RulesDir { path } => {
+        Target::RulesDir { path, header } => {
             if !path.exists() {
                 return VerifyStatus::NotInstalled;
             }
-            // Rules-dir agents (Cursor) write the wrapped block to a
-            // dedicated file; compare against the canonical wrap.
+            // The whole file, not just BLOCK: a changed "Shell output"
+            // section otherwise verified as current while the file was stale.
             match fs::read_to_string(&path) {
-                Ok(content) if content.contains(BLOCK) => VerifyStatus::Ok,
+                Ok(content) if content == rules_dir_content(header) => VerifyStatus::Ok,
                 Ok(_) => VerifyStatus::Drifted,
                 Err(_) => VerifyStatus::Drifted,
             }
@@ -300,7 +330,7 @@ fn scan_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> Statu
             }
             Status::NotInstalled
         }
-        Target::RulesDir { path } => {
+        Target::RulesDir { path, .. } => {
             let parent = path.parent();
             if parent.is_none_or(|p| !p.exists())
                 && !path.ancestors().nth(2).map(|p| p.exists()).unwrap_or(false)

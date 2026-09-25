@@ -165,6 +165,7 @@ classes of sources informed each rule:
 | Factory Droid | Inline with sentinels | `~/.factory/AGENTS.md` |
 | Antigravity IDE | Standalone file + `@import` (shared with Gemini) | `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
 | Antigravity CLI (`agy`) | Standalone file + `@import` (shared with Gemini) | `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
+| VS Code Copilot / Copilot CLI | Own instructions file with `applyTo: "**"`, read by both | `~/.copilot/instructions/trs.instructions.md` (`$COPILOT_HOME/instructions/` when set) |
 
 Codex, OpenCode, Kilo, and Droid are signatories of the
 [`AGENTS.md` convention](https://factory.ai/news/agents-md), which is

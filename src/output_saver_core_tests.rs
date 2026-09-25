@@ -200,3 +200,49 @@ fn standalone_file_explains_cuts_without_advertising_pipes_as_bypass() {
         "advertises pipes as a bypass"
     );
 }
+
+#[test]
+fn copilot_gets_its_own_instructions_file_with_apply_to() {
+    let home = tempfile::tempdir().unwrap();
+    match resolve_target_with_home("copilot", Some(home.path())) {
+        Target::RulesDir { path, header } if std::env::var_os("COPILOT_HOME").is_none() => {
+            assert!(
+                path.ends_with(".copilot/instructions/trs.instructions.md"),
+                "{path:?}"
+            );
+            // Without applyTo, VS Code only applies the file when attached by hand.
+            assert!(
+                header.starts_with("---\napplyTo: \"**\"\n---"),
+                "{header:?}"
+            );
+        }
+        Target::RulesDir { .. } => {} // COPILOT_HOME set in this environment
+        other => panic!("unexpected target {other:?}"),
+    }
+}
+
+#[test]
+fn a_rules_dir_file_is_current_only_if_the_whole_file_matches() {
+    // The old check looked for BLOCK alone, so a stale "Shell output"
+    // section above it still verified as current.
+    if std::env::var_os("COPILOT_HOME").is_some() {
+        return;
+    }
+    let home = tempfile::tempdir().unwrap();
+    let path = home
+        .path()
+        .join(".copilot/instructions/trs.instructions.md");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, rules_dir_content(COPILOT_HEADER)).unwrap();
+    assert!(matches!(
+        verify_agent_with_home("copilot", Some(home.path())),
+        VerifyStatus::Ok
+    ));
+    let stale = rules_dir_content(COPILOT_HEADER)
+        .replace("When trs leaves something out", "Nothing is hidden");
+    std::fs::write(&path, stale).unwrap();
+    assert!(matches!(
+        verify_agent_with_home("copilot", Some(home.path())),
+        VerifyStatus::Drifted
+    ));
+}
