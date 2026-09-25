@@ -308,3 +308,14 @@ fn tag_with_agent_skips_posix_prefix_on_windows() {
         "TRS_AGENT=claude trs git status"
     );
 }
+
+#[test]
+fn copilot_cli_is_told_apart_from_vscode_by_its_env_marker() {
+    // One ~/.copilot/hooks/trs.json serves both, so both say `--caller vscode`.
+    assert_eq!(label_for_host("vscode", Some("1")), "copilot-cli");
+    assert_eq!(label_for_host("vscode", None), "vscode");
+    assert_eq!(label_for_host("vscode", Some("0")), "vscode");
+    // Only the shared file's label is refined; other callers are left alone.
+    assert_eq!(label_for_host("claude", Some("1")), "claude");
+    assert_eq!(known_agent_label("copilot-cli"), Some("copilot-cli"));
+}

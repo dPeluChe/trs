@@ -19,7 +19,7 @@ install scope.
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
 | Devin CLI | programmatic hook | ✓ | — | `devin-cli` | global + project |
-| VS Code Copilot | programmatic hook | ✓ | — | `vscode` | global + project |
+| VS Code Copilot / Copilot CLI | programmatic hook | ✓ | — | `vscode` / `copilot-cli` | global + project |
 | OpenClaw | plugin template | ✓ | — | `openclaw` | global |
 | Hermes | plugin template | ✓ | — | `hermes` | global |
 | Zed (Agent Panel) | rules file only (AGENTS.md) | — | — | `(untagged)`; ACP external agents show their own label | project |
@@ -253,7 +253,34 @@ install scope.
   `trs rewrite` until everyone upgrades.
 - **Output-saver:** not yet wired (same posture as Pi).
 - **Aliases:** `vscode` (primary), `vs-code`, `copilot`,
-  `vscode-copilot`, `code`.
+  `vscode-copilot`, `code`, `copilot-cli`, `gh-copilot`.
+
+### GitHub Copilot CLI
+
+- **Status:** works through the same hook file as VS Code Copilot.
+  Validated live 2026-09-25 with Copilot CLI 1.0.88: the hook loads
+  from `~/.copilot/hooks/trs.json`, receives the VS Code-compatible
+  `PreToolUse` payload (`tool_name: "Bash"`), and applies trs's
+  `updatedInput` rewrite.
+- **Install:** `trs init copilot-cli --global` (same file as
+  `trs init vscode --global`). Repository hooks in `.github/hooks/`
+  load only in folders Copilot CLI trusts.
+- **Attribution:** Copilot CLI sets `COPILOT_CLI=1` in the hook's
+  environment, so its runs show as `copilot-cli` in
+  `trs stats --by-agent`, not `vscode`.
+- **`COPILOT_HOME`:** when set, Copilot CLI reads hooks from
+  `$COPILOT_HOME/hooks/`, not `~/.copilot/hooks/`. Install the hook
+  there.
+- **Fail-closed:** a `preToolUse` command hook that errors denies the
+  tool call, so `trs` must be on the PATH Copilot CLI runs hooks with.
+- **Checking it:** `trs doctor` warns when a hook is installed but no
+  run has come through one. To see whether Copilot CLI loads the hook:
+
+  ```bash
+  copilot -p "Run: git status" --allow-tool 'shell(git status)' \
+    --log-level debug --log-dir /tmp/cplog
+  grep -i hook /tmp/cplog/*.log   # look for "trs auto-rewrite"
+  ```
 
 ### OpenClaw
 

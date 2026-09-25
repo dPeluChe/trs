@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 
 use super::doctor::Check;
 
-use crate::init::{check_tool, AiTool};
+use crate::init::AiTool;
 
 /// Validate the `~/.codex/hooks.json` trs entry against the codex version.
 /// On codex-cli >= 0.134 the `trs rewrite` PreToolUse hook is the real,
@@ -489,21 +489,5 @@ pub(crate) fn check_stdin_pipeline() -> Check {
         }
         Err(e) => Check::fail("stdin pipe", format!("cannot spawn: {}", e))
             .with_hint("verify trs binary is executable"),
-    }
-}
-
-/// Check: are any AI tool hooks installed? Delegates to init.rs.
-pub(crate) fn check_hooks_installed() -> Check {
-    let tools = AiTool::all_tools();
-    let total = tools.len();
-    let hooks_found = tools.iter().filter(|t| check_tool(t)).count();
-    if hooks_found > 0 {
-        Check::pass(
-            "hooks",
-            format!("AI tool hooks ({}/{} configured)", hooks_found, total),
-        )
-    } else {
-        Check::warn("hooks", "no AI tool hooks installed")
-            .with_hint("trs init --all  (or trs init <tool>)")
     }
 }

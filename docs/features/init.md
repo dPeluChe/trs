@@ -32,7 +32,7 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 | Antigravity CLI (`agy`) | Rules append (sentinel block) | `~/.gemini/GEMINI.md` |
 | Devin Desktop (ex-Windsurf) | Rules file | `.devin/rules/trs.md` (legacy: `.windsurfrules`); aliases `devin` / `devin-desktop` / `windsurf` / `cascade` |
 | Devin CLI | JSON hook | `~/.config/devin/config.json` (`--global`) / `.devin/config.json` (project), merged under `hooks` (matcher `exec`); aliases `devin-cli` / `devin-terminal` / `dcli` |
-| VS Code Copilot | JSON hook (agent hooks preview) | `.github/hooks/trs.json` (project) / `~/.copilot/hooks/trs.json` (`--global`); aliases `vscode` / `vs-code` / `copilot` / `vscode-copilot` / `code` |
+| VS Code Copilot / Copilot CLI | JSON hook (one file, read by both) | `.github/hooks/trs.json` (project) / `~/.copilot/hooks/trs.json` (`--global`); aliases `vscode` / `vs-code` / `copilot` / `vscode-copilot` / `code` / `copilot-cli` / `gh-copilot` |
 | OpenClaw | JS plugin + config enable | `~/.openclaw/plugins/trs/` (`openclaw.plugin.json` + `index.js`) + enable entry in `~/.openclaw/openclaw.json`; aliases `openclaw` / `claw`; global only |
 | Hermes | Python plugin + config enable | `~/.hermes/plugins/trs-rewrite/` (`__init__.py` + `plugin.yaml`) + `plugins.enabled` entry in `~/.hermes/config.yaml` (`HERMES_HOME` overrides the home dir); aliases `hermes` / `hermes-agent`; global only |
 | Zed (Agent Panel) | Rules append (sentinel block) | `./AGENTS.md` (project only, native agent has no tool hooks, zed#52688; `--global` is a no-op with a note); aliases `zed` / `zed-ide` |
@@ -214,7 +214,10 @@ Labels per agent:
   ≥ 0.134); the hook command carries `--caller codex`. Rules-only
   fallback (older builds / untrusted hook) is still `(untagged)`.
 - `vscode`: VS Code Copilot via the agent hooks (preview); the hook
-  command carries `--caller vscode`. (Runs that arrive through
+  command carries `--caller vscode`.
+- `copilot-cli`: GitHub Copilot CLI, which loads the same hook file and
+  marks its hook processes with `COPILOT_CLI=1`; trs uses that to tell it
+  apart from VS Code. (Runs that arrive through
   VS Code's "Chat: Use Claude Hooks" setting instead show as `claude`.)
 - `openclaw`: OpenClaw (set via `TRS_AGENT=openclaw` from the
   plugin's `resolve_exec_env` hook)
