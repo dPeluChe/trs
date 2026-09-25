@@ -157,7 +157,10 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             // the raw command output. If it somehow did (degenerate/tiny
             // input, header overhead), emit the raw instead. Ties go to raw —
             // no point spending a parse when it didn't save anything.
-            if parsed.len() < stdout_ref.len() && !summary_hides_failure {
+            // Nothing is never a summary of something: a parser that misread
+            // its input and printed nothing would otherwise "win" on size.
+            let parsed_nothing = parsed.trim().is_empty() && !stdout_ref.trim().is_empty();
+            if parsed.len() < stdout_ref.len() && !summary_hides_failure && !parsed_nothing {
                 print!("{}", parsed);
                 out_bytes = parsed.len();
                 // A summary that dropped most of a large output must say where

@@ -142,7 +142,11 @@ impl ParseHandler {
                 grep_output.matches_shown,
                 grep_output.total_matches
             ));
-        } else if grep_output.file_count > 1 {
+        } else if grep_output.file_count > 1
+            && grep_output.files.iter().any(|f| f.matches.len() > 1)
+        {
+            // With every file down to one `path:line:text` line the header
+            // repeats what the lines already say.
             output.push_str(&format!(
                 "matches: {} files, {} results\n",
                 grep_output.file_count, match_count
@@ -183,7 +187,8 @@ impl ParseHandler {
             let body = |t: &str| t.get(indent..).unwrap_or(t.trim_start()).to_string();
             if rows.len() == 1 && non_context_count == 1 {
                 let (at, t, ex) = &rows[0];
-                output.push_str(&format!("{}:{} {}{}\n", file.path, at, body(t), ex));
+                // Exactly grep's own `path:line:text`, so it never costs more.
+                output.push_str(&format!("{}:{}{}{}\n", file.path, at, body(t), ex));
                 continue;
             }
             output.push_str(&format!("{} ({}):\n", file.path, non_context_count));

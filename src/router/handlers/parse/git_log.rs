@@ -121,7 +121,14 @@ impl ParseHandler {
         let mut msg: Vec<String> = Vec::new();
         let mut in_commit = false;
 
-        let is_oneline = !input.contains("Author: ") && !input.contains("commit ");
+        // A `commit <hash>` LINE marks the full format. Searching the text
+        // for "commit " matched any subject using the word, and a oneline log
+        // parsed as the full format came out empty.
+        let is_oneline = !input.lines().any(|l| {
+            l.strip_prefix("commit ")
+                .and_then(|r| r.split_whitespace().next())
+                .is_some_and(|h| h.len() >= 7 && h.chars().all(|c| c.is_ascii_hexdigit()))
+        });
 
         if is_oneline {
             for line in input.lines() {

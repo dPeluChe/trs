@@ -53,3 +53,22 @@ fn the_condensed_log_is_a_fraction_of_the_raw_one() {
         raw.len()
     );
 }
+
+/// A subject using the word "commit " made the oneline log read as the full
+/// format, which found no `commit <hash>` line and printed nothing at all.
+#[test]
+fn oneline_log_survives_a_subject_that_says_commit() {
+    let input = "18e820e feat(git-log): condense commit bodies\n0175ae7 fix: stop wrapping ssh\n";
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args(["parse", "git-log"])
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let out = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.contains("18e820e") && out.contains("condense commit bodies"),
+        "{out}"
+    );
+    assert!(out.contains("0175ae7"), "{out}");
+}
