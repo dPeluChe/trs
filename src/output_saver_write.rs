@@ -76,11 +76,11 @@ pub(crate) fn install_agent_with_home(
                 crate::path_display::tilde(&saver_path.display().to_string())
             ))
         }
-        Target::RulesDir { path } => {
+        Target::RulesDir { path, header } => {
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent).map_err(|e| format!("{}: {}", parent.display(), e))?;
             }
-            fs::write(&path, standalone_file())
+            fs::write(&path, crate::output_saver_core::rules_dir_content(header))
                 .map_err(|e| format!("{}: {}", path.display(), e))?;
             Ok(format!(
                 "wrote {}",
@@ -147,7 +147,7 @@ pub(crate) fn remove_agent_with_home(
             }
             Ok(format!("removed {} and import line", saver_path.display()))
         }
-        Target::RulesDir { path } => {
+        Target::RulesDir { path, .. } => {
             if path.exists() {
                 fs::remove_file(&path).map_err(|e| format!("{}: {}", path.display(), e))?;
                 Ok(format!("removed {}", path.display()))

@@ -19,7 +19,7 @@ install scope.
 | Codex CLI | programmatic hook (codex-cli ≥ 0.134), rules fallback | ✓ (≥ 0.134) | ✓ (inline block) | `codex` (fallback `(untagged)`) | global + project |
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
 | Devin CLI | programmatic hook | ✓ | — | `devin-cli` | global + project |
-| VS Code Copilot / Copilot CLI | programmatic hook | ✓ | — | `vscode` / `copilot-cli` | global + project |
+| VS Code Copilot / Copilot CLI | programmatic hook | ✓ | ✓ | `vscode` / `copilot-cli` | global + project |
 | OpenClaw | plugin template | ✓ | — | `openclaw` | global |
 | Hermes | plugin template | ✓ | — | `hermes` | global |
 | Zed (Agent Panel) | rules file only (AGENTS.md) | — | — | `(untagged)`; ACP external agents show their own label | project |
@@ -37,8 +37,8 @@ install scope.
   status`). Rules-only agents cannot do this; the model ends up
   running raw commands unless the user prefixes `trs` manually.
 - **Output-saver.** Whether `trs output-saver --install` can inject
-  the anti-preamble / result-first rules block (Pi, VS Code Copilot,
-  OpenClaw, and Hermes are not yet wired). Antigravity 2.0 (IDE + CLI)
+  the anti-preamble / result-first rules block (Pi, OpenClaw, and
+  Hermes are not yet wired). Antigravity 2.0 (IDE + CLI)
   shares Gemini's
   `~/.gemini/GEMINI.md` and `~/.gemini/trs.md` for the output-saver
   side; only the *hooks* are jetski-specific (see Antigravity section
@@ -251,7 +251,10 @@ install scope.
   when `.github/hooks/trs.json` is committed to a shared repo:
   teammates need trs ≥ 0.6.16, or the hook should use plain
   `trs rewrite` until everyone upgrades.
-- **Output-saver:** not yet wired (same posture as Pi).
+- **Output-saver:** `~/.copilot/instructions/trs.instructions.md`, a
+  file trs owns (nothing is spliced into your own instructions), with
+  `applyTo: "**"`: without it VS Code applies the file only when
+  attached by hand. Copilot CLI reads the same file.
 - **Aliases:** `vscode` (primary), `vs-code`, `copilot`,
   `vscode-copilot`, `code`, `copilot-cli`, `gh-copilot`.
 
@@ -271,6 +274,10 @@ install scope.
 - **`COPILOT_HOME`:** when set, Copilot CLI reads hooks from
   `$COPILOT_HOME/hooks/`, not `~/.copilot/hooks/`. Install the hook
   there.
+- **Output-saver:** the same `~/.copilot/instructions/trs.instructions.md`
+  as VS Code (or `$COPILOT_HOME/instructions/`). Validated live: Copilot
+  CLI applied a user-level `*.instructions.md` even in a session that
+  touched no file.
 - **Fail-closed:** a `preToolUse` command hook that errors denies the
   tool call, so `trs` must be on the PATH Copilot CLI runs hooks with.
 - **Checking it:** `trs doctor` warns when a hook is installed but no
