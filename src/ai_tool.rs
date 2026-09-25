@@ -190,8 +190,19 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
     AiToolSpec {
         variant: AiTool::VsCode,
         cli_name: "vscode",
-        aliases: &["vscode", "vs-code", "copilot", "vscode-copilot", "code"],
-        display: "VS Code Copilot",
+        aliases: &[
+            "vscode",
+            "vs-code",
+            "copilot",
+            "vscode-copilot",
+            "code",
+            "copilot-cli",
+            "gh-copilot",
+        ],
+        // Copilot CLI reads the same ~/.copilot/hooks/*.json and speaks the
+        // same PreToolUse envelope (validated live, Copilot CLI 1.0.88), so
+        // one hook file serves both.
+        display: "VS Code Copilot / Copilot CLI",
         target_label: "hooks → ~/.copilot/hooks/trs.json",
     },
     AiToolSpec {
@@ -331,7 +342,10 @@ impl AiTool {
                     || home_has(".windsurf")
             }
             Self::VsCode => {
-                in_path("code") || app_exists("Visual Studio Code") || home_has(".copilot")
+                in_path("code")
+                    || in_path("copilot")
+                    || app_exists("Visual Studio Code")
+                    || home_has(".copilot")
             }
             Self::OpenClaw => in_path("openclaw") || home_has(".openclaw"),
             Self::Hermes => in_path("hermes") || home_has(".hermes"),

@@ -56,6 +56,7 @@ fn known_agent_label(s: &str) -> Option<&'static str> {
         "cursor" => "cursor",
         "codex" => "codex",
         "vscode" => "vscode",
+        "copilot-cli" => "copilot-cli",
         "droid" => "droid",
         "antigravity" => "antigravity",
         "opencode" => "opencode",
@@ -66,6 +67,20 @@ fn known_agent_label(s: &str) -> Option<&'static str> {
         "devin-cli" => "devin-cli",
         _ => return None,
     })
+}
+
+/// VS Code and Copilot CLI load the same `~/.copilot/hooks/trs.json`, so its
+/// `--caller vscode` is said by both; Copilot CLI marks its hook processes
+/// with `COPILOT_CLI=1`, which is what tells them apart.
+fn copilot_cli_or(label: &'static str) -> &'static str {
+    label_for_host(label, std::env::var("COPILOT_CLI").ok().as_deref())
+}
+
+fn label_for_host(label: &'static str, copilot_cli: Option<&str>) -> &'static str {
+    match (label, copilot_cli) {
+        ("vscode", Some("1")) => "copilot-cli",
+        _ => label,
+    }
 }
 
 /// Which client's hook protocol we're speaking. Each emits a different
@@ -118,6 +133,7 @@ impl HookEvent {
         match trs_agent {
             Some("codex") => return "codex",
             Some("vscode") => return "vscode",
+            Some("copilot-cli") => return "copilot-cli",
             _ => {}
         }
         self.agent_label_for(has_antigravity_env)
@@ -158,7 +174,7 @@ fn build_hook_response(
         .and_then(|ti| ti.get("command"))
         .and_then(|c| c.as_str())?;
     // `--caller` from the hook template wins over envelope/env inference.
-    let flag_label = agent_flag.and_then(known_agent_label);
+    let flag_label = agent_flag.and_then(known_agent_label).map(copilot_cli_or);
 
     let event_name = json
         .get("hook_event_name")
@@ -183,14 +199,17 @@ fn build_hook_response(
     // Bypass telemetry — log the agent-attributed observation before the
     // short-circuit so `stats --by-agent` can surface per-agent rates.
     if cmd_bypasses_trs(cmd) {
-        crate::tracker::log_bypass(cmd, Some(flag_label.unwrap_or_else(|| event.agent_label())));
+        crate::tracker::log_bypass(
+            cmd,
+            Some(flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()))),
+        );
         return None;
     }
 
     let rewritten = maybe_rewrite(cmd)?;
     let rewritten = tag_with_agent(
         &rewritten,
-        flag_label.unwrap_or_else(|| event.agent_label()),
+        flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label())),
     );
 
     let response = match event {

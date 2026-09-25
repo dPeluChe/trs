@@ -131,6 +131,7 @@ pub(crate) fn run_checks() -> Vec<Check> {
 }
 
 use crate::doctor_checks::*;
+use crate::doctor_hooks::check_hooks_installed;
 
 /// Print doctor results in spark-style format.
 pub(crate) fn print_report(checks: &[Check]) {

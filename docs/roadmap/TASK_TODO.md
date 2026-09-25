@@ -77,6 +77,8 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 
 - [ ] **Evaluate: fold near-identical lines beyond timestamps (spacing, symbols, accents, numbers).** Measured 2026-09-25 on 49,532 real Bash results (46 MB), consecutive lines equal after each normalization: exact 177 KB (done), + whitespace +30 KB, + symbols +4 KB, + accents/case +1 KB, + digits +647 KB, timestamps only +30 KB (done: `(xN, until <time>)`). Not done because the matches were mostly code, where they destroy content: whitespace joins `  }` with `}` (indentation), digits join `152-  }` with `153-}` (line numbers). Revisit only if the fold can tell code from logs (e.g. only lines with a log level or timestamp prefix), and fold digits only inside known volatile fields (durations, PIDs, request ids) with first and last value kept.
 
+- [x] **GitHub Copilot CLI: supported through the VS Code hook file, validated live 2026-09-25 (Copilot CLI 1.0.88).** It loads `~/.copilot/hooks/*.json`, sends the VS Code-compatible `PreToolUse` payload and honors `updatedInput`. Attributed as `copilot-cli` via `COPILOT_CLI=1`. Found through a user who saw no savings: the doctor reported the hook as configured while it had never fired, so `trs doctor` now names the configured agents and warns when no run has come through a hook.
+
 ### VSCode ecosystem (vanilla, not the forks)
 
 - [x] **GitHub Copilot (VSCode), researched 2026-06, implementation turnkey,

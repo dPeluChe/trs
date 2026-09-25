@@ -41,6 +41,7 @@ mod diff;
 mod discover;
 mod doctor;
 mod doctor_checks;
+mod doctor_hooks;
 mod exec;
 mod formatter;
 mod help;
