@@ -77,11 +77,12 @@ cargo.
 | `swift` | `build`, `test`, `run` |
 | `xcodebuild` | among the chattiest output there is: compile echoes, "Write auxiliary files" and dependency checks go, `error:` / `warning:` and the BUILD SUCCEEDED/FAILED sentinel stay |
 
-### Build: Java (Maven)
+### Build: Java (Maven, Gradle)
 
 | Command | What gets parsed |
 |---|---|
 | `mvn` / `./mvnw` | any goal. Kept: compiler errors (once, with `symbol:` / `location:`), each failed test with its message and up to 5 frames from your own code, `[WARNING]` lines, the failed module and the `-rf :module` resume hint, summed test counts, BUILD SUCCESS/FAILURE. Dropped: download progress (counted), plugin banners, per-class passing test lines, Maven's help boilerplate. While tests run, app logs at INFO/DEBUG and the Spring banner are counted, not shown; WARN/ERROR logs stay. Lines it does not recognize, such as `dependency:tree`, are kept. |
+| `gradle` / `./gradlew` | any task. Kept: failed tasks, compiler errors with their source line (once), warnings by location, failed tests, test counts, BUILD SUCCESSFUL/FAILED. Gradle prints a failed test as just `AssertionFailedError at CartTest.java:7`; trs adds the message (`expected: <5> but was: <4>`) from the JUnit XML report that run wrote. Dropped: tasks with nothing new (counted), `* Try:` hints, the echoed source under warnings. |
 
 ### Build: Python
 

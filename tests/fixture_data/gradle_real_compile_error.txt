@@ -1,0 +1,29 @@
+
+> Task :compileJava FAILED
+/home/dev/shop/src/main/java/com/acme/shop/Cart.java:8: error: cannot find symbol
+    public int discounted(int pct) { return totl() - total() * pct / 100 + "x"; }
+                                            ^
+  symbol:   method totl()
+  location: class Cart
+1 error
+
+[Incubating] Problems report is available at: file:///home/dev/shop/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  /home/dev/shop/src/main/java/com/acme/shop/Cart.java:8: error: cannot find symbol
+      public int discounted(int pct) { return totl() - total() * pct / 100 + "x"; }
+                                              ^
+    symbol:   method totl()
+    location: class Cart
+  1 error
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+BUILD FAILED in 504ms
+1 actionable task: 1 executed

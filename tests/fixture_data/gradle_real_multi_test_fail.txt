@@ -1,0 +1,90 @@
+> Task :api:compileJava UP-TO-DATE
+> Task :api:processResources NO-SOURCE
+> Task :api:classes UP-TO-DATE
+> Task :api:jar UP-TO-DATE
+> Task :api:assemble UP-TO-DATE
+> Task :api:compileTestJava
+> Task :api:processTestResources NO-SOURCE
+> Task :api:testClasses
+
+> Task :api:test FAILED
+
+TwoTest > twice() FAILED
+    org.opentest4j.AssertionFailedError at TwoTest.java:5
+
+9 tests completed, 1 failed, 3 skipped
+
+> Task :billing:compileJava UP-TO-DATE
+> Task :billing:processResources NO-SOURCE
+> Task :billing:classes UP-TO-DATE
+> Task :billing:jar UP-TO-DATE
+> Task :billing:assemble UP-TO-DATE
+> Task :billing:compileTestJava
+> Task :billing:processTestResources NO-SOURCE
+> Task :billing:testClasses
+
+> Task :billing:test FAILED
+
+OneTest > twice() FAILED
+    org.opentest4j.AssertionFailedError at OneTest.java:5
+
+9 tests completed, 1 failed, 3 skipped
+
+> Task :core:compileJava UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :core:assemble UP-TO-DATE
+> Task :core:compileTestJava UP-TO-DATE
+> Task :core:processTestResources NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+> Task :core:test UP-TO-DATE
+> Task :core:check UP-TO-DATE
+> Task :core:build UP-TO-DATE
+> Task :web:compileJava UP-TO-DATE
+> Task :web:processResources NO-SOURCE
+> Task :web:classes UP-TO-DATE
+> Task :web:jar UP-TO-DATE
+> Task :web:assemble UP-TO-DATE
+> Task :web:compileTestJava UP-TO-DATE
+> Task :web:processTestResources NO-SOURCE
+> Task :web:testClasses UP-TO-DATE
+> Task :web:test UP-TO-DATE
+> Task :web:check UP-TO-DATE
+> Task :web:build UP-TO-DATE
+> Task :worker:compileJava UP-TO-DATE
+> Task :worker:processResources NO-SOURCE
+> Task :worker:classes UP-TO-DATE
+> Task :worker:jar UP-TO-DATE
+> Task :worker:assemble UP-TO-DATE
+> Task :worker:compileTestJava UP-TO-DATE
+> Task :worker:processTestResources NO-SOURCE
+> Task :worker:testClasses UP-TO-DATE
+> Task :worker:test UP-TO-DATE
+> Task :worker:check UP-TO-DATE
+> Task :worker:build UP-TO-DATE
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':api:test'.
+> There were failing tests. See the report at: file:///home/dev/platform/api/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':billing:test'.
+> There were failing tests. See the report at: file:///home/dev/platform/billing/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+==============================================================================
+
+BUILD FAILED in 1s
+20 actionable tasks: 4 executed, 16 up-to-date

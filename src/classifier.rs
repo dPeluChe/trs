@@ -312,6 +312,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
         "tsc" => Some(ParseCommands::Lint { file: None }),
         "gcc" | "g++" | "clang" | "javac" => Some(ParseCommands::Build { file: None }),
         "mvn" | "mvnw" | "mvnw.cmd" => Some(ParseCommands::Maven { file: None }),
+        "gradle" | "gradlew" | "gradlew.bat" => Some(ParseCommands::Gradle { file: None }),
         "go" => match subcmd {
             "build" => Some(ParseCommands::Build { file: None }),
             "test" => Some(ParseCommands::GoTest { file: None }),

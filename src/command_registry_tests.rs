@@ -212,6 +212,9 @@ const GOLDEN_KNOWN: &[&str] = &[
     "mvn",
     "mvnw",
     "mvnw.cmd",
+    "gradle",
+    "gradlew",
+    "gradlew.bat",
     "docker",
     "gh",
     "env",
@@ -455,4 +458,11 @@ fn git_log_with_a_chosen_layout_is_verbatim() {
             "must still compress: git {rest}"
         );
     }
+}
+
+#[test]
+fn a_command_run_by_path_gets_its_own_policy() {
+    assert!(combine_stderr("./gradlew", "build"));
+    assert!(combine_stderr("/opt/homebrew/bin/mvn", "test"));
+    assert_eq!(keep_ratio("./mvnw", "test"), keep_ratio("mvnw", "test"));
 }

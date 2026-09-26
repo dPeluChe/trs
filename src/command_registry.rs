@@ -228,6 +228,9 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
     // The forked test JVM prints its notices to stderr.
     CommandSpec { names: &["mvn", "mvnw", "mvnw.cmd"], known: true,
         keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Always },
+    // Test counts, compiler errors and the failure block go to stderr.
+    CommandSpec { names: &["gradle", "gradlew", "gradlew.bat"], known: true,
+        keep_ratio: KeepRatio::flat(0.30), stderr: Stderr::Always },
     CommandSpec { names: &["swift"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Subcmds(&["build"]) },
     CommandSpec { names: &["xcodebuild"], known: true,
@@ -334,6 +337,8 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
 
 /// Look up the spec for a command name (matches canonical name or any alias).
 pub(crate) fn spec(cmd: &str) -> Option<&'static CommandSpec> {
+    // By basename, like the classifier: `./gradlew` must get gradlew's stderr policy.
+    let cmd = cmd.rsplit(['/', '\\']).next().unwrap_or(cmd);
     REGISTRY.iter().find(|s| s.names.contains(&cmd))
 }
 

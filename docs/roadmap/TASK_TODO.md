@@ -26,7 +26,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] next build / prisma generate
 - [ ] playwright test (E2E summaries)
 - [x] Maven (`mvn`, `./mvnw`): real fixtures from Maven 3.9, a multi-module reactor and Spring Boot tests
-- [ ] Gradle (`gradle`, `./gradlew`)
+- [x] Gradle (`gradle`, `./gradlew`): failed-test messages read from the JUnit XML report
 - [x] `gh run view`: done (v0.5.13): extracts title, conclusion, job counts, annotations, URL
 - [ ] `gh issue view`: follow-on from gh pr view
 
