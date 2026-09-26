@@ -43,7 +43,7 @@ pub(crate) fn check_hooks_installed() -> Check {
         .with_sub(names)
         .with_hint("agents load project hooks only from a repo root: trs init --all --global");
     }
-    match crate::tracker::home_dir().map(|h| hook_has_fired(&h.join(".trs"))) {
+    match crate::tracker::trs_dir().map(|d| hook_has_fired(&d)) {
         Some(false) => Check::warn("hooks", format!("{summary}, but none has run trs yet"))
             .with_sub(names)
             .with_hint(

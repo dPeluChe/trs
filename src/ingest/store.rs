@@ -196,8 +196,7 @@ pub fn read_digest(name: Option<&str>, project_path: &Path) {
 
 /// Get the base ingest storage directory: ~/.trs/ingest/
 fn ingest_store_dir() -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok()?;
-    Some(PathBuf::from(home).join(".trs").join("ingest"))
+    Some(crate::tracker::trs_dir()?.join("ingest"))
 }
 
 /// Get owner/repo from git remote origin URL.

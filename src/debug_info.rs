@@ -163,7 +163,7 @@ fn history_section() -> String {
 }
 
 fn tee_section() -> String {
-    let Some(tee_dir) = tracker::home_dir().map(|h| h.join(".trs/tee")) else {
+    let Some(tee_dir) = tracker::trs_dir().map(|d| d.join("tee")) else {
         return "(HOME unavailable)\n".into();
     };
     if !tee_dir.exists() {

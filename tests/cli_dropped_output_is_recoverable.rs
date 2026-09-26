@@ -38,6 +38,7 @@ fn trs_git_diff(repo: &Path, home: &Path) -> String {
         .args(["git", "diff"])
         .current_dir(repo)
         .env("HOME", home)
+        .env_remove("TRS_HOME")
         .output()
         .unwrap();
     String::from_utf8_lossy(&out.stdout).into_owned()

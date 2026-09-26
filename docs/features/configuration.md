@@ -14,6 +14,14 @@ Two lookup paths, merged (project overrides home):
 Later keys win. Unrecognized keys are ignored with a warning on
 `trs doctor`.
 
+### Data directory
+
+History, saved raw outputs (`tee/`), ingest digests and the per-user
+`config.toml` live in `~/.trs`. Set `TRS_HOME` to use another directory.
+trs's own `.cargo/config.toml` sets it to `target/test-trs-home` for
+`cargo test` and `cargo run`, so developing trs never writes your real
+history.
+
 ## Tunable limits
 
 ```toml

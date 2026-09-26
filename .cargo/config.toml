@@ -1,0 +1,4 @@
+# Tests run the real trs binary; point its data dir (history, tee, config)
+# at target/ so a test run never writes the developer's ~/.trs.
+[env]
+TRS_HOME = { value = "target/test-trs-home", relative = true }
