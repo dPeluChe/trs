@@ -383,6 +383,15 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse Maven output (mvn, ./mvnw)
+    ///
+    /// Example: mvn test 2>&1 | trs parse maven
+    Maven {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse lint output (eslint, clippy, ruff, biome, golangci-lint, tsc)
     ///
     /// Groups issues by file and rule, shows error/warning counts.
@@ -485,6 +494,7 @@ impl ParseCommands {
             Self::GhPrView { .. } => Self::GhPrView { file: Some(path) },
             Self::CargoTest { .. } => Self::CargoTest { file: Some(path) },
             Self::GoTest { .. } => Self::GoTest { file: Some(path) },
+            Self::Maven { .. } => Self::Maven { file: Some(path) },
             Self::Lint { .. } => Self::Lint { file: Some(path) },
             Self::Db { .. } => Self::Db { file: Some(path) },
             Self::GitPull { .. } => Self::GitPull { file: Some(path) },

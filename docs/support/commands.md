@@ -77,6 +77,12 @@ cargo.
 | `swift` | `build`, `test`, `run` |
 | `xcodebuild` | among the chattiest output there is: compile echoes, "Write auxiliary files" and dependency checks go, `error:` / `warning:` and the BUILD SUCCEEDED/FAILED sentinel stay |
 
+### Build: Java (Maven)
+
+| Command | What gets parsed |
+|---|---|
+| `mvn` / `./mvnw` | any goal. Kept: compiler errors (once, with `symbol:` / `location:`), each failed test with its message and up to 5 frames from your own code, `[WARNING]` lines, the failed module and the `-rf :module` resume hint, summed test counts, BUILD SUCCESS/FAILURE. Dropped: download progress (counted), plugin banners, per-class passing test lines, Maven's help boilerplate. While tests run, app logs at INFO/DEBUG and the Spring banner are counted, not shown; WARN/ERROR logs stay. Lines it does not recognize, such as `dependency:tree`, are kept. |
+
 ### Build: Python
 
 | Command | Subcommands parsed |

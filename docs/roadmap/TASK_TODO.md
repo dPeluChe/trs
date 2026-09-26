@@ -25,7 +25,8 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] AWS CLI (s3 ls, ec2 describe-instances, cloudwatch)
 - [ ] next build / prisma generate
 - [ ] playwright test (E2E summaries)
-- [ ] Gradle / Maven build output
+- [x] Maven (`mvn`, `./mvnw`): real fixtures from Maven 3.9, a multi-module reactor and Spring Boot tests
+- [ ] Gradle (`gradle`, `./gradlew`)
 - [x] `gh run view`: done (v0.5.13): extracts title, conclusion, job counts, annotations, URL
 - [ ] `gh issue view`: follow-on from gh pr view
 

@@ -225,6 +225,9 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
         keep_ratio: KeepRatio { default: DEFAULT_KEEP_RATIO, overrides: &[("test", 0.08)] },
         stderr: Stderr::Subcmds(&["build"]),
     },
+    // The forked test JVM prints its notices to stderr.
+    CommandSpec { names: &["mvn", "mvnw", "mvnw.cmd"], known: true,
+        keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Always },
     CommandSpec { names: &["swift"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Subcmds(&["build"]) },
     CommandSpec { names: &["xcodebuild"], known: true,

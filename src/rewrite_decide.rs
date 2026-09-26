@@ -10,6 +10,10 @@ const SKIP_PREFIXES: &[&str] = &[
     "unset ", "alias ", "which ", "type ", "true", "false", "exit", "return", "ssh ",
 ];
 
+/// Project-local build launchers: `"."` above skips local scripts, which may
+/// be interactive, but these run a known build tool with a parser.
+const BUILD_WRAPPERS: &[&str] = &["./mvnw", "./gradlew"];
+
 /// Always-on wrappers stripped before routing and re-prepended on the
 /// rewrite. Two groups:
 ///
@@ -115,8 +119,11 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
+    let build_wrapper = BUILD_WRAPPERS
+        .iter()
+        .any(|w| trimmed == *w || trimmed.strip_prefix(w).is_some_and(|r| r.starts_with(' ')));
     for skip in SKIP_PREFIXES {
-        if trimmed.starts_with(skip) || trimmed == skip.trim() {
+        if !build_wrapper && (trimmed.starts_with(skip) || trimmed == skip.trim()) {
             return None;
         }
     }
