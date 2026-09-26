@@ -184,9 +184,10 @@ pub(crate) fn install_zed_agents(opts: InstallOpts) -> Result<String, String> {
 ///
 /// Idempotent against the antigravity rules sentinel + general trs marker.
 /// Also defensively scrubs orphaned v0.6.5 jetski hook entries from
-/// `~/.gemini/antigravity-{cli,ide}/hooks.json` and the v0.6.4 BeforeTool
-/// entry from `~/.gemini/settings.json` — both wrote installs that never
-/// actually fired (see docs/development/antigravity-hooks-research.md).
+/// `~/.gemini/antigravity-{cli,ide}/hooks.json`, installs that never fired
+/// (see docs/development/antigravity-hooks-research.md). It must not touch
+/// `~/.gemini/settings.json`: the v0.6.4 entry there is identical to Gemini
+/// CLI's own hook, and scrubbing it removed Gemini's in every `init --all`.
 pub(crate) fn install_antigravity_rules(opts: InstallOpts) -> Result<String, String> {
     if let Ok(home) = home_dir() {
         // Best-effort: don't fail the rules install if a scrub hits an FS
@@ -200,7 +201,6 @@ pub(crate) fn install_antigravity_rules(opts: InstallOpts) -> Result<String, Str
             &home.join(".gemini/antigravity-ide/hooks.json"),
             opts.dry_run,
         );
-        let _ = scrub_legacy_codex_hook(&home.join(".gemini/settings.json"), opts.dry_run);
     }
 
     let path = home_dir()?.join(".gemini").join("GEMINI.md");
