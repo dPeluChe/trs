@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.4] - 2026-09-26
+
+### Features
+
+- **output-saver:** Install for VS Code Copilot and Copilot CLI (#175)
+
+### Bug Fixes
+
+- **init:** Install global hooks even with a project hook in ~, and keep Gemini's hook (#176)
+
 ## [0.8.3] - 2026-09-25
 
 ### Features
