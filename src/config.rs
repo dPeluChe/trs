@@ -97,9 +97,8 @@ impl Config {
         if let Some(cfg) = Self::try_load(&PathBuf::from(".trs/config.toml")) {
             return cfg;
         }
-        if let Ok(home) = std::env::var("HOME") {
-            let global = PathBuf::from(home).join(".trs").join("config.toml");
-            if let Some(cfg) = Self::try_load(&global) {
+        if let Some(dir) = crate::tracker::trs_dir() {
+            if let Some(cfg) = Self::try_load(&dir.join("config.toml")) {
                 return cfg;
             }
         }

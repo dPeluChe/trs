@@ -55,9 +55,18 @@ fn history_path() -> Option<PathBuf> {
     dirs_path().map(|d| d.join("history.jsonl"))
 }
 
-/// Returns the path to the trs data directory: `~/.trs/`.
+/// Returns the path to the trs data directory.
 fn dirs_path() -> Option<PathBuf> {
-    home_dir().map(|h| h.join(".trs"))
+    trs_dir()
+}
+
+/// trs's data directory (history, tee, config, ingest): `$TRS_HOME` when set,
+/// else `~/.trs`. The test suite sets it so runs never touch the user's data.
+pub(crate) fn trs_dir() -> Option<PathBuf> {
+    match std::env::var_os("TRS_HOME") {
+        Some(dir) if !dir.is_empty() => Some(PathBuf::from(dir)),
+        _ => home_dir().map(|h| h.join(".trs")),
+    }
 }
 
 /// Cross-platform home directory lookup.

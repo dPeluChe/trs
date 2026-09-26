@@ -299,8 +299,7 @@ fn emit_failure_footer(
 /// Save full command output to ~/.trs/tee/ for failure recovery.
 /// Returns the path to the saved file, or None if saving failed.
 fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
-    let home = std::env::var("HOME").ok()?;
-    let tee_dir = std::path::Path::new(&home).join(".trs").join("tee");
+    let tee_dir = crate::tracker::trs_dir()?.join("tee");
 
     // Create tee directory if needed
     std::fs::create_dir_all(&tee_dir).ok()?;

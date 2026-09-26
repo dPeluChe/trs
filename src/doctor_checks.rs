@@ -400,12 +400,11 @@ pub(crate) fn check_dep(cmd: &str, label: &str, required: bool, hint: &str) -> C
 
 /// Check: ~/.trs/ directory exists or can be created.
 pub(crate) fn check_config_dir() -> Check {
-    let Some(home) = crate::tracker::home_dir() else {
+    let Some(dir) = crate::tracker::trs_dir() else {
         return Check::warn("config dir", "HOME not set")
             .with_hint("set HOME environment variable");
     };
 
-    let dir = home.join(".trs");
     if dir.exists() && dir.is_dir() {
         Check::pass("config dir", "config directory").with_sub(vec![dir.display().to_string()])
     } else if !dir.exists() {
@@ -426,15 +425,15 @@ pub(crate) fn check_config_dir() -> Check {
 
 /// Check: history.jsonl is writable.
 pub(crate) fn check_history_writable() -> Check {
-    let Some(home) = crate::tracker::home_dir() else {
+    let Some(dir) = crate::tracker::trs_dir() else {
         return Check::warn("history", "HOME not set");
     };
 
-    let probe = home.join(".trs").join(".doctor_probe");
+    let probe = dir.join(".doctor_probe");
     match std::fs::write(&probe, "ok") {
         Ok(_) => {
             let _ = std::fs::remove_file(&probe);
-            let history = home.join(".trs").join("history.jsonl");
+            let history = dir.join("history.jsonl");
             if history.exists() {
                 let size = std::fs::metadata(&history).map(|m| m.len()).unwrap_or(0);
                 let human = crate::tracker::format_bytes_human(size as usize);
