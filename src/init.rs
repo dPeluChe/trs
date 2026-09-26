@@ -220,12 +220,15 @@ pub(crate) fn install_all(opts: InstallOpts) {
     }
 
     for tool in &tools {
-        if check_tool(tool) {
+        // `--force` rewrites every configured agent with the current template;
+        // the early skip used to ignore it, so upgrades never refreshed hooks.
+        let configured_here = check_tool_in_scope(tool, opts.global);
+        if configured_here && !opts.force {
             agent_row('+', tool.name(), "already configured");
             configured += 1;
             // Ensure trs.md is present even when hooks are already wired up.
             install_trs_md_for(tool, true);
-        } else if !tool.detect_installed() {
+        } else if !configured_here && !tool.detect_installed() {
             agent_row('-', tool.name(), "not detected");
             skipped += 1;
         } else if matches!(tool, AiTool::Zed) && opts.global {
@@ -362,6 +365,35 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
         }
     }
     false
+}
+
+/// `check_tool` limited to the scope being installed. A project hook in the
+/// current folder must not satisfy `--global`: a `.github/hooks/trs.json` in
+/// `~` reported Copilot as configured while `~/.copilot/hooks/trs.json` did
+/// not exist, so every `init --all --global` (and every upgrade) skipped it.
+pub(crate) fn check_tool_in_scope(tool: &AiTool, global: bool) -> bool {
+    if matches!(tool, AiTool::Codex) {
+        return if global {
+            home_dir()
+                .map(|h| has_any_trs_marker_at_path(&h.join(".codex").join("AGENTS.md")))
+                .unwrap_or(false)
+        } else {
+            has_any_trs_marker_at("AGENTS.md")
+        };
+    }
+    let Some(spec) = tool.spec() else {
+        return check_tool(tool);
+    };
+    if !global {
+        return check_file_contains_path(&Path::new(spec.local_dir).join(spec.filename), "trs");
+    }
+    match (spec.global_dir, home_dir()) {
+        (Some(dir), Ok(home)) => {
+            check_file_contains_path(&home.join(dir).join(spec.filename), "trs")
+                || check_file_contains_path(&home.join(dir).join("settings.json"), "trs rewrite")
+        }
+        _ => false,
+    }
 }
 
 // Marker / path helpers shared with init_install.rs.

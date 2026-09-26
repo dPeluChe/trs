@@ -4,7 +4,7 @@
 //! invisible from here except through history.
 
 use super::doctor::Check;
-use crate::init::{check_tool, AiTool};
+use crate::init::{check_tool, check_tool_in_scope, AiTool};
 
 pub(crate) fn check_hooks_installed() -> Check {
     let tools = AiTool::all_tools();
@@ -23,6 +23,26 @@ pub(crate) fn check_hooks_installed() -> Check {
         tools.len()
     );
     let names = vec![configured.join(", ")];
+    // A project hook in `~` is a file no agent loads: they read project hooks
+    // from a repo root. It made Copilot look configured while the global hook
+    // it actually reads did not exist.
+    let in_home = std::env::current_dir().ok() == crate::tracker::home_dir();
+    let home_only: Vec<String> = tools
+        .iter()
+        .filter(|t| in_home && check_tool(t) && !check_tool_in_scope(t, true))
+        .map(|t| t.name().to_string())
+        .collect();
+    if !home_only.is_empty() {
+        return Check::warn(
+            "hooks",
+            format!(
+                "{summary}, but {} only as a project hook in ~",
+                home_only.join(", ")
+            ),
+        )
+        .with_sub(names)
+        .with_hint("agents load project hooks only from a repo root: trs init --all --global");
+    }
     match crate::tracker::home_dir().map(|h| hook_has_fired(&h.join(".trs"))) {
         Some(false) => Check::warn("hooks", format!("{summary}, but none has run trs yet"))
             .with_sub(names)
