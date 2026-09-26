@@ -32,6 +32,9 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ### Improvements to existing parsers
 
+- [ ] Normalize the command to its basename once in `execute_and_parse` (classifier_exec.rs) and pass it to every registry/verbatim check: `/usr/bin/git push` still misses the transfer compactor and `/bin/sh -c` misses `is_verbatim_invocation`, because those compare the raw path (found in the #178 review)
+- [ ] `trs <cmd> | head` panics with "failed printing to stdout: Broken pipe" instead of exiting quietly (agents' pipes are not rewritten, so it only shows up when a person pipes trs by hand)
+
 - [ ] Log timestamp normalization (first = t0, rest = relative delta)
 - [ ] `git diff` full (not just --stat), reformat unified diff headers
 - [ ] **`find` with long paths**: audit shows ~48% reduction where the first path arg eats the display width. Parser could basename-collapse logged paths the way `stats --history` now does.

@@ -38,7 +38,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
     // (`/opt/homebrew/bin/gh`, `./node_modules/.bin/eslint`) reach the same
     // parser as the bare name. Field data: `gh` invoked by absolute path
     // averaged 40 KB/cmd uncompressed before this.
-    let cmd = cmd.rsplit(['/', '\\']).next().unwrap_or(cmd);
+    let cmd = crate::text_util::cmd_basename(cmd);
 
     // For git commands, strip global options before detecting subcommand
     let effective_args;

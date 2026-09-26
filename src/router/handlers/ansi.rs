@@ -6,6 +6,9 @@
 /// - Simple escape sequences: ESC followed by a single character
 /// - Other sequences: ESC (, ESC ), ESC #, etc.
 pub(crate) fn strip_ansi_codes(s: &str) -> String {
+    if !s.contains('\x1b') {
+        return s.to_string();
+    }
     let mut result = String::with_capacity(s.len());
     let chars: Vec<char> = s.chars().collect();
     let mut i = 0;

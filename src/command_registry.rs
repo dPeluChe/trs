@@ -337,8 +337,7 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
 
 /// Look up the spec for a command name (matches canonical name or any alias).
 pub(crate) fn spec(cmd: &str) -> Option<&'static CommandSpec> {
-    // By basename, like the classifier: `./gradlew` must get gradlew's stderr policy.
-    let cmd = cmd.rsplit(['/', '\\']).next().unwrap_or(cmd);
+    let cmd = crate::text_util::cmd_basename(cmd);
     REGISTRY.iter().find(|s| s.names.contains(&cmd))
 }
 

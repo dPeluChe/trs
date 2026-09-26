@@ -6,13 +6,9 @@
 // `ssh `: 537 wraps in 30 days of real use saved 1.9%. The remote command is
 // opaque to trs, and wrapping holds a long session's output until it exits.
 const SKIP_PREFIXES: &[&str] = &[
-    "trs ", "cd ", "echo ", "cat ", "head ", "tail -f", "export ", "source ", ".", "set ",
+    "trs ", "cd ", "echo ", "cat ", "head ", "tail -f", "export ", "source ", ". ", "set ",
     "unset ", "alias ", "which ", "type ", "true", "false", "exit", "return", "ssh ",
 ];
-
-/// Project-local build launchers: `"."` above skips local scripts, which may
-/// be interactive, but these run a known build tool with a parser.
-const BUILD_WRAPPERS: &[&str] = &["./mvnw", "./gradlew"];
 
 /// Always-on wrappers stripped before routing and re-prepended on the
 /// rewrite. Two groups:
@@ -119,13 +115,21 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
-    let build_wrapper = BUILD_WRAPPERS
-        .iter()
-        .any(|w| trimmed == *w || trimmed.strip_prefix(w).is_some_and(|r| r.starts_with(' ')));
     for skip in SKIP_PREFIXES {
-        if !build_wrapper && (trimmed.starts_with(skip) || trimmed == skip.trim()) {
+        if trimmed.starts_with(skip) || trimmed == skip.trim() {
             return None;
         }
+    }
+
+    // A project-local program (`./deploy.sh`, `.git/hooks/x`) may be
+    // interactive; wrap it only when it is a tool trs parses (`./mvnw`,
+    // `./gradlew`, `.venv/bin/pytest`).
+    let program = trimmed.split_whitespace().next().unwrap_or("");
+    if program.starts_with('.')
+        && program.contains('/')
+        && !crate::command_registry::is_known_binary(program)
+    {
+        return None;
     }
 
     // `;` chains are independent commands — too unpredictable to rewrite.

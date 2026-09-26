@@ -11,7 +11,8 @@ use super::super::ansi::strip_ansi_codes;
 use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
-use std::collections::HashSet;
+use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 const NOISE_PREFIXES: &[&str] = &[
@@ -27,11 +28,14 @@ const NOISE_PREFIXES: &[&str] = &[
 ];
 
 #[derive(Default)]
-pub(crate) struct Gradle {
-    pub(crate) lines: Vec<String>,
-    pub(crate) quiet_tasks: usize,
-    pub(crate) cut: bool,
+struct Gradle {
+    lines: Vec<String>,
+    quiet_tasks: usize,
+    cut: bool,
 }
+
+/// JUnit XML per (task, class), read once however many of its tests failed.
+type Reports = HashMap<(String, String), Option<String>>;
 
 impl ParseHandler {
     pub(crate) fn handle_gradle(
@@ -78,7 +82,21 @@ fn failed_test(t: &str) -> Option<(&str, &str)> {
 }
 
 /// Failure message for `class.method` from the JUnit XML report of `task`.
-fn report_message(root: &Path, task: &str, class: &str, method: &str) -> Option<String> {
+fn report_message(
+    reports: &mut Reports,
+    root: &Path,
+    task: &str,
+    class: &str,
+    method: &str,
+) -> Option<String> {
+    let xml = reports
+        .entry((task.to_string(), class.to_string()))
+        .or_insert_with(|| read_report(root, task, class))
+        .as_deref()?;
+    failure_message(xml, method)
+}
+
+fn read_report(root: &Path, task: &str, class: &str) -> Option<String> {
     let mut parts: Vec<&str> = task.trim_start_matches(':').split(':').collect();
     let task_name = parts.pop()?;
     let dir = parts
@@ -87,11 +105,16 @@ fn report_message(root: &Path, task: &str, class: &str, method: &str) -> Option<
         .join("build/test-results")
         .join(task_name);
     let suffix = format!(".{class}.xml");
+    let exact = format!("TEST-{class}.xml");
     let file = std::fs::read_dir(&dir).ok()?.flatten().find(|e| {
-        let name = e.file_name().to_string_lossy().into_owned();
-        name.ends_with(&suffix) || name == format!("TEST-{class}.xml")
+        let name = e.file_name();
+        let name = name.to_string_lossy();
+        name.ends_with(&suffix) || name == exact
     })?;
-    let xml = std::fs::read_to_string(file.path()).ok()?;
+    std::fs::read_to_string(file.path()).ok()
+}
+
+fn failure_message(xml: &str, method: &str) -> Option<String> {
     let case = xml.find(&format!("<testcase name=\"{}\"", xml_escape(method)))?;
     let body = &xml[case..];
     // `<testcase .../>` passed; reading on would take the next test's failure.
@@ -126,9 +149,10 @@ fn xml_unescape(s: &str) -> String {
         .replace("&amp;", "&")
 }
 
-pub(crate) fn parse_gradle(input: &str, cwd: &Path) -> Gradle {
-    let prefix = format!("{}/", cwd.to_string_lossy());
+fn parse_gradle(input: &str, cwd: &Path) -> Gradle {
+    let prefix = crate::path_display::dir_prefix(cwd);
     let mut g = Gradle::default();
+    let mut reports = Reports::new();
     let mut seen: HashSet<String> = HashSet::new();
     let mut in_try = false;
     let mut in_wrong = false;
@@ -137,7 +161,16 @@ pub(crate) fn parse_gradle(input: &str, cwd: &Path) -> Gradle {
     let mut pending: Option<(String, String)> = None;
 
     for raw in input.lines() {
-        let line = raw.replace("file://", "").replace(&prefix, "");
+        let line = if raw.contains("file://") || !prefix.is_empty() && raw.contains(&prefix) {
+            let line = raw.replace("file://", "");
+            Cow::Owned(if prefix.is_empty() {
+                line
+            } else {
+                line.replace(&prefix, "")
+            })
+        } else {
+            Cow::Borrowed(raw)
+        };
         let t = line.trim();
         if t.is_empty() {
             in_try = false;
@@ -145,9 +178,13 @@ pub(crate) fn parse_gradle(input: &str, cwd: &Path) -> Gradle {
         }
         if let Some((class, method)) = pending.take() {
             g.lines.push(line.trim_end().to_string());
-            if let Some(msg) = report_message(cwd, &last_test_task, &class, &method) {
+            if let Some(msg) = report_message(&mut reports, cwd, &last_test_task, &class, &method) {
                 g.lines.push(format!("        {msg}"));
             }
+            continue;
+        }
+        if super::maven::is_jvm_notice(t) {
+            g.cut = true;
             continue;
         }
         if after_warning > 0 {

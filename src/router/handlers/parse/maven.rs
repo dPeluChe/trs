@@ -10,6 +10,7 @@ use super::super::ansi::strip_ansi_codes;
 use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 /// Stack frames kept per failed test; the rest are counted.
@@ -31,7 +32,6 @@ const FRAMEWORK_FRAMES: &[&str] = &[
 
 const NOISE_PREFIXES: &[&str] = &[
     "Scanning for projects",
-    "  from ",
     "skip non existing resourceDirectory",
     "Nothing to compile",
     "Recompiling the module",
@@ -41,7 +41,7 @@ const NOISE_PREFIXES: &[&str] = &[
     "Copying ",
     "Installing ",
     "Deleting ",
-    " T E S T S",
+    "T E S T S",
     "Running ",
     "Results:",
     "Finished at:",
@@ -58,17 +58,17 @@ const NOISE_PREFIXES: &[&str] = &[
 ];
 
 #[derive(Default)]
-pub(crate) struct Maven {
-    pub(crate) lines: Vec<String>,
-    pub(crate) build: Option<String>,
-    pub(crate) time: Option<String>,
+struct Maven {
+    lines: Vec<String>,
+    build: Option<String>,
+    time: Option<String>,
     /// run, failures, errors, skipped
-    pub(crate) tests: Option<[usize; 4]>,
-    pub(crate) downloads: usize,
-    pub(crate) modules: Vec<(String, String)>,
-    pub(crate) frames_cut: usize,
+    tests: Option<[usize; 4]>,
+    downloads: usize,
+    modules: Vec<(String, String)>,
+    frames_cut: bool,
     /// App log lines at INFO or below, banners and JVM notices printed by tests.
-    pub(crate) hidden_logs: usize,
+    hidden_logs: usize,
 }
 
 impl ParseHandler {
@@ -77,11 +77,8 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = strip_ansi_codes(&Self::read_input(file)?);
-        let cwd = std::env::current_dir()
-            .map(|d| format!("{}/", d.to_string_lossy()))
-            .unwrap_or_default();
-        let m = parse_maven(&input, &cwd);
-        if m.frames_cut > 0 || m.hidden_logs > 0 {
+        let m = parse_maven(&input, &crate::path_display::cwd_prefix());
+        if m.frames_cut || m.hidden_logs > 0 {
             crate::parse_out::mark_dropped();
         }
         let output = match ctx.format {
@@ -190,7 +187,7 @@ const JVM_NOTICES: &[&str] = &[
     "WARNING: All illegal access operations will be denied",
 ];
 
-fn is_jvm_notice(t: &str) -> bool {
+pub(crate) fn is_jvm_notice(t: &str) -> bool {
     JVM_NOTICES.iter().any(|p| t.starts_with(p)) || t.contains(" VM warning: ")
 }
 
@@ -217,24 +214,24 @@ fn reactor_row(body: &str) -> Option<(String, String)> {
         .then(|| (name.trim().to_string(), status.to_string()))
 }
 
-pub(crate) fn parse_maven(input: &str, cwd: &str) -> Maven {
+fn parse_maven(input: &str, cwd: &str) -> Maven {
     let mut m = Maven::default();
     let mut detailed: HashSet<String> = HashSet::new();
-    let mut compile_errors: HashSet<String> = HashSet::new();
-    let mut in_compile_errors = false;
-    let mut after_goal_failure = false;
+    // Maven prints compiler errors twice; the second copy is all `[ERROR]` lines.
+    let mut emitted: HashSet<String> = HashSet::new();
     let mut in_reactor = false;
     let mut in_tests = false;
     let mut stack: Option<(usize, usize)> = None; // (frames kept, frames cut)
 
-    for raw in input.lines() {
+    // The trailing empty line flushes a stack trace that ends the input.
+    for raw in input.lines().chain(std::iter::once("")) {
         // Progress bars redraw with `\r`; only the last redraw is real.
         let line = raw.rsplit('\r').next().unwrap_or(raw);
         let (level, body) = split_level(line.trim_end());
-        let short = if cwd.len() > 1 {
-            body.replace(cwd, "")
+        let short = if !cwd.is_empty() && body.contains(cwd) {
+            Cow::Owned(body.replace(cwd, ""))
         } else {
-            body.to_string()
+            Cow::Borrowed(body)
         };
 
         if let Some((kept, cut)) = stack.as_mut() {
@@ -256,7 +253,7 @@ pub(crate) fn parse_maven(input: &str, cwd: &str) -> Maven {
             }
             if *cut > 0 {
                 m.lines.push(format!("    (+{cut} frames)"));
-                m.frames_cut += *cut;
+                m.frames_cut = true;
             }
             stack = None;
         }
@@ -282,7 +279,7 @@ pub(crate) fn parse_maven(input: &str, cwd: &str) -> Maven {
             continue;
         }
         if let Some(counts) = test_counts(t) {
-            if !t.contains(" -- in ") && !t.contains("Time elapsed") {
+            if !t.contains("Time elapsed") {
                 let acc = m.tests.get_or_insert([0; 4]);
                 for (a, c) in acc.iter_mut().zip(counts) {
                     *a += c;
@@ -317,6 +314,7 @@ pub(crate) fn parse_maven(input: &str, cwd: &str) -> Maven {
         }
         if level == Level::Info
             && (t.starts_with("--")
+                || body.starts_with("  from ")
                 || t.starts_with("Building ")
                     && !t.starts_with("Building jar")
                     && !t.starts_with("Building war"))
@@ -327,13 +325,7 @@ pub(crate) fn parse_maven(input: &str, cwd: &str) -> Maven {
         if level == Level::Info && t.ends_with(']') && t.contains("  [") && !t.contains(": ") {
             continue;
         }
-        if NOISE_PREFIXES
-            .iter()
-            .any(|p| t.starts_with(p.trim_start()) || body.starts_with(p))
-        {
-            if t.starts_with("COMPILATION ERROR") {
-                in_compile_errors = true;
-            }
+        if NOISE_PREFIXES.iter().any(|p| t.starts_with(p)) {
             continue;
         }
         if level == Level::Info
@@ -342,7 +334,6 @@ pub(crate) fn parse_maven(input: &str, cwd: &str) -> Maven {
                 .next()
                 .is_some_and(|n| n.parse::<usize>().is_ok())
         {
-            in_compile_errors = false;
             continue;
         }
         if t.starts_with("Recompile with -Xlint") || t.contains(": Recompile with -Xlint") {
@@ -373,12 +364,11 @@ pub(crate) fn parse_maven(input: &str, cwd: &str) -> Maven {
             Some((p, rest)) if rest.starts_with(p) => rest,
             _ => text,
         };
-        let text = text.replace("org.apache.maven.plugins:", "");
-        if in_compile_errors {
-            compile_errors.insert(text.trim().to_string());
-        } else if text.contains("Compilation failure") {
-            after_goal_failure = true;
-        } else if after_goal_failure && compile_errors.contains(text.trim()) {
+        let text = match text.contains("org.apache.maven.plugins:") {
+            true => text.replace("org.apache.maven.plugins:", ""),
+            false => text.to_string(),
+        };
+        if !emitted.insert(text.trim().to_string()) && level == Level::Error {
             continue;
         }
         let tag = match level {
@@ -387,12 +377,6 @@ pub(crate) fn parse_maven(input: &str, cwd: &str) -> Maven {
             _ => "",
         };
         m.lines.push(format!("{tag}{text}"));
-    }
-    if let Some((_, cut)) = stack {
-        if cut > 0 {
-            m.lines.push(format!("    (+{cut} frames)"));
-            m.frames_cut += cut;
-        }
     }
     m
 }

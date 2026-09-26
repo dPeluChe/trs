@@ -41,11 +41,24 @@ fn the_report_is_looked_up_in_the_failed_tasks_project() {
     )
     .unwrap();
     assert_eq!(
-        report_message(root.path(), ":api:test", "TwoTest", "twice()").as_deref(),
+        report_message(
+            &mut Reports::new(),
+            root.path(),
+            ":api:test",
+            "TwoTest",
+            "twice()"
+        )
+        .as_deref(),
         Some("expected: <5> but was: <4>")
     );
     assert_eq!(
-        report_message(root.path(), ":web:test", "TwoTest", "twice()"),
+        report_message(
+            &mut Reports::new(),
+            root.path(),
+            ":web:test",
+            "TwoTest",
+            "twice()"
+        ),
         None
     );
 }
@@ -62,7 +75,13 @@ fn a_passing_test_in_the_report_adds_nothing() {
     )
     .unwrap();
     assert_eq!(
-        report_message(root.path(), ":test", "CartTest", "add()"),
+        report_message(
+            &mut Reports::new(),
+            root.path(),
+            ":test",
+            "CartTest",
+            "add()"
+        ),
         None
     );
 }
