@@ -6,7 +6,7 @@
 // `ssh `: 537 wraps in 30 days of real use saved 1.9%. The remote command is
 // opaque to trs, and wrapping holds a long session's output until it exits.
 const SKIP_PREFIXES: &[&str] = &[
-    "trs ", "cd ", "echo ", "cat ", "head ", "tail -f", "export ", "source ", ".", "set ",
+    "trs ", "cd ", "echo ", "cat ", "head ", "tail -f", "export ", "source ", ". ", "set ",
     "unset ", "alias ", "which ", "type ", "true", "false", "exit", "return", "ssh ",
 ];
 
@@ -119,6 +119,17 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         if trimmed.starts_with(skip) || trimmed == skip.trim() {
             return None;
         }
+    }
+
+    // A project-local program (`./deploy.sh`, `.git/hooks/x`) may be
+    // interactive; wrap it only when it is a tool trs parses (`./mvnw`,
+    // `./gradlew`, `.venv/bin/pytest`).
+    let program = trimmed.split_whitespace().next().unwrap_or("");
+    if program.starts_with('.')
+        && program.contains('/')
+        && !crate::command_registry::is_known_binary(program)
+    {
+        return None;
     }
 
     // `;` chains are independent commands — too unpredictable to rewrite.

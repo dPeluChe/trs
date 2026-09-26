@@ -21,6 +21,12 @@ pub(crate) fn first_ident(s: &str) -> Option<String> {
     }
 }
 
+/// Program name without its directory: `./gradlew` and `/usr/bin/mvn` route
+/// like `gradlew` and `mvn`.
+pub(crate) fn cmd_basename(cmd: &str) -> &str {
+    cmd.rsplit(['/', '\\']).next().unwrap_or(cmd)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

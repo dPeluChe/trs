@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.acme.shop.CartBTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-09-26T01:08:30.925Z" hostname="dev-machine" time="0.008">
+  <properties/>
+  <testcase name="rejectsNegative()" classname="com.acme.shop.CartBTest" time="0.001"/>
+  <testcase name="discount()" classname="com.acme.shop.CartBTest" time="0.005">
+    <failure message="org.opentest4j.AssertionFailedError: 10% off 1000 ==&gt; expected: &lt;905&gt; but was: &lt;900&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: 10% off 1000 ==&gt; expected: &lt;905&gt; but was: &lt;900&gt;
+	at app//org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at app//org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at app//org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+	at app//org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:150)
+	at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:563)
+	at app//com.acme.shop.CartBTest.discount(CartBTest.java:7)
+	at java.base@21.0.12.1/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base@21.0.12.1/java.util.ArrayList.forEach(ArrayList.java:1596)
+</failure>
+  </testcase>
+  <testcase name="addsItems()" classname="com.acme.shop.CartBTest" time="0.0"/>
+  <testcase name="emptyIsZero()" classname="com.acme.shop.CartBTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

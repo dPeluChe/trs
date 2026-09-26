@@ -1,0 +1,28 @@
+> Task :compileJava UP-TO-DATE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :compileTestJava
+> Task :processTestResources NO-SOURCE
+> Task :testClasses
+
+> Task :test FAILED
+
+CartBTest > discount() FAILED
+    org.opentest4j.AssertionFailedError at CartBTest.java:7
+
+CartDTest > emptyIsZero() FAILED
+    java.lang.IllegalArgumentException at CartDTest.java:6
+
+16 tests completed, 2 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///home/dev/shop/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 1s
+3 actionable tasks: 2 executed, 1 up-to-date

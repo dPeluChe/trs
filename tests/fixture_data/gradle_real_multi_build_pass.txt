@@ -1,0 +1,115 @@
+
+> Task :api:compileJava
+/home/dev/platform/api/src/main/java/com/acme/api/Use.java:2: warning: [deprecation] old() in Svc has been deprecated
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                     ^
+/home/dev/platform/api/src/main/java/com/acme/api/Use.java:2: warning: [removal] Integer(int) in Integer has been deprecated and marked for removal
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                              ^
+Note: /home/dev/platform/api/src/main/java/com/acme/api/Svc.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+2 warnings
+
+> Task :api:processResources NO-SOURCE
+> Task :api:classes
+> Task :api:jar
+> Task :api:assemble
+> Task :api:compileTestJava
+> Task :api:processTestResources NO-SOURCE
+> Task :api:testClasses
+> Task :api:test
+> Task :api:check
+> Task :api:build
+
+> Task :billing:compileJava
+/home/dev/platform/billing/src/main/java/com/acme/billing/Use.java:2: warning: [deprecation] old() in Svc has been deprecated
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                     ^
+/home/dev/platform/billing/src/main/java/com/acme/billing/Use.java:2: warning: [removal] Integer(int) in Integer has been deprecated and marked for removal
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                              ^
+Note: /home/dev/platform/billing/src/main/java/com/acme/billing/Svc.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+2 warnings
+
+> Task :billing:processResources NO-SOURCE
+> Task :billing:classes
+> Task :billing:jar
+> Task :billing:assemble
+> Task :billing:compileTestJava
+> Task :billing:processTestResources NO-SOURCE
+> Task :billing:testClasses
+> Task :billing:test
+> Task :billing:check
+> Task :billing:build
+
+> Task :core:compileJava
+/home/dev/platform/core/src/main/java/com/acme/core/Use.java:2: warning: [deprecation] old() in Svc has been deprecated
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                     ^
+/home/dev/platform/core/src/main/java/com/acme/core/Use.java:2: warning: [removal] Integer(int) in Integer has been deprecated and marked for removal
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                              ^
+Note: /home/dev/platform/core/src/main/java/com/acme/core/Svc.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+2 warnings
+
+> Task :core:processResources NO-SOURCE
+> Task :core:classes
+> Task :core:jar
+> Task :core:assemble
+> Task :core:compileTestJava
+> Task :core:processTestResources NO-SOURCE
+> Task :core:testClasses
+> Task :core:test
+> Task :core:check
+> Task :core:build
+
+> Task :web:compileJava
+/home/dev/platform/web/src/main/java/com/acme/web/Use.java:2: warning: [deprecation] old() in Svc has been deprecated
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                     ^
+/home/dev/platform/web/src/main/java/com/acme/web/Use.java:2: warning: [removal] Integer(int) in Integer has been deprecated and marked for removal
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                              ^
+Note: /home/dev/platform/web/src/main/java/com/acme/web/Svc.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+2 warnings
+
+> Task :web:processResources NO-SOURCE
+> Task :web:classes
+> Task :web:jar
+> Task :web:assemble
+> Task :web:compileTestJava
+> Task :web:processTestResources NO-SOURCE
+> Task :web:testClasses
+> Task :web:test
+> Task :web:check
+> Task :web:build
+
+> Task :worker:compileJava
+/home/dev/platform/worker/src/main/java/com/acme/worker/Use.java:2: warning: [deprecation] old() in Svc has been deprecated
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                     ^
+/home/dev/platform/worker/src/main/java/com/acme/worker/Use.java:2: warning: [removal] Integer(int) in Integer has been deprecated and marked for removal
+public class Use { public int go() { return new Svc().old() + new Integer(3); } }
+                                                              ^
+Note: /home/dev/platform/worker/src/main/java/com/acme/worker/Svc.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+2 warnings
+
+> Task :worker:processResources NO-SOURCE
+> Task :worker:classes
+> Task :worker:jar
+> Task :worker:assemble
+> Task :worker:compileTestJava
+> Task :worker:processTestResources NO-SOURCE
+> Task :worker:testClasses
+> Task :worker:test
+> Task :worker:check
+> Task :worker:build
+
+[Incubating] Problems report is available at: file:///home/dev/platform/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 2s
+20 actionable tasks: 20 executed

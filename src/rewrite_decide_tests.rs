@@ -455,3 +455,24 @@ fn verbatim_gate_does_not_swallow_compressible_commands() {
         );
     }
 }
+
+#[test]
+fn local_programs_are_wrapped_only_when_trs_parses_them() {
+    assert_eq!(
+        maybe_rewrite("./mvnw clean test"),
+        Some("trs ./mvnw clean test".into())
+    );
+    assert_eq!(
+        maybe_rewrite("./gradlew build"),
+        Some("trs ./gradlew build".into())
+    );
+    assert_eq!(maybe_rewrite("./mvnw"), Some("trs ./mvnw".into()));
+    assert_eq!(maybe_rewrite("./mvnwx test"), None);
+    assert_eq!(maybe_rewrite("./deploy.sh"), None);
+    assert_eq!(maybe_rewrite(". ./env.sh"), None);
+    assert_eq!(maybe_rewrite(".git/hooks/pre-commit"), None);
+    assert_eq!(
+        maybe_rewrite(".venv/bin/pytest -q"),
+        Some("trs .venv/bin/pytest -q".into())
+    );
+}

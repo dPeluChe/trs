@@ -35,6 +35,25 @@ pub(crate) fn tilde(s: &str) -> String {
     }
 }
 
+/// The working directory plus a trailing separator, in the native form a
+/// tool prints it, for cutting absolute paths down to project-relative ones.
+/// Empty when the cwd is unknown.
+pub(crate) fn cwd_prefix() -> String {
+    std::env::current_dir()
+        .map(|d| dir_prefix(&d))
+        .unwrap_or_default()
+}
+
+/// `dir` plus a trailing separator; empty for an empty path, so a replace
+/// with it never strips every `/`.
+pub(crate) fn dir_prefix(dir: &Path) -> String {
+    let s = dir.to_string_lossy();
+    if s.is_empty() {
+        return String::new();
+    }
+    format!("{s}{}", std::path::MAIN_SEPARATOR)
+}
+
 /// Normalize an already-stringified path's separators to `/`.
 pub(crate) fn normalize(s: &str) -> String {
     #[cfg(windows)]

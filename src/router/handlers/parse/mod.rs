@@ -28,6 +28,7 @@ pub(crate) mod git_pull;
 pub(crate) mod git_status;
 pub(crate) mod git_status_format;
 pub(crate) mod go_test;
+pub(crate) mod gradle;
 pub(crate) mod grep;
 pub(crate) mod grep_format;
 pub(crate) mod jest_format;
@@ -39,6 +40,7 @@ pub(crate) mod logs_helpers;
 pub(crate) mod logs_json;
 pub(crate) mod ls;
 pub(crate) mod ls_format;
+pub(crate) mod maven;
 pub(crate) mod npm_format;
 pub(crate) mod npm_parse;
 pub(crate) mod ollama;
@@ -220,6 +222,8 @@ impl CommandHandler for ParseHandler {
             ParseCommands::GhPrView { file } => Self::handle_gh_pr_view(file, ctx),
             ParseCommands::CargoTest { file } => Self::handle_cargo_test(file, ctx),
             ParseCommands::GoTest { file } => Self::handle_go_test(file, ctx),
+            ParseCommands::Maven { file } => Self::handle_maven(file, ctx),
+            ParseCommands::Gradle { file } => Self::handle_gradle(file, ctx),
             ParseCommands::Lint { file } => Self::handle_lint(file, ctx),
             ParseCommands::Db { file } => Self::handle_db(file, ctx),
             ParseCommands::GitPull { file } => Self::handle_git_pull(file, ctx),
