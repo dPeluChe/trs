@@ -159,6 +159,17 @@ pub(crate) fn has_structured_output_flag(args: &[String]) -> bool {
     })
 }
 
+/// The command's subcommand: the first argument, except for git, whose global
+/// options (`-C dir`, `-c k=v`, `--no-pager`) come before it.
+pub(crate) fn subcommand(cmd: &str, args: &[String]) -> String {
+    let first = if cmd == "git" {
+        strip_git_global_opts(args).into_iter().next()
+    } else {
+        args.first().cloned()
+    };
+    first.unwrap_or_default()
+}
+
 /// What one of trs's own flags asks for.
 #[derive(Clone, Copy)]
 enum Flag {
