@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.6] - 2026-10-07
+
+### Bug Fixes
+
+- **test:** Keep test runs out of the developer's ~/.trs (#180)
+- **exec:** Pass the command's own --json/--raw/--stats through, and never cut JSON (#181)
+
 ## [0.8.5] - 2026-09-26
 
 ### Features
