@@ -158,3 +158,93 @@ pub(crate) fn has_structured_output_flag(args: &[String]) -> bool {
             || s.starts_with("--output=json")
     })
 }
+
+/// trs's own output flags, accepted after an external command
+/// (`trs git status --json`).
+pub(crate) const TRS_FORMAT_FLAGS: &[&str] = &[
+    "--json",
+    "--csv",
+    "--tsv",
+    "--agent",
+    "--compact",
+    "--raw",
+    "--stats",
+];
+
+/// Whether the program itself defines `flag`, so trs must hand it over
+/// instead of reading it as its own (`gh run list --json id`, `git log --raw`).
+/// `args` are the command's arguments without trs's flags.
+pub(crate) fn child_owns_format_flag(cmd: &str, args: &[String], flag: &str) -> bool {
+    let cmd = crate::text_util::cmd_basename(cmd);
+    let git_args;
+    let args = if cmd == "git" {
+        git_args = strip_git_global_opts(args);
+        &git_args
+    } else {
+        args
+    };
+    let sub = args.first().map(String::as_str).unwrap_or("");
+    match (cmd, flag) {
+        (
+            "gh" | "glab" | "npm" | "pnpm" | "yarn" | "bun" | "brew" | "cargo" | "rg" | "jest"
+            | "vitest" | "webpack",
+            "--json",
+        ) => true,
+        ("git", "--raw") => matches!(
+            sub,
+            "diff" | "log" | "show" | "diff-tree" | "diff-index" | "diff-files" | "whatchanged"
+        ),
+        ("kubectl" | "oc" | "curl" | "mysql" | "mariadb", "--raw") => true,
+        ("rg" | "rsync" | "eslint" | "webpack", "--stats") => true,
+        ("psql", "--csv") => true,
+        _ => false,
+    }
+}
+
+/// Splits `trs <cmd> ...` (argv without the program name) into the arguments
+/// for the command and trs's own output flags.
+///
+/// A flag after the command is trs's only when trs has a formatter for that
+/// command and the command does not take the flag itself. Everything else is
+/// the command's: dropping it changes what the agent asked for (`gh run list
+/// --json id` lost its `--json`, `git log --raw` its raw format). Before the
+/// command (`trs --json git status`) a flag is always trs's; that path does
+/// not come through here. After a bare `--` nothing is trs's.
+pub(crate) fn split_format_flags(
+    args: &[String],
+) -> (Vec<String>, Option<crate::OutputFormat>, bool) {
+    use crate::OutputFormat as F;
+    let is_ours = |a: &String| TRS_FORMAT_FLAGS.contains(&a.as_str());
+    if !args.iter().any(is_ours) {
+        return (args.to_vec(), None, false);
+    }
+    let cmd = args.first().map(String::as_str).unwrap_or("");
+    let before_dashes = args.iter().position(|a| a == "--").unwrap_or(args.len());
+    let plain: Vec<String> = args[1..].iter().filter(|a| !is_ours(a)).cloned().collect();
+    let has_formatter = crate::classifier::classify_command(cmd, &plain).is_some();
+
+    let mut kept = Vec::with_capacity(args.len());
+    let (mut format, mut stats) = (None, false);
+    for (i, arg) in args.iter().enumerate() {
+        let ours = i > 0
+            && i < before_dashes
+            && is_ours(arg)
+            && has_formatter
+            && !child_owns_format_flag(cmd, &plain, arg);
+        match (ours, arg.as_str()) {
+            (true, "--json") => format = Some(F::Json),
+            (true, "--csv") => format = Some(F::Csv),
+            (true, "--tsv") => format = Some(F::Tsv),
+            (true, "--agent") => format = Some(F::Agent),
+            (true, "--compact") => format = Some(F::Compact),
+            (true, "--raw") => format = Some(F::Raw),
+            (true, "--stats") => stats = true,
+            _ => kept.push(arg.clone()),
+        }
+    }
+    (kept, format, stats)
+}
+
+#[cfg(test)]
+#[path = "classifier_args_tests.rs"]
+mod tests;

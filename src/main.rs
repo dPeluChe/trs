@@ -118,19 +118,11 @@ fn run() {
     // Fast path: bypass clap for external commands (saves ~2-4ms)
     if args.len() >= 2 && is_external_fast_path(&args) {
         let mut ctx = CommandContext::default_compact();
-        let mut cmd_args: Vec<String> = Vec::new();
-        for arg in &args[1..] {
-            match arg.as_str() {
-                "--json" => ctx.format = OutputFormat::Json,
-                "--csv" => ctx.format = OutputFormat::Csv,
-                "--tsv" => ctx.format = OutputFormat::Tsv,
-                "--agent" => ctx.format = OutputFormat::Agent,
-                "--compact" => ctx.format = OutputFormat::Compact,
-                "--raw" => ctx.format = OutputFormat::Raw,
-                "--stats" => ctx.stats = true,
-                _ => cmd_args.push(arg.clone()),
-            }
+        let (cmd_args, format, stats) = classifier_args::split_format_flags(&args[1..]);
+        if let Some(format) = format {
+            ctx.format = format;
         }
+        ctx.stats = stats;
         if let Some((cmd, rest)) = cmd_args.split_first() {
             // Fast find: trs find --gitignore . -name "*.rs"
             // Uses internal walker (respects .gitignore) instead of spawning find

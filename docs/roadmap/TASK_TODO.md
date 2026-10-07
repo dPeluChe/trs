@@ -32,6 +32,9 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ### Improvements to existing parsers
 
+- [ ] `trs git status --json` (and `--csv`, `--tsv`, `--agent`) after an external command prints the compact text, not the format the README and `formats.md` promise: the flag is read but `execute_and_parse` does not use it. It works through `trs parse git-status --json`. Either wire the format into the router path or stop documenting it (found while fixing how format flags are read after a command)
+- [ ] Add a flag-ownership entry in `child_owns_format_flag` (classifier_args.rs) whenever a parser-backed tool turns out to define `--json`/`--raw`/`--stats`/`--csv` itself
+
 - [ ] Normalize the command to its basename once in `execute_and_parse` (classifier_exec.rs) and pass it to every registry/verbatim check: `/usr/bin/git push` still misses the transfer compactor and `/bin/sh -c` misses `is_verbatim_invocation`, because those compare the raw path (found in the #178 review)
 - [ ] `trs <cmd> | head` panics with "failed printing to stdout: Broken pipe" instead of exiting quietly (agents' pipes are not rewritten, so it only shows up when a person pipes trs by hand)
 
