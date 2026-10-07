@@ -169,8 +169,12 @@ pub(crate) fn fold_timestamped(text: &str) -> (String, bool) {
 /// A complete JSON document. Compact JSON has almost no spaces, so it looks
 /// dense, but it is data an agent parses: cutting or re-spacing it breaks it.
 pub(crate) fn is_json(text: &str) -> bool {
-    let t = text.trim();
-    t.starts_with(['{', '[']) && serde_json::from_str::<serde::de::IgnoredAny>(t).is_ok()
+    let t = text.trim().as_bytes();
+    // First and last byte rule out truncated output and most code before parsing.
+    matches!(
+        (t.first(), t.last()),
+        (Some(b'{'), Some(b'}')) | (Some(b'['), Some(b']'))
+    ) && serde_json::from_slice::<serde::de::IgnoredAny>(t).is_ok()
 }
 
 const DENSE_MIN: usize = 300;

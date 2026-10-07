@@ -1,3 +1,4 @@
+#![cfg(unix)]
 //! Flags the program defines must reach it, and structured output must come
 //! back byte for byte. A fake program stands in for gh/git so the test needs
 //! no network and no account.
@@ -8,11 +9,8 @@ use std::path::Path;
 fn fake(dir: &Path, name: &str, script: &str) {
     let path = dir.join(name);
     std::fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
 }
 
 fn trs(dir: &Path, args: &[&str]) -> String {
@@ -26,7 +24,6 @@ fn trs(dir: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
-#[cfg(unix)]
 #[test]
 fn gh_gets_its_json_flag_and_its_json_back_whole() {
     let dir = tempfile::tempdir().unwrap();
@@ -57,7 +54,6 @@ printf ']\n'"#,
     );
 }
 
-#[cfg(unix)]
 #[test]
 fn git_log_raw_keeps_its_raw_format() {
     let dir = tempfile::tempdir().unwrap();
@@ -70,7 +66,6 @@ fn git_log_raw_keeps_its_raw_format() {
     assert!(out.contains(":100644 100644 aaaaaaa bbbbbbb M"), "{out}");
 }
 
-#[cfg(unix)]
 #[test]
 fn json_from_a_program_trs_does_not_know_is_not_cut() {
     let dir = tempfile::tempdir().unwrap();
@@ -84,4 +79,21 @@ printf ']}\n'"#,
     let out = trs(dir.path(), &["emitjson", "--json"]);
     let v: serde_json::Value = serde_json::from_str(&out).expect("not valid JSON");
     assert_eq!(v["items"].as_array().unwrap().len(), 80);
+}
+
+/// `trs --compact gh ...` takes the clap path, which had its own copy of the
+/// flag stripping.
+#[test]
+fn the_clap_path_hands_the_flag_over_too() {
+    let dir = tempfile::tempdir().unwrap();
+    fake(
+        dir.path(),
+        "gh",
+        r#"case " $* " in *" --json "*) echo '[{"id":1}]';; *) echo "missing --json" >&2; exit 1;; esac"#,
+    );
+    let out = trs(
+        dir.path(),
+        &["--compact", "gh", "run", "list", "--json", "id"],
+    );
+    assert!(out.contains(r#"[{"id":1}]"#), "{out}");
 }

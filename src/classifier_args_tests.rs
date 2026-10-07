@@ -1,9 +1,12 @@
 use super::*;
 use crate::OutputFormat;
 
+fn argv(args: &[&str]) -> Vec<String> {
+    args.iter().map(|s| s.to_string()).collect()
+}
+
 fn split(args: &[&str]) -> (Vec<String>, Option<OutputFormat>, bool) {
-    let args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
-    split_format_flags(&args)
+    split_format_flags(&argv(args))
 }
 
 fn kept(args: &[&str]) -> Vec<String> {
@@ -98,10 +101,12 @@ fn args_without_our_flags_are_untouched() {
 
 #[test]
 fn structured_output_requests_are_recognized() {
-    let a = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-    assert!(has_structured_output_flag(&a(&[
+    assert!(has_structured_output_flag(&argv(&[
         "run", "list", "--json", "id"
     ])));
-    assert!(has_structured_output_flag(&a(&["status", "--porcelain"])));
-    assert!(!has_structured_output_flag(&a(&["status", "-sb"])));
+    assert!(has_structured_output_flag(&argv(&[
+        "status",
+        "--porcelain"
+    ])));
+    assert!(!has_structured_output_flag(&argv(&["status", "-sb"])));
 }

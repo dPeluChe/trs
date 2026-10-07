@@ -122,7 +122,7 @@ fn run() {
         if let Some(format) = format {
             ctx.format = format;
         }
-        ctx.stats = stats;
+        ctx.stats |= stats;
         if let Some((cmd, rest)) = cmd_args.split_first() {
             // Fast find: trs find --gitignore . -name "*.rs"
             // Uses internal walker (respects .gitignore) instead of spawning find
@@ -391,36 +391,14 @@ fn run() {
             router.execute_and_print(cli.command.as_ref().unwrap(), &ctx);
         }
         Some(Commands::External(ext_args)) => {
-            // External command: classify, execute, and parse
-            // Extract trs flags (--json, --csv, etc.) from the external args
-            // so users can write: trs git status --json
-            let trs_flags = [
-                "--json",
-                "--csv",
-                "--tsv",
-                "--agent",
-                "--compact",
-                "--raw",
-                "--stats",
-            ];
-            let mut cmd_args: Vec<String> = Vec::new();
+            // External command: classify, execute, and parse. Flags after the
+            // command are trs's or the command's, same rule as the fast path.
+            let (cmd_args, format, stats) = classifier_args::split_format_flags(ext_args);
             let mut ctx = ctx;
-            for arg in ext_args {
-                if trs_flags.contains(&arg.as_str()) {
-                    match arg.as_str() {
-                        "--json" => ctx.format = OutputFormat::Json,
-                        "--csv" => ctx.format = OutputFormat::Csv,
-                        "--tsv" => ctx.format = OutputFormat::Tsv,
-                        "--agent" => ctx.format = OutputFormat::Agent,
-                        "--compact" => ctx.format = OutputFormat::Compact,
-                        "--raw" => ctx.format = OutputFormat::Raw,
-                        "--stats" => ctx.stats = true,
-                        _ => {}
-                    }
-                } else {
-                    cmd_args.push(arg.clone());
-                }
+            if let Some(format) = format {
+                ctx.format = format;
             }
+            ctx.stats |= stats;
             if let Some((cmd, args)) = cmd_args.split_first() {
                 execute_and_parse(cmd, args, &ctx);
             }
