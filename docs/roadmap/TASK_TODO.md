@@ -36,7 +36,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] Add a flag-ownership entry in `child_owns_format_flag` (classifier_args.rs) whenever a parser-backed tool turns out to define `--json`/`--raw`/`--stats`/`--csv` itself
 
 - [ ] Normalize the command to its basename once in `execute_and_parse` (classifier_exec.rs) and pass it to every registry/verbatim check: `/usr/bin/git push` still misses the transfer compactor and `/bin/sh -c` misses `is_verbatim_invocation`, because those compare the raw path (found in the #178 review)
-- [ ] `trs <cmd> | head` panics with "failed printing to stdout: Broken pipe" instead of exiting quietly (agents' pipes are not rewritten, so it only shows up when a person pipes trs by hand)
+- [x] `trs <cmd> | head` panicked with "Broken pipe" and exited 101; it now exits 141 silently like any tool whose reader left
 
 - [ ] Log timestamp normalization (first = t0, rest = relative delta)
 - [ ] `git diff` full (not just --stat), reformat unified diff headers

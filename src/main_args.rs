@@ -58,6 +58,18 @@ pub(crate) fn is_external_fast_path(args: &[String]) -> bool {
     )
 }
 
+/// Exit status of a tool whose reader went away (128 + SIGPIPE), the same a
+/// shell reports for `git log | head`.
+pub(crate) const CLOSED_PIPE_EXIT: i32 = 141;
+
+/// Whether a panic message is `print!` failing because the other end of the
+/// pipe closed: `trs git log | head` must end quietly, not with a backtrace
+/// hint and status 101.
+pub(crate) fn is_closed_pipe_panic(msg: &str) -> bool {
+    msg.starts_with("failed printing to std")
+        && (msg.contains("Broken pipe") || msg.contains("pipe is being closed"))
+}
+
 /// Parse token budget string: "128k" -> 128000, "64000" -> 64000
 pub(crate) fn parse_token_budget(s: &str) -> usize {
     let s = s.trim().to_lowercase();
@@ -67,5 +79,30 @@ pub(crate) fn parse_token_budget(s: &str) -> usize {
         num.parse::<f64>().unwrap_or(0.0) as usize * 1_000_000
     } else {
         s.parse::<usize>().unwrap_or(128_000)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_closed_output_pipe_is_quiet() {
+        assert!(is_closed_pipe_panic(
+            "failed printing to stdout: Broken pipe (os error 32)"
+        ));
+        assert!(is_closed_pipe_panic(
+            "failed printing to stderr: Broken pipe (os error 32)"
+        ));
+        assert!(is_closed_pipe_panic(
+            "failed printing to stdout: The pipe is being closed. (os error 232)"
+        ));
+        assert!(!is_closed_pipe_panic(
+            "failed printing to stdout: No space left on device"
+        ));
+        assert!(!is_closed_pipe_panic("index out of bounds: the len is 3"));
+        assert!(!is_closed_pipe_panic(
+            "called `Result::unwrap()` on an `Err` value: Broken pipe"
+        ));
     }
 }

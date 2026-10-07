@@ -49,7 +49,7 @@ mod help_text;
 mod help_text_more;
 mod ingest;
 mod main_args;
-use main_args::is_external_fast_path;
+use main_args::{is_closed_pipe_panic, is_external_fast_path, CLOSED_PIPE_EXIT};
 mod init;
 mod init_collision;
 mod init_install;
@@ -94,6 +94,21 @@ mod read_intercept;
 use router::{CommandContext, Router};
 
 fn main() {
+    // Rust ignores SIGPIPE, so a closed reader turns `print!` into a panic.
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let payload = info.payload();
+        let msg = payload
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| payload.downcast_ref::<&str>().copied())
+            .unwrap_or("");
+        if is_closed_pipe_panic(msg) {
+            std::process::exit(CLOSED_PIPE_EXIT);
+        }
+        default_hook(info);
+    }));
+
     // Run the real work on a worker thread with a generous stack. The binary's
     // default main-thread stack on Windows is ~1 MB (MSVC linker default); the
     // test-output parser can use 1-2 MB on some inputs, overflowing it there
