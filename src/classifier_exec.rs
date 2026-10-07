@@ -83,9 +83,11 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     // Min input guard: skip parsing entirely for tiny outputs. Verbatim
     // commands take the same exit at every size: their spacing is the data.
+    // So does a requested machine format (`--json`, `--porcelain`).
     let min_input = crate::config::config().limits.min_input_chars;
     if stdout_ref.len() < min_input
         || crate::command_registry::is_verbatim_invocation(cmd, &args.join(" "))
+        || crate::classifier_args::has_structured_output_flag(args)
     {
         print!("{}", stdout_ref);
         out_bytes = stdout_ref.len();
@@ -382,6 +384,11 @@ fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()
 /// removes carriage returns (progress bars), and collapses blank lines.
 fn generic_compress(input: &str) -> String {
     use crate::router::handlers::common::strip_ansi_codes;
+
+    // Whitespace collapsing and folds would change the text inside the values.
+    if crate::safe_folds::is_json(input) {
+        return input.to_string();
+    }
 
     let cleaned = strip_ansi_codes(input);
     let mut result = String::with_capacity(cleaned.len());

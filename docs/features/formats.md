@@ -13,8 +13,22 @@ json/csv/tsv, pipelines sometimes want raw passthrough.
 | `--agent` | agent-optimized markdown | LLMs specifically, same compact form with marker syntax for section parsing |
 | `--raw` | raw passthrough | unchanged, no compression, still tracked in stats |
 
-Flags work anywhere in the invocation: `trs --json git status` and
-`trs git status --json` are equivalent.
+Before the command a flag is always trs's: `trs --json git status`.
+After the command it is trs's only when trs has a formatter for that
+command and the command does not take the flag itself, so
+`trs git status --json` and `trs --json git status` are equivalent.
+Otherwise the flag belongs to the command and is passed on untouched:
+`gh run list --json id,url`, `git log --raw`, `npm ls --json`,
+`rg --stats`. After a bare `--` nothing is trs's. When in doubt, put the
+flag before the command.
+
+## Structured output is never rewritten
+
+A command that was asked for a machine format (`--json`, `--porcelain`,
+`--format json`, `-o=json`) is printed byte for byte, and so is any output
+that is one JSON document, whatever command produced it (`curl`, `gh api`,
+`kubectl -o json`). trs does not collapse spaces, fold repeats or cut long
+lines in it.
 
 ## Examples
 

@@ -151,3 +151,31 @@ fn identical_timestamped_lines_are_left_to_the_lossless_fold() {
     assert_eq!(fold_timestamped(text), (text.to_string(), false));
     assert_eq!(fold_repeats(text), "10:00:01 same (x2)");
 }
+
+#[test]
+fn json_is_data_not_a_dense_line() {
+    // Compact JSON has almost no spaces; cutting it breaks every consumer.
+    let json = format!(
+        "[{}]",
+        (0..40)
+            .map(|i| format!(r#"{{"id":{i},"name":"item-{i}","state":"open"}}"#))
+            .collect::<Vec<_>>()
+            .join(",")
+    );
+    assert!(json.len() > 300);
+    assert_eq!(elide_dense(&json), (json.clone(), false));
+    let ndjson = format!("{json}\n{json}");
+    assert_eq!(elide_dense(&ndjson), (ndjson.clone(), false));
+    // The same bytes that are not JSON are still minified code.
+    assert!(elide_dense(&json.replace("[{", "var a=[{")).1);
+}
+
+#[test]
+fn is_json_wants_one_complete_document() {
+    assert!(is_json(r#" {"a":[1,2,{"b":null}]} "#));
+    assert!(is_json("[]"));
+    assert!(!is_json("var x = {};"));
+    assert!(!is_json(r#"{"a":1}{"a":2}"#));
+    assert!(!is_json(r#"{"a":"#));
+    assert!(!is_json("42"));
+}
