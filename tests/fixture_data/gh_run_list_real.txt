@@ -1,0 +1,10 @@
+in_progress		fix(main): exit quietly when the reader of the output closes the pipe	CI	fix/closed-pipe-exits-quietly	pull_request	37702445661	52s	2026-10-07T23:28:13Z
+completed	failure	fix(exec): honor an explicit format on short output, and route by the real command	CI	fix/exec-explicit-format-and-path-invocation	pull_request	37702018784	5m1s	2026-10-07T23:23:43Z
+completed	success	chore(deps): bump rustls from 0.23.40 to 0.23.45	CI	dependabot/cargo/rustls-0.23.45	pull_request	37684851221	6m29s	2026-10-07T20:48:41Z
+completed	success	chore(release): v0.8.6 (#182)	Release	v0.8.6	push	37684768104	5m18s	2026-10-07T20:48:00Z
+completed	success	cargo in /. for rustls - Update #1615966179	Dependabot Updates	main	dynamic	37684746993	48s	2026-10-07T20:47:50Z
+completed	success	chore(release): v0.8.6 (#182)	CI	main	push	37684730189	6m41s	2026-10-07T20:47:42Z
+completed	success	pages build and deployment	pages-build-deployment	main	dynamic	37684728712	43s	2026-10-07T20:47:41Z
+completed	success	chore(release): v0.8.6	CI	release/v0.8.6	pull_request	37683864259	6m34s	2026-10-07T20:40:53Z
+completed	success	fix(exec): pass the command's own --json/--raw/--stats through, and n…	CI	main	push	37683735435	6m27s	2026-10-07T20:39:55Z
+completed	success	pages build and deployment	pages-build-deployment	main	dynamic	37683734469	41s	2026-10-07T20:39:55Z

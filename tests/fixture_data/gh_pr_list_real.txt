@@ -1,0 +1,8 @@
+185	fix(main): exit quietly when the reader of the output closes the pipe	fix/closed-pipe-exits-quietly	OPEN	2026-10-07T23:28:10Z
+184	fix(exec): honor an explicit format on short output, and route by the real command	fix/exec-explicit-format-and-path-invocation	OPEN	2026-10-07T23:23:40Z
+183	chore(deps): bump rustls from 0.23.40 to 0.23.45	dependabot/cargo/rustls-0.23.45	OPEN	2026-10-07T20:48:35Z
+182	chore(release): v0.8.6	release/v0.8.6	MERGED	2026-10-07T20:40:50Z
+181	fix(exec): pass the command's own --json/--raw/--stats through, and never cut JSON	fix/format-flags-and-json	MERGED	2026-10-07T19:35:20Z
+180	fix(test): keep test runs out of the developer's ~/.trs	fix/test-trs-home	MERGED	2026-09-26T04:42:36Z
+179	chore(release): v0.8.5	release/v0.8.5	MERGED	2026-09-26T01:42:42Z
+178	feat(parse): Maven and Gradle parsers	feat/maven-parser	MERGED	2026-09-26T01:00:42Z
