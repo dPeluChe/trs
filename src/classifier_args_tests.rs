@@ -110,3 +110,11 @@ fn structured_output_requests_are_recognized() {
     ])));
     assert!(!has_structured_output_flag(&argv(&["status", "-sb"])));
 }
+
+#[test]
+fn the_subcommand_skips_git_global_options() {
+    let a = argv(&["-C", "repo", "-c", "k=v", "--no-pager", "push", "origin"]);
+    assert_eq!(subcommand("git", &a), "push");
+    assert_eq!(subcommand("npm", &argv(&["run", "build"])), "run");
+    assert_eq!(subcommand("git", &[]), "");
+}

@@ -1,0 +1,8 @@
+14621	OPEN	`gh` skill description does not tell agents when to use it, so it is skipped for tasks it covers	needs-triage	2026-10-07T18:52:44Z
+14618	OPEN	Add `gh pr share` command	enhancement, gh-pr	2026-10-07T18:50:25Z
+14615	OPEN	Package the official `gh` skill as a Claude Code plugin and emit install hints	enhancement, core	2026-10-07T11:11:07Z
+14614	CLOSED	gh skill: document that issue view --comments and --json are mutually exclusive	bug, priority-3, core	2026-10-07T10:13:19Z
+14613	CLOSED	همه ارزهای دیجیتال ایرانی و خارجی وسودهای محقق شده به شماره شبای اینجانب مسعود خاطری به به شماره شبای ایرانی خودم واریز بشه لطفا. IR 790150000000240300963906	suspected-spam	2026-10-07T01:54:25Z
+14612	CLOSED	Ramooda	suspected-spam	2026-10-06T17:52:34Z
+14610	CLOSED	[aw] Issue Triage (skills-driven) timed out	agentic-workflows	2026-10-06T09:49:31Z
+14609	OPEN	gh release list -R https://github.com/cli/cli/ -> error	more-info-needed, needs-triage	2026-10-06T09:54:10Z

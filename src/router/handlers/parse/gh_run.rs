@@ -25,13 +25,13 @@ impl ParseHandler {
             let raw_line = raw_lines.get(i).unwrap_or(&"");
 
             if trimmed.contains('\t') {
-                // TSV: status\tconclusion\tname\tdisplay_title\tbranch\tevent\tid\telapsed\tdate
+                // TSV: status\tconclusion\ttitle\tworkflow\tbranch\tevent\tid\telapsed\tdate
                 let fields: Vec<&str> = trimmed.split('\t').collect();
                 if fields.len() >= 3 {
-                    let status_text = fields[0].trim().to_lowercase();
-                    let conclusion = fields[1].trim().to_lowercase();
-                    let name = fields[2].trim();
-                    let event = fields.get(5).map(|s| s.trim()).unwrap_or("");
+                    let col = |i: usize| fields.get(i).map_or("", |s| s.trim());
+                    let status_text = col(0).to_lowercase();
+                    let conclusion = col(1).to_lowercase();
+                    let name = col(2);
                     let status = if conclusion == "success" {
                         "success"
                     } else if conclusion == "failure" {
@@ -43,7 +43,10 @@ impl ParseHandler {
                     } else {
                         &status_text
                     };
-                    runs.push(serde_json::json!({"name": name, "event": event, "status": status}));
+                    runs.push(serde_json::json!({
+                        "name": name, "workflow": col(3), "branch": col(4), "event": col(5),
+                        "id": col(6), "elapsed": col(7), "status": status
+                    }));
                 }
             } else {
                 if trimmed.starts_with("Workflow") || trimmed.starts_with("Showing") {
@@ -98,13 +101,26 @@ impl ParseHandler {
                             "in_progress" => "~",
                             _ => "?",
                         };
-                        let name = Self::truncate_str(run["name"].as_str().unwrap_or(""), 50);
-                        let event = run["event"].as_str().unwrap_or("");
-                        if !event.is_empty() {
-                            out.push_str(&format!("  {} {} ({})\n", marker, name, event));
+                        let text = |key: &str| run[key].as_str().unwrap_or("");
+                        let name = Self::truncate_str(text("name"), 100);
+                        // The id is what `gh run view` and `gh run rerun` take.
+                        let id = text("id");
+                        let id = if id.is_empty() {
+                            String::new()
                         } else {
-                            out.push_str(&format!("  {} {}\n", marker, name));
-                        }
+                            format!(" {id}")
+                        };
+                        let details: Vec<&str> = ["workflow", "branch", "elapsed"]
+                            .iter()
+                            .map(|k| text(k))
+                            .filter(|v| !v.is_empty())
+                            .collect();
+                        let details = if details.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" ({})", details.join(", "))
+                        };
+                        out.push_str(&format!("  {marker}{id} {name}{details}\n"));
                     }
                     out
                 }

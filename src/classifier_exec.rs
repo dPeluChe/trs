@@ -43,9 +43,24 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     // verdict as fact instead of inferring it from text.
     crate::router::handlers::common::set_child_exit(output.status.code().unwrap_or(1));
 
+    // Everything below routes by the program's name (`/usr/bin/git`, `./mvnw`)
+    // and its real subcommand (`git -C dir push`); only the spawn needs `cmd`.
+    let name = crate::text_util::cmd_basename(cmd);
+    let sub = crate::classifier_args::subcommand(name, args);
+    let subcmd = sub.as_str();
+
+    // An explicit machine format (`--json`, `--csv`, ...) is an answer the
+    // caller asked for, however short the output or the parser's result is.
+    let wants_format = matches!(
+        ctx.format,
+        crate::OutputFormat::Json
+            | crate::OutputFormat::Csv
+            | crate::OutputFormat::Tsv
+            | crate::OutputFormat::Agent
+    );
+
     // Git push/pull/fetch: output goes to stderr, compact it inline
-    let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
-    if cmd == "git" && matches!(subcmd, "push" | "pull" | "fetch") {
+    if name == "git" && matches!(subcmd, "push" | "pull" | "fetch") {
         let combined = format!("{}{}", stdout, stderr);
         let compact = crate::classifier_transfer::compact_git_transfer(&combined, subcmd);
         print!("{}", compact);
@@ -64,7 +79,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     // Notably excluded: cargo test — test results go to stdout and mixing in
     // cargo's stderr progress would confuse the test parser. The per-command
     // stderr policy lives in the unified command registry.
-    let combine_stderr = crate::command_registry::combine_stderr(cmd, subcmd);
+    let combine_stderr = crate::command_registry::combine_stderr(name, subcmd);
     let effective_stdout;
     let stdout_ref = if combine_stderr && !stderr.is_empty() {
         effective_stdout = format!("{}{}", stdout, stderr);
@@ -85,8 +100,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     // commands take the same exit at every size: their spacing is the data.
     // So does a requested machine format (`--json`, `--porcelain`).
     let min_input = crate::config::config().limits.min_input_chars;
-    if stdout_ref.len() < min_input
-        || crate::command_registry::is_verbatim_invocation(cmd, &args.join(" "))
+    if (stdout_ref.len() < min_input && !wants_format)
+        || crate::command_registry::is_verbatim_invocation(name, &args.join(" "))
         || crate::classifier_args::has_structured_output_flag(args)
     {
         print!("{}", stdout_ref);
@@ -102,12 +117,11 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     if let Some(parser) = classify_command(cmd, args) {
         // Estimate output size based on benchmarked reduction ratios per command
-        let subcmd = args.first().map(|s| s.as_str()).unwrap_or("");
-        let ratio = keep_ratio(cmd, subcmd);
+        let ratio = keep_ratio(name, subcmd);
 
         // Ratio gate: if parser is estimated to save < 10%, skip it and use generic
         // compression instead (avoids CPU cost for negligible gain).
-        if ratio > 0.90 {
+        if ratio > 0.90 && !wants_format {
             let compressed = generic_compress(stdout_ref);
             print!("{}", compressed);
             out_bytes =
@@ -163,7 +177,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             // Nothing is never a summary of something: a parser that misread
             // its input and printed nothing would otherwise "win" on size.
             let parsed_nothing = parsed.trim().is_empty() && !stdout_ref.trim().is_empty();
-            if parsed.len() < stdout_ref.len() && !summary_hides_failure && !parsed_nothing {
+            let smaller = wants_format || parsed.len() < stdout_ref.len();
+            if smaller && !summary_hides_failure && !parsed_nothing {
                 print!("{}", parsed);
                 out_bytes = parsed.len();
                 // A summary that dropped most of a large output must say where
