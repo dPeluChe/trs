@@ -3,21 +3,9 @@
 
 use assert_cmd::Command;
 use std::path::Path;
-use std::process::Command as Proc;
 
-fn git(dir: &Path, args: &[&str]) {
-    let ok = Proc::new("git")
-        .current_dir(dir)
-        .args(args)
-        .env("GIT_AUTHOR_NAME", "t")
-        .env("GIT_AUTHOR_EMAIL", "t@t")
-        .env("GIT_COMMITTER_NAME", "t")
-        .env("GIT_COMMITTER_EMAIL", "t@t")
-        .status()
-        .unwrap()
-        .success();
-    assert!(ok, "git {args:?} failed");
-}
+mod support;
+use support::git;
 
 fn repo() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();

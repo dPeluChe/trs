@@ -4,32 +4,15 @@
 //! what they were asked to do.
 
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Output};
+
+mod support;
+use support::{fake_program as fake, git};
 
 /// One temp dir: `repo/` (version 9.9.9), `bin/` (the fakes), `home/`.
 struct Fixture {
     root: tempfile::TempDir,
-}
-
-fn git(dir: &Path, args: &[&str]) {
-    let ok = Command::new("git")
-        .current_dir(dir)
-        .args(args)
-        .env("GIT_AUTHOR_NAME", "t")
-        .env("GIT_AUTHOR_EMAIL", "t@t")
-        .env("GIT_COMMITTER_NAME", "t")
-        .env("GIT_COMMITTER_EMAIL", "t@t")
-        .status()
-        .unwrap()
-        .success();
-    assert!(ok, "git {args:?}");
-}
-
-fn fake(path: &Path, body: &str) {
-    fs::write(path, format!("#!/bin/sh\n{body}\n")).unwrap();
-    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
 fn fixture(tagged: bool) -> Fixture {

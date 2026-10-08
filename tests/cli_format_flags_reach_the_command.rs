@@ -6,11 +6,11 @@
 use assert_cmd::Command;
 use std::path::Path;
 
+mod support;
+use support::fake_program;
+
 fn fake(dir: &Path, name: &str, script: &str) {
-    let path = dir.join(name);
-    std::fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    fake_program(&dir.join(name), script);
 }
 
 fn trs(dir: &Path, args: &[&str]) -> String {

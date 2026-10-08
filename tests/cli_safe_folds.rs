@@ -1,15 +1,9 @@
 //! Repeats and dense lines end to end, on commands present on every CI runner.
 
 use assert_cmd::Command;
-use std::path::Path;
 
-fn git(dir: &Path, args: &[&str]) {
-    std::process::Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .output()
-        .expect("git");
-}
+mod support;
+use support::git;
 
 #[test]
 fn a_log_tail_folds_repeats_to_a_count() {
