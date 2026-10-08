@@ -157,7 +157,7 @@ classes of sources informed each rule:
 |---|---|---|
 | Claude Code | Standalone file + `@import` | `~/.claude/trs.md` + line in `~/.claude/CLAUDE.md` |
 | Gemini CLI | Standalone file + `@import` | `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` |
-| Cursor | Auto-loaded rules file | `~/.cursor/rules/trs-output-saver.mdc` |
+| Cursor | Local plugin with an always-apply rule | `~/.cursor/plugins/local/trs/` (`.cursor-plugin/plugin.json` + `rules/trs-output-saver.mdc`) |
 | Codex | Inline with sentinels | `~/.codex/AGENTS.md` |
 | Devin Desktop (ex-Windsurf) | Inline with sentinels | `~/.codeium/windsurf/memories/global_rules.md` |
 | OpenCode | Inline with sentinels | `~/.config/opencode/AGENTS.md` |

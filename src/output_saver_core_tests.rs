@@ -246,3 +246,112 @@ fn a_rules_dir_file_is_current_only_if_the_whole_file_matches() {
         VerifyStatus::Drifted
     ));
 }
+
+fn cursor_plugin(home: &std::path::Path) -> std::path::PathBuf {
+    home.join(".cursor/plugins/local/trs")
+}
+
+/// Cursor does not read `~/.cursor/rules`; the rule has to ship as a plugin.
+#[test]
+fn cursor_gets_a_local_plugin_with_an_always_apply_rule() {
+    let home = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(home.path().join(".cursor")).unwrap();
+    install_agent_with_home("cursor", Some(home.path())).unwrap();
+
+    let dir = cursor_plugin(home.path());
+    let manifest = std::fs::read_to_string(dir.join(".cursor-plugin/plugin.json")).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&manifest).unwrap();
+    assert_eq!(v["name"], "trs");
+
+    let rule = std::fs::read_to_string(dir.join("rules/trs-output-saver.mdc")).unwrap();
+    assert!(rule.starts_with("---\n"), "{rule}");
+    assert!(rule.contains("\nalwaysApply: true\n"), "{rule}");
+    assert!(rule.contains("# trs: token-reducing shell"), "{rule}");
+    assert!(matches!(
+        verify_agent_with_home("cursor", Some(home.path())),
+        VerifyStatus::Ok
+    ));
+    assert!(matches!(
+        scan_agent_with_home("cursor", Some(home.path())),
+        Status::AlreadyInstalled
+    ));
+}
+
+#[test]
+fn a_changed_or_missing_plugin_file_is_drift() {
+    let home = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(home.path().join(".cursor")).unwrap();
+    install_agent_with_home("cursor", Some(home.path())).unwrap();
+    let dir = cursor_plugin(home.path());
+
+    std::fs::remove_file(dir.join(".cursor-plugin/plugin.json")).unwrap();
+    assert!(matches!(
+        verify_agent_with_home("cursor", Some(home.path())),
+        VerifyStatus::Drifted
+    ));
+    install_agent_with_home("cursor", Some(home.path())).unwrap();
+    std::fs::write(dir.join("rules/trs-output-saver.mdc"), "edited").unwrap();
+    assert!(matches!(
+        verify_agent_with_home("cursor", Some(home.path())),
+        VerifyStatus::Drifted
+    ));
+}
+
+#[test]
+fn installing_moves_trs_old_cursor_file_but_never_a_users() {
+    let home = tempfile::tempdir().unwrap();
+    let old = home.path().join(".cursor/rules/trs-output-saver.mdc");
+    std::fs::create_dir_all(old.parent().unwrap()).unwrap();
+
+    std::fs::write(&old, standalone_file()).unwrap();
+    let msg = install_agent_with_home("cursor", Some(home.path())).unwrap();
+    assert!(!old.exists(), "the file Cursor never read is still there");
+    assert!(msg.contains("removed the old"), "{msg}");
+
+    // Someone else's file under the same name is not ours to delete.
+    std::fs::write(&old, "# my own rules\nbe terse\n").unwrap();
+    install_agent_with_home("cursor", Some(home.path())).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&old).unwrap(),
+        "# my own rules\nbe terse\n"
+    );
+}
+
+#[test]
+fn removing_the_plugin_keeps_what_a_user_added_next_to_it() {
+    let home = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(home.path().join(".cursor")).unwrap();
+    install_agent_with_home("cursor", Some(home.path())).unwrap();
+    let dir = cursor_plugin(home.path());
+    std::fs::write(dir.join("rules/theirs.mdc"), "keep").unwrap();
+
+    remove_agent_with_home("cursor", Some(home.path())).unwrap();
+    assert!(!dir.join("rules/trs-output-saver.mdc").exists());
+    assert!(!dir.join(".cursor-plugin/plugin.json").exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.join("rules/theirs.mdc")).unwrap(),
+        "keep"
+    );
+
+    std::fs::remove_file(dir.join("rules/theirs.mdc")).unwrap();
+    remove_agent_with_home("cursor", Some(home.path())).unwrap();
+    assert!(!dir.exists(), "empty plugin folders are left behind");
+}
+
+#[test]
+fn the_old_cursor_file_counts_as_installed_so_refresh_migrates_it() {
+    let home = tempfile::tempdir().unwrap();
+    let old = home.path().join(".cursor/rules/trs-output-saver.mdc");
+    std::fs::create_dir_all(old.parent().unwrap()).unwrap();
+    std::fs::write(&old, standalone_file()).unwrap();
+    assert!(matches!(
+        scan_agent_with_home("cursor", Some(home.path())),
+        Status::AlreadyInstalled
+    ));
+    // A user's own file of that name does not.
+    std::fs::write(&old, "# my own rules\n").unwrap();
+    assert!(matches!(
+        scan_agent_with_home("cursor", Some(home.path())),
+        Status::NotInstalled
+    ));
+}
