@@ -32,6 +32,8 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ### Improvements to existing parsers
 
+- [ ] Check the Cursor output-saver plugin inside a running Cursor (installed by `trs output-saver`): after Developer: Reload Window, Customize → Rules should list `trs-output-saver` as Always, and an agent asked to name its rules should mention trs. Built from Cursor's docs and a staff reply, not yet seen live
+
 - [x] `trs git status --json` after an external command printed compact text on short outputs: the size guard and the never-worse guard now step aside for an explicit --json/--csv/--tsv/--agent
 - [ ] Add a flag-ownership entry in `child_owns_format_flag` (classifier_args.rs) whenever a parser-backed tool turns out to define `--json`/`--raw`/`--stats`/`--csv` itself
 

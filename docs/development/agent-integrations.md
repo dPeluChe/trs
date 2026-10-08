@@ -16,7 +16,7 @@ matrix below. Six distinct target paths across three mechanisms:
 |---|---|---|
 | Claude Code | standalone file + `@import` | `~/.claude/trs-output-saver.md` + line in `~/.claude/CLAUDE.md` |
 | Gemini CLI | standalone file + `@import` | `~/.gemini/trs-output-saver.md` + line in `~/.gemini/GEMINI.md` |
-| Cursor | auto-loaded rules file | `~/.cursor/rules/trs-output-saver.mdc` |
+| Cursor | local plugin, always-apply rule | `~/.cursor/plugins/local/trs/` |
 | Codex | inline with sentinels | `~/.codex/AGENTS.md` |
 | Windsurf | inline with sentinels | `~/.codeium/windsurf/memories/global_rules.md` |
 | OpenCode | inline with sentinels | `~/.config/opencode/AGENTS.md` |

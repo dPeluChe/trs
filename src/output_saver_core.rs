@@ -16,6 +16,14 @@ pub(crate) enum Target {
     /// auto-loads. No root-config edit needed. `header` goes before the
     /// file (frontmatter some agents need to apply it automatically).
     RulesDir { path: PathBuf, header: &'static str },
+    /// A plugin directory the agent loads: a manifest plus one rule file.
+    /// Cursor does not read `~/.cursor/rules`, so the rule ships as a local
+    /// plugin. `legacy_rule` is where an older trs wrote it; it is removed
+    /// on install and remove, but only when it is trs's own file.
+    Plugin {
+        dir: PathBuf,
+        legacy_rule: Option<PathBuf>,
+    },
     /// Append the block inline to a single rules file, wrapped in
     /// sentinels for idempotent re-installs.
     InlineFile { path: PathBuf },
@@ -89,6 +97,33 @@ pub(crate) const AGENTS: &[Agent] = &[
 /// `applyTo` matches; without it the file is manual-only.
 pub(crate) const COPILOT_HEADER: &str = "---\napplyTo: \"**\"\n---\n\n";
 
+/// Cursor applies a rule on every chat only with `alwaysApply: true`; a rule
+/// with no frontmatter is not guaranteed to load (docs: cursor.com/docs/rules).
+pub(crate) const CURSOR_RULE_HEADER: &str = "---\ndescription: How trs compacts shell output and where the rest is saved\nalwaysApply: true\n---\n\n";
+
+/// `.cursor-plugin/plugin.json`: only `name` is required.
+pub(crate) const CURSOR_MANIFEST: &str = "{\n  \"name\": \"trs\",\n  \"description\": \"How trs compacts shell output and where the rest is saved\"\n}\n";
+
+/// The two files of a Cursor plugin and what each must hold.
+pub(crate) fn plugin_files(dir: &std::path::Path) -> [(PathBuf, String); 2] {
+    [
+        (
+            dir.join(".cursor-plugin/plugin.json"),
+            CURSOR_MANIFEST.to_string(),
+        ),
+        (
+            dir.join("rules/trs-output-saver.mdc"),
+            rules_dir_content(CURSOR_RULE_HEADER),
+        ),
+    ]
+}
+
+/// A file trs wrote earlier (it begins with trs's own title), as opposed to
+/// one a user put in the same place.
+pub(crate) fn is_trs_file(path: &std::path::Path) -> bool {
+    fs::read_to_string(path).is_ok_and(|c| c.starts_with("# trs: token-reducing shell"))
+}
+
 /// What a rules-dir file holds: the agent's header, then the standalone text.
 pub(crate) fn rules_dir_content(header: &str) -> String {
     format!("{}{}", header, standalone_file())
@@ -117,8 +152,11 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
             }),
-        "cursor" => push_home(".cursor/rules/trs-output-saver.mdc")
-            .map(|path| Target::RulesDir { path, header: "" })
+        "cursor" => push_home(".cursor/plugins/local/trs")
+            .map(|dir| Target::Plugin {
+                dir,
+                legacy_rule: push_home(".cursor/rules/trs-output-saver.mdc"),
+            })
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
             }),
@@ -271,6 +309,21 @@ fn verify_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> Ver
                 Err(_) => VerifyStatus::Drifted,
             }
         }
+        Target::Plugin { dir, .. } => {
+            let files = plugin_files(&dir);
+            if files.iter().all(|(p, _)| !p.exists()) {
+                return VerifyStatus::NotInstalled;
+            }
+            // Either file missing or changed is drift, not a clean install.
+            let current = files
+                .iter()
+                .all(|(p, want)| fs::read_to_string(p).is_ok_and(|c| c == *want));
+            if current {
+                VerifyStatus::Ok
+            } else {
+                VerifyStatus::Drifted
+            }
+        }
         Target::InlineFile { path } => {
             if !path.exists() {
                 return VerifyStatus::NotInstalled;
@@ -338,6 +391,20 @@ fn scan_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> Statu
                 return Status::NotDetected;
             }
             if path.exists() {
+                Status::AlreadyInstalled
+            } else {
+                Status::NotInstalled
+            }
+        }
+        Target::Plugin { dir, legacy_rule } => {
+            // dir = ~/.cursor/plugins/local/trs: Cursor is there if ~/.cursor is.
+            if !dir.ancestors().nth(3).is_some_and(|p| p.exists()) {
+                return Status::NotDetected;
+            }
+            // trs's file in the old location still counts as installed, so
+            // `--refresh` (and `trs upgrade`) migrates it on the next install.
+            let old = legacy_rule.is_some_and(|p| is_trs_file(&p));
+            if old || plugin_files(&dir).iter().all(|(p, _)| p.exists()) {
                 Status::AlreadyInstalled
             } else {
                 Status::NotInstalled

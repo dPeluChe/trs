@@ -87,6 +87,29 @@ pub(crate) fn install_agent_with_home(
                 crate::path_display::tilde(&path.display().to_string())
             ))
         }
+        Target::Plugin { dir, legacy_rule } => {
+            for (path, content) in crate::output_saver_core::plugin_files(&dir) {
+                if let Some(parent) = path.parent() {
+                    fs::create_dir_all(parent)
+                        .map_err(|e| format!("{}: {}", parent.display(), e))?;
+                }
+                fs::write(&path, content).map_err(|e| format!("{}: {}", path.display(), e))?;
+            }
+            // Cursor never read the old location; leaving it would give a
+            // second copy the day it does.
+            let migrated = legacy_rule
+                .filter(|p| crate::output_saver_core::is_trs_file(p))
+                .is_some_and(|p| fs::remove_file(p).is_ok());
+            Ok(format!(
+                "wrote {} (Cursor loads it after Developer: Reload Window){}",
+                crate::path_display::tilde(&dir.display().to_string()),
+                if migrated {
+                    "; removed the old ~/.cursor/rules file, which Cursor does not read"
+                } else {
+                    ""
+                }
+            ))
+        }
         Target::InlineFile { path } => {
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent).map_err(|e| format!("{}: {}", parent.display(), e))?;
@@ -153,6 +176,27 @@ pub(crate) fn remove_agent_with_home(
                 Ok(format!("removed {}", path.display()))
             } else {
                 Ok(format!("nothing to remove at {}", path.display()))
+            }
+        }
+        Target::Plugin { dir, legacy_rule } => {
+            let mut removed = false;
+            for (path, _) in crate::output_saver_core::plugin_files(&dir) {
+                if path.exists() {
+                    fs::remove_file(&path).map_err(|e| format!("{}: {}", path.display(), e))?;
+                    removed = true;
+                }
+            }
+            if let Some(old) = legacy_rule.filter(|p| crate::output_saver_core::is_trs_file(p)) {
+                removed |= fs::remove_file(old).is_ok();
+            }
+            // Only empty folders go: anything a user added next to ours stays.
+            for sub in ["rules", ".cursor-plugin", ""] {
+                let _ = fs::remove_dir(dir.join(sub));
+            }
+            if removed {
+                Ok(format!("removed {}", dir.display()))
+            } else {
+                Ok(format!("nothing to remove at {}", dir.display()))
             }
         }
         Target::InlineFile { path } => {

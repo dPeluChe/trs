@@ -75,8 +75,15 @@ install scope.
 - **Hook wire format:** `hook_event_name: preToolUse` (camelCase vs
   Claude's PascalCase).
 - **Config path:** `~/.cursor/hooks.json`.
-- **Output-saver:** `.cursor/rules/trs.mdc`, Cursor auto-loads `.mdc`
-  files from the rules dir, no explicit import needed.
+- **Output-saver:** a local plugin at `~/.cursor/plugins/local/trs/` with
+  one rule (`alwaysApply: true`). Cursor does not read `~/.cursor/rules`
+  (a known gap on their side), and a rule without frontmatter is not
+  guaranteed to load. Run **Developer: Reload Window** (or restart Cursor)
+  once after installing, and check **Customize → Rules**. On Teams and
+  Enterprise an admin can turn off local plugins (**Allow Local Plugin
+  Imports**); then use Settings → Rules → User Rules instead. Installing
+  also removes the file older trs versions wrote to `~/.cursor/rules/`,
+  only when it is trs's own.
 - **Why `preToolUse`:** it's the only Cursor hook that can rewrite the
   command (via the `updated_input` field); `beforeShellExecution` can
   only allow/deny, not modify.

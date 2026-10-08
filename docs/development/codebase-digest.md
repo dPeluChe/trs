@@ -757,7 +757,7 @@ matrix below. Six distinct target paths across three mechanisms:
 |---|---|---|
 | Claude Code | standalone file + `@import` | `~/.claude/trs-output-saver.md` + line in `~/.claude/CLAUDE.md` |
 | Gemini CLI | standalone file + `@import` | `~/.gemini/trs-output-saver.md` + line in `~/.gemini/GEMINI.md` |
-| Cursor | auto-loaded rules file | `~/.cursor/rules/trs-output-saver.mdc` |
+| Cursor | local plugin, always-apply rule | `~/.cursor/plugins/local/trs/` |
 | Codex | inline with sentinels | `~/.codex/AGENTS.md` |
 ... (439 lines, hidden sections: Integration types · Wire-format dispatch (hook agents) · Agent attribution (`TRS_AGENT`) · Per-agent reference · Test prompts · Debugging a broken integration · 1. Create a logging wrapper · 2. Point the agent's hook at the wrapper (back up first))
 
