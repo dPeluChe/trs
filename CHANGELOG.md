@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.8] - 2026-10-08
+
+### Testing
+
+- Share the git and fake-program helpers between integration tests (#194)
+
+### CI / Build
+
+- **release:** Clean this crate's build output after a release (#193)
+- **release:** Make the cleanup the last command of the release, with --wait (#195)
+
 ## [0.8.7] - 2026-10-08
 
 ### Bug Fixes

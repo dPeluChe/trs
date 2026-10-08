@@ -1,6 +1,6 @@
 [package]
 name = "trs-cli"
-version = "0.8.7"
+version = "0.8.8"
 edition = "2021"
 description = "Token-reducing shell for AI agents: compact terminal output, ~70% fewer tokens on real agent commands"
 license = "MIT"
