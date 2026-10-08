@@ -1,7 +1,7 @@
 # Installing trs
 
 Five install channels. All of them ship the same native binary
-(~6 MB, zero runtime deps, ~4 ms startup). Pick whichever fits your
+(~7-10 MB, zero runtime deps, ~4 ms startup). Pick whichever fits your
 existing toolchain.
 
 ## Quick list

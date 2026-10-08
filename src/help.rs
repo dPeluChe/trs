@@ -7,14 +7,16 @@
 pub const LONG_ABOUT: &str = "\
 trs (Token-Reducing Shell) - Transform noisy terminal output into compact, structured signal
 
-Reduces token consumption by 68-99% for developers, AI agents, and automation.
+Cuts the tokens AI agents and automation spend on terminal output (about 70%
+on real agent commands; measured per command in docs/development/benchmarks).
+When it leaves something out it says so, and where the rest is.
 Just prefix any command with trs:
 
-    trs git status               # 80% reduction
-    trs git log -10              # 90% reduction
-    trs ls -la                   # 82% reduction
-    trs npm test                 # 90% reduction
-    trs env                      # 68% reduction
+    trs git status
+    trs git log -10
+    trs ls -la
+    trs npm test
+    trs env
 
 FORMAT FLAGS (work before or after the command):
     --json     Structured JSON output

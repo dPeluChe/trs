@@ -20,21 +20,21 @@
 
   <!-- Tagline -->
   <text x="600" y="360" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" font-size="38" font-weight="600" fill="#e6edf3" text-anchor="middle">Terminal compression for AI agents</text>
-  <text x="600" y="410" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" font-size="24" font-weight="400" fill="#8b949e" text-anchor="middle">68&#8211;99% smaller output, same signal</text>
+  <text x="600" y="410" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" font-size="24" font-weight="400" fill="#8b949e" text-anchor="middle">~70% fewer tokens. What it leaves out, it says where to find.</text>
 
   <!-- Stat pills -->
   <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif" font-size="18">
     <g transform="translate(240,490)">
       <rect width="160" height="44" rx="22" fill="#0d1117" stroke="#21262d"/>
-      <text x="80" y="28" fill="#e6edf3" text-anchor="middle"><tspan font-weight="700">6 MB</tspan> <tspan fill="#8b949e">binary</tspan></text>
+      <text x="80" y="28" fill="#e6edf3" text-anchor="middle"><tspan font-weight="700">7&#8211;10 MB</tspan> <tspan fill="#8b949e">binary</tspan></text>
     </g>
     <g transform="translate(420,490)">
       <rect width="170" height="44" rx="22" fill="#0d1117" stroke="#21262d"/>
-      <text x="85" y="28" fill="#e6edf3" text-anchor="middle"><tspan fill="#f0a030" font-weight="700">~12 ms</tspan> <tspan fill="#8b949e">startup</tspan></text>
+      <text x="85" y="28" fill="#e6edf3" text-anchor="middle"><tspan fill="#f0a030" font-weight="700">~4 ms</tspan> <tspan fill="#8b949e">startup</tspan></text>
     </g>
     <g transform="translate(610,490)">
       <rect width="170" height="44" rx="22" fill="#0d1117" stroke="#21262d"/>
-      <text x="85" y="28" fill="#e6edf3" text-anchor="middle"><tspan font-weight="700">9</tspan> <tspan fill="#8b949e">AI tool hooks</tspan></text>
+      <text x="85" y="28" fill="#e6edf3" text-anchor="middle"><tspan font-weight="700">16</tspan> <tspan fill="#8b949e">AI agents</tspan></text>
     </g>
     <g transform="translate(800,490)">
       <rect width="160" height="44" rx="22" fill="#0d1117" stroke="#21262d"/>

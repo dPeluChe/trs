@@ -1,6 +1,6 @@
 # labs-tarscli (274 files, 42.2k tokens, rust)
 
-> Token-reducing shell for AI agents: compact terminal output at 68-99% reduction
+> Token-reducing shell for AI agents: compact terminal output, ~70% fewer tokens on real agent commands
 
 ## Structure
 
@@ -225,7 +225,7 @@ src/main.rs (3):
 ## What is trs
 
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
-Reduces token consumption by 68-99% for developers, AI agents, and automation pipelines.
+Cuts the tokens AI agents and automation pipelines spend on terminal output (~70% on real agent commands).
 
 ## Pre-generated codebase digest
 
@@ -426,7 +426,7 @@ git config core.hooksPath .githooks
 name = "trs-cli"
 version = "0.7.5"
 edition = "2021"
-description = "Token-reducing shell for AI agents: compact terminal output at 68-99% reduction"
+description = "Token-reducing shell for AI agents: compact terminal output, ~70% fewer tokens on real agent commands"
 license = "MIT"
 repository = "https://github.com/dPeluChe/trs"
 homepage = "https://usetrs.dev"
@@ -1247,7 +1247,7 @@ install scope.
 Every command supported by trs falls into one of four levels.
 
 1. Dedicated parser. trs spawns the tool, parses its native output,
-   and emits a structured compact form. Typical reduction 68–99%.
+   and emits a structured compact form. Typical reduction depends on the command (see docs/development/benchmarks).
 2. Dispatched alias. A different binary with the same semantics
    (e.g. `rg` for `grep`, `eza` for `ls`) gets routed to the same
    parser. No configuration, the dispatcher recognizes the binary
@@ -1268,7 +1268,7 @@ Every command supported by trs falls into one of four levels.
 # Installing trs
 
 Five install channels. All of them ship the same native binary
-(~6 MB, zero runtime deps, ~12 ms startup). Pick whichever fits your
+(~7-10 MB, zero runtime deps, ~4 ms startup). Pick whichever fits your
 existing toolchain.
 
 ## Quick list
@@ -1397,7 +1397,7 @@ Do NOT do the switch before v0.5.10 ships — the hook would pin to the older in
 Transform noisy terminal output into compact, structured signal.
 A CLI toolkit for developers, automation pipelines, and AI agents.
 
-68-99% token savings on common dev operations.
+~70% fewer tokens on real agent commands.
 
 ## Install
 
