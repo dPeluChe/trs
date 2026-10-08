@@ -219,6 +219,15 @@ The changelog is automated with [git-cliff](https://git-cliff.org)
 2. Regenerate the changelog: `git cliff -o CHANGELOG.md`
 3. Commit (`chore(release): bump to vX.Y.Z`) and merge to `main`.
 4. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
+5. When the release run is green, free the disk it left behind:
+   `scripts/post-release-clean.sh` (dry run), then with `--yes`. Cargo never
+   removes old build output, so `target/` grows by gigabytes (22 GB after a
+   few weeks here, nearly all of it this crate's own test binaries and
+   incremental caches). The script checks that the tag's release workflow
+   succeeded, removes this crate's artifacts and keeps the compiled
+   dependencies; rebuilding everything of ours takes about 15 seconds.
+   `--if-over 10 --yes` does the same mid-development only when `target/`
+   is over 10 GB.
 
 The tag triggers `release.yml`, which builds the binaries, **regenerates the
 GitHub Release notes for that tag with git-cliff** (grouped by type, not a
