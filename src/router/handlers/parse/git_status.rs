@@ -304,7 +304,11 @@ impl ParseHandler {
             // Porcelain format
             // Use chars() for UTF-8 safe iteration
             let chars: Vec<char> = line.chars().collect();
-            if chars.len() >= 3 {
+            // `XY path`: two status codes and a space. Prose such as
+            // `No commits yet` or `Initial commit on main` is not a file.
+            let is_code =
+                |c: char| matches!(c, ' ' | 'M' | 'A' | 'D' | 'R' | 'C' | 'U' | 'T' | '?' | '!');
+            if chars.len() >= 3 && is_code(chars[0]) && is_code(chars[1]) && chars[2] == ' ' {
                 // Get first two characters as status
                 let status: String = chars[..2].iter().collect();
                 // Get the rest as path (skip first 3 chars: 2 status + 1 space)
