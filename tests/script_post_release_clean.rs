@@ -8,19 +8,9 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+/// One temp dir: `repo/` (version 9.9.9), `bin/` (the fakes), `home/`.
 struct Fixture {
-    repo: tempfile::TempDir,
-    bin: tempfile::TempDir,
-    home: tempfile::TempDir,
-}
-
-fn script() -> String {
-    fs::read_to_string("scripts/post-release-clean.sh").unwrap()
-}
-
-fn executable(path: &Path, body: &str) {
-    fs::write(path, format!("#!/bin/sh\n{body}\n")).unwrap();
-    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+    root: tempfile::TempDir,
 }
 
 fn git(dir: &Path, args: &[&str]) {
@@ -37,74 +27,107 @@ fn git(dir: &Path, args: &[&str]) {
     assert!(ok, "git {args:?}");
 }
 
-/// A repo at version 9.9.9, optionally tagged, with something in target/.
+fn fake(path: &Path, body: &str) {
+    fs::write(path, format!("#!/bin/sh\n{body}\n")).unwrap();
+    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
 fn fixture(tagged: bool) -> Fixture {
-    let f = Fixture {
-        repo: tempfile::tempdir().unwrap(),
-        bin: tempfile::tempdir().unwrap(),
-        home: tempfile::tempdir().unwrap(),
-    };
-    let r = f.repo.path();
+    let root = tempfile::tempdir().unwrap();
+    let (repo, bin, home) = (
+        root.path().join("repo"),
+        root.path().join("bin"),
+        root.path().join("home"),
+    );
+    for dir in [
+        repo.join("scripts"),
+        repo.join("target/test-trs-home"),
+        bin.clone(),
+        home.join(".cargo/registry"),
+        home.join(".trs"),
+        home.join(".cache/trs-bench"),
+    ] {
+        fs::create_dir_all(dir).unwrap();
+    }
     fs::write(
-        r.join("Cargo.toml"),
+        repo.join("Cargo.toml"),
         "[package]\nname = \"trs-cli\"\nversion = \"9.9.9\"\n",
     )
     .unwrap();
-    fs::create_dir_all(r.join("scripts")).unwrap();
-    let copy = r.join("scripts/post-release-clean.sh");
-    fs::write(&copy, script()).unwrap();
-    fs::set_permissions(&copy, fs::Permissions::from_mode(0o755)).unwrap();
-    fs::create_dir_all(r.join("target/test-trs-home")).unwrap();
-    fs::write(r.join("target/test-trs-home/history.jsonl"), "x").unwrap();
-    fs::write(r.join("target/keep.bin"), vec![0u8; 4096]).unwrap();
-    git(r, &["init", "-q"]);
-    git(r, &["add", "-A"]);
-    git(r, &["commit", "-q", "-m", "x"]);
-    if tagged {
-        git(r, &["tag", "v9.9.9"]);
+    fs::copy(
+        "scripts/post-release-clean.sh",
+        repo.join("scripts/post-release-clean.sh"),
+    )
+    .unwrap();
+    fs::write(repo.join("target/test-trs-home/history.jsonl"), "x").unwrap();
+    for keep in [
+        home.join(".cargo/registry/crate.crate"),
+        home.join(".trs/history.jsonl"),
+        home.join(".cache/trs-bench/tool"),
+    ] {
+        fs::write(keep, "x").unwrap();
     }
-    // The fakes log every call; `gh` answers with $FAKE_GH.
-    executable(
-        &f.bin.path().join("cargo"),
-        "echo \"cargo $*\" >> \"$CALLS\"",
+    git(&repo, &["init", "-q"]);
+    git(&repo, &["commit", "-q", "--allow-empty", "-m", "x"]);
+    if tagged {
+        git(&repo, &["tag", "v9.9.9"]);
+    }
+    // The fakes log every call; `gh` answers with $FAKE_GH and exits $FAKE_GH_EXIT.
+    fake(&bin.join("cargo"), "echo \"cargo $*\" >> \"$CALLS\"");
+    fake(
+        &bin.join("gh"),
+        "echo \"gh $*\" >> \"$CALLS\"; printf '%s\\n' \"$FAKE_GH\"; exit \"${FAKE_GH_EXIT:-0}\"",
     );
-    executable(
-        &f.bin.path().join("gh"),
-        "echo \"gh $*\" >> \"$CALLS\"; printf '%s\\n' \"$FAKE_GH\"",
-    );
-    // Things the script must never touch.
-    fs::create_dir_all(f.home.path().join(".cargo/registry")).unwrap();
-    fs::write(f.home.path().join(".cargo/registry/crate.crate"), "x").unwrap();
-    fs::create_dir_all(f.home.path().join(".trs")).unwrap();
-    fs::write(f.home.path().join(".trs/history.jsonl"), "x").unwrap();
-    f
+    Fixture { root }
 }
 
 impl Fixture {
-    fn calls(&self) -> String {
-        fs::read_to_string(self.repo.path().join("calls.log")).unwrap_or_default()
+    fn path(&self, rel: &str) -> PathBuf {
+        self.root.path().join(rel)
     }
 
     fn run(&self, gh_answer: &str, args: &[&str]) -> Output {
+        self.run_with(gh_answer, "0", args)
+    }
+
+    fn run_with(&self, gh_answer: &str, gh_exit: &str, args: &[&str]) -> Output {
         let path = format!(
             "{}:{}",
-            self.bin.path().display(),
+            self.path("bin").display(),
             std::env::var("PATH").unwrap()
         );
         Command::new("bash")
-            .arg(self.repo.path().join("scripts/post-release-clean.sh"))
+            .arg(self.path("repo/scripts/post-release-clean.sh"))
             .args(args)
-            .current_dir(self.repo.path())
+            .current_dir(self.path("repo"))
             .env("PATH", path)
-            .env("HOME", self.home.path())
-            .env("CALLS", self.repo.path().join("calls.log"))
+            .env("HOME", self.path("home"))
+            .env("CALLS", self.path("calls.log"))
             .env("FAKE_GH", gh_answer)
+            .env("FAKE_GH_EXIT", gh_exit)
             .output()
             .unwrap()
     }
 
-    fn exists(&self, rel: &str) -> bool {
-        PathBuf::from(self.repo.path()).join(rel).exists()
+    fn calls(&self) -> Vec<String> {
+        fs::read_to_string(self.path("calls.log"))
+            .unwrap_or_default()
+            .lines()
+            .map(String::from)
+            .collect()
+    }
+
+    fn cargo_clean(&self) -> Vec<String> {
+        self.calls()
+            .into_iter()
+            .filter(|l| l.starts_with("cargo clean"))
+            .collect()
+    }
+
+    /// Nothing was deleted and cargo was never asked to.
+    fn assert_untouched(&self, why: &str) {
+        assert!(self.cargo_clean().is_empty(), "{why}: {:?}", self.calls());
+        assert!(self.path("repo/target/test-trs-home").exists(), "{why}");
     }
 }
 
@@ -117,66 +140,56 @@ fn text(o: &Output) -> String {
 }
 
 #[test]
-fn nothing_is_deleted_for_a_version_that_was_never_tagged() {
-    let f = fixture(false);
-    let out = f.run("completed success", &["--yes"]);
-    assert!(!out.status.success(), "{}", text(&out));
-    assert!(text(&out).contains("no tag v9.9.9"), "{}", text(&out));
-    assert!(!f.calls().contains("cargo clean"), "{}", f.calls());
-    assert!(f.exists("target/test-trs-home"));
-}
-
-#[test]
-fn nothing_is_deleted_until_the_release_run_succeeded() {
-    for answer in [
-        "in_progress ",
-        "completed failure",
-        "completed cancelled",
-        "",
-    ] {
-        let f = fixture(true);
+fn nothing_is_deleted_unless_this_version_was_released_successfully() {
+    // (tag exists, what `gh run list` says)
+    let cases = [
+        (false, "completed success"),
+        (true, "in_progress "),
+        (true, "completed failure"),
+        (true, "completed cancelled"),
+        (true, "null null"),
+        (true, ""),
+    ];
+    for (tagged, answer) in cases {
+        let f = fixture(tagged);
         let out = f.run(answer, &["--yes"]);
-        assert!(!out.status.success(), "{answer:?}: {}", text(&out));
-        assert!(
-            !f.calls().contains("cargo clean"),
-            "{answer:?}: {}",
-            f.calls()
-        );
-        assert!(f.exists("target/test-trs-home"), "{answer:?}");
+        assert!(!out.status.success(), "{tagged} {answer:?}: {}", text(&out));
+        f.assert_untouched(&format!("{tagged} {answer:?}"));
     }
+    let out = fixture(false).run("completed success", &["--yes"]);
+    assert!(text(&out).contains("no tag v9.9.9"), "{}", text(&out));
 }
 
 #[test]
-fn the_release_check_asks_about_this_tag() {
+fn a_gh_that_cannot_answer_is_not_read_as_a_release() {
     let f = fixture(true);
-    f.run("completed success", &[]);
-    assert!(
-        f.calls()
-            .contains("gh run list --workflow release.yml --branch v9.9.9"),
-        "{}",
-        f.calls()
-    );
+    let out = f.run_with("", "1", &["--yes"]);
+    assert!(!out.status.success());
+    assert!(text(&out).contains("could not read"), "{}", text(&out));
+    f.assert_untouched("gh failed");
 }
 
 #[test]
-fn a_dry_run_only_asks_cargo_to_dry_run() {
+fn a_dry_run_only_asks_cargo_to_dry_run_and_asks_about_this_tag() {
     let f = fixture(true);
     let out = f.run("completed success", &[]);
     assert!(out.status.success(), "{}", text(&out));
-    let calls = f.calls();
-    assert!(
-        calls.contains("cargo clean -p trs-cli --dry-run"),
-        "{calls}"
+    assert_eq!(
+        f.cargo_clean(),
+        [
+            "cargo clean -p trs-cli --dry-run",
+            "cargo clean -p trs-cli --release --dry-run"
+        ]
     );
     assert!(
-        calls.contains("cargo clean -p trs-cli --release --dry-run"),
-        "{calls}"
+        f.calls()
+            .iter()
+            .any(|l| l.starts_with("gh run list --workflow release.yml --branch v9.9.9")),
+        "{:?}",
+        f.calls()
     );
-    for line in calls.lines().filter(|l| l.starts_with("cargo clean")) {
-        assert!(line.ends_with("--dry-run"), "{line}");
-    }
     assert!(
-        f.exists("target/test-trs-home"),
+        f.path("repo/target/test-trs-home").exists(),
         "a dry run deleted something"
     );
 }
@@ -186,33 +199,18 @@ fn yes_cleans_only_this_crate_and_keeps_the_dependencies() {
     let f = fixture(true);
     let out = f.run("completed success", &["--yes"]);
     assert!(out.status.success(), "{}", text(&out));
-    let calls = f.calls();
-    assert!(
-        calls.lines().any(|l| l == "cargo clean -p trs-cli"),
-        "{calls}"
+    assert_eq!(
+        f.cargo_clean(),
+        ["cargo clean -p trs-cli", "cargo clean -p trs-cli --release"]
     );
-    assert!(
-        calls
-            .lines()
-            .any(|l| l == "cargo clean -p trs-cli --release"),
-        "{calls}"
-    );
-    assert!(
-        !calls.lines().any(|l| l.trim_end() == "cargo clean"),
-        "{calls}"
-    );
-    assert!(!f.exists("target/test-trs-home"));
+    assert!(!f.path("repo/target/test-trs-home").exists());
 }
 
 #[test]
 fn the_deps_flag_asks_for_a_full_clean() {
     let f = fixture(true);
     f.run("completed success", &["--yes", "--deps"]);
-    assert!(
-        f.calls().lines().any(|l| l.trim_end() == "cargo clean"),
-        "{}",
-        f.calls()
-    );
+    assert_eq!(f.cargo_clean(), ["cargo clean"]);
 }
 
 #[test]
@@ -221,7 +219,7 @@ fn under_the_threshold_nothing_runs_and_no_release_is_needed() {
     let out = f.run("", &["--if-over", "50", "--yes"]);
     assert!(out.status.success(), "{}", text(&out));
     assert!(text(&out).contains("nothing to do"), "{}", text(&out));
-    assert_eq!(f.calls(), "");
+    assert!(f.calls().is_empty(), "{:?}", f.calls());
 }
 
 #[test]
@@ -230,33 +228,39 @@ fn over_the_threshold_it_cleans_without_asking_about_a_release() {
     // 0 GB: any target/ is over it.
     let out = f.run("", &["--if-over", "0", "--yes"]);
     assert!(out.status.success(), "{}", text(&out));
-    assert!(!f.calls().contains("gh "), "{}", f.calls());
     assert!(
-        f.calls().contains("cargo clean -p trs-cli"),
-        "{}",
+        !f.calls().iter().any(|l| l.starts_with("gh ")),
+        "{:?}",
         f.calls()
     );
+    assert_eq!(f.cargo_clean().len(), 2, "{:?}", f.calls());
 }
 
 #[test]
-fn what_is_not_ours_is_never_touched() {
+fn what_is_not_ours_is_never_touched_and_the_bench_cache_only_on_request() {
     let f = fixture(true);
-    let out = f.run("completed success", &["--yes", "--deps", "--bench-cache"]);
-    assert!(out.status.success(), "{}", text(&out));
-    assert!(f.home.path().join(".cargo/registry/crate.crate").exists());
-    assert!(f.home.path().join(".trs/history.jsonl").exists());
-    assert!(f.exists(".git"));
+    f.run("completed success", &["--yes", "--deps"]);
+    assert!(
+        f.path("home/.cache/trs-bench/tool").exists(),
+        "no flag, no deletion"
+    );
+
+    f.run("completed success", &["--yes", "--bench-cache"]);
+    assert!(!f.path("home/.cache/trs-bench").exists());
+    for keep in [
+        "home/.cargo/registry/crate.crate",
+        "home/.trs/history.jsonl",
+        "repo/.git",
+    ] {
+        assert!(f.path(keep).exists(), "{keep} was removed");
+    }
 }
 
 #[test]
 fn it_refuses_to_run_outside_the_trs_repo() {
     let f = fixture(true);
-    fs::write(
-        f.repo.path().join("Cargo.toml"),
-        "[package]\nname = \"other\"\n",
-    )
-    .unwrap();
+    fs::write(f.path("repo/Cargo.toml"), "[package]\nname = \"other\"\n").unwrap();
     let out = f.run("completed success", &["--yes"]);
     assert!(!out.status.success());
-    assert!(f.calls().is_empty(), "{}", f.calls());
+    assert!(f.calls().is_empty(), "{:?}", f.calls());
 }
