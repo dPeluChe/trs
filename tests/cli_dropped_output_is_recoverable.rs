@@ -5,21 +5,13 @@
 use assert_cmd::Command;
 use std::path::Path;
 
-fn git(dir: &Path, args: &[&str]) -> String {
-    let out = std::process::Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .output()
-        .expect("git");
-    String::from_utf8_lossy(&out.stdout).into_owned()
-}
+mod support;
+use support::git;
 
 fn repo_with_changed_lines(n: usize) -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     let p = dir.path();
     git(p, &["init", "-q"]);
-    git(p, &["config", "user.email", "t@example.com"]);
-    git(p, &["config", "user.name", "t"]);
     let body = |tag: &str| {
         (0..n)
             .map(|i| format!("line {i} {tag}\n"))

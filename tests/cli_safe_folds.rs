@@ -1,15 +1,9 @@
 //! Repeats and dense lines end to end, on commands present on every CI runner.
 
 use assert_cmd::Command;
-use std::path::Path;
 
-fn git(dir: &Path, args: &[&str]) {
-    std::process::Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .output()
-        .expect("git");
-}
+mod support;
+use support::git;
 
 #[test]
 fn a_log_tail_folds_repeats_to_a_count() {
@@ -34,8 +28,6 @@ fn a_minified_line_in_a_diff_is_cut_and_recoverable() {
     let repo = tempfile::tempdir().unwrap();
     let p = repo.path();
     git(p, &["init", "-q"]);
-    git(p, &["config", "user.email", "t@example.com"]);
-    git(p, &["config", "user.name", "t"]);
     std::fs::write(p.join("m.js"), "x\n").unwrap();
     git(p, &["add", "."]);
     git(p, &["commit", "-qm", "base"]);
