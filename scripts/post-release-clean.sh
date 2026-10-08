@@ -7,6 +7,9 @@
 #   --yes           do it
 #   --if-over GB    during development: act only when target/ is over GB, and
 #                   skip the release check
+#   --wait          wait for the release run of the tag to finish (up to 30 min,
+#                   or 3 min if it has not appeared yet), then clean: the last
+#                   command after pushing the tag
 #   --force         skip the release check
 #   --deps          also remove compiled dependencies (a full cargo clean)
 #   --bench-cache   also remove the benchmark tool cache (rebuilt by setup.sh)
@@ -17,11 +20,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-YES=0 FORCE=0 DEPS=0 BENCH=0 OVER=""
+YES=0 FORCE=0 DEPS=0 BENCH=0 WAIT=0 OVER=""
+POLL="${POST_RELEASE_POLL_SECONDS:-15}"
+WAIT_MAX="${POST_RELEASE_WAIT_SECONDS:-1800}"
 while [ $# -gt 0 ]; do
   case "$1" in
     --yes) YES=1 ;;
     --force) FORCE=1 ;;
+    --wait) WAIT=1 ;;
     --deps) DEPS=1 ;;
     --bench-cache) BENCH=1 ;;
     --if-over)
@@ -63,11 +69,29 @@ elif [ "$FORCE" -eq 0 ]; then
   git rev-parse -q --verify "refs/tags/$TAG" >/dev/null ||
     fail "no tag $TAG: nothing was released from this version (use --force to clean anyway)"
   command -v gh >/dev/null || fail "gh not found, cannot confirm the release (use --force)"
-  run=$(gh run list --workflow release.yml --branch "$TAG" --limit 1 \
-    --json status,conclusion -q '.[0] | "\(.status) \(.conclusion)"' 2>/dev/null) ||
-    fail "gh could not read the release runs (logged in? use --force)"
-  [ "$run" = "completed success" ] ||
-    fail "release $TAG is '${run:-no run found}', not 'completed success': wait for it, or use --force"
+  [ "$POLL" -ge 1 ] 2>/dev/null || fail "POST_RELEASE_POLL_SECONDS must be a whole number of seconds, 1 or more"
+  waited=0
+  while :; do
+    run=$(gh run list --workflow release.yml --branch "$TAG" --limit 1 \
+      --json status,conclusion -q '.[0] | "\(.status) \(.conclusion)"' 2>/dev/null) ||
+      fail "gh could not read the release runs (logged in? use --force)"
+    [ "$run" = "null null" ] && run="" # what gh prints before the run exists
+    [ "$run" = "completed success" ] && break
+    case "$run" in
+      completed*) fail "release $TAG finished as '$run', not 'completed success'" ;;
+    esac
+    [ "$WAIT" -eq 1 ] ||
+      fail "release $TAG is '${run:-no run found}', not 'completed success': pass --wait to wait for it, or --force"
+    limit=$WAIT_MAX
+    [ -n "$run" ] || limit=$((WAIT_MAX < 180 ? WAIT_MAX : 180))
+    if [ "$waited" -ge "$limit" ]; then
+      [ -n "$run" ] || fail "no release run for $TAG after ${waited}s: was the tag pushed?"
+      fail "release $TAG is still '$run' after ${waited}s"
+    fi
+    echo "release $TAG: ${run:-no run yet}, checking again in ${POLL}s"
+    sleep "$POLL"
+    waited=$((waited + POLL))
+  done
   echo "release $TAG: $run"
 fi
 
