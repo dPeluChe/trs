@@ -409,8 +409,10 @@ impl ParseHandler {
             });
         }
 
-        // Handle untracked files in standard format (just the path, no prefix)
-        if section == GitStatusSection::Untracked {
+        // Handle untracked files in standard format (just the path, no prefix).
+        // Git indents entries with a tab; the unindented line after them is the
+        // footer (`nothing added to commit...`, any language, with or without hints).
+        if section == GitStatusSection::Untracked && line.starts_with(char::is_whitespace) {
             return Some(GitStatusEntry {
                 status: "??".to_string(),
                 path: line.trim().to_string(),

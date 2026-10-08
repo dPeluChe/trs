@@ -24,6 +24,7 @@ mod html2md_basic;
 mod malformed_input;
 mod parse_bun;
 mod parse_db;
+mod parse_git_status;
 mod parse_grep;
 mod parse_grep_limits;
 mod parse_jest;
