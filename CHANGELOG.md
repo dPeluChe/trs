@@ -5,6 +5,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.7] - 2026-10-08
+
+### Bug Fixes
+
+- **exec:** Honor an explicit format on short output, and route by the real command (#184)
+- **gh:** List parsers keep the columns an agent acts on (#186)
+- **main:** Exit quietly when the reader of the output closes the pipe (#185)
+- **output-saver:** Ship the Cursor rule as a local plugin with alwaysApply (#188)
+- **git-status:** "No commits yet" is not a staged file (#191)
+
+### Documentation
+
+- Record why diff context lines and docker ps IDs stay as they are (#189)
+- Replace the "68-99%" claim and the stale size and speed numbers (#187)
+- Remove a benchmark script that cannot reproduce anything (#190)
+
+### Dependencies
+
+- **deps:** Bump rustls from 0.23.40 to 0.23.45 (#183)
+
 ## [0.8.6] - 2026-10-07
 
 ### Bug Fixes
