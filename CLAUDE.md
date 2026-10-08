@@ -45,11 +45,12 @@ publish + GitHub Release). Bump `Cargo.toml`, regenerate `CHANGELOG.md` with
 the workflow at the tag's commit, so fixing a failed release means re-tagging,
 not re-running.
 
-After the release run is green (and npm shows the version), clean up:
-`scripts/post-release-clean.sh` shows what it would remove, `--yes` does it.
-It only runs once the tag exists and the release workflow for it ended in
-`success`, removes this crate's build output (about 20 GB after a few weeks
-of work) and keeps the compiled dependencies, so the next build takes ~15 s.
+The last step after pushing the tag is the cleanup:
+`scripts/post-release-clean.sh --wait --yes` waits for the release run of
+that tag and then removes this crate's build output (about 20 GB after a few
+weeks of work), keeping the compiled dependencies, so the next build takes
+~15 s. It cleans only if the run ends in `success` (without `--yes` it is a
+dry run, without `--wait` it refuses a run still in progress).
 During development `scripts/post-release-clean.sh --if-over 10 --yes` frees
 `target/` only when it has grown past 10 GB. It never touches `~/.cargo`,
 `~/.trs` or git.

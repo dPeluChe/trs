@@ -219,8 +219,9 @@ The changelog is automated with [git-cliff](https://git-cliff.org)
 2. Regenerate the changelog: `git cliff -o CHANGELOG.md`
 3. Commit (`chore(release): bump to vX.Y.Z`) and merge to `main`.
 4. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
-5. When the release run is green, free the disk it left behind:
-   `scripts/post-release-clean.sh` (dry run), then with `--yes`. Cargo never
+5. Free the disk the release left behind, as the last command after the tag
+   is pushed: `scripts/post-release-clean.sh --wait --yes` (it waits for the
+   release run, and without `--yes` it only shows what it would do). Cargo never
    removes old build output, so `target/` grows by gigabytes (22 GB after a
    few weeks here, nearly all of it this crate's own test binaries and
    incremental caches). The script checks that the tag's release workflow

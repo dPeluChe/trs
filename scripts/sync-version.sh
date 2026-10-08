@@ -35,3 +35,7 @@ for dir in "$REPO_ROOT"/npm/platforms/*/; do
 done
 
 echo "Done. All packages at v$VERSION"
+echo
+echo "Next: merge the bump, tag and push, then free the build output once the run is green:"
+echo "  git tag -a v$VERSION -m v$VERSION && git push origin v$VERSION"
+echo "  scripts/post-release-clean.sh --wait --yes"

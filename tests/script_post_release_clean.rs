@@ -76,7 +76,9 @@ fn fixture(tagged: bool) -> Fixture {
     fake(&bin.join("cargo"), "echo \"cargo $*\" >> \"$CALLS\"");
     fake(
         &bin.join("gh"),
-        "echo \"gh $*\" >> \"$CALLS\"; printf '%s\\n' \"$FAKE_GH\"; exit \"${FAKE_GH_EXIT:-0}\"",
+        // $FAKE_GH is one answer, or several separated by `|`, one per call.
+        "echo \"gh $*\" >> \"$CALLS\"; n=$(cat \"$CALLS.n\" 2>/dev/null || echo 0); n=$((n+1)); echo $n > \"$CALLS.n\"; \
+         printf '%s\\n' \"$FAKE_GH\" | awk -F'|' -v n=$n '{print (n <= NF) ? $n : $NF}'; exit \"${FAKE_GH_EXIT:-0}\"",
     );
     Fixture { root }
 }
@@ -87,10 +89,11 @@ impl Fixture {
     }
 
     fn run(&self, gh_answer: &str, args: &[&str]) -> Output {
-        self.run_with(gh_answer, "0", args)
+        self.run_with(gh_answer, &[], args)
     }
 
-    fn run_with(&self, gh_answer: &str, gh_exit: &str, args: &[&str]) -> Output {
+    /// `env` is extra environment: `FAKE_GH_EXIT`, `POST_RELEASE_*`.
+    fn run_with(&self, gh_answer: &str, env: &[(&str, &str)], args: &[&str]) -> Output {
         let path = format!(
             "{}:{}",
             self.path("bin").display(),
@@ -104,7 +107,7 @@ impl Fixture {
             .env("HOME", self.path("home"))
             .env("CALLS", self.path("calls.log"))
             .env("FAKE_GH", gh_answer)
-            .env("FAKE_GH_EXIT", gh_exit)
+            .envs(env.iter().copied())
             .output()
             .unwrap()
     }
@@ -160,10 +163,86 @@ fn nothing_is_deleted_unless_this_version_was_released_successfully() {
     assert!(text(&out).contains("no tag v9.9.9"), "{}", text(&out));
 }
 
+/// One-second polls, so the waiting tests stay quick.
+const FAST: [(&str, &str); 2] = [
+    ("POST_RELEASE_POLL_SECONDS", "1"),
+    ("POST_RELEASE_WAIT_SECONDS", "30"),
+];
+
+fn gh_calls(f: &Fixture) -> usize {
+    f.calls().iter().filter(|l| l.starts_with("gh ")).count()
+}
+
+#[test]
+fn wait_follows_the_run_until_it_succeeds_and_then_cleans() {
+    let f = fixture(true);
+    let out = f.run_with(
+        "in_progress |in_progress |completed success",
+        &FAST,
+        &["--wait", "--yes"],
+    );
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(gh_calls(&f), 3, "{:?}", f.calls());
+    assert!(text(&out).contains("checking again"), "{}", text(&out));
+    assert_eq!(f.cargo_clean().len(), 2, "{:?}", f.calls());
+}
+
+#[test]
+fn wait_gives_up_as_soon_as_the_run_finishes_badly() {
+    for last in ["completed failure", "completed cancelled"] {
+        let f = fixture(true);
+        let answers = format!("in_progress |{last}");
+        let out = f.run_with(&answers, &FAST, &["--wait", "--yes"]);
+        assert!(!out.status.success(), "{last}: {}", text(&out));
+        assert_eq!(gh_calls(&f), 2, "{last}: {:?}", f.calls());
+        f.assert_untouched(last);
+    }
+}
+
+#[test]
+fn wait_stops_at_its_limit_and_cleans_nothing() {
+    let f = fixture(true);
+    let env = [
+        ("POST_RELEASE_POLL_SECONDS", "1"),
+        ("POST_RELEASE_WAIT_SECONDS", "2"),
+    ];
+    let out = f.run_with("in_progress ", &env, &["--wait", "--yes"]);
+    assert!(!out.status.success());
+    assert!(
+        text(&out).contains("still 'in_progress '"),
+        "{}",
+        text(&out)
+    );
+    f.assert_untouched("timeout");
+}
+
+#[test]
+fn wait_does_not_wait_forever_for_a_run_that_never_appears() {
+    let f = fixture(true);
+    let env = [
+        ("POST_RELEASE_POLL_SECONDS", "1"),
+        ("POST_RELEASE_WAIT_SECONDS", "2"),
+    ];
+    // gh prints `null null` when the workflow has no run for the tag yet.
+    let out = f.run_with("null null", &env, &["--wait", "--yes"]);
+    assert!(!out.status.success());
+    assert!(text(&out).contains("was the tag pushed"), "{}", text(&out));
+    f.assert_untouched("no run");
+}
+
+#[test]
+fn without_wait_an_unfinished_run_is_refused_with_a_hint() {
+    let f = fixture(true);
+    let out = f.run("in_progress ", &["--yes"]);
+    assert!(!out.status.success());
+    assert!(text(&out).contains("--wait"), "{}", text(&out));
+    assert_eq!(gh_calls(&f), 1, "it polled without --wait");
+}
+
 #[test]
 fn a_gh_that_cannot_answer_is_not_read_as_a_release() {
     let f = fixture(true);
-    let out = f.run_with("", "1", &["--yes"]);
+    let out = f.run_with("", &[("FAKE_GH_EXIT", "1")], &["--yes"]);
     assert!(!out.status.success());
     assert!(text(&out).contains("could not read"), "{}", text(&out));
     f.assert_untouched("gh failed");
