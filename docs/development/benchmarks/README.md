@@ -103,6 +103,26 @@ What the rows mean, read by eye:
 Anchor matching tolerates trs regrouping `grep` under file headers and `find`
 under directories, so "kept" is a ceiling: a low number is a real loss.
 
+## Context lines in small diffs
+
+`git diff` keeps only the changed lines and each hunk header (it names the
+function); the unchanged context lines go. Keeping some was tried against
+32 real diffs from this repo (4-500 changed lines each, last 60 commits,
+anchors from `truth.py`, tokens counted with o200k_base), by temporarily
+varying how many context lines surround each change:
+
+| context lines kept | tokens cut | anchors kept (median) |
+|---:|---:|---:|
+| 0 (current) | 23.7% | 58.7% |
+| 1 | 16.1% | 60.0% |
+| 2 | 8.5% | 61.2% |
+| 3 (nearly the raw diff) | 1.8% | 64.1% |
+
+One line of context costs 7.6 points of savings for 1.3 points of anchors, and
+even the near-raw diff keeps only 64%: the anchors lost are mostly the
+`index abc..def` hashes and the `diff --git a/x b/x` paths, which the file
+summary replaces on purpose. So the default stays at 0.
+
 ## trs against similar tools
 
 2026-09-24, one repo state, all tools on one machine. Reproduce:
