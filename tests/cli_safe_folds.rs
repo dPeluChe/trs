@@ -28,8 +28,6 @@ fn a_minified_line_in_a_diff_is_cut_and_recoverable() {
     let repo = tempfile::tempdir().unwrap();
     let p = repo.path();
     git(p, &["init", "-q"]);
-    git(p, &["config", "user.email", "t@example.com"]);
-    git(p, &["config", "user.name", "t"]);
     std::fs::write(p.join("m.js"), "x\n").unwrap();
     git(p, &["add", "."]);
     git(p, &["commit", "-qm", "base"]);

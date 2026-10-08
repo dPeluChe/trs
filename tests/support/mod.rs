@@ -25,6 +25,11 @@ pub fn git(dir: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
+/// `PATH` with `dir` first, so programs in it shadow the real ones.
+pub fn path_with(dir: &Path) -> String {
+    format!("{}:{}", dir.display(), std::env::var("PATH").unwrap())
+}
+
 /// A stand-in program: an executable `#!/bin/sh` script with this body.
 #[cfg(unix)]
 pub fn fake_program(path: &Path, body: &str) {
