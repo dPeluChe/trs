@@ -166,6 +166,13 @@ Two cases pass through untouched: a body that is not JSON, and
 `gh api --jq` / `--template`, where the caller already selected their
 fields. `trs diff gh api <endpoint>` shows exactly which keys went.
 
+The list commands keep every column an agent acts on, in one line per row:
+`gh pr list` the number, title, full branch name and state; `gh issue list`
+the number, state, title and labels; `gh run list` the run id (what
+`gh run view <id>` and `gh run rerun <id>` take), title, workflow, branch and
+duration. A state every row shares (`gh pr list` defaults to OPEN) is said once
+in the header. Dates and the triggering event are dropped (`--json` has them).
+
 `gh pr view` extracts title, state, author, url, labels, and a
 3-line body preview. `gh pr diff` routes to the git-diff parser
 (~90% reduction). `gh pr checks` summarises pass/fail/pending

@@ -2,6 +2,34 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
 
+/// Titles of conventional commits and PRs run to ~90 characters; cutting them
+/// lower hides what a PR or issue is about.
+const LIST_TITLE_MAX: usize = 100;
+
+fn str_of<'a>(v: &'a serde_json::Value, key: &str) -> &'a str {
+    v[key].as_str().unwrap_or("")
+}
+
+/// The one state every row has (`gh pr list` defaults to OPEN), so it can sit
+/// in the header instead of repeating on each line.
+fn shared_state<'a>(states: &[&'a str]) -> Option<&'a str> {
+    let first = *states.first()?;
+    (!first.is_empty() && states.iter().all(|s| *s == first)).then_some(first)
+}
+
+fn shared_suffix(state: Option<&str>) -> String {
+    state.map_or(String::new(), |s| format!(" ({s})"))
+}
+
+/// ` [MERGED]` after the number, unless the header already says it for all rows.
+fn state_tag(shared: Option<&str>, state: &str) -> String {
+    if shared.is_some() || state.is_empty() {
+        String::new()
+    } else {
+        format!(" [{state}]")
+    }
+}
+
 impl ParseHandler {
     /// Parse `gh pr list` output (TTY emoji format or non-TTY TSV).
     pub(crate) fn handle_gh_pr(
@@ -19,27 +47,13 @@ impl ParseHandler {
             }
 
             if trimmed.contains('\t') {
-                // TSV format: number\ttitle\tauthor:branch\tstate\tdate
+                // TSV format: number\ttitle\tbranch\tstate\tdate
                 let fields: Vec<&str> = trimmed.split('\t').collect();
                 if fields.len() >= 2 {
-                    let number = fields[0].trim();
-                    let title = fields[1].trim();
-                    let author = fields
-                        .get(2)
-                        .map(|s| {
-                            let s = s.trim();
-                            if let Some(pos) = s.find(':') {
-                                &s[..pos]
-                            } else if let Some(pos) = s.find('/') {
-                                &s[..pos]
-                            } else {
-                                s
-                            }
-                        })
-                        .unwrap_or("");
-                    prs.push(
-                        serde_json::json!({"number": number, "title": title, "author": author}),
-                    );
+                    let col = |i: usize| fields.get(i).map_or("", |s| s.trim());
+                    prs.push(serde_json::json!({
+                        "number": col(0), "title": col(1), "branch": col(2), "state": col(3)
+                    }));
                 }
             } else if trimmed.contains('#') {
                 if let Some(hash_pos) = trimmed.find('#') {
@@ -48,7 +62,7 @@ impl ParseHandler {
                     if parts.len() >= 2 {
                         let number = parts[0].trim();
                         let remainder = parts[1].trim();
-                        let (title, author) = if let Some(paren_start) = remainder.rfind('(') {
+                        let (title, branch) = if let Some(paren_start) = remainder.rfind('(') {
                             (
                                 remainder[..paren_start].trim(),
                                 remainder[paren_start + 1..].trim_end_matches(')').trim(),
@@ -56,9 +70,9 @@ impl ParseHandler {
                         } else {
                             (remainder, "")
                         };
-                        prs.push(
-                            serde_json::json!({"number": number, "title": title, "author": author}),
-                        );
+                        prs.push(serde_json::json!({
+                            "number": number, "title": title, "branch": branch, "state": ""
+                        }));
                     }
                 }
             }
@@ -72,15 +86,23 @@ impl ParseHandler {
                 if prs.is_empty() {
                     "no open pull requests\n".to_string()
                 } else {
-                    let mut out = format!("pull requests: {}\n", prs.len());
+                    let states: Vec<&str> = prs.iter().map(|p| str_of(p, "state")).collect();
+                    let shared = shared_state(&states);
+                    let mut out =
+                        format!("pull requests: {}{}\n", prs.len(), shared_suffix(shared));
                     for pr in &prs {
-                        let title = Self::truncate_str(pr["title"].as_str().unwrap_or(""), 60);
-                        let author = Self::truncate_str(pr["author"].as_str().unwrap_or(""), 30);
+                        let branch = str_of(pr, "branch");
+                        let state = str_of(pr, "state");
                         out.push_str(&format!(
-                            "  #{} {} ({})\n",
-                            pr["number"].as_str().unwrap_or(""),
-                            title,
-                            author
+                            "  #{}{} {}{}\n",
+                            str_of(pr, "number"),
+                            state_tag(shared, state),
+                            Self::truncate_str(str_of(pr, "title"), LIST_TITLE_MAX),
+                            if branch.is_empty() {
+                                String::new()
+                            } else {
+                                format!(" ({branch})")
+                            },
                         ));
                     }
                     out
@@ -115,15 +137,21 @@ impl ParseHandler {
             }
 
             if trimmed.contains('\t') {
-                // TSV format: number\ttitle\tlabels\tdate
+                // TSV format: number\tSTATE\ttitle\tlabels\tdate. Older gh left the
+                // state out: number\ttitle\tlabels\tdate.
                 let fields: Vec<&str> = trimmed.split('\t').collect();
                 if fields.len() >= 2 {
-                    let number = fields[0].trim();
-                    let title = fields[1].trim();
-                    let labels = fields.get(2).map(|s| s.trim()).unwrap_or("");
-                    issues.push(
-                        serde_json::json!({"number": number, "title": title, "labels": labels}),
-                    );
+                    let col = |i: usize| fields.get(i).map_or("", |s| s.trim());
+                    let has_state = fields.len() >= 3
+                        && matches!(col(1).to_ascii_uppercase().as_str(), "OPEN" | "CLOSED");
+                    let (state, title, labels) = if has_state {
+                        (col(1), col(2), col(3))
+                    } else {
+                        ("", col(1), col(2))
+                    };
+                    issues.push(serde_json::json!({
+                        "number": col(0), "title": title, "labels": labels, "state": state
+                    }));
                 }
             } else if trimmed.contains('#') {
                 if let Some(hash_pos) = trimmed.find('#') {
@@ -132,7 +160,9 @@ impl ParseHandler {
                     if parts.len() >= 2 {
                         let number = parts[0].trim();
                         let title = parts[1].trim();
-                        issues.push(serde_json::json!({"number": number, "title": title}));
+                        issues.push(
+                            serde_json::json!({"number": number, "title": title, "state": ""}),
+                        );
                     }
                 }
             }
@@ -146,13 +176,22 @@ impl ParseHandler {
                 if issues.is_empty() {
                     "no open issues\n".to_string()
                 } else {
-                    let mut out = format!("issues: {}\n", issues.len());
+                    let states: Vec<&str> = issues.iter().map(|i| str_of(i, "state")).collect();
+                    let shared = shared_state(&states);
+                    let mut out = format!("issues: {}{}\n", issues.len(), shared_suffix(shared));
                     for issue in &issues {
-                        let title = Self::truncate_str(issue["title"].as_str().unwrap_or(""), 60);
+                        let labels = str_of(issue, "labels");
+                        let state = str_of(issue, "state");
                         out.push_str(&format!(
-                            "  #{} {}\n",
-                            issue["number"].as_str().unwrap_or(""),
-                            title
+                            "  #{}{} {}{}\n",
+                            str_of(issue, "number"),
+                            state_tag(shared, state),
+                            Self::truncate_str(str_of(issue, "title"), LIST_TITLE_MAX),
+                            if labels.is_empty() {
+                                String::new()
+                            } else {
+                                format!(" ({labels})")
+                            },
                         ));
                     }
                     out
