@@ -226,9 +226,10 @@ trs cargo clippy
 ```
 
 (Prefixing is always safe: trs never double-wraps a command that already
-starts with `trs`.) This reduces token consumption by 68-99% without losing
-signal. Commands without a dedicated parser still get ANSI stripping and
-whitespace collapse (~30-40% reduction "free").
+starts with `trs`.) This cuts the tokens spent on command output (about 70% on
+real agent commands). When trs leaves something out it says so and where the
+rest is. Commands without a dedicated parser still get ANSI stripping and
+whitespace collapse (a small cut, nothing dropped).
 
 The output-saver reply-brevity rules are installed separately as their own
 sentinel-managed block (run `trs output-saver --install`, which `trs init
@@ -277,8 +278,9 @@ trs cargo test
 trs cargo clippy
 ```
 
-68-99% token reduction with no signal loss. Commands without a dedicated
-parser still get ANSI stripping + whitespace collapse (~30-40% "free").
+About 70% fewer tokens on real agent commands; when trs leaves something out
+it says so and where the rest is. Commands without a dedicated parser still
+get ANSI stripping + whitespace collapse (a small cut, nothing dropped).
 
 See `docs/development/antigravity-hooks-research.md` in the trs repo
 for the investigation that led to this rules-only integration.
