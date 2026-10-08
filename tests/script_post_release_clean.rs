@@ -4,32 +4,15 @@
 //! what they were asked to do.
 
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Output};
+
+mod support;
+use support::{fake_program, git, path_with};
 
 /// One temp dir: `repo/` (version 9.9.9), `bin/` (the fakes), `home/`.
 struct Fixture {
     root: tempfile::TempDir,
-}
-
-fn git(dir: &Path, args: &[&str]) {
-    let ok = Command::new("git")
-        .current_dir(dir)
-        .args(args)
-        .env("GIT_AUTHOR_NAME", "t")
-        .env("GIT_AUTHOR_EMAIL", "t@t")
-        .env("GIT_COMMITTER_NAME", "t")
-        .env("GIT_COMMITTER_EMAIL", "t@t")
-        .status()
-        .unwrap()
-        .success();
-    assert!(ok, "git {args:?}");
-}
-
-fn fake(path: &Path, body: &str) {
-    fs::write(path, format!("#!/bin/sh\n{body}\n")).unwrap();
-    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
 fn fixture(tagged: bool) -> Fixture {
@@ -73,8 +56,8 @@ fn fixture(tagged: bool) -> Fixture {
         git(&repo, &["tag", "v9.9.9"]);
     }
     // The fakes log every call; `gh` answers with $FAKE_GH and exits $FAKE_GH_EXIT.
-    fake(&bin.join("cargo"), "echo \"cargo $*\" >> \"$CALLS\"");
-    fake(
+    fake_program(&bin.join("cargo"), "echo \"cargo $*\" >> \"$CALLS\"");
+    fake_program(
         &bin.join("gh"),
         // $FAKE_GH is one answer, or several separated by `|`, one per call.
         "echo \"gh $*\" >> \"$CALLS\"; n=$(cat \"$CALLS.n\" 2>/dev/null || echo 0); n=$((n+1)); echo $n > \"$CALLS.n\"; \
@@ -94,16 +77,11 @@ impl Fixture {
 
     /// `env` is extra environment: `FAKE_GH_EXIT`, `POST_RELEASE_*`.
     fn run_with(&self, gh_answer: &str, env: &[(&str, &str)], args: &[&str]) -> Output {
-        let path = format!(
-            "{}:{}",
-            self.path("bin").display(),
-            std::env::var("PATH").unwrap()
-        );
         Command::new("bash")
             .arg(self.path("repo/scripts/post-release-clean.sh"))
             .args(args)
             .current_dir(self.path("repo"))
-            .env("PATH", path)
+            .env("PATH", path_with(&self.path("bin")))
             .env("HOME", self.path("home"))
             .env("CALLS", self.path("calls.log"))
             .env("FAKE_GH", gh_answer)

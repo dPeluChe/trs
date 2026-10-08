@@ -214,9 +214,11 @@ Include `Co-Authored-By` if pair-programming with AI.
 The changelog is automated with [git-cliff](https://git-cliff.org)
 (config: [`cliff.toml`](cliff.toml)) from the Conventional Commits above.
 
-1. Bump the version in `Cargo.toml`, `npm/package.json`, and
-   `npm/platforms/*/package.json`.
-2. Regenerate the changelog: `git cliff -o CHANGELOG.md`
+1. Bump the version in `Cargo.toml` and build once so `Cargo.lock` follows.
+   The npm packages need no bump: `release.yml` sets every npm version from
+   the tag when it publishes, so their committed versions stay as they are.
+2. Regenerate the changelog for the version being released:
+   `git cliff -o CHANGELOG.md --tag vX.Y.Z`
 3. Commit (`chore(release): bump to vX.Y.Z`) and merge to `main`.
 4. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
 5. Free the disk the release left behind, as the last command after the tag
