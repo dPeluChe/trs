@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.9] - 2026-10-19
+
+### Bug Fixes
+
+- **opencode:** Load the plugin on OpenCode 2.x as well as 1.x (#199)
+
+### CI / Build
+
+- Remove the dormant Tenki quick job (#197)
+
 ## [0.8.8] - 2026-10-08
 
 ### Testing
