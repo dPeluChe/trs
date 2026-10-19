@@ -2,20 +2,9 @@
 //! OpenClaw (JS) / Hermes (Python). Split from init_templates.rs to keep
 //! both under the 500-LOC rule; re-exported there so callers are unchanged.
 
-// OpenCode/Kilo plugin: prefix `trs`, let trs decide whether to compress or
-// passthrough. One default export serves both plugin APIs:
-//   - OpenCode 1.x (and Kilo): `server` returns a hooks map. `"shell.env"`
-//     injects TRS_AGENT into every shell's environment so attribution works on
-//     ALL platforms (the old `TRS_AGENT=opencode trs …` command prefix is
-//     POSIX-only, see issue #53); `"tool.execute.before"` prepends `trs ` to
-//     the bash command.
-//   - OpenCode 2.x: requires a default export with `id` and `setup`; the
-//     named-export form is rejected ("Plugin must export a default
-//     definition"). `setup` registers the same two hooks on `ctx.shell` and
-//     `ctx.tool`; the shell tool is named `shell` there, not `bash`.
-//   - the guard skips anything already routed through trs, including the
-//     legacy `TRS_AGENT=…` prefix, so a retried command can't snowball
-// Reference: https://opencode.ai/docs/plugins/
+// OpenCode plugin: one default export serves 1.x (`server`) and 2.x (`setup`).
+// 2.x rejects named exports and calls the shell tool `shell`; see
+// docs/development/agent-integrations.md (OpenCode).
 pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin: route commands through trs for token-optimized output
 
 const skip = (cmd) =>
