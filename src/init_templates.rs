@@ -412,4 +412,26 @@ mod tests {
             );
         }
     }
+
+    /// OpenCode 2.x loads only `export default { id, setup }` and rejects the
+    /// named-export form 1.x accepted; 1.x still reads `server` from the same
+    /// default export. Verified against opencode 2.0.32 and 1.19.3.
+    #[test]
+    fn opencode_plugin_loads_on_both_major_versions() {
+        let p = OPENCODE_PLUGIN;
+        for needle in [
+            "export default {",
+            "id: \"trs\"",
+            "server,",
+            "setup: async (ctx)",
+            "ctx.shell.hook(\"create.before\"",
+            "ctx.tool.hook(\"execute.before\"",
+            // 2.x names the shell tool `shell`; 1.x calls it `bash`.
+            "input.tool !== \"shell\"",
+            "input.tool !== \"bash\"",
+        ] {
+            assert!(p.contains(needle), "missing {needle}");
+        }
+        assert!(!p.contains("export const"), "named exports break on 2.x");
+    }
 }

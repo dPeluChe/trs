@@ -108,7 +108,7 @@ impl Summary {
 
 /// Run all doctor checks and return results.
 pub(crate) fn run_checks() -> Vec<Check> {
-    vec![
+    let mut checks = vec![
         check_version(),
         check_path_accessible(),
         check_dep("git", "git", true, "install git: https://git-scm.com"),
@@ -127,11 +127,13 @@ pub(crate) fn run_checks() -> Vec<Check> {
         check_output_saver_installed(),
         check_rules_blocks(),
         check_agent_docs_health(),
-    ]
+    ];
+    checks.extend(check_opencode_plugin());
+    checks
 }
 
 use crate::doctor_checks::*;
-use crate::doctor_hooks::check_hooks_installed;
+use crate::doctor_hooks::{check_hooks_installed, check_opencode_plugin};
 
 /// Print doctor results in spark-style format.
 pub(crate) fn print_report(checks: &[Check]) {

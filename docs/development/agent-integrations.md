@@ -184,15 +184,24 @@ Output envelope is identical to Claude Code.
 |---|---|
 | Type | Plugin (TypeScript) |
 | Config | `~/.config/opencode/plugins/trs.ts` (global) or `.opencode/plugins/trs.ts` (project) |
-| Hook key | `"tool.execute.before"` (string literal, not `before_tool_call`) |
-| Tool name check | `input.tool === "bash"` |
-| Mutation | `output.args.command = "trs ..."` |
-| Template | `OPENCODE_PLUGIN` |
+| Hook key 1.x | `"tool.execute.before"` (string literal, not `before_tool_call`) |
+| Hook key 2.x | `ctx.tool.hook("execute.before")` and `ctx.shell.hook("create.before")` |
+| Tool name check | 1.x `input.tool === "bash"`, 2.x `input.tool === "shell"` |
+| Mutation | 1.x `output.args.command = "trs ..."`, 2.x `input.input = { ...input.input, command: "trs ..." }` |
+| Template | `OPENCODE_PLUGIN` (one default export serves both) |
 | Docs | https://opencode.ai/docs/plugins/ |
 
 **Quirks**:
 - Plugin files are auto-discovered: no registration in `opencode.json`
   needed.
+- OpenCode 2.x (checked on 2.0.32) loads only `export default { id, setup }`.
+  The named-export form 1.x accepted fails with "Plugin must export a default
+  definition with an id and an effect or setup function" and the plugin
+  never runs, so nothing is routed through trs. 1.x (checked on 1.19.3) reads
+  `server` from the same default export, so the template defines both.
+  `trs doctor` flags a plugin file without `export default`.
+- 2.x env hook: `shell.create.before` fires for every shell, including the
+  user's own `!cmd`; the tool hook is the only one that sees the agent's.
 - Older docs showed `before_tool_call` hook with `ctx.tool` / `ctx.input`;
   that API is outdated. The current API is `"tool.execute.before"` with
   `(input, output)` arguments. Fixed in `b3d783f`.
@@ -208,10 +217,12 @@ Output envelope is identical to Claude Code.
 |---|---|
 | Type | Plugin (TypeScript) |
 | Config | `~/.config/kilo/plugins/trs.ts` (global) or `.kilo/plugins/trs.ts` (project) |
-| Template | `OPENCODE_PLUGIN` (shared, same plugin API) |
+| Template | `KILO_PLUGIN` (1.x plugin API, named export) |
 
-Kilo mirrors OpenCode's plugin architecture. Same `tool.execute.before`
-hook, same auto-discovery. Our install spec treats it as an OpenCode clone.
+Kilo mirrors OpenCode 1.x's plugin architecture. Same `tool.execute.before`
+hook, same auto-discovery. Our install spec treats it as an OpenCode 1.x
+clone and ships its own named-export template (`KILO_PLUGIN`); revisit it if
+Kilo moves to the 2.x plugin API.
 
 ### Codex
 

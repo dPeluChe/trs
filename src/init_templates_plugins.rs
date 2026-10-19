@@ -2,39 +2,47 @@
 //! OpenClaw (JS) / Hermes (Python). Split from init_templates.rs to keep
 //! both under the 500-LOC rule; re-exported there so callers are unchanged.
 
-// OpenCode/Kilo plugin: prefix `trs`, let trs decide whether to compress or
-// passthrough. Uses OpenCode's documented plugin shape:
-//   - async function returning a hooks map
-//   - `"shell.env"` injects TRS_AGENT into every shell's environment so
-//     attribution works on ALL platforms (the old `TRS_AGENT=opencode trs …`
-//     command prefix is POSIX-only — PowerShell/cmd on Windows parse it as a
-//     bogus command name, see issue #53)
-//   - `"tool.execute.before"` only prepends `trs ` to the bash command
-//   - the guard skips anything already routed through trs, including the
-//     legacy `TRS_AGENT=…` prefix, so a retried command can't snowball
-// Reference: https://opencode.ai/docs/plugins/
+// OpenCode plugin: one default export serves 1.x (`server`) and 2.x (`setup`).
+// 2.x rejects named exports and calls the shell tool `shell`; see
+// docs/development/agent-integrations.md (OpenCode).
 pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin: route commands through trs for token-optimized output
 
-export const TrsPlugin = async () => {
-  return {
-    // Cross-platform attribution: set the env var, never a shell prefix.
-    "shell.env": async (_input, output) => {
-      output.env.TRS_AGENT = "opencode";
-    },
-    "tool.execute.before": async (input, output) => {
-      if (input.tool !== "bash") return;
-      const cmd = output.args?.command;
-      if (typeof cmd !== "string") return;
-      // Idempotent: skip if already routed through trs (incl. the legacy
-      // `TRS_AGENT=…` prefix) or if it's a cd (dir change).
-      if (cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=")) return;
-      output.args.command = `trs ${cmd}`;
-    },
-  };
+const skip = (cmd) =>
+  cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=");
+
+// OpenCode 1.x
+const server = async () => ({
+  // Cross-platform attribution: set the env var, never a shell prefix.
+  "shell.env": async (_input, output) => {
+    output.env.TRS_AGENT = "opencode";
+  },
+  "tool.execute.before": async (input, output) => {
+    if (input.tool !== "bash") return;
+    const cmd = output.args?.command;
+    if (typeof cmd !== "string" || skip(cmd)) return;
+    output.args.command = `trs ${cmd}`;
+  },
+});
+
+export default {
+  id: "trs",
+  server,
+  // OpenCode 2.x
+  setup: async (ctx) => {
+    await ctx.shell.hook("create.before", (input) => {
+      input.env.TRS_AGENT = "opencode";
+    });
+    await ctx.tool.hook("execute.before", (input) => {
+      if (input.tool !== "shell") return;
+      const cmd = input.input?.command;
+      if (typeof cmd !== "string" || skip(cmd)) return;
+      input.input = { ...input.input, command: `trs ${cmd}` };
+    });
+  },
 };
 "#;
 
-/// Kilo plugin — identical mechanism to OpenCode but tags the downstream
+/// Kilo plugin — identical mechanism to OpenCode 1.x but tags the downstream
 /// run as `kilo` so history attribution is accurate across forks.
 pub(crate) const KILO_PLUGIN: &str = r#"// trs plugin: route commands through trs for token-optimized output
 
