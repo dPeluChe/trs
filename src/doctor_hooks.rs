@@ -54,6 +54,28 @@ pub(crate) fn check_hooks_installed() -> Check {
     }
 }
 
+/// OpenCode 2.x rejects the named-export plugin 1.x accepted ("Plugin must
+/// export a default definition"), so a plugin written before 0.8.9 silently
+/// stops routing commands through trs. `None` when no such plugin exists.
+pub(crate) fn check_opencode_plugin() -> Option<Check> {
+    let path = crate::init::home_dir()
+        .ok()?
+        .join(".config/opencode/plugins/trs.ts");
+    let content = std::fs::read_to_string(path).ok()?;
+    Some(opencode_plugin_check(&content))
+}
+
+fn opencode_plugin_check(content: &str) -> Check {
+    if content.contains("export default") {
+        return Check::pass("opencode plugin", "loads on OpenCode 1.x and 2.x");
+    }
+    Check::warn(
+        "opencode plugin",
+        "old format, OpenCode 2.x will not load it",
+    )
+    .with_hint("trs init --all --global --force, then restart OpenCode")
+}
+
 /// Runs that came through a hook carry an `agent` label; direct runs don't.
 /// Rotated monthly files count too, so a quiet month is not a false alarm.
 pub(crate) fn hook_has_fired(trs_dir: &std::path::Path) -> bool {
@@ -71,7 +93,16 @@ pub(crate) fn hook_has_fired(trs_dir: &std::path::Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::hook_has_fired;
+    use super::{hook_has_fired, opencode_plugin_check};
+    use crate::doctor::CheckStatus;
+
+    #[test]
+    fn an_opencode_plugin_without_a_default_export_is_flagged() {
+        let old = "export const TrsPlugin = async () => ({});";
+        assert_eq!(opencode_plugin_check(old).status, CheckStatus::Warn);
+        let current = crate::init_templates::OPENCODE_PLUGIN;
+        assert_eq!(opencode_plugin_check(current).status, CheckStatus::Pass);
+    }
 
     #[test]
     fn only_a_labelled_run_counts_as_a_hook_firing() {
