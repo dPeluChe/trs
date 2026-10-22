@@ -5,6 +5,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.10] - 2026-10-22
+
+### Bug Fixes
+
+- **cargo test:** The reported duration is now the sum of the suites, not the last one
+- **passthrough:** A truncated passthrough now saves the full output to the tee and names the path in its marker
+
+### Features
+
+- **stats:** `--by-agent` prints the period it covers and explains what `(untagged)` means
+
+### Documentation
+
+- Make usetrs.dev match v0.8.9 and the binary (#201)
+- Docs version pins are checked against `Cargo.toml` in CI
+
 ## [0.8.9] - 2026-10-19
 
 ### Bug Fixes
