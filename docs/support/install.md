@@ -53,26 +53,26 @@ Set `TRS_VERSION` before running the installer to pin rather than
 taking the latest release:
 
 ```bash
-TRS_VERSION=v0.5.9 curl -fsSL https://usetrs.dev/install.sh | sh
+TRS_VERSION=v0.8.9 curl -fsSL https://usetrs.dev/install.sh | sh
 ```
 
 For Windows:
 
 ```powershell
-$env:TRS_VERSION = 'v0.5.9'
+$env:TRS_VERSION = 'v0.8.9'
 irm https://usetrs.dev/install.ps1 | iex
 ```
 
 For npm, use the standard tag syntax:
 
 ```bash
-npm install -g @dpeluche/trs@0.5.9
+npm install -g @dpeluche/trs@0.8.9
 ```
 
 For cargo, use the `--version` flag:
 
 ```bash
-cargo install trs-cli --version 0.5.9
+cargo install trs-cli --version 0.8.9
 ```
 
 ## Custom install directory

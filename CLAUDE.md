@@ -40,7 +40,9 @@ ship-config gate, and delegating would run clippy twice.
 ## Release
 
 Tagging `vX.Y.Z` triggers `.github/workflows/release.yml` (5 binaries + npm
-publish + GitHub Release). Bump `Cargo.toml`, regenerate `CHANGELOG.md` with
+publish + GitHub Release). Bump `Cargo.toml` (and the pinned version in
+`docs/index.html`, `docs/support/install.md`, `docs/install.sh`; a test checks),
+regenerate `CHANGELOG.md` with
 `git cliff -o CHANGELOG.md --tag vX.Y.Z`, merge, then tag. A tagged run uses
 the workflow at the tag's commit, so fixing a failed release means re-tagging,
 not re-running.

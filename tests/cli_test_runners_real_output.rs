@@ -61,3 +61,18 @@ fn cargo_test_failures_keep_the_compared_values() {
     assert!(out.contains("src/main.rs:67:45"), "{out}");
     assert!(out.contains("ParseIntError"), "{out}");
 }
+
+/// Each suite prints its own `finished in`; the summary used the last one, so
+/// a 14 s run read as 0.01s.
+#[test]
+fn cargo_test_duration_is_the_sum_of_the_suites() {
+    let input = "running 2 tests\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.50s\n\nrunning 1 test\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s\n";
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args(["parse", "cargo-test"])
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let out = String::from_utf8_lossy(&out.stdout);
+    assert!(out.contains("1.75s"), "{out}");
+}

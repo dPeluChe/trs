@@ -695,7 +695,7 @@
     <div class="hero-meta">
       <span>Token-Reducing Shell</span>
       <span class="dot">·</span>
-      <span>v0.5.12</span>
+      <span>v0.8.9</span>
       <span class="dot">·</span>
       <span>Rust</span>
       <span class="dot">·</span>
@@ -1020,23 +1020,24 @@ unstaged (3):
           <div class="savings">&minus;99%</div>
         </div>
         <div class="compare-header" style="padding-top: 0;">
-          <div class="metric"><div class="num">55 KB</div><div class="label">~14k tokens raw</div></div>
+          <div class="metric"><div class="num">164 KB</div><div class="label">~41k tokens raw</div></div>
           <div class="arrow">vs</div>
-          <div class="metric"><div class="num">58 B</div><div class="label">~15 tokens trs</div></div>
+          <div class="metric"><div class="num">127 B</div><div class="label">~32 tokens trs</div></div>
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
-          <div class="compare-pane">   Compiling trs-cli v0.5.12
+          <div class="compare-pane">   Compiling trs-cli v0.8.9
     Finished test profile in 4.21s
      Running unittests src/main.rs
-running 2186 tests
+running 2548 tests
 test config::tests::test_defaults ... ok
 test config::tests::test_parse ... ok
-... (2175 more lines) ...
-test result: ok. 2186 passed; 0 failed
+... (2537 more lines) ...
+test result: ok. 2548 passed; 0 failed
      Running tests/cli_flags.rs
-... (70 more suites) ...</div>
-          <div class="compare-pane">cargo test: 2186 passed (71 suites, 4.9s)</div>
+... (96 more suites) ...</div>
+          <div class="compare-pane">cargo test: ok (2548 passed, 3 ignored, 98 suites, 13.83s)
+[trs] full output: ~/.trs/tee/&lt;run&gt;_cargo_test.log</div>
         </div>
       </div>
 
@@ -1411,7 +1412,7 @@ ad55480 feat(init): smart JSON merge
         Downloads the right binary for your platform into
         <code class="inline">~/.trs/bin/trs</code>. Zero runtime dependencies,
         no Node overhead, ~4 ms startup. Pin a version with
-        <code class="inline">TRS_VERSION=v0.5.12</code>.
+        <code class="inline">TRS_VERSION=v0.8.9</code>.
       </p>
     </div>
 

@@ -16,7 +16,7 @@ impl ParseHandler {
         let mut ignored = 0usize;
         let mut filtered = 0usize;
         let mut failed_names: Vec<String> = Vec::new();
-        let mut duration = String::new();
+        let mut seconds: Option<f64> = None;
         let mut compile_errors: Vec<String> = Vec::new();
         let mut suites = 0usize;
         // Per-failure panic summary: "<file:line:col>: <message>" captured
@@ -121,7 +121,11 @@ impl ParseHandler {
                             .unwrap_or(0);
                     } else if t.contains("finished in") {
                         if let Some(pos) = t.find("finished in ") {
-                            duration = t[pos + 12..].to_string();
+                            // Each suite reports its own time; the run took their sum.
+                            let secs = t[pos + 12..].trim().trim_end_matches('s');
+                            if let Ok(secs) = secs.parse::<f64>() {
+                                seconds = Some(seconds.unwrap_or(0.0) + secs);
+                            }
                         }
                     }
                 }
@@ -149,6 +153,7 @@ impl ParseHandler {
             }
         }
 
+        let duration = seconds.map(|s| format!("{s:.2}s")).unwrap_or_default();
         let total = passed + failed + ignored;
         let success = failed == 0 && compile_errors.is_empty();
 

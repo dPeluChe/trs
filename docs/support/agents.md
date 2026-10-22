@@ -120,11 +120,11 @@ install scope.
 
 ### Antigravity IDE + Antigravity CLI (`agy`)
 
-- **Status (v0.6.6).** **Rules-only**, same as Codex/Devin Desktop. There is
+- **Status (since trs v0.6.6).** **Rules-only**, same as Codex/Devin Desktop. There is
   no programmatic auto-rewriting of Bash commands until Google ships
   user-configurable PreToolHooks upstream. Full investigation:
   [`docs/development/antigravity-hooks-research.md`](../development/antigravity-hooks-research.md).
-- **Why.** Empirical testing against agy v1.0.1 showed that user-defined
+- **Why.** Empirical testing against Antigravity `agy` 1.0.1 (not a trs version) showed that user-defined
   entries in `~/.gemini/antigravity-{cli,ide}/hooks.json` load as
   **subagents** (the `name`+`description` fields are required by
   `JSONHookSpec` with jsonschema_description "Used to invoke it via

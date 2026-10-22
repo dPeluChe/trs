@@ -214,7 +214,7 @@ Include `Co-Authored-By` if pair-programming with AI.
 The changelog is automated with [git-cliff](https://git-cliff.org)
 (config: [`cliff.toml`](cliff.toml)) from the Conventional Commits above.
 
-1. Bump the version in `Cargo.toml` and build once so `Cargo.lock` follows.
+1. Bump the version in `Cargo.toml` and build once so `Cargo.lock` follows. Update the pinned version in `docs/index.html`, `docs/support/install.md` and `docs/install.sh` too (`tests/docs_version_sync.rs` fails until they match).
    The npm packages need no bump: `release.yml` sets every npm version from
    the tag when it publishes, so their committed versions stay as they are.
 2. Regenerate the changelog for the version being released:

@@ -43,8 +43,8 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reduction)
 
 $ trs cargo test
-cargo test: 2186 passed (71 suites, 4.9s)
-# 55 KB → 58 B (99% reduction)
+cargo test: ok (2548 passed, 3 ignored, 98 suites, 13.83s)
+# 164 KB → 127 B (99% reduction)
 
 $ trs cargo clippy
 lint: 102 issues in 39 files
