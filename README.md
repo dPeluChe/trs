@@ -126,6 +126,13 @@ Sixteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini C
 
 [Full compatibility matrix, caveats, and per-agent config paths →](docs/support/agents.md)
 
+<!-- STAGED, not published: enable with the usetrs.dev text once Exegol ships the
+`trs ingest` fix (see docs/roadmap/TASK_TODO.md "Exegol").
+Running several agents at once? [Exegol](https://github.com/dPeluChe/exegol), our
+desktop app, puts Claude Code, Codex, Gemini, OpenCode and more side by side in one
+window. trs works inside each of its terminals, and Exegol shows how much each agent saved.
+-->
+
 ### Standalone (optional)
 
 You can also call trs directly without the hooks wired: handy for scripts, CI, or trying it out before committing to the init flow:

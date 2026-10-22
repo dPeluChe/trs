@@ -126,6 +126,13 @@ Dieciséis agentes cubiertos de extremo a extremo. Hook programático para Claud
 
 [Matriz completa, detalles y rutas de configuración por agente →](docs/support/agents.md)
 
+<!-- PREPARADO, sin publicar: activar junto al texto de usetrs.dev cuando Exegol publique
+el arreglo de `trs ingest` (ver docs/roadmap/TASK_TODO.md "Exegol").
+¿Corres varios agentes a la vez? [Exegol](https://github.com/dPeluChe/exegol), nuestra
+app de escritorio, junta Claude Code, Codex, Gemini, OpenCode y más en una sola ventana.
+trs funciona dentro de cada una de sus terminales, y Exegol muestra cuánto ahorró cada agente.
+-->
+
 ### Uso standalone (opcional)
 
 También puedes invocar `trs` directamente sin hooks: útil para scripts, CI, o para probarlo antes de usar `trs init`:
