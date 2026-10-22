@@ -113,6 +113,7 @@ pub(crate) fn print_by_agent(entries: &[HistoryEntry]) {
 
     println!("trs Token Savings: by agent");
     println!("{}", "=".repeat(60));
+    println!("{}", super::stats::period_line(entries));
     println!(
         "  {:<14} {:>6} {:>8}  {:>6}  {:>10}  {:>10}",
         "AGENT", "CALLS", "SHARE", "AVG -%", "SAVED", "BYPASS"
@@ -136,10 +137,9 @@ pub(crate) fn print_by_agent(entries: &[HistoryEntry]) {
         );
     }
     println!();
-    println!("Labels come from TRS_AGENT env var injected by trs rewrite");
-    println!("(Claude / Gemini / Cursor / Droid) and the OpenCode / Kilo plugin");
-    println!("templates. Rules-based agents (Codex / Antigravity / Windsurf) and");
-    println!("direct shell invocations land under (untagged).");
+    println!("Labels come from TRS_AGENT, set by the agent's hook or plugin. (untagged) is");
+    println!("everything else: rules-only agents (Devin Desktop, Zed, Antigravity), commands");
+    println!("typed by hand, scripts, and other tools' test runs. Narrow it with --days N.");
     if any_bypass {
         println!();
         println!("BYPASS counts commands the agent prefixed with TRS_SKIP=1, trs stepped");

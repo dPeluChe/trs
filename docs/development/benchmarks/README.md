@@ -228,6 +228,11 @@ that one row. Every number here moves with the repo state: the September run
 had a 40k-token `git diff HEAD~5` (98% cut) where this one has 7.7k (26%).
 Quote the per-command rows, not one percentage.
 
-The ~70% on usetrs.dev is a different measurement: `trs stats --days 30` on the
-author's machine (2026-10-21), 8,359 commands, 14.9M input tokens, 68.9% saved
-(47.5% over the last 7 days). Same caveat: a few verbose outputs carry the total.
+The ~70% on usetrs.dev is a different measurement: the author's history over 30
+days (2026-10-21), only commands run by agents through a hook (3,259, 10.4M
+input tokens): 73.3% saved. `trs stats --days 30` shows 68.9% over 8,359
+commands because it also counts test suites and hand-typed runs (3,649 of them
+are test noise, such as another project's tests calling `trs digest`). Same
+caveat as the table: a few verbose outputs carry the total. Without the top 1%
+of outputs it is 58.7%, the median command saves 1%, and the last 7 days were
+23.6%.

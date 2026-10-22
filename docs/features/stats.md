@@ -119,11 +119,14 @@ in `~/.trs/history.jsonl` if you need it.
 trs stats --by-agent
 ```
 
-Shows which AI agent triggered each execution. Added in v0.5.8.
+Shows which AI agent triggered each execution. Added in v0.5.8. It covers
+the whole history unless you narrow it with `--days N`; the `Period:` line
+under the title says which stretch you are looking at.
 
 ```
 trs Token Savings: by agent
 ============================================================
+Period: Sep 21 22:48 → Oct 21 19:07 (30 days)
   AGENT           CALLS    SHARE  AVG -%       SAVED      BYPASS
 ────────────────────────────────────────────────────────────
   claude            1247    58.2%     71%       720K   3 (0.2%)
@@ -167,23 +170,19 @@ SAVED / AVG -%: they only contribute to CALLS and BYPASS.
 | Cursor | `hook_event_name: preToolUse` | `cursor` |
 | OpenCode | plugin template | `opencode` |
 | Kilo Code | plugin template | `kilo` |
-| Factory Droid | same wire format as Claude | `claude` (limitation) |
-| Antigravity IDE / CLI (`agy`) | rules-only, no programmatic signal (see [notes](../development/antigravity-hooks-research.md)) | `(untagged)` |
+| Factory Droid | `trs rewrite --caller droid` in its hook | `droid` |
+| Antigravity IDE / CLI (`agy`) | rules-only, no programmatic hook (see [notes](../development/antigravity-hooks-research.md)); env fallback | `antigravity` when the env is set, else `(untagged)` |
 | Codex | `PreToolUse` hook carries `TRS_AGENT=codex` (codex-cli ≥ 0.134) | `codex` (rules-only fallback: `(untagged)`) |
 | Windsurf | no programmatic signal (rules-only) | `(untagged)` |
 
-Direct-shell invocations (`trs git status` typed manually) also land
-under `(untagged)`. We don't invent a label where we don't have
-honest data.
-
-### Droid attribution caveat
-
-Factory Droid uses Claude's hook wire format verbatim (same
-`hook_event_name: PreToolUse` envelope), so our dispatcher can't
-distinguish the two at rewrite time. Both show up as `claude`. If
-you need separation, you currently need to eyeball `cwd` paths or
-look at the hour of the day. A future release could disambiguate
-via a install-time flag or a second detection path.
+`(untagged)` is also where these land: `trs git status` typed by hand,
+scripts and CI, and other tools' test suites that call `trs` against your
+real `~/.trs` (one project's tests logged 3,276 `digest` runs in a month).
+Because of that its AVG -% can look odd (those runs save 100%); narrow with
+`--days`, or read `claude`, `codex` and the other labelled rows as the
+agent traffic. We don't invent a label where we don't have honest data.
+An agent whose hook or plugin never loads leaves no row at all: its
+commands never reach trs, so they are not untagged, they are missing.
 
 ## `--by-command`: command family breakdown
 
