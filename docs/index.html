@@ -720,7 +720,7 @@
     <div class="hero-stats">
       <span class="hero-stat"><strong>7-10 MB</strong> single binary</span>
       <span class="hero-stat"><span class="accent">~4 ms</span> startup</span>
-      <span class="hero-stat"><strong>9</strong> AI tool hooks</span>
+      <span class="hero-stat"><strong>16</strong> AI agents</span>
       <span class="hero-stat"><strong>30+</strong> parsers</span>
       <span class="hero-stat">zero Node overhead</span>
     </div>
@@ -913,11 +913,13 @@
       <div class="feature"><div class="feature-title">JavaScript / TypeScript</div><div class="feature-desc"><code class="inline">npm</code>, <code class="inline">pnpm</code>, <code class="inline">yarn</code>, <code class="inline">bun</code>, <code class="inline">npx</code>, <code class="inline">pnpm dlx</code> &mdash; install, test, ls, audit, run.</div></div>
       <div class="feature"><div class="feature-title">Python</div><div class="feature-desc"><code class="inline">pytest</code>, <code class="inline">pip</code>, <code class="inline">uv</code>, plus <code class="inline">python3 -m &lt;mod&gt;</code> routing for pytest / mypy / ruff / pylint / flake8.</div></div>
       <div class="feature"><div class="feature-title">Go</div><div class="feature-desc"><code class="inline">go</code> &mdash; test, build, mod.</div></div>
+      <div class="feature"><div class="feature-title">Java</div><div class="feature-desc"><code class="inline">mvn</code>, <code class="inline">gradle</code> &mdash; failed tests with their message, compile errors once, modules and tasks counted.</div></div>
+      <div class="feature"><div class="feature-title">Cloud &amp; databases</div><div class="feature-desc"><code class="inline">aws</code> (recursive <code class="inline">s3</code>, JSON bodies), <code class="inline">psql</code>, <code class="inline">mysql</code>, <code class="inline">sqlite3</code> result grids.</div></div>
       <div class="feature"><div class="feature-title">Test runners</div><div class="feature-desc"><code class="inline">pytest</code>, <code class="inline">jest</code>, <code class="inline">vitest</code> &mdash; full parse of suite summary, failures, tracebacks.</div></div>
       <div class="feature"><div class="feature-title">Linters</div><div class="feature-desc"><code class="inline">eslint</code>, <code class="inline">biome</code>, <code class="inline">ruff</code>, <code class="inline">pylint</code>, <code class="inline">golangci-lint</code>, <code class="inline">cargo clippy</code>, <code class="inline">tsc</code> &mdash; issues grouped by file + rule.</div></div>
       <div class="feature"><div class="feature-title">Files &amp; search</div><div class="feature-desc"><code class="inline">ls</code> (+ <code class="inline">eza</code>, <code class="inline">lsd</code>, <code class="inline">exa</code>), <code class="inline">find</code> (+ <code class="inline">fd</code>), <code class="inline">grep</code> (+ <code class="inline">rg</code>, <code class="inline">ag</code>, <code class="inline">ack</code>), <code class="inline">tree</code>, <code class="inline">tail</code>. Plus <code class="inline">cat</code>, <code class="inline">head</code>, <code class="inline">sed -n X,Yp</code> intercepted with comment stripping.</div></div>
       <div class="feature"><div class="feature-title">Containers &amp; GitHub</div><div class="feature-desc"><code class="inline">docker</code> (ps, logs, build) and <code class="inline">gh</code> (pr list, <strong>pr view</strong>, issue list, run list + <code class="inline">gh api</code>).</div></div>
-      <div class="feature"><div class="feature-title">System &amp; network</div><div class="feature-desc"><code class="inline">ps</code>, <code class="inline">env</code>, <code class="inline">wc</code>, <code class="inline">brew</code>, <code class="inline">curl</code>, <code class="inline">wget</code>.</div></div>
+      <div class="feature"><div class="feature-title">System &amp; network</div><div class="feature-desc"><code class="inline">ps</code>, <code class="inline">du</code>, <code class="inline">lsof</code>, <code class="inline">pgrep</code>, <code class="inline">ping</code>, <code class="inline">env</code>, <code class="inline">wc</code>, <code class="inline">brew</code>, <code class="inline">curl</code>, <code class="inline">wget</code>.</div></div>
       <div class="feature"><div class="feature-title">Chain-aware</div><div class="feature-desc"><code class="inline">cd X &amp;&amp; cargo test</code> wraps each rewritable segment. Pipes and semicolons pass through untouched.</div></div>
       <div class="feature"><div class="feature-title">Env-prefix preservation</div><div class="feature-desc"><code class="inline">RUSTFLAGS=x cargo build</code> keeps the leading assignment &mdash; still reaches cargo after the rewrite.</div></div>
     </div>
@@ -1074,27 +1076,29 @@ src/main.rs (3):
         <div class="compare-header">
           <div><span class="cmd">git log -10</span></div>
           <div class="arrow">→</div>
-          <div class="savings">&minus;91%</div>
+          <div class="savings">&minus;71%</div>
         </div>
         <div class="compare-header" style="padding-top: 0;">
-          <div class="metric"><div class="num">7.6 KB</div><div class="label">~1.9k tokens raw</div></div>
+          <div class="metric"><div class="num">7.9 KB</div><div class="label">~2.0k tokens raw</div></div>
           <div class="arrow">vs</div>
-          <div class="metric"><div class="num">689 B</div><div class="label">~172 tokens trs</div></div>
+          <div class="metric"><div class="num">2.3 KB</div><div class="label">~578 tokens trs</div></div>
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
-          <div class="compare-pane">commit 9c2231b... (HEAD -> main)
-Author: Antonio Martinez Quintero
-Date:   Thu Apr 16 ...
+          <div class="compare-pane">commit 0d05ccb2d01959f1397bef049023f62cca0e27a8
+Author: dPeluChe &lt;...&gt;
+Date:   Mon Oct 19 17:16:07 2026 -0600
 
-    Merge pull request #9
+    chore(release): v0.8.9 (#200)
 
-commit 35b5f4f...
-... full messages + headers ...</div>
-          <div class="compare-pane">9c2231b Merge PR #9 init polish
-35b5f4f feat(init): Antigravity/Windsurf rules
-ad55480 feat(init): smart JSON merge
-... date + author collapsed</div>
+commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
+... full hashes, headers and message bodies ...</div>
+          <div class="compare-pane">0d05ccb chore(release): v0.8.9 (#200) &middot; 2 days ago
+  [+0 lines: git show 0d05ccb]
+5e4a745 fix(opencode): load the plugin on OpenCode 2.x as well as 1.x (#199) &middot; 2 days ago
+  * fix(opencode): load the plugin on OpenCode 2.x as well as 1.x
+  [+5 lines: git show 5e4a745]
+... grouped by author, bodies cut with a pointer to git show</div>
         </div>
       </div>
 
@@ -1210,7 +1214,7 @@ ad55480 feat(init): smart JSON merge
         </div>
         <div class="digest-feature">
           <div class="digest-feature-title">Live example</div>
-          <div class="digest-feature-desc">trs ingests itself at <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/codebase-digest.md" style="color: var(--accent);">docs/development/codebase-digest.md</a> &mdash; ~26k tokens covering the whole repo, refreshed on every release.</div>
+          <div class="digest-feature-desc">trs ingests itself at <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/codebase-digest.md" style="color: var(--accent);">docs/development/codebase-digest.md</a> &mdash; ~42k tokens covering the whole repo.</div>
         </div>
       </div>
     </div>
@@ -1237,10 +1241,13 @@ ad55480 feat(init): smart JSON merge
   <div class="container">
     <h2>Compression reference</h2>
     <p class="section-intro">
-      Measured on 36 command shapes taken from real agent sessions, tokens
-      counted with <code class="inline">o200k_base</code>. Across them trs cuts
-      ~70% of tokens (81% with <code class="inline">ps aux</code>, which alone
-      weighs more than the rest). &ldquo;Anchors kept&rdquo; is the share of
+      Measured on 38 command shapes taken from real agent sessions, tokens
+      counted with <code class="inline">o200k_base</code>, trs v0.8.9 on this
+      repo (2026-10-21). Across them trs cuts 81% of tokens, but
+      <code class="inline">ps aux</code> alone is 70% of the raw tokens: without
+      it the cut is 39%, and the median command loses 28%. Most commands print
+      little that is noise; the big wins are a few verbose ones.
+      &ldquo;Anchors kept&rdquo; is the share of
       paths, <code class="inline">file:line</code> refs, hashes and error lines
       from the raw output that survive. Some rows cut little on purpose.
       <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/benchmarks/README.md" target="_blank" rel="noopener">Methodology and how to reproduce &rarr;</a>
@@ -1252,17 +1259,17 @@ ad55480 feat(init): smart JSON merge
           <tr><th>Command</th><th>Raw tokens</th><th>trs tokens</th><th>Cut</th><th>Anchors kept</th><th>What stays</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>git log -20</code></td><td>15,494</td><td>1,958</td><td class="winner">87%</td><td>59%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
-          <tr><td><code>git diff</code> (large range)<code></code></td><td>39,946</td><td>953</td><td class="winner">98%</td><td>24%</td><td>file summary; full diff saved, path printed</td></tr>
-          <tr><td><code>find src -name '*.rs'</code></td><td>1,955</td><td>335</td><td class="winner">83%</td><td>49%</td><td>grouped by directory; full list saved</td></tr>
-          <tr><td><code>ls -la src</code></td><td>2,245</td><td>777</td><td class="winner">65%</td><td>100%</td><td></td></tr>
-          <tr><td><code>cargo test</code> (2 failing)<code></code></td><td>832</td><td>200</td><td class="winner">76%</td><td>56%</td><td>each failure: location, message, left/right</td></tr>
-          <tr><td><code>pytest</code> (2 failing)<code></code></td><td>372</td><td>122</td><td class="winner">67%</td><td>58%</td><td>names, <code>E</code> lines, <code>file.py:N</code></td></tr>
-          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>548</td><td>249</td><td class="winner">55%</td><td>70%</td><td>expected vs received, location</td></tr>
-          <tr><td><code>gh run list</code></td><td>459</td><td>143</td><td class="winner">69%</td><td>100%</td><td></td></tr>
-          <tr><td><code>grep -rn -C2</code></td><td>1,784</td><td>1,388</td><td class="winner">22%</td><td>100%</td><td>every match and every context line</td></tr>
+          <tr><td><code>git log -20</code></td><td>5,360</td><td>1,459</td><td class="winner">73%</td><td>78%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
+          <tr><td><code>git diff HEAD~5</code></td><td>7,747</td><td>5,767</td><td class="winner">26%</td><td>57%</td><td>changed lines and hunk headers; a large diff becomes a file summary with the full diff saved</td></tr>
+          <tr><td><code>find src -name '*.rs'</code></td><td>2,044</td><td>335</td><td class="winner">84%</td><td>47%</td><td>grouped by directory; full list saved</td></tr>
+          <tr><td><code>ls -la src</code></td><td>2,389</td><td>833</td><td class="winner">65%</td><td>100%</td><td></td></tr>
+          <tr><td><code>cargo test</code> (2 failing)<code></code></td><td>829</td><td>195</td><td class="winner">76%</td><td>56%</td><td>each failure: location, message, left/right</td></tr>
+          <tr><td><code>pytest</code> (2 failing)<code></code></td><td>372</td><td>120</td><td class="winner">68%</td><td>58%</td><td>names, <code>E</code> lines, <code>file.py:N</code></td></tr>
+          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>548</td><td>247</td><td class="winner">55%</td><td>70%</td><td>expected vs received, location</td></tr>
+          <tr><td><code>gh run list</code></td><td>517</td><td>364</td><td class="winner">30%</td><td>100%</td><td>run id, title, workflow, branch, duration</td></tr>
+          <tr><td><code>grep -rn -C2</code></td><td>1,798</td><td>1,402</td><td class="winner">22%</td><td>100%</td><td>every match and every context line</td></tr>
           <tr><td><code>gh pr view</code></td><td>922</td><td>881</td><td class="winner">4%</td><td>100%</td><td>the whole PR body</td></tr>
-          <tr><td><code>ps aux</code></td><td>68,382</td><td>900</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
+          <tr><td><code>ps aux</code></td><td>97,702</td><td>933</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
           <tr><td><code>git show rev:file</code></td><td>1,675</td><td>1,675</td><td class="winner">0%</td><td>100%</td><td>verbatim: it is a file</td></tr>
         </tbody>
       </table>
@@ -1278,8 +1285,8 @@ ad55480 feat(init): smart JSON merge
         <div class="label">Node overhead (shell launcher)</div>
       </div>
       <div class="bench-card">
-        <div class="num">~70%</div>
-        <div class="label">fewer tokens, measured</div>
+        <div class="num">81%</div>
+        <div class="label">tokens cut on the benchmark (39% without ps aux)</div>
       </div>
       <div class="bench-card">
         <div class="num">30+</div>
@@ -1303,8 +1310,8 @@ ad55480 feat(init): smart JSON merge
 
     <div class="features-grid" style="margin-top: 24px;">
       <div class="feature">
-        <div class="feature-title">All sixteen agents covered</div>
-        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Pi, Droid, Codex, VS Code Copilot, Copilot CLI, Devin CLI, OpenClaw, Hermes, Zed (Agent Panel), Devin Desktop (ex-Windsurf), Antigravity IDE, Antigravity CLI. The Antigravity pair (IDE + <code>agy</code>) is rules-only as of v0.6.6, agy v1.0.1 doesn't yet expose user-configurable PreTool hooks (<a href="https://github.com/dPeluChe/trs/blob/main/docs/development/antigravity-hooks-research.md">research</a>).</div>
+        <div class="feature-title">Eleven of the sixteen agents covered</div>
+        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, VS Code Copilot / Copilot CLI, Devin Desktop (ex-Windsurf), Antigravity IDE and Antigravity CLI. Pi, Devin CLI, OpenClaw, Hermes and Zed are not wired yet. The Antigravity pair (IDE + <code>agy</code>) is rules-only: Antigravity's <code>agy</code> 1.0.1 does not expose user-configurable PreTool hooks (<a href="https://github.com/dPeluChe/trs/blob/main/docs/development/antigravity-hooks-research.md">research</a>).</div>
       </div>
       <div class="feature">
         <div class="feature-title">Check-first by default</div>
@@ -1365,7 +1372,7 @@ ad55480 feat(init): smart JSON merge
       </div>
       <div class="feature">
         <div class="feature-title">Symmetric uninstall</div>
-        <div class="feature-desc"><code>trs uninstall</code> walks every surface <code>trs init</code> wrote: JSON hooks (preserves user-added entries), plugin files, Codex sentinel blocks, output-saver sidecars. Interactive by default, or <code>--all</code> / <code>--tool</code> / <code>--output-saver</code> / <code>--dry-run</code> for scripts.</div>
+        <div class="feature-desc"><code>trs uninstall</code> walks every surface <code>trs init</code> wrote: JSON hooks (preserves user-added entries), plugin files, Codex sentinel blocks, output-saver sidecars. Interactive by default, or <code>&lt;tool&gt;</code> / <code>--all</code> / <code>--output-saver</code> / <code>--dry-run</code> for scripts.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Transparent wrappers</div>

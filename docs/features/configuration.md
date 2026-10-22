@@ -51,8 +51,8 @@ agents to work in smaller committed chunks.
 
 When a parser errors out mid-parse, trs falls back to truncated
 passthrough rather than silent failure. This is the truncation
-ceiling. Default 2000 chars. The full raw output is always saved to
-`~/.trs/tee/` regardless, this limit only affects what flows into
+ceiling. Default 2000 chars. The full raw output is saved to
+`~/.trs/tee/` and its path printed, this limit only affects what flows into
 the agent's context.
 
 ### `json_max_depth`

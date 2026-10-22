@@ -207,11 +207,15 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                     end -= 1;
                 }
                 let cut = &stdout_ref[..end];
+                let saved = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr)
+                    .map(|path| format!(", full output: {path}"))
+                    .unwrap_or_default();
                 format!(
-                    "{}\n[trs:passthrough truncated at {} chars, full output: {} chars]",
+                    "{}\n[trs:passthrough truncated at {} chars of {}{}]",
                     cut,
                     passthrough_max,
-                    stdout_ref.len()
+                    stdout_ref.len(),
+                    saved
                 )
             } else {
                 stdout_ref.to_string()

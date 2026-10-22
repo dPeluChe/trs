@@ -9,7 +9,7 @@ install scope.
 |---|---|---|---|---|---|
 | Claude Code | programmatic hook | ✓ | ✓ (`@import`) | `claude` | global + project |
 | Gemini CLI | programmatic hook | ✓ | ✓ (`@import`) | `gemini` | global + project |
-| Cursor | programmatic hook | ✓ | ✓ (`.mdc`) | `cursor` | global + project |
+| Cursor | programmatic hook | ✓ | ✓ (local plugin) | `cursor` | global + project |
 | OpenCode | plugin template | ✓ | ✓ (inline block) | `opencode` | global |
 | Kilo Code | plugin template | ✓ | ✓ (inline block) | `kilo` | global |
 | Pi Coding Agent | programmatic hook (extension) | ✓ | — | `pi` | global + project |

@@ -205,8 +205,25 @@ Read by eye before trusting a cell:
   --stat`/`-p`, `tail` and `git show rev:file` are passed through verbatim.
 - **Where trs still loses anchors.** `git diff` on a large range becomes a
   summary (now with a pointer to the full output). `find` over a big tree lists
-  per directory. `ps aux` keeps the top processes. `gh pr list` omits branch
-  names.
+  per directory. `ps aux` keeps the top processes.
 - **Zero-anchor rows are not always a loss.** For `ps aux`, the anchors are
   PIDs in a list the agent rarely reads whole, and the full list is one path
   away.
+
+## trs alone on v0.8.9
+
+2026-10-21, same corpus (now 38 commands: `docker ps -a` and `docker images`
+were added), this repo's state that day, `compare.py --only trs --reps 3`,
+tokens counted with o200k_base. This is what usetrs.dev shows.
+
+| | tokens cut | anchors kept |
+|---|---:|---:|
+| all 38 commands (token-weighted) | 81% | 65% (mean 88% per command) |
+| without `ps aux` | 39% | |
+| median command | 28% | |
+| commands cut by half or more | 12 of 38 | |
+
+`ps aux` is 97,702 of the 139,322 raw tokens, so the headline figure is mostly
+that one row. Every number here moves with the repo state: the September run
+had a 40k-token `git diff HEAD~5` (98% cut) where this one has 7.7k (26%).
+Quote the per-command rows, not one percentage.
