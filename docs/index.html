@@ -1249,17 +1249,10 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
   <div class="container">
     <h2>Compression reference</h2>
     <p class="section-intro">
-      The ~70% is from use: over 30 days of one developer&rsquo;s agent work,
-      trs saved 73% of 10.4M tokens across 3,259 commands run by agents. A few
-      huge outputs carry that total (the median command saves little, and the
-      last 7 days were 24%), so it varies with what you run. The table is a fixed
-      benchmark of 38 command shapes taken from real agent sessions, tokens
-      counted with <code class="inline">o200k_base</code>, trs v0.8.9 on this
-      repo (2026-10-21): 81% of tokens cut, but
-      <code class="inline">ps aux</code>, a process list that prints hundreds
-      of rows with very long command lines, is 70% of the raw tokens. Without it
-      the cut is 39% and the median command loses 28%: most commands print
-      little noise, the big wins are a few verbose ones.
+      The ~70% comes from real agent use over a month, and it varies with
+      what you run. The table is a fixed benchmark of 38 command shapes taken
+      from real agent sessions (trs v0.8.9, tokens counted with
+      <code class="inline">o200k_base</code>).
       &ldquo;Anchors kept&rdquo; is the share of
       paths, <code class="inline">file:line</code> refs, hashes and error lines
       from the raw output that survive. Some rows cut little on purpose.
@@ -1299,7 +1292,7 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
       </div>
       <div class="bench-card">
         <div class="num">~70%</div>
-        <div class="label">fewer tokens over 30 days of agent use</div>
+        <div class="label">fewer tokens on real agent commands</div>
       </div>
       <div class="bench-card">
         <div class="num">30+</div>
