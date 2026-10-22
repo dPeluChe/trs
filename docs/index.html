@@ -822,7 +822,7 @@
       <text class="box-title" x="130" y="90" text-anchor="middle">your command</text>
       <text class="box-sub" x="130" y="112" text-anchor="middle">git status</text>
       <text class="box-sub" x="130" y="128" text-anchor="middle">cargo test · ls -la · ...</text>
-      <text class="label" x="130" y="170" text-anchor="middle">1.4 KB raw · ~350 tok</text>
+      <text class="label" x="130" y="170" text-anchor="middle">493 B raw · ~123 tok</text>
 
       <!-- Arrow 1 -->
       <line class="arrow" x1="245" y1="100" x2="325" y2="100"/>
@@ -842,7 +842,7 @@
       <text class="box-title" x="750" y="90" text-anchor="middle">compact output</text>
       <text class="box-sub" x="750" y="112" text-anchor="middle">compact · JSON · agent</text>
       <text class="box-sub" x="750" y="128" text-anchor="middle">CSV · TSV · raw</text>
-      <text class="label-green" x="750" y="170" text-anchor="middle">336 B · ~84 tok (-76%)</text>
+      <text class="label-green" x="750" y="170" text-anchor="middle">93 B · ~23 tok (-81%)</text>
 
       <!-- Arrow 3: down from trs to tracker -->
       <line class="arrow-muted" x1="440" y1="155" x2="440" y2="225"/>
@@ -976,7 +976,7 @@
   <div class="container">
     <h2>Before / with trs</h2>
     <p class="section-intro">
-      Illustrative raw output vs what trs emits, token counts estimated as
+      Raw output vs what trs emits, from real runs; token counts estimated as
       <code class="inline">bytes / 4</code>. The measured numbers are in the
       table below. Click any row to see the before/after.
     </p>
@@ -987,31 +987,36 @@
         <div class="compare-header">
           <div><span class="cmd">git status</span></div>
           <div class="arrow">→</div>
-          <div class="savings">&minus;76%</div>
+          <div class="savings">&minus;81%</div>
         </div>
         <div class="compare-header" style="padding-top: 0;">
-          <div class="metric"><div class="num">1.4 KB</div><div class="label">~350 tokens raw</div></div>
+          <div class="metric"><div class="num">493 B</div><div class="label">~123 tokens raw</div></div>
           <div class="arrow">vs</div>
-          <div class="metric"><div class="num">336 B</div><div class="label">~84 tokens trs</div></div>
+          <div class="metric"><div class="num">93 B</div><div class="label">~23 tokens trs</div></div>
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
           <div class="compare-pane">On branch main
 Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
 
 Changes not staged for commit:
-  (use "git add &lt;file&gt;..." to update)
-  (use "git restore &lt;file&gt;..." to discard)
-        modified:   src/main.rs
+  (use "git add &lt;file&gt;..." to update what will be committed)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
         modified:   src/lib.rs
-        new file:   src/new.rs
+        modified:   src/main.rs
 
-no changes added to commit</div>
+Untracked files:
+  (use "git add &lt;file&gt;..." to include in what will be committed)
+        src/other.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")</div>
           <div class="compare-pane">main [ahead 1]
-unstaged (3):
-  M src/main.rs
+unstaged (2):
   M src/lib.rs
-  A src/new.rs</div>
+  M src/main.rs
+untracked (1):
+  ?? src/other.rs</div>
         </div>
       </div>
 
@@ -1047,28 +1052,31 @@ test result: ok. 2548 passed; 0 failed
         <div class="compare-header">
           <div><span class="cmd">cargo clippy</span></div>
           <div class="arrow">→</div>
-          <div class="savings">&minus;90%</div>
+          <div class="savings">&minus;93%</div>
         </div>
         <div class="compare-header" style="padding-top: 0;">
-          <div class="metric"><div class="num">55 KB</div><div class="label">~14k tokens raw</div></div>
+          <div class="metric"><div class="num">56.5 KB</div><div class="label">~14.1k tokens raw</div></div>
           <div class="arrow">vs</div>
-          <div class="metric"><div class="num">5.5 KB</div><div class="label">~1.4k tokens trs</div></div>
+          <div class="metric"><div class="num">4.0 KB</div><div class="label">~1.0k tokens trs</div></div>
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
           <div class="compare-pane">warning: unused import: `std::io::Read`
- --&gt; src/main.rs:8:23
+ --&gt; src/parser.rs:1:5
   |
-8 |     use std::io::Read;
-  |                  ^^^^
-  = note: `#[warn(unused_imports)]`
-... (hundreds more lines) ...</div>
-          <div class="compare-pane">lint: 102 issues in 39 files
-src/main.rs (3):
-  W unused_import 8:23
-  W redundant_closure 44:30
-  W dead_code 112:8
-... grouped by file + rule</div>
+1 | use std::io::Read;
+  |     ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+... (156 warnings, 56 KB in all) ...</div>
+          <div class="compare-pane">lint: 156 (156 warnings) in 6 files
+src/cache.rs (26):
+  W 1:5 unused import: `std::io::Read`
+  W needless_return 11:5
+  W ptr_arg 4:24
+  W needless_range_loop 6:14
+  W len_zero 8:12
+... one block per file, grouped by rule</div>
         </div>
       </div>
 
@@ -1105,7 +1113,7 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
     </div>
 
     <p class="install-note" style="margin-top: 24px;">
-      Numbers are representative; your repo and commands will vary.
+      Sample outputs are real runs (clippy on a six-file demo crate with 156 warnings, the others on this repo); your repo and commands will vary.
       Want to reproduce or compare with other tools? See the internal
       calibration lab in
       <a href="https://github.com/dPeluChe/trs/tree/main/docs/development/benchmarks">docs/development/benchmarks/</a>.
@@ -1241,12 +1249,16 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
   <div class="container">
     <h2>Compression reference</h2>
     <p class="section-intro">
-      Measured on 38 command shapes taken from real agent sessions, tokens
+      The ~70% is from use: over 30 days of one developer&rsquo;s real agent
+      work, trs saved 69% of 14.9M tokens across 8,359 commands. It varies
+      with what you run (the last 7 days were 47%). The table is a fixed
+      benchmark of 38 command shapes taken from real agent sessions, tokens
       counted with <code class="inline">o200k_base</code>, trs v0.8.9 on this
-      repo (2026-10-21). Across them trs cuts 81% of tokens, but
-      <code class="inline">ps aux</code> alone is 70% of the raw tokens: without
-      it the cut is 39%, and the median command loses 28%. Most commands print
-      little that is noise; the big wins are a few verbose ones.
+      repo (2026-10-21): 81% of tokens cut, but
+      <code class="inline">ps aux</code>, a process list that prints hundreds
+      of rows with very long command lines, is 70% of the raw tokens. Without it
+      the cut is 39% and the median command loses 28%: most commands print
+      little noise, the big wins are a few verbose ones.
       &ldquo;Anchors kept&rdquo; is the share of
       paths, <code class="inline">file:line</code> refs, hashes and error lines
       from the raw output that survive. Some rows cut little on purpose.
@@ -1285,8 +1297,8 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
         <div class="label">Node overhead (shell launcher)</div>
       </div>
       <div class="bench-card">
-        <div class="num">81%</div>
-        <div class="label">tokens cut on the benchmark (39% without ps aux)</div>
+        <div class="num">~70%</div>
+        <div class="label">fewer tokens over 30 days of real use</div>
       </div>
       <div class="bench-card">
         <div class="num">30+</div>

@@ -227,3 +227,7 @@ tokens counted with o200k_base. This is what usetrs.dev shows.
 that one row. Every number here moves with the repo state: the September run
 had a 40k-token `git diff HEAD~5` (98% cut) where this one has 7.7k (26%).
 Quote the per-command rows, not one percentage.
+
+The ~70% on usetrs.dev is a different measurement: `trs stats --days 30` on the
+author's machine (2026-10-21), 8,359 commands, 14.9M input tokens, 68.9% saved
+(47.5% over the last 7 days). Same caveat: a few verbose outputs carry the total.
