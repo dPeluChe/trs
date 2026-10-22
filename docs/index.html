@@ -695,7 +695,7 @@
     <div class="hero-meta">
       <span>Token-Reducing Shell</span>
       <span class="dot">·</span>
-      <span>v0.5.12</span>
+      <span>v0.8.9</span>
       <span class="dot">·</span>
       <span>Rust</span>
       <span class="dot">·</span>
@@ -720,7 +720,7 @@
     <div class="hero-stats">
       <span class="hero-stat"><strong>7-10 MB</strong> single binary</span>
       <span class="hero-stat"><span class="accent">~4 ms</span> startup</span>
-      <span class="hero-stat"><strong>9</strong> AI tool hooks</span>
+      <span class="hero-stat"><strong>16</strong> AI agents</span>
       <span class="hero-stat"><strong>30+</strong> parsers</span>
       <span class="hero-stat">zero Node overhead</span>
     </div>
@@ -822,7 +822,7 @@
       <text class="box-title" x="130" y="90" text-anchor="middle">your command</text>
       <text class="box-sub" x="130" y="112" text-anchor="middle">git status</text>
       <text class="box-sub" x="130" y="128" text-anchor="middle">cargo test · ls -la · ...</text>
-      <text class="label" x="130" y="170" text-anchor="middle">1.4 KB raw · ~350 tok</text>
+      <text class="label" x="130" y="170" text-anchor="middle">493 B raw · ~123 tok</text>
 
       <!-- Arrow 1 -->
       <line class="arrow" x1="245" y1="100" x2="325" y2="100"/>
@@ -842,7 +842,7 @@
       <text class="box-title" x="750" y="90" text-anchor="middle">compact output</text>
       <text class="box-sub" x="750" y="112" text-anchor="middle">compact · JSON · agent</text>
       <text class="box-sub" x="750" y="128" text-anchor="middle">CSV · TSV · raw</text>
-      <text class="label-green" x="750" y="170" text-anchor="middle">336 B · ~84 tok (-76%)</text>
+      <text class="label-green" x="750" y="170" text-anchor="middle">93 B · ~23 tok (-81%)</text>
 
       <!-- Arrow 3: down from trs to tracker -->
       <line class="arrow-muted" x1="440" y1="155" x2="440" y2="225"/>
@@ -898,6 +898,17 @@
       Full matrix + caveats + per-agent config paths:
       <a href="https://github.com/dPeluChe/trs/blob/main/docs/support/agents.md" style="color: var(--accent);">docs/support/agents.md</a>.
     </p>
+    <!-- STAGED, not published: enable once Exegol ships the `trs ingest` fix (and
+         the savings view, or drop its last sentence). Same text in README.md and
+         README.es.md; see docs/roadmap/TASK_TODO.md "Exegol".
+    <p style="margin-top: 8px; color: var(--text-muted); font-size: 14px;">
+      Running several agents at once?
+      <a href="https://github.com/dPeluChe/exegol" style="color: var(--accent);">Exegol</a>,
+      our desktop app, puts Claude Code, Codex, Gemini, OpenCode and more side by
+      side in one window. trs works inside each of its terminals, and Exegol shows
+      how much each agent saved.
+    </p>
+    -->
   </div>
 </section>
 
@@ -913,11 +924,13 @@
       <div class="feature"><div class="feature-title">JavaScript / TypeScript</div><div class="feature-desc"><code class="inline">npm</code>, <code class="inline">pnpm</code>, <code class="inline">yarn</code>, <code class="inline">bun</code>, <code class="inline">npx</code>, <code class="inline">pnpm dlx</code> &mdash; install, test, ls, audit, run.</div></div>
       <div class="feature"><div class="feature-title">Python</div><div class="feature-desc"><code class="inline">pytest</code>, <code class="inline">pip</code>, <code class="inline">uv</code>, plus <code class="inline">python3 -m &lt;mod&gt;</code> routing for pytest / mypy / ruff / pylint / flake8.</div></div>
       <div class="feature"><div class="feature-title">Go</div><div class="feature-desc"><code class="inline">go</code> &mdash; test, build, mod.</div></div>
+      <div class="feature"><div class="feature-title">Java</div><div class="feature-desc"><code class="inline">mvn</code>, <code class="inline">gradle</code> &mdash; failed tests with their message, compile errors once, modules and tasks counted.</div></div>
+      <div class="feature"><div class="feature-title">Cloud &amp; databases</div><div class="feature-desc"><code class="inline">aws</code> (recursive <code class="inline">s3</code>, JSON bodies), <code class="inline">psql</code>, <code class="inline">mysql</code>, <code class="inline">sqlite3</code> result grids.</div></div>
       <div class="feature"><div class="feature-title">Test runners</div><div class="feature-desc"><code class="inline">pytest</code>, <code class="inline">jest</code>, <code class="inline">vitest</code> &mdash; full parse of suite summary, failures, tracebacks.</div></div>
       <div class="feature"><div class="feature-title">Linters</div><div class="feature-desc"><code class="inline">eslint</code>, <code class="inline">biome</code>, <code class="inline">ruff</code>, <code class="inline">pylint</code>, <code class="inline">golangci-lint</code>, <code class="inline">cargo clippy</code>, <code class="inline">tsc</code> &mdash; issues grouped by file + rule.</div></div>
       <div class="feature"><div class="feature-title">Files &amp; search</div><div class="feature-desc"><code class="inline">ls</code> (+ <code class="inline">eza</code>, <code class="inline">lsd</code>, <code class="inline">exa</code>), <code class="inline">find</code> (+ <code class="inline">fd</code>), <code class="inline">grep</code> (+ <code class="inline">rg</code>, <code class="inline">ag</code>, <code class="inline">ack</code>), <code class="inline">tree</code>, <code class="inline">tail</code>. Plus <code class="inline">cat</code>, <code class="inline">head</code>, <code class="inline">sed -n X,Yp</code> intercepted with comment stripping.</div></div>
       <div class="feature"><div class="feature-title">Containers &amp; GitHub</div><div class="feature-desc"><code class="inline">docker</code> (ps, logs, build) and <code class="inline">gh</code> (pr list, <strong>pr view</strong>, issue list, run list + <code class="inline">gh api</code>).</div></div>
-      <div class="feature"><div class="feature-title">System &amp; network</div><div class="feature-desc"><code class="inline">ps</code>, <code class="inline">env</code>, <code class="inline">wc</code>, <code class="inline">brew</code>, <code class="inline">curl</code>, <code class="inline">wget</code>.</div></div>
+      <div class="feature"><div class="feature-title">System &amp; network</div><div class="feature-desc"><code class="inline">ps</code>, <code class="inline">du</code>, <code class="inline">lsof</code>, <code class="inline">pgrep</code>, <code class="inline">ping</code>, <code class="inline">env</code>, <code class="inline">wc</code>, <code class="inline">brew</code>, <code class="inline">curl</code>, <code class="inline">wget</code>.</div></div>
       <div class="feature"><div class="feature-title">Chain-aware</div><div class="feature-desc"><code class="inline">cd X &amp;&amp; cargo test</code> wraps each rewritable segment. Pipes and semicolons pass through untouched.</div></div>
       <div class="feature"><div class="feature-title">Env-prefix preservation</div><div class="feature-desc"><code class="inline">RUSTFLAGS=x cargo build</code> keeps the leading assignment &mdash; still reaches cargo after the rewrite.</div></div>
     </div>
@@ -974,7 +987,7 @@
   <div class="container">
     <h2>Before / with trs</h2>
     <p class="section-intro">
-      Illustrative raw output vs what trs emits, token counts estimated as
+      Raw output vs what trs emits, from real runs; token counts estimated as
       <code class="inline">bytes / 4</code>. The measured numbers are in the
       table below. Click any row to see the before/after.
     </p>
@@ -985,31 +998,36 @@
         <div class="compare-header">
           <div><span class="cmd">git status</span></div>
           <div class="arrow">→</div>
-          <div class="savings">&minus;76%</div>
+          <div class="savings">&minus;81%</div>
         </div>
         <div class="compare-header" style="padding-top: 0;">
-          <div class="metric"><div class="num">1.4 KB</div><div class="label">~350 tokens raw</div></div>
+          <div class="metric"><div class="num">493 B</div><div class="label">~123 tokens raw</div></div>
           <div class="arrow">vs</div>
-          <div class="metric"><div class="num">336 B</div><div class="label">~84 tokens trs</div></div>
+          <div class="metric"><div class="num">93 B</div><div class="label">~23 tokens trs</div></div>
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
           <div class="compare-pane">On branch main
 Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
 
 Changes not staged for commit:
-  (use "git add &lt;file&gt;..." to update)
-  (use "git restore &lt;file&gt;..." to discard)
-        modified:   src/main.rs
+  (use "git add &lt;file&gt;..." to update what will be committed)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
         modified:   src/lib.rs
-        new file:   src/new.rs
+        modified:   src/main.rs
 
-no changes added to commit</div>
+Untracked files:
+  (use "git add &lt;file&gt;..." to include in what will be committed)
+        src/other.rs
+
+no changes added to commit (use "git add" and/or "git commit -a")</div>
           <div class="compare-pane">main [ahead 1]
-unstaged (3):
-  M src/main.rs
+unstaged (2):
   M src/lib.rs
-  A src/new.rs</div>
+  M src/main.rs
+untracked (1):
+  ?? src/other.rs</div>
         </div>
       </div>
 
@@ -1020,23 +1038,24 @@ unstaged (3):
           <div class="savings">&minus;99%</div>
         </div>
         <div class="compare-header" style="padding-top: 0;">
-          <div class="metric"><div class="num">55 KB</div><div class="label">~14k tokens raw</div></div>
+          <div class="metric"><div class="num">164 KB</div><div class="label">~41k tokens raw</div></div>
           <div class="arrow">vs</div>
-          <div class="metric"><div class="num">58 B</div><div class="label">~15 tokens trs</div></div>
+          <div class="metric"><div class="num">127 B</div><div class="label">~32 tokens trs</div></div>
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
-          <div class="compare-pane">   Compiling trs-cli v0.5.12
+          <div class="compare-pane">   Compiling trs-cli v0.8.9
     Finished test profile in 4.21s
      Running unittests src/main.rs
-running 2186 tests
+running 2548 tests
 test config::tests::test_defaults ... ok
 test config::tests::test_parse ... ok
-... (2175 more lines) ...
-test result: ok. 2186 passed; 0 failed
+... (2537 more lines) ...
+test result: ok. 2548 passed; 0 failed
      Running tests/cli_flags.rs
-... (70 more suites) ...</div>
-          <div class="compare-pane">cargo test: 2186 passed (71 suites, 4.9s)</div>
+... (96 more suites) ...</div>
+          <div class="compare-pane">cargo test: ok (2548 passed, 3 ignored, 98 suites, 13.83s)
+[trs] full output: ~/.trs/tee/&lt;run&gt;_cargo_test.log</div>
         </div>
       </div>
 
@@ -1044,28 +1063,31 @@ test result: ok. 2186 passed; 0 failed
         <div class="compare-header">
           <div><span class="cmd">cargo clippy</span></div>
           <div class="arrow">→</div>
-          <div class="savings">&minus;90%</div>
+          <div class="savings">&minus;93%</div>
         </div>
         <div class="compare-header" style="padding-top: 0;">
-          <div class="metric"><div class="num">55 KB</div><div class="label">~14k tokens raw</div></div>
+          <div class="metric"><div class="num">56.5 KB</div><div class="label">~14.1k tokens raw</div></div>
           <div class="arrow">vs</div>
-          <div class="metric"><div class="num">5.5 KB</div><div class="label">~1.4k tokens trs</div></div>
+          <div class="metric"><div class="num">4.0 KB</div><div class="label">~1.0k tokens trs</div></div>
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
           <div class="compare-pane">warning: unused import: `std::io::Read`
- --&gt; src/main.rs:8:23
+ --&gt; src/parser.rs:1:5
   |
-8 |     use std::io::Read;
-  |                  ^^^^
-  = note: `#[warn(unused_imports)]`
-... (hundreds more lines) ...</div>
-          <div class="compare-pane">lint: 102 issues in 39 files
-src/main.rs (3):
-  W unused_import 8:23
-  W redundant_closure 44:30
-  W dead_code 112:8
-... grouped by file + rule</div>
+1 | use std::io::Read;
+  |     ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+... (156 warnings, 56 KB in all) ...</div>
+          <div class="compare-pane">lint: 156 (156 warnings) in 6 files
+src/cache.rs (26):
+  W 1:5 unused import: `std::io::Read`
+  W needless_return 11:5
+  W ptr_arg 4:24
+  W needless_range_loop 6:14
+  W len_zero 8:12
+... one block per file, grouped by rule</div>
         </div>
       </div>
 
@@ -1073,34 +1095,36 @@ src/main.rs (3):
         <div class="compare-header">
           <div><span class="cmd">git log -10</span></div>
           <div class="arrow">→</div>
-          <div class="savings">&minus;91%</div>
+          <div class="savings">&minus;71%</div>
         </div>
         <div class="compare-header" style="padding-top: 0;">
-          <div class="metric"><div class="num">7.6 KB</div><div class="label">~1.9k tokens raw</div></div>
+          <div class="metric"><div class="num">7.9 KB</div><div class="label">~2.0k tokens raw</div></div>
           <div class="arrow">vs</div>
-          <div class="metric"><div class="num">689 B</div><div class="label">~172 tokens trs</div></div>
+          <div class="metric"><div class="num">2.3 KB</div><div class="label">~578 tokens trs</div></div>
         </div>
         <button class="compare-toggle" onclick="toggleDetails(this)">▾ Show full output</button>
         <div class="compare-details">
-          <div class="compare-pane">commit 9c2231b... (HEAD -> main)
-Author: Antonio Martinez Quintero
-Date:   Thu Apr 16 ...
+          <div class="compare-pane">commit 0d05ccb2d01959f1397bef049023f62cca0e27a8
+Author: dPeluChe &lt;...&gt;
+Date:   Mon Oct 19 17:16:07 2026 -0600
 
-    Merge pull request #9
+    chore(release): v0.8.9 (#200)
 
-commit 35b5f4f...
-... full messages + headers ...</div>
-          <div class="compare-pane">9c2231b Merge PR #9 init polish
-35b5f4f feat(init): Antigravity/Windsurf rules
-ad55480 feat(init): smart JSON merge
-... date + author collapsed</div>
+commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
+... full hashes, headers and message bodies ...</div>
+          <div class="compare-pane">0d05ccb chore(release): v0.8.9 (#200) &middot; 2 days ago
+  [+0 lines: git show 0d05ccb]
+5e4a745 fix(opencode): load the plugin on OpenCode 2.x as well as 1.x (#199) &middot; 2 days ago
+  * fix(opencode): load the plugin on OpenCode 2.x as well as 1.x
+  [+5 lines: git show 5e4a745]
+... grouped by author, bodies cut with a pointer to git show</div>
         </div>
       </div>
 
     </div>
 
     <p class="install-note" style="margin-top: 24px;">
-      Numbers are representative; your repo and commands will vary.
+      Sample outputs are real runs (clippy on a six-file demo crate with 156 warnings, the others on this repo); your repo and commands will vary.
       Want to reproduce or compare with other tools? See the internal
       calibration lab in
       <a href="https://github.com/dPeluChe/trs/tree/main/docs/development/benchmarks">docs/development/benchmarks/</a>.
@@ -1209,7 +1233,7 @@ ad55480 feat(init): smart JSON merge
         </div>
         <div class="digest-feature">
           <div class="digest-feature-title">Live example</div>
-          <div class="digest-feature-desc">trs ingests itself at <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/codebase-digest.md" style="color: var(--accent);">docs/development/codebase-digest.md</a> &mdash; ~26k tokens covering the whole repo, refreshed on every release.</div>
+          <div class="digest-feature-desc">trs ingests itself at <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/codebase-digest.md" style="color: var(--accent);">docs/development/codebase-digest.md</a> &mdash; ~42k tokens covering the whole repo.</div>
         </div>
       </div>
     </div>
@@ -1236,10 +1260,11 @@ ad55480 feat(init): smart JSON merge
   <div class="container">
     <h2>Compression reference</h2>
     <p class="section-intro">
-      Measured on 36 command shapes taken from real agent sessions, tokens
-      counted with <code class="inline">o200k_base</code>. Across them trs cuts
-      ~70% of tokens (81% with <code class="inline">ps aux</code>, which alone
-      weighs more than the rest). &ldquo;Anchors kept&rdquo; is the share of
+      The ~70% comes from real agent use over a month, and it varies with
+      what you run. The table is a fixed benchmark of 38 command shapes taken
+      from real agent sessions (trs v0.8.9, tokens counted with
+      <code class="inline">o200k_base</code>).
+      &ldquo;Anchors kept&rdquo; is the share of
       paths, <code class="inline">file:line</code> refs, hashes and error lines
       from the raw output that survive. Some rows cut little on purpose.
       <a href="https://github.com/dPeluChe/trs/blob/main/docs/development/benchmarks/README.md" target="_blank" rel="noopener">Methodology and how to reproduce &rarr;</a>
@@ -1251,17 +1276,17 @@ ad55480 feat(init): smart JSON merge
           <tr><th>Command</th><th>Raw tokens</th><th>trs tokens</th><th>Cut</th><th>Anchors kept</th><th>What stays</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>git log -20</code></td><td>15,494</td><td>1,958</td><td class="winner">87%</td><td>59%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
-          <tr><td><code>git diff</code> (large range)<code></code></td><td>39,946</td><td>953</td><td class="winner">98%</td><td>24%</td><td>file summary; full diff saved, path printed</td></tr>
-          <tr><td><code>find src -name '*.rs'</code></td><td>1,955</td><td>335</td><td class="winner">83%</td><td>49%</td><td>grouped by directory; full list saved</td></tr>
-          <tr><td><code>ls -la src</code></td><td>2,245</td><td>777</td><td class="winner">65%</td><td>100%</td><td></td></tr>
-          <tr><td><code>cargo test</code> (2 failing)<code></code></td><td>832</td><td>200</td><td class="winner">76%</td><td>56%</td><td>each failure: location, message, left/right</td></tr>
-          <tr><td><code>pytest</code> (2 failing)<code></code></td><td>372</td><td>122</td><td class="winner">67%</td><td>58%</td><td>names, <code>E</code> lines, <code>file.py:N</code></td></tr>
-          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>548</td><td>249</td><td class="winner">55%</td><td>70%</td><td>expected vs received, location</td></tr>
-          <tr><td><code>gh run list</code></td><td>459</td><td>143</td><td class="winner">69%</td><td>100%</td><td></td></tr>
-          <tr><td><code>grep -rn -C2</code></td><td>1,784</td><td>1,388</td><td class="winner">22%</td><td>100%</td><td>every match and every context line</td></tr>
+          <tr><td><code>git log -20</code></td><td>5,360</td><td>1,459</td><td class="winner">73%</td><td>78%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
+          <tr><td><code>git diff HEAD~5</code></td><td>7,747</td><td>5,767</td><td class="winner">26%</td><td>57%</td><td>changed lines and hunk headers; a large diff becomes a file summary with the full diff saved</td></tr>
+          <tr><td><code>find src -name '*.rs'</code></td><td>2,044</td><td>335</td><td class="winner">84%</td><td>47%</td><td>grouped by directory; full list saved</td></tr>
+          <tr><td><code>ls -la src</code></td><td>2,389</td><td>833</td><td class="winner">65%</td><td>100%</td><td></td></tr>
+          <tr><td><code>cargo test</code> (2 failing)<code></code></td><td>829</td><td>195</td><td class="winner">76%</td><td>56%</td><td>each failure: location, message, left/right</td></tr>
+          <tr><td><code>pytest</code> (2 failing)<code></code></td><td>372</td><td>120</td><td class="winner">68%</td><td>58%</td><td>names, <code>E</code> lines, <code>file.py:N</code></td></tr>
+          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>548</td><td>247</td><td class="winner">55%</td><td>70%</td><td>expected vs received, location</td></tr>
+          <tr><td><code>gh run list</code></td><td>517</td><td>364</td><td class="winner">30%</td><td>100%</td><td>run id, title, workflow, branch, duration</td></tr>
+          <tr><td><code>grep -rn -C2</code></td><td>1,798</td><td>1,402</td><td class="winner">22%</td><td>100%</td><td>every match and every context line</td></tr>
           <tr><td><code>gh pr view</code></td><td>922</td><td>881</td><td class="winner">4%</td><td>100%</td><td>the whole PR body</td></tr>
-          <tr><td><code>ps aux</code></td><td>68,382</td><td>900</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
+          <tr><td><code>ps aux</code></td><td>97,702</td><td>933</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
           <tr><td><code>git show rev:file</code></td><td>1,675</td><td>1,675</td><td class="winner">0%</td><td>100%</td><td>verbatim: it is a file</td></tr>
         </tbody>
       </table>
@@ -1278,7 +1303,7 @@ ad55480 feat(init): smart JSON merge
       </div>
       <div class="bench-card">
         <div class="num">~70%</div>
-        <div class="label">fewer tokens, measured</div>
+        <div class="label">fewer tokens on real agent commands</div>
       </div>
       <div class="bench-card">
         <div class="num">30+</div>
@@ -1302,8 +1327,8 @@ ad55480 feat(init): smart JSON merge
 
     <div class="features-grid" style="margin-top: 24px;">
       <div class="feature">
-        <div class="feature-title">All sixteen agents covered</div>
-        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Pi, Droid, Codex, VS Code Copilot, Copilot CLI, Devin CLI, OpenClaw, Hermes, Zed (Agent Panel), Devin Desktop (ex-Windsurf), Antigravity IDE, Antigravity CLI. The Antigravity pair (IDE + <code>agy</code>) is rules-only as of v0.6.6, agy v1.0.1 doesn't yet expose user-configurable PreTool hooks (<a href="https://github.com/dPeluChe/trs/blob/main/docs/development/antigravity-hooks-research.md">research</a>).</div>
+        <div class="feature-title">Eleven of the sixteen agents covered</div>
+        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, VS Code Copilot / Copilot CLI, Devin Desktop (ex-Windsurf), Antigravity IDE and Antigravity CLI. Pi, Devin CLI, OpenClaw, Hermes and Zed are not wired yet. The Antigravity pair (IDE + <code>agy</code>) is rules-only: Antigravity's <code>agy</code> 1.0.1 does not expose user-configurable PreTool hooks (<a href="https://github.com/dPeluChe/trs/blob/main/docs/development/antigravity-hooks-research.md">research</a>).</div>
       </div>
       <div class="feature">
         <div class="feature-title">Check-first by default</div>
@@ -1364,7 +1389,7 @@ ad55480 feat(init): smart JSON merge
       </div>
       <div class="feature">
         <div class="feature-title">Symmetric uninstall</div>
-        <div class="feature-desc"><code>trs uninstall</code> walks every surface <code>trs init</code> wrote: JSON hooks (preserves user-added entries), plugin files, Codex sentinel blocks, output-saver sidecars. Interactive by default, or <code>--all</code> / <code>--tool</code> / <code>--output-saver</code> / <code>--dry-run</code> for scripts.</div>
+        <div class="feature-desc"><code>trs uninstall</code> walks every surface <code>trs init</code> wrote: JSON hooks (preserves user-added entries), plugin files, Codex sentinel blocks, output-saver sidecars. Interactive by default, or <code>&lt;tool&gt;</code> / <code>--all</code> / <code>--output-saver</code> / <code>--dry-run</code> for scripts.</div>
       </div>
       <div class="feature">
         <div class="feature-title">Transparent wrappers</div>
@@ -1411,7 +1436,7 @@ ad55480 feat(init): smart JSON merge
         Downloads the right binary for your platform into
         <code class="inline">~/.trs/bin/trs</code>. Zero runtime dependencies,
         no Node overhead, ~4 ms startup. Pin a version with
-        <code class="inline">TRS_VERSION=v0.5.12</code>.
+        <code class="inline">TRS_VERSION=v0.8.9</code>.
       </p>
     </div>
 

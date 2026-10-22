@@ -205,8 +205,34 @@ Read by eye before trusting a cell:
   --stat`/`-p`, `tail` and `git show rev:file` are passed through verbatim.
 - **Where trs still loses anchors.** `git diff` on a large range becomes a
   summary (now with a pointer to the full output). `find` over a big tree lists
-  per directory. `ps aux` keeps the top processes. `gh pr list` omits branch
-  names.
+  per directory. `ps aux` keeps the top processes.
 - **Zero-anchor rows are not always a loss.** For `ps aux`, the anchors are
   PIDs in a list the agent rarely reads whole, and the full list is one path
   away.
+
+## trs alone on v0.8.9
+
+2026-10-21, same corpus (now 38 commands: `docker ps -a` and `docker images`
+were added), this repo's state that day, `compare.py --only trs --reps 3`,
+tokens counted with o200k_base. This is what usetrs.dev shows.
+
+| | tokens cut | anchors kept |
+|---|---:|---:|
+| all 38 commands (token-weighted) | 81% | 65% (mean 88% per command) |
+| without `ps aux` | 39% | |
+| median command | 28% | |
+| commands cut by half or more | 12 of 38 | |
+
+`ps aux` is 97,702 of the 139,322 raw tokens, so the headline figure is mostly
+that one row. Every number here moves with the repo state: the September run
+had a 40k-token `git diff HEAD~5` (98% cut) where this one has 7.7k (26%).
+Quote the per-command rows, not one percentage.
+
+The ~70% on usetrs.dev is a different measurement: the author's history over 30
+days (2026-10-21), only commands run by agents through a hook (3,259, 10.4M
+input tokens): 73.3% saved. `trs stats --days 30` shows 68.9% over 8,359
+commands because it also counts test suites and hand-typed runs (3,649 of them
+are test noise, such as another project's tests calling `trs digest`). Same
+caveat as the table: a few verbose outputs carry the total. Without the top 1%
+of outputs it is 58.7%, the median command saves 1%, and the last 7 days were
+23.6%.

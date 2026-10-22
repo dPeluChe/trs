@@ -24,7 +24,7 @@ that from happening.
 - **Parser errors fall back to truncated passthrough.** If a parser
   errors mid-parse, trs emits the raw output (truncated to
   `passthrough_max_chars`) rather than silently losing content. The
-  full raw output is always saved to `~/.trs/tee/` regardless.
+  full raw output is saved to `~/.trs/tee/` and its path printed.
 - **`trs read` never strips content from data files.** JSON, YAML,
   TOML, XML, and CSV files are returned verbatim, stripping
   comments or "aggressive" signature extraction only applies to
@@ -42,9 +42,10 @@ that from happening.
 
 ## Failure recovery
 
-- **`~/.trs/tee/` log dir.** Every command run stores its full stdout
-  + stderr here, keyed by timestamp. Recovers content when a parser
-  truncates or the agent loses the intermediate output.
+- **`~/.trs/tee/` log dir.** When trs cuts an output, or a command
+  fails, the full stdout + stderr is stored here, keyed by timestamp,
+  and the path is printed (`[trs] full output: <path>`). Output trs
+  leaves whole is not copied.
 - **`trs debug-info` bundles.** When reporting a bug or asking for
   help, `trs debug-info -o /tmp/trs.txt` packages version, platform,
   doctor checks, recent history, and the three most recent tee logs

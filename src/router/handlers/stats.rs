@@ -43,6 +43,22 @@ pub(crate) fn format_date(ts: u64) -> String {
 }
 
 /// Format a Unix timestamp (seconds) into "Mar 27 14:32" local-time string.
+/// "Period: first → last (N days)" over the entries shown, so a table never
+/// hides whether it covers a week or the whole history.
+pub(crate) fn period_line(entries: &[crate::tracker::HistoryEntry]) -> String {
+    let first = entries.iter().map(|e| e.ts).min().unwrap_or(0);
+    let last = entries.iter().map(|e| e.ts).max().unwrap_or(0);
+    let days = ((last.saturating_sub(first) as f64 / 86400.0).ceil() as u64).max(1);
+    let offset = local_offset();
+    format!(
+        "Period: {} → {} ({} day{})",
+        format_timestamp(first, offset),
+        format_timestamp(last, offset),
+        days,
+        if days == 1 { "" } else { "s" }
+    )
+}
+
 pub(crate) fn format_timestamp(ts: u64, offset: time::UtcOffset) -> String {
     let dt = OffsetDateTime::from_unix_timestamp(ts as i64).unwrap_or(OffsetDateTime::UNIX_EPOCH);
     let local = dt.to_offset(offset);

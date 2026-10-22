@@ -43,8 +43,8 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reducción)
 
 $ trs cargo test
-cargo test: 2186 passed (71 suites, 4.9s)
-# 55 KB → 58 B (99% reducción)
+cargo test: ok (2548 passed, 3 ignored, 98 suites, 13.83s)
+# 164 KB → 127 B (99% reducción)
 
 $ trs cargo clippy
 lint: 102 issues in 39 files
@@ -125,6 +125,13 @@ Dieciséis agentes cubiertos de extremo a extremo. Hook programático para Claud
 | Zed (Agent Panel) | solo archivo de reglas (`AGENTS.md`) | — | — | `(untagged)`; los agentes externos vía ACP muestran su propia etiqueta |
 
 [Matriz completa, detalles y rutas de configuración por agente →](docs/support/agents.md)
+
+<!-- PREPARADO, sin publicar: activar junto al texto de usetrs.dev cuando Exegol publique
+el arreglo de `trs ingest` (ver docs/roadmap/TASK_TODO.md "Exegol").
+¿Corres varios agentes a la vez? [Exegol](https://github.com/dPeluChe/exegol), nuestra
+app de escritorio, junta Claude Code, Codex, Gemini, OpenCode y más en una sola ventana.
+trs funciona dentro de cada una de sus terminales, y Exegol muestra cuánto ahorró cada agente.
+-->
 
 ### Uso standalone (opcional)
 

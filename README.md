@@ -43,8 +43,8 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reduction)
 
 $ trs cargo test
-cargo test: 2186 passed (71 suites, 4.9s)
-# 55 KB → 58 B (99% reduction)
+cargo test: ok (2548 passed, 3 ignored, 98 suites, 13.83s)
+# 164 KB → 127 B (99% reduction)
 
 $ trs cargo clippy
 lint: 102 issues in 39 files
@@ -125,6 +125,13 @@ Sixteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini C
 | Zed (Agent Panel) | rules file only (`AGENTS.md`) | — | — | `(untagged)`; ACP external agents show their own label |
 
 [Full compatibility matrix, caveats, and per-agent config paths →](docs/support/agents.md)
+
+<!-- STAGED, not published: enable with the usetrs.dev text once Exegol ships the
+`trs ingest` fix (see docs/roadmap/TASK_TODO.md "Exegol").
+Running several agents at once? [Exegol](https://github.com/dPeluChe/exegol), our
+desktop app, puts Claude Code, Codex, Gemini, OpenCode and more side by side in one
+window. trs works inside each of its terminals, and Exegol shows how much each agent saved.
+-->
 
 ### Standalone (optional)
 

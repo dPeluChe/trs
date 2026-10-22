@@ -13,11 +13,10 @@
 ## Features
 
 - [trs init](https://usetrs.dev/features/init.md): agent hook installer with collision detection, `--global` / `--dry-run` modes, transparent-prefix support for `time`/`docker exec`/`poetry run` wrappers
-- [trs uninstall](https://usetrs.dev/features/uninstall.md): symmetric removal, interactive menu or `--all` / `--tool` / `--output-saver` / `--dry-run` flags
+- [trs uninstall](https://usetrs.dev/features/uninstall.md): symmetric removal, interactive menu or `<tool>` / `--all` / `--output-saver` / `--dry-run`
 - [trs stats](https://usetrs.dev/features/stats.md): token savings analytics, per-command and per-agent breakdowns
 - [trs diff](https://usetrs.dev/features/diff.md): run any command raw vs compressed, see the savings and audit exactly which lines were dropped
-- [trs diff](https://usetrs.dev/features/diff.md): run any command raw vs compressed, see the savings and audit exactly which lines were dropped
-- [trs ingest](https://usetrs.dev/features/ingest.md): compress local files or URLs before reading them into context
+- [trs ingest](https://usetrs.dev/features/ingest.md): token-budget-aware project digest (structure, key files, signatures, dependency graph) for an agent's context
 - [trs output-saver](https://usetrs.dev/features/output-saver.md): installs Markdown rules blocks that keep agent replies concise
 - [trs doctor](https://usetrs.dev/features/doctor.md): diagnose hook and PATH issues
 - [trs upgrade](https://usetrs.dev/features/upgrade.md): self-update the binary in place
@@ -25,6 +24,6 @@
 
 ## Safety and configuration
 
-- [Safety guarantees](https://usetrs.dev/support/safety.md): credential preservation scan, fail-open on errors, 10% ratio gate
+- [Safety guarantees](https://usetrs.dev/support/safety.md): exit codes always propagated, structured output passed through, raw output saved when trs cuts or the command fails
 - [Configuration](https://usetrs.dev/features/configuration.md): env vars and tunables for human / debug use
 - [Output formats](https://usetrs.dev/features/formats.md): plain text, JSON, structured compression rules

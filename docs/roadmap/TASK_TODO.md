@@ -62,6 +62,18 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ---
 
+## Exegol (our agent desktop app, github.com/dPeluChe/exegol)
+
+Found 2026-10-21 while auditing `trs stats --by-agent`: Exegol's `digest.ts` calls
+`trs digest`, which does not exist (it ran the system `digest` and failed), and its
+tests wrote 3,276 runs into the real `~/.trs` history in a month.
+
+- [ ] Exegol: call `trs ingest --print --budget 32k <path>` instead of `trs digest`; run its tests with a temp `TRS_HOME`. (Text sent to its dev.)
+- [ ] Exegol: show savings per agent from `trs stats --by-agent --json --days N`, and a `trs doctor` / `trs init --all --global` action.
+- [ ] Publish the staged Exegol line (commented out in `docs/index.html`, `README.md`, `README.es.md`) once the two items above ship; drop its last sentence if the savings view is not out yet.
+- [ ] Agents Exegol launches that trs has no hook for: Aider, Goose, Amp, Kiro, Crush (the other 8 of its 14 CLIs are covered).
+- [ ] `trs stats`: a failed command with empty output counts as 100% saved; leave failed runs out of the percentages.
+
 ## Phase 3: Agent integration follow-ups
 
 Context: v0.5.6 fixed all 9 supported agents end-to-end.
