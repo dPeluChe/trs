@@ -71,6 +71,7 @@ mod reducer;
 mod report;
 mod rewrite;
 mod rewrite_decide;
+mod rewrite_permissions;
 mod router;
 mod safe_folds;
 #[allow(dead_code)]

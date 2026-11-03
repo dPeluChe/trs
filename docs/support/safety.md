@@ -51,6 +51,13 @@ that from happening.
   doctor checks, recent history, and the three most recent tee logs
   into a single paste-ready report.
 
+## Permissions
+
+In Claude Code your own permission rules still apply. A command that matches a
+`deny` or `ask` rule is not rewritten, so Claude handles it exactly as before;
+trs only approves a command when you allowed it (or it only reads). Details:
+[`agent-integrations.md`](../development/agent-integrations.md).
+
 ## Install-time safety
 
 - **Collision detection in `trs init`.** Before writing any hook

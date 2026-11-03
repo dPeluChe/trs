@@ -117,7 +117,29 @@ show up as `claude` in attribution today.
 | Template | `CLAUDE_HOOKS` |
 | Test prompt | hook-based |
 
-No known quirks. Canonical client: we treat its format as the default.
+Canonical client: we treat its format as the default. One quirk, permissions:
+Claude Code matches `permissions.allow/ask/deny` against the command **after**
+the hook rewrote it (checked on a real Claude Code with a rewriting hook), and a
+hook `permissionDecision: "allow"` overrides them. A blanket `allow` therefore
+ran `git push` even with `deny: Bash(git push:*)`, and a plain rewrite made a
+user's `allow: Bash(git status:*)` stop matching `trs git status`. So for the
+`claude` label, `src/rewrite_permissions.rs` reads the user's rules and applies
+them to the **original** command (every `&&`/`||`/`;`/`|` part):
+
+| Original command | Hook does |
+|---|---|
+| matches a `deny` or `ask` rule | no rewrite, Claude handles the original |
+| every part matches an `allow` rule or is read-only (`ls`, `cat`, `git status`, …) | rewrite and `allow` |
+| anything else | rewrite, no decision: Claude's own prompt applies |
+| a settings file exists but cannot be parsed | no rewrite (fail closed) |
+
+Sources: `~/.claude` (or `CLAUDE_CONFIG_DIR`), managed settings, and
+`.claude/settings{,.local}.json` from the cwd upwards. A project's `allow` counts
+only when `~/.claude.json` marks the folder trusted (Claude ignores it
+otherwise); its `deny`/`ask` always count. Rules passed with `--settings` are
+invisible to the hook. Other agents sharing the envelope (Codex, Droid,
+Antigravity, VS Code) and Gemini/Cursor keep the unconditional `allow`; whether
+their own rules are bypassed the same way is unverified (TASK_TODO).
 
 ### Gemini CLI
 

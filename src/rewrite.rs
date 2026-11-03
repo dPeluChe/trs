@@ -14,6 +14,7 @@
 use std::io::Read;
 
 use crate::rewrite_decide::{looks_like_env_assignment, maybe_rewrite};
+use crate::rewrite_permissions::Gate;
 
 /// Run the rewrite logic. Called from main.rs. `agent_flag` is the
 /// `--caller <label>` set by the installing hook template — the
@@ -206,11 +207,19 @@ fn build_hook_response(
         return None;
     }
 
+    let label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
+    // Claude Code matches its permission rules against the rewritten command,
+    // so only the hook can apply them to the original one.
+    let gate = if event == HookEvent::ClaudePreToolUse && label == "claude" {
+        crate::rewrite_permissions::gate(cmd, json.get("cwd").and_then(|v| v.as_str()))
+    } else {
+        Gate::Allow
+    };
+    if gate == Gate::Skip {
+        return None;
+    }
     let rewritten = maybe_rewrite(cmd)?;
-    let rewritten = tag_with_agent(
-        &rewritten,
-        flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label())),
-    );
+    let rewritten = tag_with_agent(&rewritten, label);
 
     let response = match event {
         // Handled above; kept here so the match stays exhaustive if the
@@ -226,6 +235,12 @@ fn build_hook_response(
         HookEvent::CursorPreToolUse => serde_json::json!({
             "permission": "allow",
             "updated_input": { "command": rewritten }
+        }),
+        HookEvent::ClaudePreToolUse if gate == Gate::Defer => serde_json::json!({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "updatedInput": { "command": rewritten }
+            }
         }),
         HookEvent::ClaudePreToolUse => serde_json::json!({
             "hookSpecificOutput": {
