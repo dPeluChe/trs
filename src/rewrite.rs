@@ -218,6 +218,9 @@ fn build_hook_response(
     if gate == Gate::Skip {
         return None;
     }
+    if git_in_claude_worktree(json.get("cwd").and_then(|v| v.as_str()), cmd) {
+        return None;
+    }
     let rewritten = maybe_rewrite(cmd)?;
     let rewritten = tag_with_agent(&rewritten, label);
 
@@ -252,6 +255,23 @@ fn build_hook_response(
         }),
     };
     Some(response)
+}
+
+/// Claude's worktree guard refuses `trs git …` inside `.claude/worktrees/*`
+/// ("cannot be shown not to be git"), so git commands there run unwrapped.
+fn git_in_claude_worktree(cwd: Option<&str>, cmd: &str) -> bool {
+    let in_worktree = cwd.is_some_and(|c| c.replace('\\', "/").contains("/.claude/worktrees/"));
+    in_worktree
+        && crate::rewrite_permissions::split_segments(cmd)
+            .iter()
+            .any(|seg| {
+                let mut words = seg
+                    .split_whitespace()
+                    .skip_while(|w| looks_like_env_assignment(w));
+                words
+                    .next()
+                    .is_some_and(|w| crate::text_util::cmd_basename(w) == "git")
+            })
 }
 
 /// True when `cmd` is bypassing trs via a `TRS_SKIP=` or `TRS_DISABLE=`

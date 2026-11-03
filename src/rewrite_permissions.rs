@@ -233,7 +233,7 @@ fn read_only(seg: &str) -> bool {
 }
 
 /// Split on unquoted `&&`, `||`, `;`, `|`, `&` and newlines (`2>&1` and `&>` stay whole).
-fn split_segments(cmd: &str) -> Vec<&str> {
+pub(crate) fn split_segments(cmd: &str) -> Vec<&str> {
     let b = cmd.as_bytes();
     let (mut out, mut start, mut i, mut quote) = (Vec::new(), 0, 0, 0u8);
     while i < b.len() {

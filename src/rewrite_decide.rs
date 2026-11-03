@@ -49,6 +49,14 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
+    // A trailing `# comment` is text, not commands: rewrite what precedes it.
+    if !trimmed.contains('\n') {
+        if let Some(at) = comment_start(trimmed) {
+            let (head, comment) = trimmed.split_at(at);
+            return maybe_rewrite(head).map(|r| format!("{} {}", r.trim_end(), comment));
+        }
+    }
+
     // Explicit per-invocation opt-out. `TRS_SKIP=1 <cmd>` and the
     // historical `TRS_DISABLE=1 <cmd>` alias both bypass rewriting.
     // The shell strips the env-var assignment before exec, so the
@@ -157,6 +165,10 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // `column` falls back to 80 columns before anything downstream can help.
     let rest = &trimmed[first.len()..];
     if crate::command_registry::is_verbatim_invocation(first, rest) {
+        return None;
+    }
+    if crate::classifier_args::is_help_request(first, &rest.split_whitespace().collect::<Vec<_>>())
+    {
         return None;
     }
 
@@ -310,6 +322,12 @@ fn find_unquoted(cmd: &str, needle: char) -> Option<usize> {
         }
     }
     None
+}
+
+/// Offset of an unquoted `#` that starts a word: the rest of the line is a comment.
+fn comment_start(cmd: &str) -> Option<usize> {
+    unquoted_indices(cmd)
+        .find(|&i| cmd[i..].starts_with('#') && (i == 0 || cmd[..i].ends_with(char::is_whitespace)))
 }
 
 /// Split on ` && ` only where it is a real operator (outside quotes).
