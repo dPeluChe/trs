@@ -62,6 +62,65 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 
 ---
 
+## Phase 2.9: Sweep of the learn repos, 2026-11-03
+
+Source: the 11 repos tagged `trs` in spark (`spark tag list trs`, all pulled 2026-11-03), the
+TokenEconomizer paper (arXiv 2610.22732) and one gist on Claude Code background cost. Every figure
+from those projects is their own claim, unverified. Items marked "verified" were reproduced here.
+Do not name those projects in commits, docs or the changelog when shipping these (say "a similar tool").
+
+### P1: bugs, fix first (target v0.8.11)
+
+- [ ] **Plugin templates break pipes** (verified): `ls -la /usr | wc -l` gives 12, `trs ls -la /usr | wc -l` gives 10. The OpenCode, Kilo, Hermes and the other plugin templates in `src/init_templates_plugins.rs` (lines 23, 39, 59, 83, 114, 149) prepend `trs ` to every command and skip only `trs `, `cd ` and `TRS_AGENT=`. The Claude path honours the #162 invariant (pipes, redirects and captures are never rewritten, `rewrite_decide.rs`); the plugins do not. Preferred fix: the plugin asks `trs rewrite` for the decision so the rule lives in one place; test: every template against `trs rewrite` on a list of pipes, redirects, `$(...)`, backticks and `&&` chains.
+- [ ] **Unconditional `permissionDecision: "allow"`** (verified emitted for `rm -rf`, `git push origin main`, `git branch -D`, `kubectl delete pod`; `src/rewrite.rs:233`, also Gemini `decision` and Cursor `permission`). Two similar tools fixed the same thing as a security bug: auto-approve only when the user already has an explicit allow rule, otherwise rewrite and leave the prompt to the agent. FIRST verify in real Claude Code how a hook `allow` orders against ask/deny rules and whether `updatedInput` works without a decision. Codex needs `allow` (`src/codex.rs`), keep it there. Medium risk: a prompt may appear where the user had none.
+- [ ] **Skip `git` rewrite when cwd is under `<repo>/.claude/worktrees/*`** (confirmed with `trs rewrite`): Claude's worktree guard rejects `trs git ...` as "cannot be shown not to be git". Two similar tools shipped the same fix. Land in `rewrite_decide.rs`.
+- [ ] **`-h` / `--help` passthrough audit**: a similar tool returned its own usage at exit 0 for `grep -h` and the agent read it as matches. No tests for `trs grep -h`, `trs ls -h`, `trs tree -h`. Land in `classifier_args.rs`.
+- [ ] **Commands inside a trailing `# comment` are rewritten** (`echo a # x && git status` becomes `... trs git status`). Harmless at run time, but rewrite and deny matching should ignore commented-out text.
+
+### P2: small and cheap
+
+- [ ] **Tier-3 passthrough keeps only the head** (`src/classifier_exec.rs` ~line 205): an error at the end is lost. Keep head + tail + signal lines.
+- [ ] **Runtime anchor guard**: when a cut is 90% or more and fewer than 70% of the anchors survive (paths, file:line, hashes, error lines; extraction exists in `docs/development/benchmarks/truth.py`), fall back to the original or add the tee path. Targets the `git show --stat` row (91% cut, 67% anchors). Gate by size to limit latency.
+- [ ] **`trs stats`**: leave rows above ~30,000 chars out of the headline (the agent never saw the rest of them), leave failed runs out of the percentages (the known "100% saved" defect), and add a recall rate (a later read of a `[trs] full output:` path). Also check that `stats`, `--by-agent`, the reports and the site claims share one computation.
+- [ ] **Atomic, locked writes for the `AGENTS.md` / `CLAUDE.md` block injection**: a similar tool lost a 16 KB file to two concurrent `init` runs. trs has no lock or temp-file rename in the init path (`init_install*.rs`). Refuse to write if text outside the block would be lost.
+- [ ] **Tests**: determinism sweep (every parser fixture twice, identical bytes; check `HashMap` use in `types/fs.rs`), compression ratchet (per-fixture ratio and handler in a JSON baseline, fail on a drop over 2 points or a routing change, `tests/cli_compression_ratchet.rs`), and `must_preserve` literals on the failure fixtures.
+- [ ] **Token estimator**: bytes/4 (`src/reducer/output.rs:31`, `router/handlers/common.rs:128`) may overstate percentages by ~25% against a calibrated divisor. Measure the divisor or label the figures "est.".
+- [ ] **Stale doc**: `docs/support/other-token-savers.md` describes one tool as "Node-based compressor, global npm package", which is wrong.
+- [ ] **Hook command strings on Windows**: check the Codex/Copilot hook commands run under PowerShell as well as cmd.exe (a similar tool had "hook exited with code 1" there).
+
+### P3: measure before claiming
+
+- [ ] **The "~30-40% fewer tokens" claim in `docs/features/output-saver.md` has no control arm.** Three projects that measured reply-style rules found small or zero gains over a plain "be concise" instruction on current models, and output is a small share of the bill. Build an offline A/B (no block, "Answer concisely.", the trs block; N>=5; isolated `claude -p` with the block copied into the project file because `--setting-sources project` hides the global one; count markers such as preamble, closing filler, em dash) plus fidelity cases (negations, numbers, destructive-action wording). Then rewrite the claim from the data and add the caveat that per-request billing sees no benefit.
+- [ ] **Block size**: the doc says ~300 tokens, but `~/.claude/trs.md` is 3,392 bytes (~850 tokens) loaded every session. Measure it, fix whichever is wrong, and weigh that persistent input cost in the doc.
+- [ ] **Comprehension check in `truth.py`**: bury an answer in the compressed output and ask for it, so a saving that blinds the model is discarded.
+- [ ] **Re-run rate after compression** (from the TokenEconomizer paper, which found fixed output compression raised cost in 12 of 30 cells): in `history.jsonl`, how often the same command is rerun right after a compressed output. Also repeated failing commands per repo, for `stats` or `doctor`. Local data only, no new hook.
+- [ ] **Needle preservation in the generic reducer**: keep lines with a rare token (UUID, hash, URL, id) when it cuts, so the agent does not rerun a narrower query. Cap it so id-dense logs still compress.
+- [ ] **`audit-docs`**: flag dates, "Updated:" and "As of YYYY-MM" in `CLAUDE.md` / `AGENTS.md`, they break the prompt-cache prefix (`src/audit_docs_detect.rs`).
+- [ ] **Output-saver rules**: add "keep comments you were not asked to change", "write commits, PRs and docs in normal prose", "full sentences for questions to the user". The block is the canonical source for comment limits, so flag downstream stacks. Each line costs tokens in every session; measure first (item above).
+- [ ] **Output-saver measurement from transcripts**: output tokens per reply before vs after install, with a confidence interval, labelled "estimated" (`docs/features/output-saver.md` admits `stats` cannot measure the output side).
+
+### P4: larger features, decide later
+
+- [ ] **User filters for commands without a parser**: `.trs/filters/*.toml` with only skip, keep, on_empty, max_lines, strip_ansi and inline fixture tests, loaded only from trust-approved project dirs and never from the repo-level config for anything that changes behaviour. The generic tier saves only 2-16% today. Large.
+- [ ] **Delta for repeated test runs** (`cargo test`, `pytest`, `jest`): state keyed by (session id, cwd, exact command); NEW and CHANGED in full, UNCHANGED as a count with the `[trs] full output:` path. Opt-in, medium risk (hiding a still-failing test).
+- [ ] **Pipeline exit-code capture**: `just check 2>&1 | tail -8` exits 0 while the check failed. Opt-in, needs a carve-out from #162; decline pagers, `tail -f`, `pipefail` and pipelines that consume the status.
+- [ ] **Hooks for Mistral Vibe (`pre_tool` in hooks.toml) and Trae (PreToolUse `RunCommand`, omit the decision)**.
+- [ ] **Output-saver targets** for OpenClaw (`SOUL.md` sentinel block), Grok (`$GROK_HOME/AGENTS.md`) and Kiro (steering file with `inclusion: always`). Their Grok and Kiro paths are untested by their authors, verify on real binaries.
+- [ ] **Near-identical log-line templating** in `safe_folds.rs` (`[x N] template`), always marked lossy with the tee kept.
+- [ ] **Import-block collapse** for `trs read` aggressive mode, only if `truth.py` anchors hold.
+- [ ] **PostToolUse output compression** (agents' own Read/Grep/Web tools) where the agent allows output replacement (about 8 of 20 agents in a similar tool's matrix). Different product direction; keep as a note.
+
+### Do not copy
+
+- API proxies, injected retrieve tools and cross-turn pointer dedup (trs cannot see context compaction).
+- Delegating reads to a cheaper model, default-on telemetry, accounts, cloud routing.
+- Persona or terse-speech modes, dictionary/abbreviation codebooks, LLM-based compressors with low fidelity.
+- Per-turn re-injection hooks, dollar headlines built on estimates, headline percentages from N=1 or synthetic corpora.
+- Code from non-commercial or BUSL-licensed projects: ideas only.
+- The TokenEconomizer mechanisms that need session hooks trs does not install (SessionStart injection, mid-turn redirect, tool pruning). Only the history-based loop and rerun signals fit trs.
+
+---
+
 ## Exegol (our agent desktop app, github.com/dPeluChe/exegol)
 
 Found 2026-10-21 while auditing `trs stats --by-agent`: Exegol's `digest.ts` calls
@@ -169,6 +228,8 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 ### Evaluated: no dedicated integration needed
 
 - [x] **t3code (pingdotgg)**: evaluated; **not applicable for a `trs init` entry.** t3code is a web-GUI *wrapper* that orchestrates other agent CLIs (Codex, Claude, Cursor, OpenCode), not an agent itself. It doesn't run shell or expose its own hook surface. trs attaches transitively at the backend-agent layer (all four already supported), so `trs init <backend>` covers it. Attribution shows the backend agent, not "t3code". Open validation: confirm the hook fires through t3code's Codex *app-server* (JSON-RPC stdio) path, as we validated interactive Codex.
+
+- [x] **Claude Code `agent_summary` background cost (gist, 2026-11-03)**: evaluated, **not for trs**. Claims (author's own, from OpenTelemetry, unverified) that Claude Code sends each background agent's transcript to a model every ~30 s for a 3-5 word status, about 16% of spend. Not shell output, so trs cannot reduce it, and the fix patches the client runtime (a Bun `--preload` that disables timers), which may conflict with the service terms and breaks silently on updates. Takeaway for the docs only: part of an agent's bill sits outside what trs touches, so keep the savings claims scoped to shell output. The video that pointed to it was not analysed.
 
 ### Competitor intel: headroom (chopratejas)
 
