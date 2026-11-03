@@ -47,6 +47,10 @@ pub enum Commands {
         /// already taken.
         #[arg(long)]
         caller: Option<String>,
+        /// Print the stdin command split into its simple commands, one per
+        /// line, instead of rewriting it (for plugins that check permissions).
+        #[arg(long)]
+        segments: bool,
     },
 
     /// Find missed token savings opportunities in Claude Code history

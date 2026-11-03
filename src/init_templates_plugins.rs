@@ -27,15 +27,61 @@ const viaTrs = (cmd) => {
     };
 }
 
+// 1.x hosts match their permission rules against the rewritten command and
+// have no way to ask about the original, so the rewrite happens only when the
+// effective config has no ask/deny rule at all (unknown config: no rewrite).
+macro_rules! js_rules_gate {
+    () => {
+        r#"
+const allowOnly = (v) =>
+  v === undefined || v === "allow" ||
+  (typeof v === "object" && v !== null && Object.values(v).every((x) => x === "allow"));
+
+const bashUnrestricted = async (client, directory) => {
+  try {
+    const c = (await client.config.get({ query: { directory } }))?.data ?? {};
+    const sets = [c.permission, ...Object.values(c.agent ?? {}).map((a) => a?.permission)];
+    return sets.every((p) =>
+      !p || (typeof p === "string" ? p === "allow" : allowOnly(p.bash !== undefined ? p.bash : p["*"])));
+  } catch {
+    return false;
+  }
+};
+"#
+    };
+}
+
 // OpenCode plugin: one default export serves 1.x (`server`) and 2.x (`setup`).
 // 2.x rejects named exports and calls the shell tool `shell`; see
 // docs/development/agent-integrations.md (OpenCode).
 pub(crate) const OPENCODE_PLUGIN: &str = concat!(
     "// trs plugin: route commands through trs for token-optimized output\n\n",
     js_via_trs!(),
+    js_rules_gate!(),
     r#"
+// 2.x checks permission rules on the rewritten text: ask about the original.
+const segmentsOf = (cmd) => {
+  try {
+    const r = spawnSync("trs", ["rewrite", "--segments"], {
+      input: cmd,
+      encoding: "utf8",
+      timeout: 3000,
+      shell: process.platform === "win32",
+    });
+    const lines = r.status === 0 && typeof r.stdout === "string" ? r.stdout.split(/\r?\n/).filter(Boolean) : [];
+    return lines.length ? lines : null;
+  } catch {
+    return null;
+  }
+};
+
+const isPermissionError = (e) => {
+  const tag = String(e?._tag ?? e?.name ?? "");
+  return !/Schema/.test(tag) && /permission|reject|declin|denied/i.test(`${tag} ${e?.message ?? ""}`);
+};
+
 // OpenCode 1.x
-const server = async () => ({
+const server = async ({ client, directory } = {}) => ({
   // Cross-platform attribution: set the env var, never a shell prefix.
   "shell.env": async (_input, output) => {
     output.env.TRS_AGENT = "opencode";
@@ -44,6 +90,7 @@ const server = async () => ({
     if (input.tool !== "bash") return;
     const cmd = output.args?.command;
     if (typeof cmd !== "string") return;
+    if (!client || !(await bashUnrestricted(client, directory))) return;
     output.args.command = viaTrs(cmd);
   },
 });
@@ -53,27 +100,52 @@ export default {
   server,
   // OpenCode 2.x
   setup: async (ctx) => {
+    const approved = new Set();
+    const canAsk = typeof ctx.permission?.assert === "function" && typeof ctx.permission?.hook === "function";
     await ctx.shell.hook("create.before", (input) => {
       input.env.TRS_AGENT = "opencode";
     });
-    await ctx.tool.hook("execute.before", (input) => {
+    if (canAsk) {
+      // The original was approved by assert: do not prompt again on the rewrite.
+      await ctx.permission.hook("evaluate", (input) => {
+        if (input.effect === "ask" && approved.has(input.source?.id)) input.effect = "allow";
+      });
+    }
+    await ctx.tool.hook("execute.before", async (input) => {
       if (input.tool !== "shell") return;
       const cmd = input.input?.command;
       if (typeof cmd !== "string") return;
-      input.input = { ...input.input, command: viaTrs(cmd) };
+      const rewritten = viaTrs(cmd);
+      const resources = rewritten === cmd || !canAsk ? null : segmentsOf(cmd);
+      if (!resources) return;
+      try {
+        await ctx.permission.assert({
+          sessionID: input.sessionID,
+          agent: input.agent,
+          action: "shell",
+          resources,
+          source: { type: "tool", messageID: input.messageID, id: input.id },
+        });
+      } catch (e) {
+        if (isPermissionError(e)) throw e;
+        return;
+      }
+      approved.add(input.id);
+      input.input = { ...input.input, command: rewritten };
     });
   },
 };
 "#
 );
 
-/// Kilo plugin — identical mechanism to OpenCode 1.x but tags the downstream
+/// Kilo plugin: identical mechanism to OpenCode 1.x but tags the downstream
 /// run as `kilo` so history attribution is accurate across forks.
 pub(crate) const KILO_PLUGIN: &str = concat!(
     "// trs plugin: route commands through trs for token-optimized output\n\n",
     js_via_trs!(),
+    js_rules_gate!(),
     r#"
-export const TrsPlugin = async () => {
+export const TrsPlugin = async ({ client, directory } = {}) => {
   return {
     "shell.env": async (_input, output) => {
       output.env.TRS_AGENT = "kilo";
@@ -82,6 +154,7 @@ export const TrsPlugin = async () => {
       if (input.tool !== "bash") return;
       const cmd = output.args?.command;
       if (typeof cmd !== "string") return;
+      if (!client || !(await bashUnrestricted(client, directory))) return;
       output.args.command = viaTrs(cmd);
     },
   };

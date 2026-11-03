@@ -351,3 +351,12 @@ fn git_inside_a_claude_worktree_is_left_unwrapped() {
     assert!(!git_in_claude_worktree(Some("/repo/src"), "git status"));
     assert!(!git_in_claude_worktree(None, "git status"));
 }
+
+#[test]
+fn segments_split_chains_but_not_quotes_or_redirects() {
+    assert_eq!(
+        segments_text("cd a && git push; echo 'x && y' 2>&1 | cat"),
+        "cd a\ngit push\necho 'x && y' 2>&1\ncat"
+    );
+    assert_eq!(segments_text("git status"), "git status");
+}
