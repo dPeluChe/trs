@@ -2,14 +2,38 @@
 //! OpenClaw (JS) / Hermes (Python). Split from init_templates.rs to keep
 //! both under the 500-LOC rule; re-exported there so callers are unchanged.
 
+// Shared by the JS plugins. Pipes, redirects, chains and bypass prefixes are
+// decided by `trs rewrite` (rewrite_decide.rs), so every agent follows one
+// rule set. Fails open: a missing trs or any error keeps the command as is.
+macro_rules! js_via_trs {
+    () => {
+        r#"import { spawnSync } from "node:child_process";
+
+const viaTrs = (cmd) => {
+  try {
+    const r = spawnSync("trs", ["rewrite"], {
+      input: cmd,
+      encoding: "utf8",
+      timeout: 3000,
+      shell: process.platform === "win32",
+    });
+    const out = r.status === 0 && typeof r.stdout === "string" ? r.stdout.replace(/\r?\n$/, "") : "";
+    return out || cmd;
+  } catch {
+    return cmd;
+  }
+};
+"#
+    };
+}
+
 // OpenCode plugin: one default export serves 1.x (`server`) and 2.x (`setup`).
 // 2.x rejects named exports and calls the shell tool `shell`; see
 // docs/development/agent-integrations.md (OpenCode).
-pub(crate) const OPENCODE_PLUGIN: &str = r#"// trs plugin: route commands through trs for token-optimized output
-
-const skip = (cmd) =>
-  cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=");
-
+pub(crate) const OPENCODE_PLUGIN: &str = concat!(
+    "// trs plugin: route commands through trs for token-optimized output\n\n",
+    js_via_trs!(),
+    r#"
 // OpenCode 1.x
 const server = async () => ({
   // Cross-platform attribution: set the env var, never a shell prefix.
@@ -19,8 +43,8 @@ const server = async () => ({
   "tool.execute.before": async (input, output) => {
     if (input.tool !== "bash") return;
     const cmd = output.args?.command;
-    if (typeof cmd !== "string" || skip(cmd)) return;
-    output.args.command = `trs ${cmd}`;
+    if (typeof cmd !== "string") return;
+    output.args.command = viaTrs(cmd);
   },
 });
 
@@ -35,17 +59,20 @@ export default {
     await ctx.tool.hook("execute.before", (input) => {
       if (input.tool !== "shell") return;
       const cmd = input.input?.command;
-      if (typeof cmd !== "string" || skip(cmd)) return;
-      input.input = { ...input.input, command: `trs ${cmd}` };
+      if (typeof cmd !== "string") return;
+      input.input = { ...input.input, command: viaTrs(cmd) };
     });
   },
 };
-"#;
+"#
+);
 
 /// Kilo plugin — identical mechanism to OpenCode 1.x but tags the downstream
 /// run as `kilo` so history attribution is accurate across forks.
-pub(crate) const KILO_PLUGIN: &str = r#"// trs plugin: route commands through trs for token-optimized output
-
+pub(crate) const KILO_PLUGIN: &str = concat!(
+    "// trs plugin: route commands through trs for token-optimized output\n\n",
+    js_via_trs!(),
+    r#"
 export const TrsPlugin = async () => {
   return {
     "shell.env": async (_input, output) => {
@@ -55,40 +82,36 @@ export const TrsPlugin = async () => {
       if (input.tool !== "bash") return;
       const cmd = output.args?.command;
       if (typeof cmd !== "string") return;
-      if (cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=")) return;
-      output.args.command = `trs ${cmd}`;
+      output.args.command = viaTrs(cmd);
     },
   };
 };
-"#;
+"#
+);
 
 // Pi (pi.dev) extension: overrides the bash tool with a `spawnHook` that
 // prepends `trs` and tags the run via `TRS_AGENT=pi` (attribution lives in the
 // env, not a shell prefix — works on every platform). Auto-discovered from
 // ~/.pi/agent/extensions/ (global) or .pi/extensions/ (project); `/reload` to
 // pick up changes. Reference: https://pi.dev (earendil-works/pi).
-pub(crate) const PI_EXTENSION: &str = r#"// trs plugin: route commands through trs for token-optimized output
-import { createBashTool } from "@earendil-works/pi-coding-agent";
-
+pub(crate) const PI_EXTENSION: &str = concat!(
+    "// trs plugin: route commands through trs for token-optimized output\n",
+    r#"import { createBashTool } from "@earendil-works/pi-coding-agent";
+"#,
+    js_via_trs!(),
+    r#"
 export default function (pi) {
   const bash = createBashTool(process.cwd(), {
-    spawnHook: ({ command, cwd, env }) => {
-      // Idempotent: skip anything already routed through trs (or a cd).
-      const skip =
-        typeof command !== "string" ||
-        command.startsWith("trs ") ||
-        command.startsWith("cd ") ||
-        command.startsWith("TRS_AGENT=");
-      return {
-        command: skip ? command : `trs ${command}`,
-        cwd,
-        env: { ...env, TRS_AGENT: "pi" },
-      };
-    },
+    spawnHook: ({ command, cwd, env }) => ({
+      command: typeof command === "string" ? viaTrs(command) : command,
+      cwd,
+      env: { ...env, TRS_AGENT: "pi" },
+    }),
   });
   pi.registerTool({ ...bash });
 }
-"#;
+"#
+);
 
 // OpenClaw / Hermes plugin templates — installed by init_install_plugins.rs.
 pub(crate) const OPENCLAW_PLUGIN_MANIFEST: &str = r#"{
@@ -99,9 +122,12 @@ pub(crate) const OPENCLAW_PLUGIN_MANIFEST: &str = r#"{
 }
 "#;
 
-pub(crate) const OPENCLAW_PLUGIN_INDEX: &str = r#"// trs plugin: route exec commands through trs for token-optimized output
-// Validate live: hook payload field names + manifest schema (docs verified
-// 2026-06-11: before_tool_call rewrites params; resolve_exec_env merges env).
+pub(crate) const OPENCLAW_PLUGIN_INDEX: &str = concat!(
+    "// trs plugin: route exec commands through trs for token-optimized output\n",
+    "// Validate live: hook payload field names + manifest schema (docs verified\n",
+    "// 2026-06-11: before_tool_call rewrites params; resolve_exec_env merges env).\n",
+    js_via_trs!(),
+    r#"
 export default {
   id: "trs",
   register(api) {
@@ -109,25 +135,26 @@ export default {
       if (event.toolName !== "exec") return;
       const cmd = event.params?.command;
       if (typeof cmd !== "string") return;
-      // Idempotent: skip anything already routed through trs (or a cd).
-      if (cmd.startsWith("trs ") || cmd.startsWith("cd ") || cmd.startsWith("TRS_AGENT=")) return;
-      return { params: { ...event.params, command: `trs ${cmd}` } };
+      return { params: { ...event.params, command: viaTrs(cmd) } };
     });
     // Cross-platform attribution: env var, never a shell prefix.
     api.on("resolve_exec_env", () => ({ TRS_AGENT: "openclaw" }));
   },
 };
-"#;
+"#
+);
 
 // Validate live: hook signature + plugin.yaml manifest keys (docs verified
 // 2026-06-11: register(ctx) → ctx.register_hook("pre_tool_call", fn)).
 pub(crate) const HERMES_PLUGIN_INIT: &str = r#""""trs plugin: route Hermes terminal commands through trs.
 
-Prepends `trs ` to terminal tool commands (idempotent) and tags child
-processes via TRS_AGENT for attribution. Fails open on any error.
+Asks `trs rewrite` how to run each terminal command (it leaves pipes,
+redirects and bypass prefixes alone) and tags child processes via
+TRS_AGENT for attribution. Fails open on any error.
 """
 
 import os
+import subprocess
 
 
 def register(ctx):
@@ -136,17 +163,30 @@ def register(ctx):
     ctx.register_hook("pre_tool_call", _pre_tool_call)
 
 
+def _via_trs(command):
+    try:
+        r = subprocess.run(
+            ["trs", "rewrite"],
+            input=command,
+            capture_output=True,
+            text=True,
+            timeout=3,
+            shell=(os.name == "nt"),
+        )
+    except Exception:
+        return command
+    out = r.stdout.rstrip("\r\n") if r.returncode == 0 else ""
+    return out or command
+
+
 def _pre_tool_call(tool_name=None, args=None, **_kwargs):
     try:
         if tool_name != "terminal" or not isinstance(args, dict):
             return
         command = args.get("command")
-        if not isinstance(command, str):
+        if not isinstance(command, str) or not command.strip():
             return
-        stripped = command.strip()
-        if not stripped or stripped.startswith(("trs ", "cd ", "TRS_AGENT=")):
-            return
-        args["command"] = f"trs {stripped}"
+        args["command"] = _via_trs(command)
     except Exception:
         return
 "#;

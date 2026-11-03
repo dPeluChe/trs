@@ -396,19 +396,14 @@ mod tests {
                 plugin.contains(&format!("output.env.TRS_AGENT = \"{agent}\"")),
                 "{agent}: shell.env does not set TRS_AGENT"
             );
-            // Command is just `trs ${cmd}`.
+            // The rewrite decision comes from `trs rewrite`, not a blind prefix.
             assert!(
-                plugin.contains("`trs ${cmd}`"),
-                "{agent}: command is not `trs ${{cmd}}`"
-            );
-            // Guard skips already-wrapped commands (anti-snowball).
-            assert!(
-                plugin.contains("cmd.startsWith(\"TRS_AGENT=\")"),
-                "{agent}: guard does not skip the legacy TRS_AGENT= prefix"
+                plugin.contains("spawnSync(\"trs\", [\"rewrite\"]"),
+                "{agent}: does not ask `trs rewrite`"
             );
             assert!(
-                plugin.contains("cmd.startsWith(\"trs \")"),
-                "{agent}: guard does not skip trs-prefixed commands"
+                !plugin.contains("`trs ${"),
+                "{agent}: still prefixes `trs ` to every command"
             );
         }
     }

@@ -187,7 +187,7 @@ Output envelope is identical to Claude Code.
 | Hook key 1.x | `"tool.execute.before"` (string literal, not `before_tool_call`) |
 | Hook key 2.x | `ctx.tool.hook("execute.before")` and `ctx.shell.hook("create.before")` |
 | Tool name check | 1.x `input.tool === "bash"`, 2.x `input.tool === "shell"` |
-| Mutation | 1.x `output.args.command = "trs ..."`, 2.x `input.input = { ...input.input, command: "trs ..." }` |
+| Mutation | 1.x `output.args.command = viaTrs(cmd)`, 2.x `input.input = { ...input.input, command: viaTrs(cmd) }` |
 | Template | `OPENCODE_PLUGIN` (one default export serves both) |
 | Docs | https://opencode.ai/docs/plugins/ |
 
@@ -200,6 +200,13 @@ Output envelope is identical to Claude Code.
   never runs, so nothing is routed through trs. 1.x (checked on 1.19.3) reads
   `server` from the same default export, so the template defines both.
   `trs doctor` flags a plugin file without `export default`.
+- The plugin does not decide what to wrap. `viaTrs` pipes the command into
+  `trs rewrite` (plain-text mode) and uses its answer, so pipes, redirects,
+  `$(...)` and bypass prefixes behave as for the hook agents (a blind
+  `trs ${cmd}` made `ls | wc -l` read compressed text). It fails open: no
+  `trs` on PATH, a timeout or an error keeps the original command. Kilo, Pi,
+  OpenClaw and Hermes use the same helper; `tests/cli_plugin_templates.rs`
+  runs it. `trs doctor` flags a plugin written before this.
 - 2.x env hook: `shell.create.before` fires for every shell, including the
   user's own `!cmd`; the tool hook is the only one that sees the agent's.
 - Older docs showed `before_tool_call` hook with `ctx.tool` / `ctx.input`;

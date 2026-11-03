@@ -54,26 +54,39 @@ pub(crate) fn check_hooks_installed() -> Check {
     }
 }
 
-/// OpenCode 2.x rejects the named-export plugin 1.x accepted ("Plugin must
-/// export a default definition"), so a plugin written before 0.8.9 silently
-/// stops routing commands through trs. `None` when no such plugin exists.
-pub(crate) fn check_opencode_plugin() -> Option<Check> {
-    let path = crate::init::home_dir()
-        .ok()?
-        .join(".config/opencode/plugins/trs.ts");
-    let content = std::fs::read_to_string(path).ok()?;
-    Some(opencode_plugin_check(&content))
+/// Global script plugins: (check name, path under $HOME, accepts only a
+/// default export). A copy written before 0.8.9 is not loaded by OpenCode
+/// 2.x; one written before 0.8.11 prefixed every command with `trs`, pipes
+/// included, so the next stage read compressed text.
+const SCRIPT_PLUGINS: [(&str, &str, bool); 3] = [
+    ("opencode plugin", ".config/opencode/plugins/trs.ts", true),
+    ("kilo plugin", ".config/kilo/plugins/trs.ts", false),
+    ("pi extension", ".pi/agent/extensions/trs.ts", false),
+];
+
+pub(crate) fn check_script_plugins() -> Vec<Check> {
+    let Ok(home) = crate::init::home_dir() else {
+        return Vec::new();
+    };
+    SCRIPT_PLUGINS
+        .iter()
+        .filter_map(|&(name, rel, default_export)| {
+            let content = std::fs::read_to_string(home.join(rel)).ok()?;
+            Some(script_plugin_check(name, &content, default_export))
+        })
+        .collect()
 }
 
-fn opencode_plugin_check(content: &str) -> Check {
-    if content.contains("export default") {
-        return Check::pass("opencode plugin", "loads on OpenCode 1.x and 2.x");
+fn script_plugin_check(name: &'static str, content: &str, default_export: bool) -> Check {
+    const REFRESH: &str = "trs init --all --global --force, then restart the agent";
+    if default_export && !content.contains("export default") {
+        return Check::warn(name, "old format, OpenCode 2.x will not load it").with_hint(REFRESH);
     }
-    Check::warn(
-        "opencode plugin",
-        "old format, OpenCode 2.x will not load it",
-    )
-    .with_hint("trs init --all --global --force, then restart OpenCode")
+    if !content.contains("\"rewrite\"") {
+        return Check::warn(name, "old version, it rewrites pipes and redirects too")
+            .with_hint(REFRESH);
+    }
+    Check::pass(name, "current")
 }
 
 /// Runs that came through a hook carry an `agent` label; direct runs don't.
@@ -93,15 +106,33 @@ pub(crate) fn hook_has_fired(trs_dir: &std::path::Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{hook_has_fired, opencode_plugin_check};
+    use super::{hook_has_fired, script_plugin_check};
     use crate::doctor::CheckStatus;
 
     #[test]
-    fn an_opencode_plugin_without_a_default_export_is_flagged() {
-        let old = "export const TrsPlugin = async () => ({});";
-        assert_eq!(opencode_plugin_check(old).status, CheckStatus::Warn);
-        let current = crate::init_templates::OPENCODE_PLUGIN;
-        assert_eq!(opencode_plugin_check(current).status, CheckStatus::Pass);
+    fn an_outdated_script_plugin_is_flagged() {
+        use crate::init_templates::{KILO_PLUGIN, OPENCODE_PLUGIN, PI_EXTENSION};
+        let named_export = "export const TrsPlugin = async () => ({});";
+        assert_eq!(
+            script_plugin_check("opencode plugin", named_export, true).status,
+            CheckStatus::Warn
+        );
+        let blind_prefix = "export default { server: () => `trs ${cmd}` };";
+        assert_eq!(
+            script_plugin_check("opencode plugin", blind_prefix, true).status,
+            CheckStatus::Warn
+        );
+        for (name, current, default_export) in [
+            ("opencode plugin", OPENCODE_PLUGIN, true),
+            ("kilo plugin", KILO_PLUGIN, false),
+            ("pi extension", PI_EXTENSION, false),
+        ] {
+            assert_eq!(
+                script_plugin_check(name, current, default_export).status,
+                CheckStatus::Pass,
+                "{name}"
+            );
+        }
     }
 
     #[test]
