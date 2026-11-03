@@ -14,7 +14,7 @@
 use std::io::Read;
 
 use crate::rewrite_decide::{looks_like_env_assignment, maybe_rewrite};
-use crate::rewrite_permissions::Gate;
+use crate::rewrite_gate::Gate;
 
 /// Run the rewrite logic. Called from main.rs. `agent_flag` is the
 /// `--caller <label>` set by the installing hook template — the
@@ -32,7 +32,10 @@ pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool) {
     }
 
     if segments {
-        println!("{}", segments_text(input));
+        println!(
+            "{}",
+            crate::rewrite_permissions::split_segments(input).join("\n")
+        );
         return;
     }
 
@@ -45,11 +48,6 @@ pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool) {
     if let Some(rewritten) = maybe_rewrite(input) {
         println!("{}", rewritten);
     }
-}
-
-/// One simple command per line, split like the agents' own permission checks.
-fn segments_text(cmd: &str) -> String {
-    crate::rewrite_permissions::split_segments(cmd).join("\n")
 }
 
 fn handle_json_protocol(json: &serde_json::Value, agent_flag: Option<&str>) {
@@ -209,25 +207,23 @@ fn build_hook_response(
 
     // Bypass telemetry — log the agent-attributed observation before the
     // short-circuit so `stats --by-agent` can surface per-agent rates.
+    let label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
     if cmd_bypasses_trs(cmd) {
-        crate::tracker::log_bypass(
-            cmd,
-            Some(flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()))),
-        );
+        crate::tracker::log_bypass(cmd, Some(label));
         return None;
     }
 
-    let label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
+    // Cheap decisions first: the gate below reads the agent's settings files.
+    let rewritten = maybe_rewrite(cmd)?;
+    if git_in_claude_worktree(json.get("cwd").and_then(|v| v.as_str()), cmd) {
+        return None;
+    }
     // Agents match their permission rules against the rewritten command, so
     // the hook applies them to the original one (rewrite_gate.rs).
     let gate = crate::rewrite_gate::gate_for(label, cmd, json);
     if gate == Gate::Skip {
         return None;
     }
-    if git_in_claude_worktree(json.get("cwd").and_then(|v| v.as_str()), cmd) {
-        return None;
-    }
-    let rewritten = maybe_rewrite(cmd)?;
     let rewritten = tag_with_agent(&rewritten, label);
 
     let response = match event {
@@ -245,20 +241,19 @@ fn build_hook_response(
             "permission": "allow",
             "updated_input": { "command": rewritten }
         }),
-        HookEvent::ClaudePreToolUse if gate == Gate::Defer => serde_json::json!({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "updatedInput": { "command": rewritten }
+        HookEvent::ClaudePreToolUse => {
+            let mut out = serde_json::json!({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "updatedInput": { "command": rewritten }
+                }
+            });
+            if gate == Gate::Allow {
+                out["hookSpecificOutput"]["permissionDecision"] = "allow".into();
+                out["hookSpecificOutput"]["permissionDecisionReason"] = "trs auto-rewrite".into();
             }
-        }),
-        HookEvent::ClaudePreToolUse => serde_json::json!({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "allow",
-                "permissionDecisionReason": "trs auto-rewrite",
-                "updatedInput": { "command": rewritten }
-            }
-        }),
+            out
+        }
     };
     Some(response)
 }
@@ -271,10 +266,8 @@ fn git_in_claude_worktree(cwd: Option<&str>, cmd: &str) -> bool {
         && crate::rewrite_permissions::split_segments(cmd)
             .iter()
             .any(|seg| {
-                let mut words = seg
+                crate::rewrite_permissions::strip_env(seg)
                     .split_whitespace()
-                    .skip_while(|w| looks_like_env_assignment(w));
-                words
                     .next()
                     .is_some_and(|w| crate::text_util::cmd_basename(w) == "git")
             })

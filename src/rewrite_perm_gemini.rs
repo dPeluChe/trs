@@ -1,7 +1,8 @@
 //! Permission gate for Gemini CLI: TOML policies and `tools.allowed`; it ignores a hook allow, so the gate only decides Defer (rewrite, no decision) or Skip.
 //! Contract: docs/development/agent-integrations.md (permissions).
 
-use crate::rewrite_permissions::{read_only, split_segments, strip_env, Gate};
+use crate::rewrite_gate::Gate;
+use crate::rewrite_permissions::{read_only, split_segments, strip_env};
 use std::path::{Path, PathBuf};
 
 #[path = "rewrite_perm_gemini_policy.rs"]
@@ -11,8 +12,8 @@ use policy::{add_allowed, add_toml, parse_settings, Rules};
 /// What the rewritten command looks like to Gemini's prefix rules.
 const REWRITTEN_PROBE: &str = "TRS_AGENT=gemini trs x";
 
-/// `cmd` is the ORIGINAL command; `cwd` and `permission_mode` come from the hook payload.
-pub(crate) fn gate(cmd: &str, cwd: Option<&str>, _permission_mode: Option<&str>) -> Gate {
+/// `cmd` is the ORIGINAL command; `cwd` comes from the hook payload.
+pub(crate) fn gate(cmd: &str, cwd: Option<&str>) -> Gate {
     let home = std::env::var_os("GEMINI_CLI_HOME")
         .map(PathBuf::from)
         .or_else(|| crate::init::home_dir().ok());
@@ -116,11 +117,11 @@ fn system_dir() -> PathBuf {
 fn read_settings(path: &Path) -> Option<policy::Settings> {
     match std::fs::read_to_string(path) {
         Ok(text) => parse_settings(&text),
-        Err(_) if path.exists() => None,
-        Err(_) => Some(policy::Settings {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some(policy::Settings {
             folder_trust: true,
             ..Default::default()
         }),
+        Err(_) => None,
     }
 }
 

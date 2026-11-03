@@ -54,14 +54,13 @@ pub(crate) fn check_hooks_installed() -> Check {
     }
 }
 
-/// Global script plugins: (check name, path under $HOME, accepts only a
-/// default export). A copy written before 0.8.9 is not loaded by OpenCode
+/// Global script plugins: (check name, tool, accepts only a default export). A copy written before 0.8.9 is not loaded by OpenCode
 /// 2.x; one written before 0.8.11 prefixed every command with `trs`, pipes
 /// included, so the next stage read compressed text.
-const SCRIPT_PLUGINS: [(&str, &str, bool); 3] = [
-    ("opencode plugin", ".config/opencode/plugins/trs.ts", true),
-    ("kilo plugin", ".config/kilo/plugins/trs.ts", false),
-    ("pi extension", ".pi/agent/extensions/trs.ts", false),
+const SCRIPT_PLUGINS: [(&str, AiTool, bool); 3] = [
+    ("opencode plugin", AiTool::OpenCode, true),
+    ("kilo plugin", AiTool::Kilo, false),
+    ("pi extension", AiTool::Pi, false),
 ];
 
 pub(crate) fn check_script_plugins() -> Vec<Check> {
@@ -70,8 +69,10 @@ pub(crate) fn check_script_plugins() -> Vec<Check> {
     };
     SCRIPT_PLUGINS
         .iter()
-        .filter_map(|&(name, rel, default_export)| {
-            let content = std::fs::read_to_string(home.join(rel)).ok()?;
+        .filter_map(|&(name, tool, default_export)| {
+            let spec = tool.spec()?;
+            let path = home.join(spec.global_dir?).join(spec.filename);
+            let content = std::fs::read_to_string(path).ok()?;
             Some(script_plugin_check(name, &content, default_export))
         })
         .collect()

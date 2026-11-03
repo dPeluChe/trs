@@ -5,7 +5,8 @@
 #[path = "rewrite_perm_droid_match.rs"]
 mod matcher;
 
-use crate::rewrite_permissions::Gate;
+use crate::rewrite_gate::Gate;
+use crate::rewrite_rules::read_json;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -174,12 +175,10 @@ fn project_dirs(cwd: &Path, home: Option<&Path>) -> (PathBuf, Vec<PathBuf>) {
 
 /// `Some(json)`, or `None` if the file exists but is unusable. A missing file is `{}`.
 fn read(path: &Path) -> Option<serde_json::Value> {
-    if !path.exists() {
-        return Some(serde_json::json!({}));
+    match read_json(path)? {
+        None => Some(serde_json::json!({})),
+        Some(json) => json.is_object().then_some(json),
     }
-    let json: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()?;
-    json.is_object().then_some(json)
 }
 
 fn trusted_folders(json: &serde_json::Value) -> Vec<PathBuf> {

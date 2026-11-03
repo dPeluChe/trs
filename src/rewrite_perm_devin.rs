@@ -1,52 +1,26 @@
 //! Permission gate for Devin CLI: `Exec(prefix)` rules in its config files.
 //! Contract: docs/development/agent-integrations.md (permissions).
 
-use crate::rewrite_permissions::{split_segments, strip_env, Gate};
+use crate::rewrite_gate::Gate;
+use crate::rewrite_permissions::split_segments;
+use crate::rewrite_rules::{read_json, word_prefix, Rules};
 use std::path::{Path, PathBuf};
-
-#[derive(Default)]
-struct Rules {
-    allow: Vec<String>,
-    ask: Vec<String>,
-    deny: Vec<String>,
-}
 
 /// `cmd` is the ORIGINAL command. The Devin payload has no `cwd`, so the
 /// project dir comes from `DEVIN_PROJECT_DIR`, then the process cwd.
-pub(crate) fn gate(cmd: &str, cwd: Option<&str>, _permission_mode: Option<&str>) -> Gate {
+pub(crate) fn gate(cmd: &str, cwd: Option<&str>) -> Gate {
     let dir = cwd
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("DEVIN_PROJECT_DIR").map(PathBuf::from))
         .or_else(|| std::env::current_dir().ok());
-    match Rules::load(&config_files(dir.as_deref())) {
+    match load_rules(&config_files(dir.as_deref())) {
         Some(rules) => gate_with(&rules, cmd),
         None => Gate::Skip,
     }
 }
 
 fn gate_with(rules: &Rules, cmd: &str) -> Gate {
-    let mut all_allowed = true;
-    let mut any = false;
-    for seg in split_segments(cmd) {
-        any = true;
-        let bare = strip_env(seg);
-        if rules
-            .deny
-            .iter()
-            .chain(&rules.ask)
-            .any(|r| rule_matches(r, seg) || rule_matches(r, bare))
-        {
-            return Gate::Skip;
-        }
-        if !rules.allow.iter().any(|r| rule_matches(r, seg)) {
-            all_allowed = false;
-        }
-    }
-    if any && all_allowed {
-        Gate::Allow
-    } else {
-        Gate::Defer
-    }
+    rules.decide(split_segments(cmd), rule_matches, |_| false)
 }
 
 /// User file first, then each project dir from the root down to `dir`.
@@ -79,37 +53,15 @@ fn config_files(dir: Option<&Path>) -> Vec<(PathBuf, bool)> {
     files
 }
 
-impl Rules {
-    /// `None` when a config file exists but cannot be read or parsed.
-    fn load(files: &[(PathBuf, bool)]) -> Option<Self> {
-        let mut rules = Rules::default();
-        for (path, project) in files {
-            let Ok(text) = std::fs::read_to_string(path) else {
-                if path.exists() {
-                    return None;
-                }
-                continue;
-            };
-            let json: serde_json::Value = serde_json::from_str(&text).ok()?;
-            let list = |key: &str| -> Vec<String> {
-                let arr = json
-                    .get("permissions")
-                    .and_then(|p| p.get(key))
-                    .and_then(|v| v.as_array());
-                arr.into_iter()
-                    .flatten()
-                    .filter_map(|v| v.as_str())
-                    .map(String::from)
-                    .collect()
-            };
-            if !project {
-                rules.allow.extend(list("allow"));
-            }
-            rules.ask.extend(list("ask"));
-            rules.deny.extend(list("deny"));
+/// `None` when a config file exists but cannot be read or parsed.
+fn load_rules(files: &[(PathBuf, bool)]) -> Option<Rules> {
+    let mut rules = Rules::default();
+    for (path, project) in files {
+        if let Some(json) = read_json(path)? {
+            rules.extend_from(&json, !project);
         }
-        Some(rules)
     }
+    Some(rules)
 }
 
 /// `Exec` or `Exec(prefix)`; the prefix must match whole words, no wildcards.
@@ -121,11 +73,7 @@ fn rule_matches(rule: &str, cmd: &str) -> bool {
     } else {
         return false;
     };
-    prefix.is_empty()
-        || cmd == prefix
-        || cmd
-            .strip_prefix(prefix)
-            .is_some_and(|r| r.starts_with(char::is_whitespace))
+    prefix.is_empty() || word_prefix(cmd, prefix)
 }
 
 #[cfg(test)]
@@ -195,21 +143,21 @@ mod tests {
         let sub = dir.path().join("a/b");
         std::fs::create_dir_all(&sub).unwrap();
         let cwd = sub.to_str();
-        assert_eq!(gate("rm x", cwd, None), Gate::Skip);
-        assert_eq!(gate("git push", cwd, None), Gate::Skip);
-        assert_eq!(gate("ls", cwd, None), Gate::Defer);
+        assert_eq!(gate("rm x", cwd), Gate::Skip);
+        assert_eq!(gate("git push", cwd), Gate::Skip);
+        assert_eq!(gate("ls", cwd), Gate::Defer);
     }
 
     #[test]
     fn unreadable_config_fails_closed() {
         let dir = tempfile::tempdir().unwrap();
         write(dir.path(), ".devin/config.json", "{ not json");
-        assert_eq!(gate("git status", dir.path().to_str(), None), Gate::Skip);
+        assert_eq!(gate("git status", dir.path().to_str()), Gate::Skip);
     }
 
     #[test]
     fn no_config_defers() {
         let dir = tempfile::tempdir().unwrap();
-        assert_eq!(gate("git status", dir.path().to_str(), None), Gate::Defer);
+        assert_eq!(gate("git status", dir.path().to_str()), Gate::Defer);
     }
 }

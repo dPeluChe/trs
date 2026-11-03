@@ -1,15 +1,11 @@
 //! Droid matches its command lists against the REWRITTEN command and a hook
 //! `allow` skips them, so the Droid hook applies them to the original one.
 
-use assert_cmd::Command;
+mod support;
+
 use serde_json::{json, Value};
 use std::path::Path;
-
-fn write(root: &Path, rel: &str, text: &str) {
-    let path = root.join(rel);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
+use support::{decision, run_hook, write_file as write};
 
 /// Run `trs rewrite --caller droid` with `home` as `FACTORY_HOME_OVERRIDE`.
 fn hook(home: &Path, cwd: &Path, cmd: &str, mode: &str) -> Option<Value> {
@@ -20,22 +16,14 @@ fn hook(home: &Path, cwd: &Path, cmd: &str, mode: &str) -> Option<Value> {
         "tool_input": { "command": cmd, "riskLevel": "low" },
         "cwd": cwd,
     });
-    let out = Command::cargo_bin("trs")
-        .unwrap()
-        .env("HOME", home)
-        .env("USERPROFILE", home)
-        .env("FACTORY_HOME_OVERRIDE", home)
-        .env("TRS_HOME", home.join("trs"))
-        .args(["rewrite", "--caller", "droid"])
-        .write_stdin(input.to_string())
-        .output()
-        .unwrap();
-    let text = String::from_utf8_lossy(&out.stdout);
-    (!text.trim().is_empty()).then(|| serde_json::from_str(&text).unwrap())
-}
-
-fn decision(v: &Value) -> Option<&str> {
-    v["hookSpecificOutput"]["permissionDecision"].as_str()
+    run_hook(
+        "droid",
+        &input,
+        home,
+        &[("FACTORY_HOME_OVERRIDE", home)],
+        &[],
+        None,
+    )
 }
 
 const USER: &str = r#"{"commandDenylist":["git push"],"commandBlocklist":["deploy"]}"#;

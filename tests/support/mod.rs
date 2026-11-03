@@ -37,3 +37,46 @@ pub fn fake_program(path: &Path, body: &str) {
     std::fs::write(path, format!("#!/bin/sh\n{body}\n")).unwrap();
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
 }
+
+/// Write `text` to `root/rel`, creating parent dirs.
+pub fn write_file(root: &Path, rel: &str, text: &str) {
+    let path = root.join(rel);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, text).unwrap();
+}
+
+/// Run `trs rewrite --caller <caller>` with `input` on stdin and `home` as
+/// HOME and (under `trs/`) TRS_HOME. `None` means no output: the command was
+/// left alone.
+pub fn run_hook(
+    caller: &str,
+    input: &serde_json::Value,
+    home: &Path,
+    envs: &[(&str, &Path)],
+    unset: &[&str],
+    cwd: Option<&Path>,
+) -> Option<serde_json::Value> {
+    let mut c = assert_cmd::Command::cargo_bin("trs").unwrap();
+    c.env("HOME", home)
+        .env("USERPROFILE", home)
+        .env("TRS_HOME", home.join("trs"))
+        .args(["rewrite", "--caller", caller])
+        .write_stdin(input.to_string());
+    for k in unset {
+        c.env_remove(k);
+    }
+    for (k, v) in envs {
+        c.env(k, v);
+    }
+    if let Some(cwd) = cwd {
+        c.current_dir(cwd);
+    }
+    let out = c.output().unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    (!text.trim().is_empty()).then(|| serde_json::from_str(&text).unwrap())
+}
+
+/// The `permissionDecision` of a Claude-shaped hook answer.
+pub fn decision(v: &serde_json::Value) -> Option<&str> {
+    v["hookSpecificOutput"]["permissionDecision"].as_str()
+}

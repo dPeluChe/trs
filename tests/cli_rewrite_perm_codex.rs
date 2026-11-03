@@ -2,15 +2,11 @@
 //! command: Codex matches them against the rewritten one, so a `forbidden`
 //! `git push` rule never saw `trs git push`. Verified on codex-cli 0.166.0.
 
-use assert_cmd::Command;
+mod support;
+
 use serde_json::{json, Value};
 use std::path::Path;
-
-fn write(dir: &Path, rel: &str, text: &str) {
-    let path = dir.join(rel);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
+use support::{run_hook, write_file as write};
 
 /// Run `trs rewrite --caller codex` with `rules` as `$CODEX_HOME/rules/default.rules`.
 /// `None` means no output (command left alone).
@@ -31,18 +27,14 @@ fn run(home: &tempfile::TempDir, codex: &Path, cmd: &str, cwd: &Path) -> Option<
         "tool_input": { "command": cmd },
         "cwd": cwd,
     });
-    let out = Command::cargo_bin("trs")
-        .unwrap()
-        .env("HOME", home.path())
-        .env("USERPROFILE", home.path())
-        .env("CODEX_HOME", codex)
-        .env("TRS_HOME", home.path().join("trs"))
-        .args(["rewrite", "--caller", "codex"])
-        .write_stdin(input.to_string())
-        .output()
-        .unwrap();
-    let text = String::from_utf8_lossy(&out.stdout);
-    (!text.trim().is_empty()).then(|| serde_json::from_str(&text).unwrap())
+    run_hook(
+        "codex",
+        &input,
+        home.path(),
+        &[("CODEX_HOME", codex)],
+        &[],
+        None,
+    )
 }
 
 const RULES: &str = r#"

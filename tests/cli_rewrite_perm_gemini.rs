@@ -2,9 +2,11 @@
 //! `allow`, so the hook applies the user's TOML policies and `tools.allowed`
 //! to the original one. Verified on Gemini CLI 0.63 with a rewriting hook.
 
-use assert_cmd::Command;
+mod support;
+
 use serde_json::{json, Value};
 use std::path::Path;
+use support::run_hook;
 
 const DENY: &str = "[[rule]]\ntoolName = \"run_shell_command\"\ncommandPrefix = [\"git push\", \"rm -rf\"]\ndecision = \"deny\"\npriority = 900\n";
 
@@ -16,21 +18,16 @@ fn hook_in(home: &Path, cwd: &Path, cmd: &str, extra_env: &[(&str, &str)]) -> Op
         "tool_input": { "command": cmd },
         "cwd": cwd,
     });
-    let mut c = Command::cargo_bin("trs").unwrap();
-    c.env("HOME", home)
-        .env("USERPROFILE", home)
-        .env("GEMINI_CLI_HOME", home)
-        .env_remove("GEMINI_CLI_TRUST_WORKSPACE")
-        .env_remove("GEMINI_RESTRICTED_MODE")
-        .env("TRS_HOME", home.join("trs"))
-        .args(["rewrite", "--caller", "gemini"])
-        .write_stdin(input.to_string());
-    for (k, v) in extra_env {
-        c.env(k, v);
-    }
-    let out = c.output().unwrap();
-    let text = String::from_utf8_lossy(&out.stdout);
-    (!text.trim().is_empty()).then(|| serde_json::from_str(&text).unwrap())
+    let mut envs = vec![("GEMINI_CLI_HOME", home)];
+    envs.extend(extra_env.iter().map(|(k, v)| (*k, Path::new(v))));
+    run_hook(
+        "gemini",
+        &input,
+        home,
+        &envs,
+        &["GEMINI_CLI_TRUST_WORKSPACE", "GEMINI_RESTRICTED_MODE"],
+        None,
+    )
 }
 
 fn setup(settings: Option<&str>, policy: Option<&str>) -> tempfile::TempDir {
@@ -129,14 +126,13 @@ fn project_allow_counts_only_in_a_trusted_folder() {
 fn other_agents_are_not_gated_by_gemini_rules() {
     let home = setup(None, Some(DENY));
     let input = json!({"hook_event_name":"preToolUse","tool_input":{"command":"git push"}});
-    let out = Command::cargo_bin("trs")
-        .unwrap()
-        .env("HOME", home.path())
-        .env("GEMINI_CLI_HOME", home.path())
-        .env("TRS_HOME", home.path().join("trs"))
-        .args(["rewrite", "--caller", "cursor"])
-        .write_stdin(input.to_string())
-        .output()
-        .unwrap();
-    assert!(String::from_utf8_lossy(&out.stdout).contains("trs git push"));
+    let out = run_hook(
+        "cursor",
+        &input,
+        home.path(),
+        &[("GEMINI_CLI_HOME", home.path())],
+        &[],
+        None,
+    );
+    assert!(out.unwrap().to_string().contains("trs git push"));
 }

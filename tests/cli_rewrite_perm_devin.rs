@@ -2,8 +2,10 @@
 //! hook `allow` overrides deny and ask, so the hook applies them to the
 //! original one. Verified on Devin CLI 3000.11.234 with a rewriting hook.
 
-use assert_cmd::Command;
+mod support;
+
 use serde_json::{json, Value};
+use support::{decision, run_hook};
 
 /// Run `trs rewrite --caller devin-cli` with `user` as `~/.config/devin/config.json`
 /// and `project` as the project's `.devin/config.json`. `None` = command left alone.
@@ -23,24 +25,14 @@ fn hook(user: Option<&str>, project: Option<&str>, cmd: &str) -> Option<Value> {
         "tool_name": "exec",
         "tool_input": { "command": cmd },
     });
-    let out = Command::cargo_bin("trs")
-        .unwrap()
-        .current_dir(proj.path())
-        .env("HOME", home.path())
-        .env("USERPROFILE", home.path())
-        .env("APPDATA", home.path())
-        .env_remove("DEVIN_PROJECT_DIR")
-        .env("TRS_HOME", home.path().join("trs"))
-        .args(["rewrite", "--caller", "devin-cli"])
-        .write_stdin(input.to_string())
-        .output()
-        .unwrap();
-    let text = String::from_utf8_lossy(&out.stdout);
-    (!text.trim().is_empty()).then(|| serde_json::from_str(&text).unwrap())
-}
-
-fn decision(v: &Value) -> Option<&str> {
-    v["hookSpecificOutput"]["permissionDecision"].as_str()
+    run_hook(
+        "devin-cli",
+        &input,
+        home.path(),
+        &[("APPDATA", home.path())],
+        &["DEVIN_PROJECT_DIR"],
+        Some(proj.path()),
+    )
 }
 
 const RULES: &str = r#"{"permissions":{

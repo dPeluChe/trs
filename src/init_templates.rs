@@ -398,7 +398,7 @@ mod tests {
             );
             // The rewrite decision comes from `trs rewrite`, not a blind prefix.
             assert!(
-                plugin.contains("spawnSync(\"trs\", [\"rewrite\"]"),
+                plugin.contains("runTrs([\"rewrite\"], cmd)"),
                 "{agent}: does not ask `trs rewrite`"
             );
             assert!(

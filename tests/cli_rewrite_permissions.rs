@@ -3,8 +3,10 @@
 //! hook `allow` overrides them, so `deny: Bash(git push:*)` never saw
 //! `trs git push`. Verified on a real Claude Code with a rewriting hook.
 
-use assert_cmd::Command;
+mod support;
+
 use serde_json::{json, Value};
+use support::{decision, run_hook};
 
 /// Run `trs rewrite` as the Claude hook, with `settings` as the user's
 /// `~/.claude/settings.json`. `None` means no output (command left alone).
@@ -20,22 +22,14 @@ fn hook(settings: Option<&str>, cmd: &str, caller: &str) -> Option<Value> {
         "tool_input": { "command": cmd },
         "cwd": home.path(),
     });
-    let out = Command::cargo_bin("trs")
-        .unwrap()
-        .env("HOME", home.path())
-        .env("USERPROFILE", home.path())
-        .env_remove("CLAUDE_CONFIG_DIR")
-        .env("TRS_HOME", home.path().join("trs"))
-        .args(["rewrite", "--caller", caller])
-        .write_stdin(input.to_string())
-        .output()
-        .unwrap();
-    let text = String::from_utf8_lossy(&out.stdout);
-    (!text.trim().is_empty()).then(|| serde_json::from_str(&text).unwrap())
-}
-
-fn decision(v: &Value) -> Option<&str> {
-    v["hookSpecificOutput"]["permissionDecision"].as_str()
+    run_hook(
+        caller,
+        &input,
+        home.path(),
+        &[],
+        &["CLAUDE_CONFIG_DIR"],
+        None,
+    )
 }
 
 const RULES: &str = r#"{"permissions":{
@@ -113,18 +107,14 @@ fn project_allow_rules_count_only_in_a_trusted_folder() {
             "tool_input": { "command": cmd },
             "cwd": project.path(),
         });
-        let out = Command::cargo_bin("trs")
-            .unwrap()
-            .env("HOME", home.path())
-            .env("USERPROFILE", home.path())
-            .env_remove("CLAUDE_CONFIG_DIR")
-            .env("TRS_HOME", home.path().join("trs"))
-            .args(["rewrite", "--caller", "claude"])
-            .write_stdin(input.to_string())
-            .output()
-            .unwrap();
-        let text = String::from_utf8_lossy(&out.stdout);
-        (!text.trim().is_empty()).then(|| serde_json::from_str(&text).unwrap())
+        run_hook(
+            "claude",
+            &input,
+            home.path(),
+            &[],
+            &["CLAUDE_CONFIG_DIR"],
+            None,
+        )
     };
     let untrusted = run("cargo build").unwrap();
     assert_eq!(decision(&untrusted), None, "untrusted project allow");

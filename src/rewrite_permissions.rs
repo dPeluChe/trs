@@ -3,93 +3,39 @@
 //! for `git push` never saw `trs git push`. The hook reads the user's rules
 //! and applies them to the original command. Details: docs/development/agent-integrations.md.
 
+use crate::rewrite_gate::Gate;
+use crate::rewrite_rules::{is_trusted, read_json, word_prefix, Rules};
 use std::path::{Path, PathBuf};
 
-/// What the Claude hook does with a command, given the user's rules.
-#[derive(Debug, PartialEq)]
-pub(crate) enum Gate {
-    /// A deny/ask rule matches, or the rules cannot be read: leave the command alone.
-    Skip,
-    /// Every part is allowed (rule or read-only): rewrite and approve.
-    Allow,
-    /// Rewrite, but let Claude's own permission flow decide.
-    Defer,
-}
-
-#[derive(Default)]
-struct Rules {
-    allow: Vec<String>,
-    ask: Vec<String>,
-    deny: Vec<String>,
-}
-
 pub(crate) fn gate(cmd: &str, cwd: Option<&str>) -> Gate {
-    match Rules::load(cwd) {
+    match load_rules(cwd) {
         Some(rules) => gate_with(&rules, cmd),
         None => Gate::Skip,
     }
 }
 
 fn gate_with(rules: &Rules, cmd: &str) -> Gate {
-    let mut all_allowed = true;
-    let mut any = false;
-    for seg in split_segments(cmd) {
-        if seg == "cd" || seg.starts_with("cd ") {
-            continue;
-        }
-        any = true;
-        let bare = strip_env(seg);
-        if rules
-            .deny
-            .iter()
-            .chain(&rules.ask)
-            .any(|r| rule_matches(r, seg) || rule_matches(r, bare))
-        {
-            return Gate::Skip;
-        }
-        if !(rules.allow.iter().any(|r| rule_matches(r, seg)) || read_only(seg)) {
-            all_allowed = false;
-        }
-    }
-    if any && all_allowed {
-        Gate::Allow
-    } else {
-        Gate::Defer
-    }
+    let segs = split_segments(cmd)
+        .into_iter()
+        .filter(|s| !(*s == "cd" || s.starts_with("cd ")));
+    rules.decide(segs, rule_matches, read_only)
 }
 
-impl Rules {
-    /// `None` when a settings file exists but cannot be read or parsed.
-    /// `allow` from a project file counts only once Claude trusts that folder,
-    /// as Claude itself ignores it until then; deny/ask always count.
-    fn load(cwd: Option<&str>) -> Option<Self> {
-        let trusted = trusted_dirs();
-        let mut rules = Rules::default();
-        for (path, project_dir) in settings_files(cwd) {
-            let Ok(text) = std::fs::read_to_string(&path) else {
-                if path.exists() {
-                    return None;
-                }
-                continue;
-            };
-            let json: serde_json::Value = serde_json::from_str(&text).ok()?;
-            let perms = json.get("permissions");
-            let list = |key: &str| -> Vec<String> {
-                let arr = perms.and_then(|p| p.get(key)).and_then(|v| v.as_array());
-                arr.into_iter()
-                    .flatten()
-                    .filter_map(|v| v.as_str())
-                    .map(String::from)
-                    .collect()
-            };
-            if project_dir.is_none_or(|d| d.ancestors().any(|a| trusted.iter().any(|t| t == a))) {
-                rules.allow.extend(list("allow"));
-            }
-            rules.ask.extend(list("ask"));
-            rules.deny.extend(list("deny"));
-        }
-        Some(rules)
+/// `None` when a settings file exists but cannot be read or parsed.
+/// `allow` from a project file counts only once Claude trusts that folder,
+/// as Claude itself ignores it until then; deny/ask always count.
+fn load_rules(cwd: Option<&str>) -> Option<Rules> {
+    let mut trusted = None;
+    let mut rules = Rules::default();
+    for (path, project_dir) in settings_files(cwd) {
+        let Some(json) = read_json(&path)? else {
+            continue;
+        };
+        let allow_counts =
+            project_dir.is_none_or(|d| is_trusted(d, trusted.get_or_insert_with(trusted_dirs)));
+        rules.extend_from(&json, allow_counts);
     }
+    Some(rules)
 }
 
 /// Folders where the user accepted Claude Code's trust dialog.
@@ -104,10 +50,7 @@ fn trusted_dirs() -> Vec<PathBuf> {
             Err(_) => return Vec::new(),
         },
     };
-    let Ok(text) = std::fs::read_to_string(file) else {
-        return Vec::new();
-    };
-    let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) else {
+    let Some(Some(json)) = read_json(&file) else {
         return Vec::new();
     };
     json.get("projects")
@@ -163,7 +106,7 @@ pub(crate) fn rule_matches(rule: &str, cmd: &str) -> bool {
     }
     if let Some(prefix) = inner.strip_suffix(":*") {
         let prefix = prefix.trim_end();
-        return cmd == prefix || cmd.strip_prefix(prefix).is_some_and(|r| r.starts_with(' '));
+        return word_prefix(cmd, prefix);
     }
     if let Some(bare) = inner.strip_suffix(" *") {
         if cmd == bare {

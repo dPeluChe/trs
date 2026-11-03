@@ -9,20 +9,21 @@ macro_rules! js_via_trs {
     () => {
         r#"import { spawnSync } from "node:child_process";
 
-const viaTrs = (cmd) => {
+const runTrs = (args, cmd) => {
   try {
-    const r = spawnSync("trs", ["rewrite"], {
+    const r = spawnSync("trs", args, {
       input: cmd,
       encoding: "utf8",
       timeout: 3000,
       shell: process.platform === "win32",
     });
-    const out = r.status === 0 && typeof r.stdout === "string" ? r.stdout.replace(/\r?\n$/, "") : "";
-    return out || cmd;
+    return r.status === 0 && typeof r.stdout === "string" ? r.stdout : "";
   } catch {
-    return cmd;
+    return "";
   }
 };
+
+const viaTrs = (cmd) => runTrs(["rewrite"], cmd).replace(/\r?\n$/, "") || cmd;
 "#
     };
 }
@@ -61,18 +62,8 @@ pub(crate) const OPENCODE_PLUGIN: &str = concat!(
     r#"
 // 2.x checks permission rules on the rewritten text: ask about the original.
 const segmentsOf = (cmd) => {
-  try {
-    const r = spawnSync("trs", ["rewrite", "--segments"], {
-      input: cmd,
-      encoding: "utf8",
-      timeout: 3000,
-      shell: process.platform === "win32",
-    });
-    const lines = r.status === 0 && typeof r.stdout === "string" ? r.stdout.split(/\r?\n/).filter(Boolean) : [];
-    return lines.length ? lines : null;
-  } catch {
-    return null;
-  }
+  const lines = runTrs(["rewrite", "--segments"], cmd).split(/\r?\n/).filter(Boolean);
+  return lines.length ? lines : null;
 };
 
 const isPermissionError = (e) => {
@@ -90,8 +81,9 @@ const server = async ({ client, directory } = {}) => ({
     if (input.tool !== "bash") return;
     const cmd = output.args?.command;
     if (typeof cmd !== "string") return;
-    if (!client || !(await bashUnrestricted(client, directory))) return;
-    output.args.command = viaTrs(cmd);
+    const rewritten = viaTrs(cmd);
+    if (rewritten === cmd || !client || !(await bashUnrestricted(client, directory))) return;
+    output.args.command = rewritten;
   },
 });
 
@@ -154,8 +146,9 @@ export const TrsPlugin = async ({ client, directory } = {}) => {
       if (input.tool !== "bash") return;
       const cmd = output.args?.command;
       if (typeof cmd !== "string") return;
-      if (!client || !(await bashUnrestricted(client, directory))) return;
-      output.args.command = viaTrs(cmd);
+      const rewritten = viaTrs(cmd);
+      if (rewritten === cmd || !client || !(await bashUnrestricted(client, directory))) return;
+      output.args.command = rewritten;
     },
   };
 };

@@ -5,6 +5,7 @@ use crate::rewrite_decide::looks_like_env_assignment;
 use crate::rewrite_permissions::split_segments;
 use regex::Regex;
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
 const WRAPPERS: [&str; 4] = ["sudo", "time", "nohup", "env"];
 const SHELLS: [&str; 5] = ["sh", "bash", "zsh", "dash", "ksh"];
@@ -153,9 +154,16 @@ pub(super) fn keys(text: &str) -> Vec<String> {
     out
 }
 
+static FD_REDIRECT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[0-9]*>&[0-9]+|[0-9]*>>?\s*/dev/null").unwrap());
+static FUNC_DEF: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\s*[A-Za-z_][A-Za-z0-9_-]*\s*\(\s*\)\s*\{").unwrap());
+static CHAIN_SEP: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s*(?:&&|\|\|?|;)\s*").unwrap());
+static RM_ARGS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)(?:^|\s)(?:sudo\s+)?rm\s+(.*)").unwrap());
+
 fn has_file_redirect(seg: &str) -> bool {
-    let fd = Regex::new(r"[0-9]*>&[0-9]+|[0-9]*>>?\s*/dev/null").unwrap();
-    fd.replace_all(seg, " ").contains('>')
+    FD_REDIRECT.replace_all(seg, " ").contains('>')
 }
 
 /// Droid runs the command unprompted only if every part is a listed key.
@@ -163,12 +171,11 @@ pub(super) fn all_allowed(cmd: &str, allow: &HashSet<String>) -> bool {
     if ["$(", "`", "<(", ">("].iter().any(|t| cmd.contains(t)) {
         return false;
     }
-    let func = Regex::new(r"^\s*[A-Za-z_][A-Za-z0-9_-]*\s*\(\s*\)\s*\{").unwrap();
     let parts: Vec<(&str, String)> = split_segments(cmd)
         .into_iter()
         .filter_map(|s| normalize(s).map(|k| (s, k)))
         .collect();
-    if parts.is_empty() || split_segments(cmd).iter().any(|s| func.is_match(s)) {
+    if parts.is_empty() || split_segments(cmd).iter().any(|s| FUNC_DEF.is_match(s)) {
         return false;
     }
     let needed: Vec<&String> = parts
@@ -288,7 +295,17 @@ fn candidates(text: &str, depth: usize, out: &mut Vec<String>) {
 fn first_match<'a>(cmd: &str, patterns: &'a [String]) -> Option<&'a str> {
     let mut cands = Vec::new();
     candidates(cmd, 0, &mut cands);
+    let lower: Vec<String> = cands.iter().map(|c| c.to_lowercase()).collect();
     patterns.iter().map(String::as_str).find(|p| {
+        // The pattern's first word is a literal in its regex: skip the compile when absent.
+        let first = p
+            .split_whitespace()
+            .next()
+            .unwrap_or_default()
+            .to_lowercase();
+        if !lower.iter().any(|c| c.contains(&first)) {
+            return false;
+        }
         let multi = split_segments(p).len() > 1;
         pattern_regex(p, !multi).is_some_and(|re| cands.iter().any(|c| re.is_match(c)))
     })
@@ -303,12 +320,10 @@ pub(super) fn denied(cmd: &str, deny: &[String]) -> bool {
     if first_match(cmd, deny).is_none() {
         return false;
     }
-    let sep = Regex::new(r"\s*(?:&&|\|\|?|;)\s*").unwrap();
-    let rm = Regex::new(r"(?i)(?:^|\s)(?:sudo\s+)?rm\s+(.*)").unwrap();
     let mut only_tmp = false;
-    for part in sep.split(cmd).map(str::trim) {
+    for part in CHAIN_SEP.split(cmd).map(str::trim) {
         let hit = first_match(part, deny).is_some();
-        let Some(m) = rm.captures(part) else {
+        let Some(m) = RM_ARGS.captures(part) else {
             if hit {
                 return true;
             }

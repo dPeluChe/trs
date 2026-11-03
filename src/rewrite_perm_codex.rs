@@ -1,14 +1,15 @@
 //! Permission gate for Codex: its exec-policy `.rules` match the REWRITTEN command and the hook must answer `allow` for the rewrite to apply, so the gate only decides Allow (rewrite) or Skip (leave the command alone).
 //! Contract: docs/development/agent-integrations.md (permissions).
 
-use crate::rewrite_permissions::{split_segments, strip_env, Gate};
+use crate::rewrite_gate::Gate;
+use crate::rewrite_permissions::{split_segments, strip_env};
 use std::path::{Path, PathBuf};
 
 /// One `prefix_rule` pattern: each position holds the accepted alternatives.
 type Pattern = Vec<Vec<String>>;
 
-/// `cmd` is the ORIGINAL command; `cwd` and `permission_mode` come from the hook payload.
-pub(crate) fn gate(cmd: &str, cwd: Option<&str>, _permission_mode: Option<&str>) -> Gate {
+/// `cmd` is the ORIGINAL command; `cwd` comes from the hook payload.
+pub(crate) fn gate(cmd: &str, cwd: Option<&str>) -> Gate {
     match load(codex_home().as_deref(), cwd.map(Path::new)) {
         Some(patterns) => gate_with(&patterns, cmd),
         None => Gate::Skip,
@@ -106,11 +107,10 @@ fn load(home: Option<&Path>, cwd: Option<&Path>) -> Option<Vec<Pattern>> {
         }
     }
     for dir in dirs {
-        let Ok(entries) = std::fs::read_dir(&dir) else {
-            if dir.exists() {
-                return None;
-            }
-            continue;
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => return None,
         };
         for entry in entries {
             let path = entry.ok()?.path();
@@ -124,8 +124,9 @@ fn load(home: Option<&Path>, cwd: Option<&Path>) -> Option<Vec<Pattern>> {
 }
 
 fn trusted_projects(config: &Path) -> Option<Vec<PathBuf>> {
-    let Ok(text) = std::fs::read_to_string(config) else {
-        return (!config.exists()).then(Vec::new);
+    let text = match std::fs::read_to_string(config) {
+        Ok(text) => text,
+        Err(e) => return (e.kind() == std::io::ErrorKind::NotFound).then(Vec::new),
     };
     let doc: toml::Table = text.parse().ok()?;
     let Some(projects) = doc.get("projects") else {
