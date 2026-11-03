@@ -13,6 +13,7 @@ pub(crate) fn gate_for(label: &str, cmd: &str, json: &Value) -> Gate {
         "codex" => crate::rewrite_perm_codex::gate(cmd, cwd, mode),
         "droid" => crate::rewrite_perm_droid::gate(cmd, cwd, mode),
         "devin-cli" => crate::rewrite_perm_devin::gate(cmd, cwd, mode),
+        "cursor" => crate::rewrite_perm_cursor::gate(cmd, cwd, mode),
         "gemini" => crate::rewrite_perm_gemini::gate(cmd, cwd, mode),
         // Rules this hook cannot read (flags, IDE settings) or an agent not
         // verified yet: rewrite, but never send an approval of our own.

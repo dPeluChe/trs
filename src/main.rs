@@ -73,6 +73,7 @@ mod rewrite;
 mod rewrite_decide;
 mod rewrite_gate;
 mod rewrite_perm_codex;
+mod rewrite_perm_cursor;
 mod rewrite_perm_devin;
 mod rewrite_perm_droid;
 mod rewrite_perm_gemini;
