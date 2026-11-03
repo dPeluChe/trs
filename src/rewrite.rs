@@ -208,13 +208,9 @@ fn build_hook_response(
     }
 
     let label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
-    // Claude Code matches its permission rules against the rewritten command,
-    // so only the hook can apply them to the original one.
-    let gate = if event == HookEvent::ClaudePreToolUse && label == "claude" {
-        crate::rewrite_permissions::gate(cmd, json.get("cwd").and_then(|v| v.as_str()))
-    } else {
-        Gate::Allow
-    };
+    // Agents match their permission rules against the rewritten command, so
+    // the hook applies them to the original one (rewrite_gate.rs).
+    let gate = crate::rewrite_gate::gate_for(label, cmd, json);
     if gate == Gate::Skip {
         return None;
     }
@@ -228,9 +224,9 @@ fn build_hook_response(
         // Handled above; kept here so the match stays exhaustive if the
         // early return ever moves.
         HookEvent::Unknown => return None,
+        // Gemini ignores a hook `decision: "allow"`; the rewrite applies without one.
         HookEvent::GeminiBeforeTool => serde_json::json!({
             "systemMessage": "trs auto-rewrite",
-            "decision": "allow",
             "hookSpecificOutput": {
                 "tool_input": { "command": rewritten }
             }

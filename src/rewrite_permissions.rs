@@ -150,7 +150,7 @@ fn settings_files(cwd: Option<&str>) -> Vec<(PathBuf, Option<&Path>)> {
 }
 
 /// `Bash`, `Bash(*)`, `Bash(git push)`, `Bash(git push:*)`, `Bash(git push *)`.
-fn rule_matches(rule: &str, cmd: &str) -> bool {
+pub(crate) fn rule_matches(rule: &str, cmd: &str) -> bool {
     let inner = if rule == "Bash" {
         ""
     } else if let Some(i) = rule.strip_prefix("Bash(").and_then(|r| r.strip_suffix(')')) {
@@ -176,7 +176,7 @@ fn rule_matches(rule: &str, cmd: &str) -> bool {
     cmd == inner
 }
 
-fn glob(pat: &[u8], s: &[u8]) -> bool {
+pub(crate) fn glob(pat: &[u8], s: &[u8]) -> bool {
     match pat.split_first() {
         None => s.is_empty(),
         Some((b'*', rest)) => (0..=s.len()).any(|i| glob(rest, &s[i..])),
@@ -185,7 +185,7 @@ fn glob(pat: &[u8], s: &[u8]) -> bool {
 }
 
 /// Leading `NAME=value` words removed.
-fn strip_env(seg: &str) -> &str {
+pub(crate) fn strip_env(seg: &str) -> &str {
     let mut rest = seg;
     while let Some(word) = rest.split_whitespace().next() {
         if !crate::rewrite_decide::looks_like_env_assignment(word) {
@@ -198,7 +198,7 @@ fn strip_env(seg: &str) -> &str {
 
 /// Commands Claude approves without asking; anything with a redirect or
 /// substitution is not, and options that write or execute are refused.
-fn read_only(seg: &str) -> bool {
+pub(crate) fn read_only(seg: &str) -> bool {
     let seg = seg.replace("2>&1", "");
     if seg.contains(['>', '<', '`', '$']) {
         return false;

@@ -169,7 +169,8 @@ fn test_hook_response_gemini_format() {
         }"#,
     );
     let out = build_hook_response(&input, None).expect("should rewrite");
-    assert_eq!(out["decision"], serde_json::json!("allow"));
+    // Gemini ignores a hook `allow`, so none is sent.
+    assert!(out["decision"].is_null());
     assert_eq!(
         out["hookSpecificOutput"]["tool_input"]["command"],
         serde_json::json!(agent_cmd("gemini", "trs git status"))
