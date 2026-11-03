@@ -165,7 +165,7 @@ fn test_hook_response_gemini_format() {
         r#"{
             "hook_event_name":"BeforeTool",
             "tool_name":"run_shell_command",
-            "tool_input":{"command":"git status"}
+            "tool_input":{"command":"cargo build"}
         }"#,
     );
     let out = build_hook_response(&input, None).expect("should rewrite");
@@ -173,7 +173,7 @@ fn test_hook_response_gemini_format() {
     assert!(out["decision"].is_null());
     assert_eq!(
         out["hookSpecificOutput"]["tool_input"]["command"],
-        serde_json::json!(agent_cmd("gemini", "trs git status"))
+        serde_json::json!(agent_cmd("gemini", "trs cargo build"))
     );
     assert!(out["hookSpecificOutput"]["updatedInput"].is_null());
 }
