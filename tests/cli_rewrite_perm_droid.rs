@@ -81,8 +81,9 @@ fn unreadable_settings_fail_closed() {
     assert!(hook(home.path(), cwd.path(), "git status", "auto-high").is_none());
 }
 
+/// Droid honors a project's legacy command lists without a trust prompt (verified on 1.2.0).
 #[test]
-fn project_allow_counts_only_in_a_trusted_folder() {
+fn a_projects_lists_count_without_folder_trust() {
     let (home, project) = setup();
     std::fs::create_dir_all(project.path().join(".git")).unwrap();
     write(
@@ -91,16 +92,6 @@ fn project_allow_counts_only_in_a_trusted_folder() {
         r#"{"commandAllowlist":["git branch"],"commandDenylist":["git tag"]}"#,
     );
     let run = |cmd: &str| hook(home.path(), project.path(), cmd, "off");
-    assert!(
-        run("git branch -D old").is_none(),
-        "untrusted project allow"
-    );
-    assert!(run("git tag v1").is_none(), "its deny still applies");
-
-    let trust = json!({
-        "commandDenylist": ["git push"],
-        "trustedFolders": { project.path().to_str().unwrap(): { "trustedAt": "2026-01-01" } },
-    });
-    write(home.path(), ".factory/settings.json", &trust.to_string());
     assert_eq!(decision(&run("git branch -D old").unwrap()), Some("allow"));
+    assert!(run("git tag v1").is_none());
 }

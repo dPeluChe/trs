@@ -364,7 +364,7 @@ project's `allow` counts only when the folder is trusted (deny/ask always count)
 |---|---|---|---|
 | Claude Code | `settings{,.local}.json`, managed | Skip / Allow / Defer | `--settings` rules invisible |
 | Codex | `$CODEX_HOME/rules/*.rules`, trusted `.codex/rules` | Skip on any matching rule, else Allow (Codex needs the allow for `updatedInput`) | managed `requirements.toml`, `--ignore-rules` |
-| Factory Droid | `commandAllowlist/Denylist/Blocklist` in `~/.factory` and project settings, managed | Skip on deny/block, Allow if all parts listed, Defer only in `auto-high`, else Skip | live run (auth), managed path |
+| Factory Droid | `commandAllowlist/Denylist/Blocklist` in `~/.factory`, project settings and the managed `settings.json` | Skip on deny/block, Allow if all parts listed, Defer only in `auto-high`, else Skip; Skip when `permissionRules` is present | `--settings` overlays, org cache file, `permissionRules` format |
 | Gemini CLI | `settings.json`, `policies/*.toml`, trusted project settings | never Allow (Gemini ignores a hook allow); Skip on deny/ask, narrow `tools.allowed`, or read-only commands | system settings, admin policies, `-y` |
 | Devin CLI | `~/.config/devin/config.json`, `.devin/config{,.local}.json` | Skip on deny/ask, Allow if all parts match `Exec(...)`, else Defer | org rules, dangerous mode, trust |
 | Cursor | `Shell(...)` deny rules in `~/.cursor/cli-config.json` | Skip on deny, else Allow | whole gate (no binary here) |
@@ -381,7 +381,10 @@ Notes:
   and `confirmationRequired` do not narrow in 0.63; only TOML policies express
   a narrow deny or ask.
 - **Droid**: a rewritten command loses its `riskLevel` (counts as high), so
-  outside `auto-high` an unlisted command is not rewritten.
+  outside `auto-high` an unlisted command is not rewritten. Verified live on Droid 1.2.0: the denylist
+  is matched on the rewritten text and a hook `allow` skips it; the blocklist is
+  not skipped; the allowlist is matched on the original; a project's legacy
+  lists count without folder trust.
 - **Codex**: `FOO=1 cmd` and `trs cmd` do not match a `["cmd"]` rule, hence the
   gate. A malformed `.rules` file stops Codex from starting at all.
 - **OpenCode 2.x**: one `assert` call with all segments as `resources`, so a

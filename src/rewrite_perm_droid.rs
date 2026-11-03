@@ -82,16 +82,19 @@ fn roots() -> Roots {
     let home = std::env::var_os("FACTORY_HOME_OVERRIDE")
         .map(PathBuf::from)
         .or_else(|| crate::init::home_dir().ok());
-    let managed = if cfg!(target_os = "macos") {
+    let system = if cfg!(target_os = "macos") {
         "/Library/Application Support/Factory"
     } else if cfg!(windows) {
         "C:\\Program Files\\Factory"
     } else {
         "/etc/factory"
     };
+    let managed = std::env::var_os("FACTORY_ORG_MANAGED_SETTINGS_LOCAL_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| Path::new(system).join("settings.json"));
     Roots {
         user_home: home,
-        managed: Some(Path::new(managed).join("org-managed-settings.json")),
+        managed: Some(managed),
     }
 }
 
@@ -128,35 +131,26 @@ fn load(roots: &Roots, cwd: Option<&str>) -> Option<Lists> {
         deny: DEFAULT_DENY.iter().map(|s| s.to_string()).collect(),
         block: Vec::new(),
     };
-    let mut trusted = Vec::new();
     if let Some(home) = &roots.user_home {
         for name in ["settings.json", "settings.local.json"] {
-            let json = read(&home.join(".factory").join(name))?;
-            trusted.extend(trusted_folders(&json));
-            merge(&mut lists, &json, true)?;
+            merge(&mut lists, &read(&home.join(".factory").join(name))?)?;
         }
     }
     if let Some(path) = &roots.managed {
-        merge(&mut lists, &read(path)?, true)?;
+        merge(&mut lists, &read(path)?)?;
     }
     if let Some(cwd) = cwd {
-        let (root, dirs) = project_dirs(Path::new(cwd), roots.user_home.as_deref());
-        let allow_counts = trusted.iter().any(|t| root.starts_with(t));
-        for dir in dirs {
+        for dir in project_dirs(Path::new(cwd), roots.user_home.as_deref()) {
             for name in ["settings.json", "settings.local.json"] {
-                merge(
-                    &mut lists,
-                    &read(&dir.join(".factory").join(name))?,
-                    allow_counts,
-                )?;
+                merge(&mut lists, &read(&dir.join(".factory").join(name))?)?;
             }
         }
     }
     Some(lists)
 }
 
-/// Git root (or cwd) and every dir from cwd up to it; the home dir is the user level.
-fn project_dirs(cwd: &Path, home: Option<&Path>) -> (PathBuf, Vec<PathBuf>) {
+/// Every dir from cwd up to the git root (or cwd); the home dir is the user level.
+fn project_dirs(cwd: &Path, home: Option<&Path>) -> Vec<PathBuf> {
     let root = cwd
         .ancestors()
         .find(|d| d.join(".git").exists())
@@ -170,7 +164,7 @@ fn project_dirs(cwd: &Path, home: Option<&Path>) -> (PathBuf, Vec<PathBuf>) {
             break;
         }
     }
-    (root.to_path_buf(), dirs)
+    dirs
 }
 
 /// `Some(json)`, or `None` if the file exists but is unusable. A missing file is `{}`.
@@ -181,17 +175,16 @@ fn read(path: &Path) -> Option<serde_json::Value> {
     }
 }
 
-fn trusted_folders(json: &serde_json::Value) -> Vec<PathBuf> {
-    json.get("trustedFolders")
-        .and_then(|v| v.as_object())
-        .into_iter()
-        .flatten()
-        .map(|(k, _)| PathBuf::from(k))
-        .collect()
-}
-
-/// A list key that is present but not an array of strings makes the file unusable.
-fn merge(lists: &mut Lists, json: &serde_json::Value, allow_counts: bool) -> Option<()> {
+/// A list key that is present but not an array of strings makes the file unusable,
+/// and so does `permissionRules`, a newer rule format this gate does not read.
+/// Droid honors the legacy lists of an untrusted project too (verified on 1.2.0).
+fn merge(lists: &mut Lists, json: &serde_json::Value) -> Option<()> {
+    let rules = json
+        .pointer("/general/permissionRules")
+        .or_else(|| json.get("permissionRules"));
+    if rules.is_some_and(|r| !r.is_null()) {
+        return None;
+    }
     let take = |key: &str, into: &mut Vec<String>| -> Option<()> {
         let Some(v) = json.get(key) else {
             return Some(());
@@ -201,11 +194,7 @@ fn merge(lists: &mut Lists, json: &serde_json::Value, allow_counts: bool) -> Opt
         }
         Some(())
     };
-    let mut allow = Vec::new();
-    take("commandAllowlist", &mut allow)?;
-    if allow_counts {
-        lists.allow.extend(allow);
-    }
+    take("commandAllowlist", &mut lists.allow)?;
     take("commandDenylist", &mut lists.deny)?;
     take("commandBlocklist", &mut lists.block)
 }
@@ -259,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn a_project_allow_needs_a_trusted_folder_but_its_deny_always_counts() {
+    fn a_project_allow_counts_even_in_an_untrusted_folder() {
         let (home, proj) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
         std::fs::create_dir_all(proj.path().join(".git")).unwrap();
         write(
@@ -268,13 +257,6 @@ mod tests {
             r#"{"commandAllowlist":["make"],"commandBlocklist":["deploy"]}"#,
         );
         let g = |c| run(home.path(), proj.path(), c, Some("off"));
-        assert_eq!(g("make all"), Gate::Skip);
-        assert_eq!(g("deploy now"), Gate::Skip);
-        let trust = format!(
-            r#"{{"trustedFolders":{{"{}":{{}}}}}}"#,
-            proj.path().display()
-        );
-        write(home.path(), ".factory/settings.json", &trust);
         assert_eq!(g("make all"), Gate::Allow);
         assert_eq!(g("deploy now"), Gate::Skip);
     }
@@ -282,7 +264,12 @@ mod tests {
     #[test]
     fn unusable_settings_fail_closed() {
         let (home, cwd) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
-        for bad in ["{ nope", r#"{"commandDenylist":"git push"}"#, "[]"] {
+        for bad in [
+            "{ nope",
+            r#"{"commandDenylist":"git push"}"#,
+            "[]",
+            r#"{"general":{"permissionRules":[{"tool":"Execute"}]}}"#,
+        ] {
             write(home.path(), ".factory/settings.json", bad);
             assert_eq!(
                 run(home.path(), cwd.path(), "git status", None),
