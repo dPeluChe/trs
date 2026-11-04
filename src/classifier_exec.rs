@@ -205,7 +205,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                 let dropped = crate::parse_out::take_dropped();
                 let mostly_cut = stdout_ref.len() >= RECOVERABLE_MIN_BYTES
                     && parsed.len() * 10 <= stdout_ref.len();
-                if output.status.success() && (dropped || mostly_cut) {
+                let lost = crate::anchor_guard::anchors_lost(stdout_ref, &parsed);
+                if output.status.success() && (dropped || mostly_cut || lost) {
                     if let Some(path) = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr) {
                         let line = format!("[trs] full output: {}\n", path);
                         print!("{}", line);

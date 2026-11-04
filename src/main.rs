@@ -22,6 +22,7 @@
 use clap::Parser;
 
 mod ai_tool;
+mod anchor_guard;
 mod audit_docs;
 mod audit_docs_detect;
 mod audit_docs_report;
