@@ -51,6 +51,10 @@ pub enum Commands {
         /// line, instead of rewriting it (for plugins that check permissions).
         #[arg(long)]
         segments: bool,
+        /// Print `{"rewrite": <command or null>, "segments": [...]}` for the
+        /// stdin command: what a plugin needs in one spawn.
+        #[arg(long, conflicts_with = "segments")]
+        json: bool,
     },
 
     /// Find missed token savings opportunities in Claude Code history

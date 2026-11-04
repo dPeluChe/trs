@@ -79,7 +79,7 @@ pub(crate) fn gate(cmd: &str, cwd: Option<&str>, permission_mode: Option<&str>) 
 }
 
 fn roots() -> Roots {
-    if cfg!(test) {
+    if !crate::rewrite_rules::reads_host_config() {
         return Roots::default();
     }
     let home = std::env::var_os("FACTORY_HOME_OVERRIDE")

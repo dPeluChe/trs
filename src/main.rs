@@ -66,6 +66,7 @@ mod output_saver_write;
 mod parse_out;
 mod passthrough_cut;
 mod path_display;
+mod pointer_recall;
 #[allow(dead_code)]
 mod process;
 #[allow(dead_code)]
@@ -189,8 +190,12 @@ fn run() {
     let router = Router::new();
 
     match &cli.command {
-        Some(Commands::Rewrite { caller, segments }) => {
-            rewrite::run_rewrite(caller.as_deref(), *segments);
+        Some(Commands::Rewrite {
+            caller,
+            segments,
+            json,
+        }) => {
+            rewrite::run_rewrite(caller.as_deref(), *segments, *json);
         }
         Some(Commands::Discover { all, since }) => {
             discover::run_discover(*all, *since);

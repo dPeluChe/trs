@@ -63,8 +63,8 @@ pub(crate) enum AiTool {
     /// `exec`, config target is `config.json` under `hooks` (global
     /// `~/.config/devin/`, project `.devin/`). Validated live 2026-07-07:
     /// Devin honors `hookSpecificOutput.updatedInput` (commands run as
-    /// `trs …`). Attribution needs `devin-cli` in `known_agent_label`
-    /// (rewrite.rs) or `--caller devin-cli` silently falls back to `claude`.
+    /// `trs …`). Attribution needs a `devin-cli` row in `rewrite_gate::AGENTS`
+    /// or `--caller devin-cli` silently falls back to `claude`.
     /// Note: Devin reads `.claude` hooks by default (`read_config_from.claude`)
     /// — set it false so this hook wins instead of the transitive Claude one.
     DevinCLI,

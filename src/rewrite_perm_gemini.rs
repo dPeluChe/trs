@@ -85,7 +85,7 @@ fn load(gem_dir: &Path, cwd: Option<&Path>, env: &TrustEnv) -> Option<Rules> {
     add_allowed(&mut rules, &allowed.unwrap_or_default());
     rules.blanket_allow |= yolo;
     let mut dirs = vec![gem_dir.join("policies")];
-    if !cfg!(test) {
+    if crate::rewrite_rules::reads_host_config() {
         dirs.push(system_dir().join("policies"));
     }
     for dir in dirs {

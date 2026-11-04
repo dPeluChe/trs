@@ -388,6 +388,7 @@ fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
     // mode 0600: tee/*.log can carry response bodies that include
     // credentials or session tokens — user-only readable on Unix.
     write_user_only(&filepath, content.as_bytes()).ok()?;
+    crate::pointer_recall::note_pointer();
     Some(filepath.to_string_lossy().to_string())
 }
 

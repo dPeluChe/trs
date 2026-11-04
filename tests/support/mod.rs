@@ -56,11 +56,24 @@ pub fn run_hook(
     unset: &[&str],
     cwd: Option<&Path>,
 ) -> Option<serde_json::Value> {
+    run_hook_with(&["--caller", caller], input, home, envs, unset, cwd)
+}
+
+/// `run_hook` with explicit `trs rewrite` flags (none = a legacy hook).
+pub fn run_hook_with(
+    flags: &[&str],
+    input: &serde_json::Value,
+    home: &Path,
+    envs: &[(&str, &Path)],
+    unset: &[&str],
+    cwd: Option<&Path>,
+) -> Option<serde_json::Value> {
     let mut c = assert_cmd::Command::cargo_bin("trs").unwrap();
     c.env("HOME", home)
         .env("USERPROFILE", home)
         .env("TRS_HOME", home.join("trs"))
-        .args(["rewrite", "--caller", caller])
+        .arg("rewrite")
+        .args(flags)
         .write_stdin(input.to_string());
     for k in unset {
         c.env_remove(k);

@@ -26,12 +26,24 @@ pub(crate) fn hermes_home() -> Result<PathBuf, String> {
     Ok(home_dir()?.join(".hermes"))
 }
 
+pub(crate) fn openclaw_home() -> Result<PathBuf, String> {
+    Ok(home_dir()?.join(".openclaw"))
+}
+
+pub(crate) fn openclaw_plugin_dir(openclaw_home: &Path) -> PathBuf {
+    openclaw_home.join("plugins").join("trs")
+}
+
+pub(crate) fn hermes_plugin_dir(hermes_home: &Path) -> PathBuf {
+    hermes_home.join("plugins").join("trs-rewrite")
+}
+
 pub(crate) fn install_openclaw_plugin(opts: InstallOpts) -> Result<String, String> {
     if !opts.global {
         eprintln!("note: OpenClaw plugins are global, installing to ~/.openclaw/plugins/trs/");
     }
-    let openclaw_home = home_dir()?.join(".openclaw");
-    let plugin_dir = openclaw_home.join("plugins").join("trs");
+    let openclaw_home = openclaw_home()?;
+    let plugin_dir = openclaw_plugin_dir(&openclaw_home);
     let mut changed = false;
     changed |= write_plugin_file(
         &plugin_dir.join("openclaw.plugin.json"),
@@ -78,7 +90,7 @@ pub(crate) fn install_hermes_plugin(opts: InstallOpts) -> Result<String, String>
         eprintln!("note: Hermes plugins are global, installing to the Hermes home dir");
     }
     let home = hermes_home()?;
-    let plugin_dir = home.join("plugins").join("trs-rewrite");
+    let plugin_dir = hermes_plugin_dir(&home);
     let mut changed = false;
     changed |= write_plugin_file(&plugin_dir.join("__init__.py"), HERMES_PLUGIN_INIT, opts)?;
     changed |= write_plugin_file(&plugin_dir.join("plugin.yaml"), HERMES_PLUGIN_YAML, opts)?;

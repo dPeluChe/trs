@@ -220,7 +220,7 @@ install scope.
   `trs …`. (Devin's docs only document `decision` + `additionalContext`,
   but the rewrite works in practice.)
 - **Attribution gotcha:** `--caller devin-cli` only tags correctly when
-  `devin-cli` is whitelisted in `known_agent_label` (rewrite.rs);
+  `devin-cli` is a row in `AGENTS` (rewrite_gate.rs);
   otherwise it silently falls back to `claude`. Regression-guarded by a
   test in rewrite.rs.
 - **`.claude` interplay:** Devin reads `.claude/settings.json` hooks by

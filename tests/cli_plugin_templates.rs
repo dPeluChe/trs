@@ -5,6 +5,8 @@
 
 use assert_cmd::Command;
 
+mod support;
+
 fn rewrite(cmd: &str) -> String {
     let out = Command::cargo_bin("trs")
         .unwrap()
@@ -84,8 +86,9 @@ mod trs_templates {
 }
 
 /// Runs `driver` (an ES module importing `./trs.mjs`) under node with the
-/// installed plugin text and the real `trs` first on PATH; returns its JSON
-/// output. `None` where node is missing.
+/// installed plugin text and the real `trs` first on PATH (behind a shim that
+/// appends a line to `$TRS_SPAWN_LOG` per spawn); returns its JSON output.
+/// `None` where node is missing.
 #[cfg(unix)]
 fn run_node(plugin_text: &str, driver: &str) -> Option<serde_json::Value> {
     let Ok(node) = which_node() else {
@@ -96,15 +99,22 @@ fn run_node(plugin_text: &str, driver: &str) -> Option<serde_json::Value> {
     std::fs::write(dir.path().join("trs.mjs"), plugin_text).unwrap();
     let driver_path = dir.path().join("run.mjs");
     std::fs::write(&driver_path, driver).unwrap();
-    let trs_dir = assert_cmd::cargo::cargo_bin("trs");
-    let path = format!(
-        "{}:{}",
-        trs_dir.parent().unwrap().display(),
-        std::env::var("PATH").unwrap()
+    let bin = dir.path().join("bin");
+    std::fs::create_dir(&bin).unwrap();
+    let log = dir.path().join("spawns.log");
+    let real = assert_cmd::cargo::cargo_bin("trs");
+    support::fake_program(
+        &bin.join("trs"),
+        &format!(
+            "echo x >> \"$TRS_SPAWN_LOG\"\nexec \"{}\" \"$@\"",
+            real.display()
+        ),
     );
+    let path = support::path_with(&bin);
     let out = std::process::Command::new(node)
         .arg(&driver_path)
         .env("PATH", path)
+        .env("TRS_SPAWN_LOG", &log)
         .output()
         .unwrap();
     assert!(
@@ -261,6 +271,70 @@ console.log(JSON.stringify({
     ] {
         assert_eq!(got[key], "git push", "{key} must stay unrewritten");
     }
+}
+
+/// A plugin spawns trs once per command (rewrite and segments together) and
+/// reads the config once inside the cache window.
+#[cfg(unix)]
+#[test]
+fn the_opencode_plugins_spawn_trs_once_per_command_and_cache_the_config() {
+    let driver = r#"import plugin from "./trs.mjs";
+import { readFileSync, existsSync } from "node:fs";
+const spawns = () => existsSync(process.env.TRS_SPAWN_LOG)
+  ? readFileSync(process.env.TRS_SPAWN_LOG, "utf8").split("\n").filter(Boolean).length : 0;
+const hooks = {};
+await plugin.setup({
+  shell: { hook: async () => {} },
+  tool: { hook: async (n, f) => { hooks[n] = f; } },
+  permission: { hook: async () => {}, assert: async () => {} },
+});
+const input = { tool: "shell", id: "a", sessionID: "s", agent: "b", messageID: "m", input: { command: "cd a && git status" } };
+await hooks["execute.before"](input);
+const v2 = { command: input.input.command, spawns: spawns() };
+
+let gets = 0;
+const client = { config: { get: async () => { gets++; return { data: {} }; } } };
+const server = await plugin.server({ client, directory: "/x" });
+const out = [];
+for (const c of ["git status", "git log", "git diff"]) {
+  const o = { args: { command: c } };
+  await server["tool.execute.before"]({ tool: "bash" }, o);
+  out.push(o.args.command);
+}
+console.log(JSON.stringify({ v2, out, gets }));
+"#;
+    let Some(got) = run_node(&trs_templates::OPENCODE, driver) else {
+        return;
+    };
+    assert_eq!(got["v2"]["command"], "cd a && trs git status");
+    assert_eq!(got["v2"]["spawns"], 1, "2.x used to spawn trs twice");
+    assert_eq!(
+        got["out"],
+        serde_json::json!(["trs git status", "trs git log", "trs git diff"])
+    );
+    assert_eq!(got["gets"], 1, "config read once inside the cache window");
+}
+
+#[test]
+fn trs_rewrite_json_answers_rewrite_and_segments_in_one_call() {
+    let run = |cmd: &str| -> serde_json::Value {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .args(["rewrite", "--json"])
+            .write_stdin(cmd)
+            .output()
+            .unwrap();
+        assert!(out.status.success());
+        serde_json::from_slice(&out.stdout).unwrap()
+    };
+    assert_eq!(
+        run("cd a && git status"),
+        serde_json::json!({"rewrite": "cd a && trs git status", "segments": ["cd a", "git status"]})
+    );
+    assert_eq!(
+        run("ls | wc -l"),
+        serde_json::json!({"rewrite": null, "segments": ["ls", "wc -l"]})
+    );
 }
 
 #[test]

@@ -90,6 +90,12 @@ percentage sitting well below the recent one, as it does here, is the
 normal shape after a bad day early in the history: the cumulative mean
 never forgets it.
 
+Failed runs and runs over 30 KB raw are left out of the totals (the line
+under the table says how many). A `Saved-output pointers` line counts the runs
+that printed `[trs] full output: <path>` and the shell commands that later read
+a saved file; a read through the agent's own file tool is not visible, so the
+second number is a lower bound.
+
 ## History view
 
 ```bash

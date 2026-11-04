@@ -20,7 +20,7 @@ use crate::rewrite_gate::Gate;
 /// `--caller <label>` set by the installing hook template — the
 /// shell-agnostic attribution channel (the `TRS_AGENT=x` command prefix is
 /// POSIX-only; PowerShell/cmd parse it as a bogus command name).
-pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool) {
+pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool, json_out: bool) {
     let mut input = String::new();
     if std::io::stdin().read_to_string(&mut input).is_err() {
         return;
@@ -34,6 +34,15 @@ pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool) {
     if segments {
         let segs = crate::rewrite_permissions::split_segments(input);
         println!("{}", serde_json::json!(segs));
+        return;
+    }
+
+    if json_out {
+        let segs = crate::rewrite_permissions::split_segments(input);
+        println!(
+            "{}",
+            serde_json::json!({ "rewrite": maybe_rewrite(input), "segments": segs })
+        );
         return;
     }
 
@@ -52,28 +61,6 @@ fn handle_json_protocol(json: &serde_json::Value, agent_flag: Option<&str>) {
     if let Some(response) = build_hook_response(json, agent_flag) {
         println!("{}", response);
     }
-}
-
-/// Map a user-supplied label to its canonical static form. Whitelist, not
-/// pass-through: only labels we ship templates for can attribute runs.
-fn known_agent_label(s: &str) -> Option<&'static str> {
-    Some(match s {
-        "claude" => "claude",
-        "gemini" => "gemini",
-        "cursor" => "cursor",
-        "codex" => "codex",
-        "vscode" => "vscode",
-        "copilot-cli" => "copilot-cli",
-        "droid" => "droid",
-        "antigravity" => "antigravity",
-        "opencode" => "opencode",
-        "kilo" => "kilo",
-        "pi" => "pi",
-        "openclaw" => "openclaw",
-        "hermes" => "hermes",
-        "devin-cli" => "devin-cli",
-        _ => return None,
-    })
 }
 
 /// VS Code and Copilot CLI load the same `~/.copilot/hooks/trs.json`, so its
@@ -137,11 +124,11 @@ impl HookEvent {
     /// run. Whitelist (not pass-through): an arbitrary inherited TRS_AGENT
     /// value must not silently relabel runs.
     fn agent_label_from(&self, has_antigravity_env: bool, trs_agent: Option<&str>) -> &'static str {
-        match trs_agent {
-            Some("codex") => return "codex",
-            Some("vscode") => return "vscode",
-            Some("copilot-cli") => return "copilot-cli",
-            _ => {}
+        if let Some(p) = trs_agent
+            .and_then(crate::rewrite_gate::policy)
+            .filter(|p| p.from_env)
+        {
+            return p.label;
         }
         self.agent_label_for(has_antigravity_env)
     }
@@ -181,7 +168,9 @@ fn build_hook_response(
         .and_then(|ti| ti.get("command"))
         .and_then(|c| c.as_str())?;
     // `--caller` from the hook template wins over envelope/env inference.
-    let flag_label = agent_flag.and_then(known_agent_label).map(copilot_cli_or);
+    let flag_label = agent_flag
+        .and_then(crate::rewrite_gate::policy)
+        .map(|p| copilot_cli_or(p.label));
 
     let event_name = json
         .get("hook_event_name")
@@ -205,7 +194,17 @@ fn build_hook_response(
 
     // Bypass telemetry — log the agent-attributed observation before the
     // short-circuit so `stats --by-agent` can surface per-agent rates.
-    let label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
+    let tool = json.get("tool_name").and_then(|v| v.as_str());
+    let mut label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
+    // No `--caller` and Claude's envelope: an older Droid/Devin hook is told
+    // apart from Claude by its tool name; an unknown name is a guess.
+    let mut guessed = false;
+    if let (None, "claude", Some(t)) = (flag_label, label, tool) {
+        match crate::rewrite_gate::by_tool(t) {
+            Some(p) => label = p.label,
+            None => guessed = true,
+        }
+    }
     if cmd_bypasses_trs(cmd) {
         crate::tracker::log_bypass(cmd, Some(label));
         return None;
@@ -222,6 +221,12 @@ fn build_hook_response(
     if gate == Gate::Skip {
         return None;
     }
+    // A guessed agent is never approved.
+    let gate = if gate == Gate::Allow && guessed {
+        Gate::Defer
+    } else {
+        gate
+    };
     let rewritten = tag_with_agent(&rewritten, label);
 
     let response = match event {

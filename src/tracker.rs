@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A single history entry representing one trs command execution.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct HistoryEntry {
     /// Unix timestamp of execution.
     pub ts: u64,
@@ -53,6 +53,9 @@ pub struct HistoryEntry {
     /// without the field count as before.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ok: Option<bool>,
+    /// `Some(true)` when the run printed a `full output: <path>` pointer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ptr: Option<bool>,
 }
 
 impl HistoryEntry {
@@ -249,6 +252,8 @@ pub fn log_run(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: u64, o
         agent,
         bypass: None,
         ok: (!ok).then_some(false),
+        // A failure's footer points at the raw output but prints after this line is written.
+        ptr: (crate::pointer_recall::printed() || !ok).then_some(true),
     });
 }
 
@@ -326,6 +331,7 @@ pub fn log_bypass(cmd: &str, agent: Option<&str>) {
         agent: agent.map(String::from),
         bypass: Some(true),
         ok: None,
+        ptr: None,
     });
 }
 

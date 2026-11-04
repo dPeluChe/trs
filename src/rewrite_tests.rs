@@ -114,7 +114,7 @@ fn test_agent_flag_attributes_rewrite() {
     );
     // Devin CLI must be whitelisted — else `--caller devin-cli` silently
     // falls back to `claude` (the bug found in live validation). Regression
-    // guard: keep `devin-cli` in `known_agent_label`.
+    // guard: keep `devin-cli` in `rewrite_gate::AGENTS`.
     let out = build_hook_response(&input, Some("devin-cli")).expect("should rewrite");
     assert_eq!(
         out["hookSpecificOutput"]["updatedInput"]["command"],
@@ -318,7 +318,7 @@ fn copilot_cli_is_told_apart_from_vscode_by_its_env_marker() {
     assert_eq!(label_for_host("vscode", Some("0")), "vscode");
     // Only the shared file's label is refined; other callers are left alone.
     assert_eq!(label_for_host("claude", Some("1")), "claude");
-    assert_eq!(known_agent_label("copilot-cli"), Some("copilot-cli"));
+    assert!(crate::rewrite_gate::policy("copilot-cli").is_some());
 }
 
 #[test]
