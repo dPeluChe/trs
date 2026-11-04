@@ -72,7 +72,11 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // env-prefix split because `OUT=$(cmd)` otherwise splits mid-substitution
     // and produces a mangled command.
     if captures_output(trimmed) {
-        return None;
+        return crate::config::config()
+            .hooks
+            .pipe_status
+            .then(|| crate::rewrite_pipe_status::wrap(trimmed))
+            .flatten();
     }
 
     // Text-level rewriting is only sound on a flat single command; anything
@@ -185,7 +189,7 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
 /// ASCII letter or underscore, then alphanumeric or underscore, contains
 /// `=`. Excludes `--flag=val` and URL-ish strings. Multi-token prefixes
 /// (`A=1 B=2 cargo build`) are collected left-to-right.
-pub(super) fn split_env_prefix(cmd: &str) -> Option<(String, &str)> {
+pub(crate) fn split_env_prefix(cmd: &str) -> Option<(String, &str)> {
     let mut rest = cmd;
     let mut collected: Vec<&str> = Vec::new();
     loop {
@@ -345,7 +349,7 @@ fn split_and_chain(cmd: &str) -> Vec<&str> {
 }
 
 /// Byte offsets of characters outside any quote and not escaped.
-fn unquoted_indices(cmd: &str) -> impl Iterator<Item = usize> + '_ {
+pub(crate) fn unquoted_indices(cmd: &str) -> impl Iterator<Item = usize> + '_ {
     let (mut single, mut double, mut escaped) = (false, false, false);
     cmd.char_indices().filter_map(move |(i, c)| {
         if escaped {

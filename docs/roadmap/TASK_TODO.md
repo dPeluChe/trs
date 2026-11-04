@@ -110,8 +110,8 @@ Do not name those projects in commits, docs or the changelog when shipping these
 ### P4: larger features, decide later
 
 - [ ] **User filters for commands without a parser**: `.trs/filters/*.toml` with only skip, keep, on_empty, max_lines, strip_ansi and inline fixture tests, loaded only from trust-approved project dirs and never from the repo-level config for anything that changes behaviour. The generic tier saves only 2-16% today. Large.
-- [ ] **Delta for repeated test runs** (`cargo test`, `pytest`, `jest`): state keyed by (session id, cwd, exact command); NEW and CHANGED in full, UNCHANGED as a count with the `[trs] full output:` path. Opt-in, medium risk (hiding a still-failing test).
-- [ ] **Pipeline exit-code capture**: `just check 2>&1 | tail -8` exits 0 while the check failed. Opt-in, needs a carve-out from #162; decline pagers, `tail -f`, `pipefail` and pipelines that consume the status.
+- [-] **Delta for repeated test runs**: not building it. Local history (88,317 runs): test reruns within 10 minutes are 0.9% of shell output at most (excluding two one-off outliers), with a median rerun of 327 bytes, so there is little to remove, and the risk of hiding a still-failing test stays. Reopen only with data showing large repeated failure output.
+- [x] **Pipeline exit-code capture** (`[hooks] pipe_status`, `src/rewrite_pipe_status.rs`, opt-in): pipefail for the last statement only, for build and test tools piped into `tail` or `grep`; output stays byte-exact. 14.6% of 99,937 agent Bash calls pipe a check, 42 of them guarded the status, and about 3.5% of all calls qualify. `| head` (20% of piped checks) stays out: SIGPIPE would report a false failure.
 - [ ] **Hooks for Mistral Vibe (`pre_tool` in hooks.toml) and Trae (PreToolUse `RunCommand`, omit the decision)**.
 - [ ] **Output-saver targets** for OpenClaw (`SOUL.md` sentinel block), Grok (`$GROK_HOME/AGENTS.md`) and Kiro (steering file with `inclusion: always`). Their Grok and Kiro paths are untested by their authors, verify on real binaries.
 - [ ] **Near-identical log-line templating** in `safe_folds.rs` (`[x N] template`), always marked lossy with the tee kept.

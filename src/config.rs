@@ -33,6 +33,8 @@ pub struct Hooks {
     /// builtins and 1-token wrappers (`time`, `nohup`, …) are recognized
     /// without config.
     pub transparent_prefixes: Vec<String>,
+    /// Report the real exit status of `check | tail` pipelines. Output is unchanged.
+    pub pipe_status: bool,
 }
 
 /// Output caps and truncation limits.

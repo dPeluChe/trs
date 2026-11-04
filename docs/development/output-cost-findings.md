@@ -98,9 +98,11 @@ moved turns by +0.25 (CI -0.67 to +1.13).
 
 In order of expected value:
 
-1. **Cut turns from the tool side, not with reply rules.** Delta for repeated
-   test runs and pipeline exit-code capture avoid real reruns, and trs controls
-   those directly. Measure with the rerun rate in `trs stats`.
+1. **Cut turns from the tool side, not with reply rules.** Check the size first:
+   delta for repeated test runs was dropped because test reruns are 0.9% of
+   shell output at most, with a median of 327 bytes. Top shell output is `find`,
+   `grep` and `curl`, but 100 runs make up 68-98% of each, so look at those
+   one-offs before building filters.
 2. **Test long sessions.** Build a 30+ turn task and rerun the arms. That is
    where context growth lives and where the one-line lead can be confirmed.
 3. **Test a weaker model.** If rules help anywhere, it is likely there.
@@ -109,4 +111,7 @@ In order of expected value:
    a look, but no idea so far survives the fact that trs can't edit what the
    model generates.
 
-Don't add a line to the block without a test it passes.
+Don't add a line to the block without a test it passes. Size a feature against
+local history and transcripts before building it, and test the estimate: a loose
+regex said piped checks that could be fixed were 17.7% of Bash calls, the real
+rewrite reached 3.5%.
