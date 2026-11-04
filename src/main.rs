@@ -189,8 +189,12 @@ fn run() {
     let router = Router::new();
 
     match &cli.command {
-        Some(Commands::Rewrite { caller, segments }) => {
-            rewrite::run_rewrite(caller.as_deref(), *segments);
+        Some(Commands::Rewrite {
+            caller,
+            segments,
+            json,
+        }) => {
+            rewrite::run_rewrite(caller.as_deref(), *segments, *json);
         }
         Some(Commands::Discover { all, since }) => {
             discover::run_discover(*all, *since);

@@ -28,6 +28,41 @@ const viaTrs = (cmd) => runTrs(["rewrite"], cmd).replace(/\r?\n$/, "") || cmd;
     };
 }
 
+// Async variant for hosts whose hooks are already async (OpenCode, Kilo): one
+// `trs rewrite --json` spawn answers both the rewrite and the segments, and
+// the event loop is not blocked while trs runs. Fails open like `runTrs`.
+macro_rules! js_decide {
+    () => {
+        r#"import { spawn } from "node:child_process";
+
+const decide = (cmd) => new Promise((resolve) => {
+  let out = "";
+  try {
+    const p = spawn("trs", ["rewrite", "--json"], {
+      timeout: 3000,
+      shell: process.platform === "win32",
+    });
+    p.stdout.setEncoding("utf8");
+    p.stdout.on("data", (d) => { out += d; });
+    p.stdin.on("error", () => {});
+    p.on("error", () => resolve(null));
+    p.on("close", (code) => {
+      try {
+        const d = code === 0 ? JSON.parse(out) : null;
+        resolve(typeof d?.rewrite === "string" && d.rewrite !== cmd ? d : null);
+      } catch {
+        resolve(null);
+      }
+    });
+    p.stdin.end(cmd);
+  } catch {
+    resolve(null);
+  }
+});
+"#
+    };
+}
+
 // 1.x hosts match their permission rules against the rewritten command and
 // have no way to ask about the original, so the rewrite happens only when the
 // effective config has no ask/deny rule at all (unknown config: no rewrite).
@@ -38,15 +73,25 @@ const allowOnly = (v) =>
   v === undefined || v === "allow" ||
   (typeof v === "object" && v !== null && Object.values(v).every((x) => x === "allow"));
 
-const bashUnrestricted = async (client, directory) => {
-  try {
-    const c = (await client.config.get({ query: { directory } }))?.data ?? {};
-    const sets = [c.permission, ...Object.values(c.agent ?? {}).map((a) => a?.permission)];
-    return sets.every((p) =>
-      !p || (typeof p === "string" ? p === "allow" : allowOnly(p.bash !== undefined ? p.bash : p["*"])));
-  } catch {
-    return false;
-  }
+// One gate per plugin instance (one directory). The config is re-read after
+// 2 s so a rule added mid-session applies almost at once.
+const bashGate = (client, directory) => {
+  let at = 0;
+  let last = false;
+  return async () => {
+    if (!client) return false;
+    if (Date.now() - at < 2000) return last;
+    try {
+      const c = (await client.config.get({ query: { directory } }))?.data ?? {};
+      const sets = [c.permission, ...Object.values(c.agent ?? {}).map((a) => a?.permission)];
+      last = sets.every((p) =>
+        !p || (typeof p === "string" ? p === "allow" : allowOnly(p.bash !== undefined ? p.bash : p["*"])));
+    } catch {
+      last = false;
+    }
+    at = Date.now();
+    return last;
+  };
 };
 "#
     };
@@ -57,26 +102,18 @@ const bashUnrestricted = async (client, directory) => {
 // docs/development/agent-integrations.md (OpenCode).
 pub(crate) const OPENCODE_PLUGIN: &str = concat!(
     "// trs plugin: route commands through trs for token-optimized output\n\n",
-    js_via_trs!(),
+    js_decide!(),
     js_rules_gate!(),
     r#"
-// 2.x checks permission rules on the rewritten text: ask about the original.
-const segmentsOf = (cmd) => {
-  try {
-    const segs = JSON.parse(runTrs(["rewrite", "--segments"], cmd));
-    return Array.isArray(segs) && segs.length ? segs : null;
-  } catch {
-    return null;
-  }
-};
-
 const isPermissionError = (e) => {
   const tag = String(e?._tag ?? e?.name ?? "");
   return !/Schema/.test(tag) && /permission|reject|declin|denied/i.test(`${tag} ${e?.message ?? ""}`);
 };
 
 // OpenCode 1.x
-const server = async ({ client, directory } = {}) => ({
+const server = async ({ client, directory } = {}) => {
+  const unrestricted = bashGate(client, directory);
+  return {
   // Cross-platform attribution: set the env var, never a shell prefix.
   "shell.env": async (_input, output) => {
     output.env.TRS_AGENT = "opencode";
@@ -85,11 +122,12 @@ const server = async ({ client, directory } = {}) => ({
     if (input.tool !== "bash") return;
     const cmd = output.args?.command;
     if (typeof cmd !== "string") return;
-    const rewritten = viaTrs(cmd);
-    if (rewritten === cmd || !client || !(await bashUnrestricted(client, directory))) return;
-    output.args.command = rewritten;
+    const d = await decide(cmd);
+    if (!d || !(await unrestricted())) return;
+    output.args.command = d.rewrite;
   },
-});
+  };
+};
 
 export default {
   id: "trs",
@@ -111,8 +149,8 @@ export default {
       if (input.tool !== "shell") return;
       const cmd = input.input?.command;
       if (typeof cmd !== "string") return;
-      const rewritten = viaTrs(cmd);
-      const resources = rewritten === cmd || !canAsk ? null : segmentsOf(cmd);
+      const d = await decide(cmd);
+      const resources = d && canAsk && d.segments?.length ? d.segments : null;
       if (!resources) return;
       try {
         await ctx.permission.assert({
@@ -127,7 +165,7 @@ export default {
         return;
       }
       approved.add(input.id);
-      input.input = { ...input.input, command: rewritten };
+      input.input = { ...input.input, command: d.rewrite };
     });
   },
 };
@@ -138,10 +176,11 @@ export default {
 /// run as `kilo` so history attribution is accurate across forks.
 pub(crate) const KILO_PLUGIN: &str = concat!(
     "// trs plugin: route commands through trs for token-optimized output\n\n",
-    js_via_trs!(),
+    js_decide!(),
     js_rules_gate!(),
     r#"
 export const TrsPlugin = async ({ client, directory } = {}) => {
+  const unrestricted = bashGate(client, directory);
   return {
     "shell.env": async (_input, output) => {
       output.env.TRS_AGENT = "kilo";
@@ -150,9 +189,9 @@ export const TrsPlugin = async ({ client, directory } = {}) => {
       if (input.tool !== "bash") return;
       const cmd = output.args?.command;
       if (typeof cmd !== "string") return;
-      const rewritten = viaTrs(cmd);
-      if (rewritten === cmd || !client || !(await bashUnrestricted(client, directory))) return;
-      output.args.command = rewritten;
+      const d = await decide(cmd);
+      if (!d || !(await unrestricted())) return;
+      output.args.command = d.rewrite;
     },
   };
 };

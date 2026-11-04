@@ -20,7 +20,7 @@ use crate::rewrite_gate::Gate;
 /// `--caller <label>` set by the installing hook template — the
 /// shell-agnostic attribution channel (the `TRS_AGENT=x` command prefix is
 /// POSIX-only; PowerShell/cmd parse it as a bogus command name).
-pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool) {
+pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool, json_out: bool) {
     let mut input = String::new();
     if std::io::stdin().read_to_string(&mut input).is_err() {
         return;
@@ -34,6 +34,20 @@ pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool) {
     if segments {
         let segs = crate::rewrite_permissions::split_segments(input);
         println!("{}", serde_json::json!(segs));
+        return;
+    }
+
+    if json_out {
+        // Segments only matter (a permission question) when something is rewritten.
+        let rewrite = maybe_rewrite(input);
+        let segs = match rewrite {
+            Some(_) => crate::rewrite_permissions::split_segments(input),
+            None => Vec::new(),
+        };
+        println!(
+            "{}",
+            serde_json::json!({ "rewrite": rewrite, "segments": segs })
+        );
         return;
     }
 

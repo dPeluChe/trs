@@ -89,7 +89,7 @@ Do not name those projects in commits, docs or the changelog when shipping these
 - [~] **Hook command strings on Windows** (all are plain `trs rewrite [--caller x]`, no shell syntax; live PowerShell check still open): check the Codex/Copilot hook commands run under PowerShell as well as cmd.exe (a similar tool had "hook exited with code 1" there).
 - [ ] **Permission gates, follow-ups from the simplify, review and live checks (2026-11-04)**:
   - [x] One `AgentPolicy` table (`rewrite_gate.rs`: label, `TRS_AGENT` source, gate) instead of editing the label, gate and `TRS_AGENT` lookups per agent; the response shape stays per envelope (`HookEvent`), not per agent. A hook without `--caller` on Claude's envelope is identified by its `tool_name` (row `.tool(..)`: Bash, Execute, exec): an old Droid/Devin hook gets its own label and gate, an unknown tool is rewritten but never approved.
-  - JS plugins: `trs rewrite --json` returning rewrite, segments and gate in one spawn (OpenCode 2.x spawns twice); cache `client.config.get` per directory; async `spawn` instead of `spawnSync`.
+  - [x] JS plugins (OpenCode, Kilo): `trs rewrite --json` returns rewrite and segments in one spawn (2.x spawned twice); async `spawn` instead of `spawnSync` (hooks there are already async); the config read is cached 2 s per plugin instance. Pi and OpenClaw stay on sync `spawnSync` (their hook signatures are not verified async).
   - Inject config roots instead of `cfg!(test)` branches in the gates (Droid and Gemini already do).
   - `trs doctor` checks for the OpenClaw and Hermes plugins (the blind `trs ` prefix copies are the bug this branch fixes).
   - Droid: the `--settings` flag overlay is invisible to the hook (the env overlay is read now).
