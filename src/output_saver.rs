@@ -41,43 +41,47 @@ macro_rules! output_saver_block_literal {
     () => {
         r#"## Output saver: keep replies cheap
 
-These hold for every reply, not just the first. Don't drift back to
+These rules hold for every reply, not just the first. Don't drift back to
 preambles and filler over a long session.
 
 Keep replies under ~100 words unless the task needs more. Between tool
 calls, stay under ~25 words. Match shape to task: a one-line question
 gets a one-line answer, no headers.
 
-Open with the answer or the diff. End when the answer ends.
+Open with the answer or the diff, explain only what is non-obvious, and
+stop when the answer ends.
 
-- Result first; explanation only if non-obvious. State the finding, show
-  the fix, stop.
+- BAD: "Great question! Let me take a look... In summary, I fixed it."
+- GOOD: "Fixed: `retry()` read the wrong config key."
 - Let tool output speak for itself; don't restate or recap what the diff
   already shows.
 - Structured output when the data is structured: bullets, tables, JSON.
   Prose only when the reader is human and the content is narrative.
-- Don't invent abbreviations (cfg/impl/req/res) or causal arrows: the
-  tokenizer splits them like the full word, so nothing is saved and
-  clarity is lost.
 - No em dashes. Use a comma, a colon, parentheses, a period, or "and".
-  It is the top tell of generated text and almost nobody types one. Same
-  for the en dash in prose; numeric ranges keep their hyphen.
-- In prose (replies, docs, comments): concrete over abstract. No
-  rule-of-three padding, no tier-1 slop (delve, leverage, robust,
-  seamless, streamline, potenciar, impulsar). Terse and specific is what
-  reads as human, and it is the same cut as cutting tokens.
 - Never invent file paths, function names, or API fields. If unknown,
   say "UNKNOWN" or return null. Guessing costs more tokens than asking.
-- Full clarity, never compressed, for security warnings, irreversible or
-  destructive confirmations, and any multi-step order a misread would break.
+- Safety beats brevity: security warnings, irreversible or destructive
+  confirmations, and any multi-step order a misread would break get full,
+  uncompressed clarity, even past the word limit.
+
+## Check before answering
+
+- Read a file or doc once. Don't reread what is already in the conversation
+  unless it may have changed since.
+- Verify claims against the code or the running project, not memory or docs
+  alone: docs go stale.
+- Prefer the most recent source (latest commit, current version, newest
+  doc). When sources disagree, say so.
 
 ## Code authoring
 
 These apply when you write code, not just when you reply in chat.
 
 - Reuse what's already here. A helper, type, or pattern a few files over
-  beats re-implementing it. One pass: don't iterate on passing code, don't
-  refactor / polish unless asked.
+  beats re-implementing it.
+- Smallest diff that solves it: prefer deleting to adding.
+- One pass: don't iterate on passing code, don't refactor or polish unless
+  asked.
 - Comments: none by default. If one is truly needed, write a terse WHY-only
   note (not a walkthrough), at most 3 lines, ~200 characters. Never
   paragraph docstrings or restate the code. A longer logic explanation goes
@@ -139,8 +143,8 @@ pub(crate) fn standalone_file() -> String {
          A failed command always says so: the summary never reports\n\
          success for a non-zero exit, and a `[trs] exit N` line carries\n\
          the real status plus a path to the full raw output. Redirecting\n\
-         to a file (`> out.log`, `| tee`) bypasses compression entirely,\n\
-         so the file holds the command's own output.\n\n\
+         to a file (`> out.log`, `| tee`) skips compression, so that file\n\
+         holds the command's raw output.\n\n\
          {}\n",
         IMPORT_FILENAME, BLOCK
     )

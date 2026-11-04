@@ -363,9 +363,9 @@ fn the_old_cursor_file_counts_as_installed_so_refresh_migrates_it() {
 fn the_block_stays_inside_the_size_the_doc_quotes() {
     let block = crate::output_saver::BLOCK.len();
     let file = standalone_file().len();
-    assert!(block <= 2_600, "BLOCK is {block} bytes, doc says ~2.4 KB");
+    assert!(block <= 2_400, "BLOCK is {block} bytes, doc says ~2.3 KB");
     assert!(
-        file <= 3_700,
+        file <= 3_450,
         "standalone file is {file} bytes, doc says ~3.4 KB"
     );
 }
