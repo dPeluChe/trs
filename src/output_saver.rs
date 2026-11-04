@@ -22,13 +22,9 @@
 //!   no global rules mechanism we can target without writing into user
 //!   project files. We say so explicitly rather than pretending.
 //!
-//! The rules in `BLOCK` aren't arbitrary opinions — each one has either
-//! an empirical source (Anthropic's leaked Claude Code system prompt,
-//! Anthropic A/B-validated) or a research-backed prompt-engineering
-//! principle (positive vs negative instructions, from pink-elephant
-//! studies). For the per-rule provenance and what was deliberately
-//! NOT included, see `docs/features/output-saver.md` § "Why these
-//! rules — research backing".
+//! `BLOCK` is deliberately short: longer versions never beat a one-line
+//! "Answer concisely." in A/B tests, so each rule left is one that line does
+//! not cover. Results: `docs/features/output-saver.md` § "Measuring impact".
 
 /// The rules block itself — exposed as a macro so `init_templates.rs`
 /// can splice it into `const &str` templates via `concat!`. Const-valued
@@ -41,47 +37,15 @@ macro_rules! output_saver_block_literal {
     () => {
         r#"## Output saver: keep replies cheap
 
-These rules hold for every reply, not just the first. Don't drift back to
-preambles and filler over a long session.
+Answer concisely.
 
-Keep replies under ~100 words unless the task needs more. Between tool
-calls, stay under ~25 words. Match shape to task: a one-line question
-gets a one-line answer, no headers.
-
-Open with the answer or the diff, explain only what is non-obvious, and
-stop when the answer ends.
-
-- BAD: "Great question! Let me take a look... In summary, I fixed it."
-- GOOD: "Fixed: `retry()` read the wrong config key."
-- Let tool output speak for itself; don't restate or recap what the diff
-  already shows.
-- Structured output when the data is structured: bullets, tables, JSON.
-  Prose only when the reader is human and the content is narrative.
-- No em dashes. Use a comma, a colon, parentheses, a period, or "and".
-- Never invent file paths, function names, or API fields. If unknown,
-  say "UNKNOWN" or return null. Guessing costs more tokens than asking.
-- Safety beats brevity: security warnings, irreversible or destructive
-  confirmations, and any multi-step order a misread would break get full,
-  uncompressed clarity, even past the word limit.
-
-## Check before answering
-
-- Read a file or doc once. Don't reread what is already in the conversation
-  unless it may have changed since.
-- Verify claims against the code or the running project, not memory or docs
-  alone: docs go stale.
-- Prefer the most recent source (latest commit, current version, newest
-  doc). When sources disagree, say so.
+Never invent file paths, function names, or API fields. If unknown, say
+"UNKNOWN" or return null.
 
 ## Code authoring
 
 These apply when you write code, not just when you reply in chat.
 
-- Reuse what's already here. A helper, type, or pattern a few files over
-  beats re-implementing it.
-- Smallest diff that solves it: prefer deleting to adding.
-- One pass: don't iterate on passing code, don't refactor or polish unless
-  asked.
 - Comments: none by default. If one is truly needed, write a terse WHY-only
   note (not a walkthrough), at most 3 lines, ~200 characters. Never
   paragraph docstrings or restate the code. A longer logic explanation goes

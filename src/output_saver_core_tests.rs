@@ -19,7 +19,7 @@ fn replace_between_swaps_segment() {
 fn standalone_file_contains_block() {
     let s = standalone_file();
     assert!(s.contains("Output saver"));
-    assert!(s.contains("Open with the answer"));
+    assert!(s.contains("Answer concisely"));
 }
 
 /// Regression guard: hook-context template must NOT advertise
@@ -51,7 +51,7 @@ fn sentinel_wrapped_is_idempotent_on_replace() {
     // Both retain the sentinels and the block.
     assert!(out.contains(SENTINEL_START));
     assert!(out.contains(SENTINEL_END));
-    assert!(out.contains("Open with the answer"));
+    assert!(out.contains("Answer concisely"));
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn install_inline_file_is_idempotent() {
     let after2 = fs::read_to_string(&agents_path).unwrap();
     assert_eq!(after1, after2, "second install mutated the file");
     assert!(after1.contains("Custom rules."));
-    assert!(after1.contains("Open with the answer"));
+    assert!(after1.contains("Answer concisely"));
     assert_eq!(
         after1.matches(SENTINEL_START).count(),
         1,
@@ -363,9 +363,9 @@ fn the_old_cursor_file_counts_as_installed_so_refresh_migrates_it() {
 fn the_block_stays_inside_the_size_the_doc_quotes() {
     let block = crate::output_saver::BLOCK.len();
     let file = standalone_file().len();
-    assert!(block <= 2_400, "BLOCK is {block} bytes, doc says ~2.3 KB");
+    assert!(block <= 800, "BLOCK is {block} bytes, doc says ~0.7 KB");
     assert!(
-        file <= 3_450,
-        "standalone file is {file} bytes, doc says ~3.4 KB"
+        file <= 1_800,
+        "standalone file is {file} bytes, doc says ~1.7 KB"
     );
 }
