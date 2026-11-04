@@ -162,3 +162,22 @@ fn fixtures_are_deterministic_ratcheted_and_keep_their_failures() {
     }
     assert!(problems.is_empty(), "\n{}", problems.join("\n"));
 }
+
+/// Extension counts tie often; a hash-ordered map made the top list and the
+/// JSON key order change from one run to the next.
+#[test]
+fn find_summary_is_stable_when_extension_counts_tie() {
+    let input = "a.rs\nb.py\nc.go\nd.js\ne.md\nf.toml\ng.sh\nh.txt\n";
+    let run = |json: bool| {
+        let mut cmd = Command::cargo_bin("trs").unwrap();
+        if json {
+            cmd.arg("--json");
+        }
+        cmd.args(["parse", "find"]).write_stdin(input);
+        String::from_utf8_lossy(&cmd.output().unwrap().stdout).into_owned()
+    };
+    for json in [false, true] {
+        let first = run(json);
+        assert!((0..8).all(|_| run(json) == first), "json={json}");
+    }
+}
