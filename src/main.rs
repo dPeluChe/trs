@@ -99,6 +99,7 @@ pub use commands::{Commands, ParseCommands, TestRunner};
 use classifier::preprocess_tail_args;
 use classifier_exec::execute_and_parse;
 mod fast_find;
+mod fs_atomic;
 mod read_intercept;
 use router::{CommandContext, Router};
 

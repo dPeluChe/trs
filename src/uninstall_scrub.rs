@@ -79,7 +79,8 @@ pub(crate) fn remove_between_sentinels(
         fs::remove_file(path).map_err(|e| e.to_string())?;
         return Ok(Some(format!("removed empty {}", path.display())));
     }
-    fs::write(path, format!("{}\n", trimmed)).map_err(|e| e.to_string())?;
+    crate::fs_atomic::write_if_unchanged(path, &content, &format!("{}\n", trimmed))
+        .map_err(|e| e.to_string())?;
     Ok(Some(format!("removed trs block from {}", path.display())))
 }
 
