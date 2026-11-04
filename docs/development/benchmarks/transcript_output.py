@@ -22,9 +22,10 @@ import datetime as dt
 import glob
 import json
 import os
-import random
 import statistics
 import sys
+
+from bench_stats import boot_diff
 
 
 def default_since():
@@ -42,7 +43,7 @@ def messages(projects_dir):
     seen = {}
     for path in glob.glob(os.path.join(projects_dir, "*", "*.jsonl")):
         try:
-            lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
+            lines = open(path, encoding="utf-8", errors="replace")
         except OSError:
             continue
         for line in lines:
@@ -67,25 +68,15 @@ def messages(projects_dir):
     return list(seen.values())
 
 
-def boot_diff(before, after, fn, resamples, rng):
-    diffs = []
-    for _ in range(resamples):
-        b = [rng.choice(before) for _ in before]
-        a = [rng.choice(after) for _ in after]
-        diffs.append(fn(a) - fn(b))
-    diffs.sort()
-    return diffs[int(0.025 * resamples)], diffs[int(0.975 * resamples) - 1]
-
-
-def report(name, before, after, resamples, rng):
+def report(name, before, after, resamples):
     if not before or not after:
         return
-    row = [name]
+    cells = []
     for label, fn in (("mean", statistics.fmean), ("median", statistics.median)):
         b, a = fn(before), fn(after)
-        lo, hi = boot_diff(before, after, fn, resamples, rng)
-        row.append(f"{label} {b:.0f} -> {a:.0f} ({a - b:+.0f}, 95% CI {lo:+.0f}..{hi:+.0f})")
-    print(f"  {row[0]:34} n={len(before)}/{len(after)}  " + "  ".join(row[1:]))
+        lo, hi = boot_diff(before, after, fn, resamples)
+        cells.append(f"{label} {b:.0f} -> {a:.0f} ({a - b:+.0f}, 95% CI {lo:+.0f}..{hi:+.0f})")
+    print(f"  {name:34} n={len(before)}/{len(after)}  " + "  ".join(cells))
 
 
 def main():
@@ -99,23 +90,23 @@ def main():
         sys.exit("no --since given and ~/.claude/trs.md not found")
     cut = args.since
     msgs = messages(args.projects)
-    rng = random.Random(7)
     print(f"estimated output tokens per assistant message, before vs after {cut}")
     print("observational: task mix and model changed between the periods\n")
-    by_model = {}
+    groups = {}
     for ts, model, tokens, text in msgs:
         side = "after" if ts[:10] >= cut else "before"
-        by_model.setdefault(model, {"before": [], "after": [], "tb": [], "ta": []})
-        by_model[model][side].append(tokens)
+        groups.setdefault((model, side, False), []).append(tokens)
         if text:
-            by_model[model]["ta" if side == "after" else "tb"].append(tokens)
+            groups.setdefault((model, side, True), []).append(tokens)
+    models = {k[0] for k in groups}
     shown = 0
-    for model, d in sorted(by_model.items(), key=lambda kv: -len(kv[1]["after"])):
-        if len(d["before"]) >= args.min and len(d["after"]) >= args.min:
-            report(f"{model} (all messages)", d["before"], d["after"], args.resamples, rng)
-            if len(d["tb"]) >= args.min and len(d["ta"]) >= args.min:
-                report(f"{model} (with prose)", d["tb"], d["ta"], args.resamples, rng)
-            shown += 1
+    for model in sorted(models, key=lambda m: -len(groups.get((m, "after", False), []))):
+        for prose, label in ((False, "all messages"), (True, "with prose")):
+            before = groups.get((model, "before", prose), [])
+            after = groups.get((model, "after", prose), [])
+            if len(before) >= args.min and len(after) >= args.min:
+                report(f"{model} ({label})", before, after, args.resamples)
+                shown += not prose
     if not shown:
         print(f"  no model has {args.min}+ messages on both sides of {cut}")
 

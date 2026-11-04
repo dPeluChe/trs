@@ -126,7 +126,7 @@ pub(crate) fn render_report(
         }
     }
 
-    crate::audit_docs_volatile::print_volatile(docs, volatile);
+    crate::audit_docs_volatile::print_volatile(volatile);
 
     // Inline bloat: large code fences, reference-data dumps, big tables
     if !inline_bloat.is_empty() {

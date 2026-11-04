@@ -66,15 +66,15 @@ rules files. An import is flagged as dead if:
   extension), we explicitly skip npm-package-style `@scope/package`
   mentions to avoid false positives.
 
-## Date stamps
+## Update stamps
 
-Lines like `Updated: 2026-11-04`, `As of 2026-11`, a bare `YYYY-MM-DD` or
-`Today is ...` outside code fences. The agent's prompt cache is keyed on the
-exact prefix of what it loads, so a stamp that gets rewritten on every edit
-invalidates the cached prefix each time, and the file stops being a stable
-prefix. Git already records when a file changed; keep the date out of the file.
-A verification date you want to keep (a dated live check) is also flagged: it is
-advisory, not an error.
+Lines like `Updated: 2026-11-04`, `Last updated November 2026`, `As of 2026-11`
+or `Today is ...` outside code fences. The agent's prompt cache is keyed on the
+exact prefix of what it loads, so rewriting a stamp invalidates the cached
+prefix from that line on, every time the file is touched. Git already records
+when a file changed; keep the stamp out of the file. A date that is never
+rewritten (the date of a decision, a verification date) is not flagged: it
+costs nothing.
 
 ## Embedded bloat
 

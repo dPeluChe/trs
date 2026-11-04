@@ -78,7 +78,7 @@ pub(crate) fn print(r: &Reruns) {
     const MIN_RUNS: usize = 20;
     if r.compressed.total >= MIN_RUNS && r.plain.total >= MIN_RUNS {
         println!(
-            "\nSame command rerun within {} s: {:.0}% after a cut of {}% or more ({} runs), {:.0}% after a light cut ({} runs).",
+            "\nSame command rerun within {} s: {:.0}% after a cut of {}% or more ({} runs), {:.0}% after a light cut ({} runs). An association: heavy cuts happen on builds and tests, which are rerun anyway.",
             WINDOW_SECS,
             r.compressed.pct(),
             HEAVY_CUT_PCT,

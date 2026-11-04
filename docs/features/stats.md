@@ -103,7 +103,9 @@ Two more lines come from the same local history, no new hook:
   under 10%. A fixed compression that makes the agent ask again can cost more
   than it saves, so the two rates are shown together (shown from 20 runs each).
   A rerun after an edit (tests) is normal; compare the two numbers, not the
-  absolute one.
+  absolute one. It is an
+  association, not a cause: heavy cuts happen on builds and tests, which are
+  rerun anyway.
 - `Failing command repeated right after failing`: the same failing command
   run again in the same directory within 120 s.
 

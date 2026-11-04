@@ -35,7 +35,8 @@ import subprocess
 import sys
 import tempfile
 
-ARMS = {"none": "", "concise": "Answer concisely.\n", "trs": None}
+import truth
+from bench_stats import boot_diff
 
 # (id, prompt, fidelity_check): the check is a regex the reply must match, or None.
 CASES = [
@@ -74,15 +75,15 @@ CLOSING = re.compile(
 
 
 def trs_block():
-    out = subprocess.run(["trs", "output-saver", "--print"], capture_output=True, text=True)
+    out = subprocess.run([truth.find_trs(), "output-saver", "--print"], capture_output=True, text=True)
     if out.returncode != 0 or not out.stdout.strip():
         sys.exit("`trs output-saver --print` failed; build or install trs first")
     return out.stdout
 
 
 def markers(text):
-    first = text.strip().split("\n", 1)[0] if text.strip() else ""
-    last = text.strip().rsplit("\n", 1)[-1] if text.strip() else ""
+    lines = text.strip().splitlines()
+    first, last = (lines[0], lines[-1]) if lines else ("", "")
     return {
         "preamble": int(bool(PREAMBLE.search(first))),
         "closing": int(bool(CLOSING.search(last))),
@@ -105,7 +106,7 @@ def run_real(prompt, arm_text, model, budget):
         out = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=180)
         d = json.loads(out.stdout)
         usage = d.get("usage") or {}
-        return d.get("result", ""), usage.get("output_tokens", 0), d.get("total_cost_usd", 0.0)
+        return d.get("result", ""), usage.get("output_tokens", 0)
     finally:
         shutil.rmtree(cwd, ignore_errors=True)
 
@@ -115,16 +116,7 @@ def run_dry(prompt, arm_text, *_):
     filler = "Sure, " if "trs:" not in arm_text and rng.random() < 0.5 else ""
     body = "No. 60 minutes. It will overwrite history, so be careful; it is not safe. " * rng.randint(1, 3)
     text = filler + body + ("" if "Answer" in arm_text else "\nLet me know if you have questions.")
-    return text, len(text.split()) * 4 // 3, 0.0
-
-
-def boot_ci(a, b, resamples=2000, seed=11):
-    rng = random.Random(seed)
-    diffs = sorted(
-        statistics.fmean(rng.choices(a, k=len(a))) - statistics.fmean(rng.choices(b, k=len(b)))
-        for _ in range(resamples)
-    )
-    return diffs[int(0.025 * resamples)], diffs[int(0.975 * resamples) - 1]
+    return text, len(text.split()) * 4 // 3
 
 
 def main():
@@ -137,27 +129,27 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    texts = dict(ARMS, trs=trs_block())
-    calls = len(ARMS) * len(CASES) * args.n
-    print(f"{len(ARMS)} arms x {len(CASES)} prompts x N={args.n} = {calls} calls", file=sys.stderr)
+    texts = {"none": "", "concise": "Answer concisely.\n", "trs": trs_block()}
+    calls = len(texts) * len(CASES) * args.n
+    print(f"{len(texts)} arms x {len(CASES)} prompts x N={args.n} = {calls} calls", file=sys.stderr)
     if not args.dry_run and not args.yes:
         sys.exit("this spends usage; rerun with --yes (or --dry-run to test the harness)")
     run = run_dry if args.dry_run else run_real
 
     rows = []
-    for arm in ARMS:
+    for arm in texts:
         for cid, prompt, check in CASES:
             for i in range(args.n):
-                reply, toks, cost = run(prompt, texts[arm], args.model, args.max_budget_usd)
+                reply, toks = run(prompt, texts[arm], args.model, args.max_budget_usd)
                 m = markers(reply)
-                m.update(arm=arm, case=cid, run=i, tokens=toks, cost=cost, reply=reply)
+                m.update(arm=arm, case=cid, run=i, tokens=toks, reply=reply)
                 m["faithful"] = None if check is None else int(bool(re.search(check, reply)))
                 rows.append(m)
     if args.out:
         json.dump(rows, open(args.out, "w"), indent=1)
 
     print(f"\n{'arm':8}{'tokens':>9}{'words':>8}{'preamble':>10}{'closing':>9}{'emdash':>8}{'fidelity':>10}")
-    by = {a: [r for r in rows if r["arm"] == a] for a in ARMS}
+    by = {a: [r for r in rows if r["arm"] == a] for a in texts}
     for arm, rs in by.items():
         fid = [r["faithful"] for r in rs if r["faithful"] is not None]
         mean = lambda k: statistics.fmean(r[k] for r in rs)
@@ -169,10 +161,10 @@ def main():
     for other in ("none", "concise"):
         a = [r["tokens"] for r in by["trs"]]
         b = [r["tokens"] for r in by[other]]
-        lo, hi = boot_ci(a, b)
+        lo, hi = boot_diff(b, a)
         d = statistics.fmean(a) - statistics.fmean(b)
         print(f"trs vs {other:7} output tokens {d:+.0f} per reply (95% CI {lo:+.0f}..{hi:+.0f})")
-    print("\nInput cost is separate: the trs block is ~590 tokens loaded every session.")
+    print(f"\nInput cost is separate: the trs block is {len(texts['trs']) // 4} tokens (bytes / 4) loaded every session.")
 
 
 if __name__ == "__main__":

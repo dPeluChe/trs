@@ -324,7 +324,7 @@ fn collect_code_fences(file_idx: usize, content: &str, out: &mut Vec<InlineBloat
 /// Pull function / class / export names out of a code fence body so we can
 /// cross-reference them against the project source. Only covers the languages
 /// most common in agent instruction docs — adding more is a one-line regex.
-fn fence_open_lang(line: &str) -> Option<String> {
+pub(crate) fn fence_open_lang(line: &str) -> Option<String> {
     let stripped = line
         .strip_prefix("```")
         .or_else(|| line.strip_prefix("~~~"))?;
@@ -335,7 +335,7 @@ fn fence_open_lang(line: &str) -> Option<String> {
     Some(stripped.split_whitespace().next().unwrap_or("").to_string())
 }
 
-fn is_fence_close(line: &str) -> bool {
+pub(crate) fn is_fence_close(line: &str) -> bool {
     line == "```" || line == "~~~" || line.starts_with("```") || line.starts_with("~~~")
 }
 

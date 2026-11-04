@@ -35,42 +35,26 @@ pub(crate) fn cut(text: &str, max: usize) -> Option<String> {
     }
 
     let middle = &lines[head_end..tail_start];
-    let mut kept = vec![false; middle.len()];
-    let mut used = 0;
-    let budget = max / 4;
+    let mut seen: HashMap<&str, usize> = HashMap::new();
+    for t in lines.iter().flat_map(|l| needles(l)) {
+        *seen.entry(t).or_default() += 1;
+    }
+    let error = |i: &usize| is_error_line(middle[*i]);
+    let rare = |i: &usize| needles(middle[*i]).any(|t| seen[t] == 1);
     // Errors first, then needles, both capped by one budget: an id-dense log
     // still shrinks to `max`.
-    let mut take = |i: usize, kept: &mut Vec<bool>| {
-        let cost = middle[i].len() + 1;
-        let fits = used + cost < budget;
-        if fits {
-            used += cost;
-            kept[i] = true;
-        }
-        fits
-    };
-    for i in 0..middle.len() {
-        if is_error_line(middle[i]) && !take(i, &mut kept) {
-            break;
-        }
-    }
-    let mut seen: HashMap<&str, usize> = HashMap::new();
-    for line in &lines {
-        for t in needles(line) {
-            *seen.entry(t).or_default() += 1;
-        }
-    }
-    for i in 0..middle.len() {
-        let rare = !kept[i] && needles(middle[i]).any(|t| seen[t] == 1);
-        if rare && !take(i, &mut kept) {
-            break;
-        }
-    }
-    let signals: Vec<&str> = middle
-        .iter()
-        .zip(&kept)
-        .filter_map(|(l, k)| k.then_some(*l))
+    let candidates = (0..middle.len())
+        .filter(error)
+        .chain((0..middle.len()).filter(|i| !error(i) && rare(i)));
+    let mut used = 0;
+    let mut picked: Vec<usize> = candidates
+        .take_while(|&i| {
+            used += middle[i].len() + 1;
+            used < max / 4
+        })
         .collect();
+    picked.sort_unstable();
+    let signals: Vec<&str> = picked.iter().map(|&i| middle[i]).collect();
 
     let omitted = tail_start - head_end - signals.len();
     let mut out = lines[..head_end].join("\n");
