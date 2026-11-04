@@ -14,8 +14,9 @@ update it as new tools appear.
   shell compression. TOML filter pipeline, SQLite usage tracking,
   dedicated `rtk gain` analytics. Overlaps significantly with trs on
   the core rewrite surface.
-- **token-optimizer**: Node-based compressor, installs as a global
-  npm package. Hook integration focused on Claude Code.
+- **token-optimizer**: Python hook script (`bash_hook.py`) shipped as a
+  Claude Code plugin, not a global package. Hook integration focused on
+  Claude Code.
 - **token-saver**: early-stage shell wrapper, smaller scope than
   rtk / trs.
 - **ccp** (Claude Code Proxy): proxy-layer approach that sits

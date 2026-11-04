@@ -222,6 +222,7 @@ pub(crate) fn print_summary(entries: &[HistoryEntry], top_limit: usize, window_d
         today_entries.len(),
         if today_entries.len() == 1 { "" } else { "s" }
     );
+    println!("Token figures are estimates (bytes / 4); the percentages are exact byte ratios.");
 
     // Lifetime efficiency is a cumulative mean, so one rare huge command
     // dominates it forever: two `aws s3 --recursive` calls (367 MB at 0%) sank
