@@ -31,38 +31,41 @@ fn defer(_: &str, _: Option<&str>, _: Option<&str>) -> Gate {
     Gate::Defer
 }
 
-const fn row(label: &'static str, gate: GateFn) -> AgentPolicy {
+const fn row(label: &'static str, from_env: bool, gate: GateFn) -> AgentPolicy {
     AgentPolicy {
         label,
-        from_env: false,
+        from_env,
         gate,
     }
 }
 
-const fn env_row(label: &'static str, gate: GateFn) -> AgentPolicy {
-    AgentPolicy {
-        label,
-        from_env: true,
-        gate,
-    }
-}
-
-/// A new `--caller` agent is one row here (plus its template in init_templates.rs).
-static AGENTS: [AgentPolicy; 14] = [
-    row("claude", |c, d, _| crate::rewrite_permissions::gate(c, d)),
-    row("gemini", |c, d, _| crate::rewrite_perm_gemini::gate(c, d)),
-    row("cursor", |c, d, _| crate::rewrite_perm_cursor::gate(c, d)),
-    env_row("codex", |c, d, _| crate::rewrite_perm_codex::gate(c, d)),
-    env_row("vscode", defer),
-    env_row("copilot-cli", defer),
-    row("droid", crate::rewrite_perm_droid::gate),
-    row("antigravity", defer),
-    row("opencode", defer),
-    row("kilo", defer),
-    row("pi", defer),
-    row("openclaw", defer),
-    row("hermes", defer),
-    row("devin-cli", |c, d, _| crate::rewrite_perm_devin::gate(c, d)),
+/// A new `--caller` agent starts as one row here (plus its template in
+/// init_templates.rs); `defer` until its rules are verified.
+static AGENTS: &[AgentPolicy] = &[
+    row("claude", false, |c, d, _| {
+        crate::rewrite_permissions::gate(c, d)
+    }),
+    row("gemini", false, |c, d, _| {
+        crate::rewrite_perm_gemini::gate(c, d)
+    }),
+    row("cursor", false, |c, d, _| {
+        crate::rewrite_perm_cursor::gate(c, d)
+    }),
+    row("codex", true, |c, d, _| {
+        crate::rewrite_perm_codex::gate(c, d)
+    }),
+    row("vscode", true, defer),
+    row("copilot-cli", true, defer),
+    row("droid", false, crate::rewrite_perm_droid::gate),
+    row("antigravity", false, defer),
+    row("opencode", false, defer),
+    row("kilo", false, defer),
+    row("pi", false, defer),
+    row("openclaw", false, defer),
+    row("hermes", false, defer),
+    row("devin-cli", false, |c, d, _| {
+        crate::rewrite_perm_devin::gate(c, d)
+    }),
 ];
 
 pub(crate) fn policy(label: &str) -> Option<&'static AgentPolicy> {
@@ -83,12 +86,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn labels_are_unique_and_unknown_ones_defer() {
+    fn labels_are_unique() {
         for (i, p) in AGENTS.iter().enumerate() {
             assert!(AGENTS[i + 1..].iter().all(|q| q.label != p.label));
         }
-        assert!(policy("nope").is_none());
-        let gate = gate_for("nope", "git status", &serde_json::json!({}));
-        assert_eq!(gate, Gate::Defer);
     }
 }

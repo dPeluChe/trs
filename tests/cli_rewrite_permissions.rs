@@ -6,7 +6,7 @@
 mod support;
 
 use serde_json::{json, Value};
-use support::{decision, run_hook};
+use support::{decision, run_hook, run_hook_with};
 
 /// Run `trs rewrite` as the Claude hook, with `settings` as the user's
 /// `~/.claude/settings.json`. `None` means no output (command left alone).
@@ -140,18 +140,7 @@ fn a_legacy_hook_without_caller_is_approved_only_for_claudes_bash_tool() {
         if let Some(t) = tool {
             input["tool_name"] = json!(t);
         }
-        let out = assert_cmd::Command::cargo_bin("trs")
-            .unwrap()
-            .env("HOME", home.path())
-            .env("USERPROFILE", home.path())
-            .env("TRS_HOME", home.path().join("trs"))
-            .env_remove("CLAUDE_CONFIG_DIR")
-            .arg("rewrite")
-            .write_stdin(input.to_string())
-            .output()
-            .unwrap();
-        let text = String::from_utf8_lossy(&out.stdout).to_string();
-        (!text.trim().is_empty()).then(|| serde_json::from_str(&text).unwrap())
+        run_hook_with(&[], &input, home.path(), &[], &["CLAUDE_CONFIG_DIR"], None)
     };
     assert_eq!(decision(&run(Some("Bash")).unwrap()), Some("allow"));
     assert_eq!(decision(&run(None).unwrap()), Some("allow"));
