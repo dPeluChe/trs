@@ -369,7 +369,7 @@ project's `allow` counts only when the folder is trusted (deny/ask always count)
 | Devin CLI | `~/.config/devin/config.json`, `.devin/config{,.local}.json` | Skip on deny/ask, Allow if all parts match `Exec(...)`, else Defer | org rules, dangerous mode, trust |
 | Cursor | `Shell(...)` deny rules in `$CURSOR_CONFIG_DIR` or `~/.cursor/cli-config.json`, and a project's `.cursor/cli.json` (read, not verified live) | Skip on deny, else rewrite with no decision (a hook `allow` never approves nor beats a deny) | `ask` rules (no effect seen) |
 | Copilot CLI / VS Code | none readable | no `allow` is sent; `--deny-tool` flags and VS Code auto-approve settings are invisible | flags |
-| OpenCode 2.x | `permission.bash` via `ctx.permission.assert` | plugin asks about the original segments (`trs rewrite --segments`, a JSON array) before rewriting | 1.x config shape |
+| OpenCode 2.x | `permission.bash` via `ctx.permission.assert` | plugin asks about the original segments (`trs rewrite --json`, rewrite and segments in one spawn) before rewriting | 1.x config shape |
 | Kilo / OpenCode 1.x | `client.config.get()` | rewrite only if no ask/deny rule for `bash` | |
 | Pi | none (no permission engine) | rewrite lives only in the bash `spawnHook`; never mutate `event.input` so user gates see the original | |
 | Antigravity | n/a | rules file only; agy 1.4.12 has its own `hooks.json` with `decision`/`overwrite`, unused by trs | |
