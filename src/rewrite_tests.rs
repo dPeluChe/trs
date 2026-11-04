@@ -82,7 +82,7 @@ fn test_hook_response_cursor_format() {
         }"#,
     );
     let out = build_hook_response(&input, None).expect("should rewrite");
-    assert_eq!(out["permission"], serde_json::json!("allow"));
+    assert!(out["permission"].is_null());
     assert_eq!(
         out["updated_input"]["command"],
         serde_json::json!(agent_cmd("cursor", "trs git status"))
@@ -165,14 +165,15 @@ fn test_hook_response_gemini_format() {
         r#"{
             "hook_event_name":"BeforeTool",
             "tool_name":"run_shell_command",
-            "tool_input":{"command":"git status"}
+            "tool_input":{"command":"cargo build"}
         }"#,
     );
     let out = build_hook_response(&input, None).expect("should rewrite");
-    assert_eq!(out["decision"], serde_json::json!("allow"));
+    // Gemini ignores a hook `allow`, so none is sent.
+    assert!(out["decision"].is_null());
     assert_eq!(
         out["hookSpecificOutput"]["tool_input"]["command"],
-        serde_json::json!(agent_cmd("gemini", "trs git status"))
+        serde_json::json!(agent_cmd("gemini", "trs cargo build"))
     );
     assert!(out["hookSpecificOutput"]["updatedInput"].is_null());
 }
@@ -318,4 +319,35 @@ fn copilot_cli_is_told_apart_from_vscode_by_its_env_marker() {
     // Only the shared file's label is refined; other callers are left alone.
     assert_eq!(label_for_host("claude", Some("1")), "claude");
     assert_eq!(known_agent_label("copilot-cli"), Some("copilot-cli"));
+}
+
+#[test]
+fn a_trailing_comment_is_text_not_commands() {
+    use crate::rewrite_decide::maybe_rewrite;
+    assert_eq!(
+        maybe_rewrite("git status # && git log").as_deref(),
+        Some("trs git status # && git log")
+    );
+    assert_eq!(maybe_rewrite("echo a # x && git status"), None);
+    assert_eq!(maybe_rewrite("# just a note"), None);
+    // `#` inside quotes or glued to a word is not a comment.
+    assert_eq!(
+        maybe_rewrite("git log --grep='#12'").as_deref(),
+        Some("trs git log --grep='#12'")
+    );
+    assert_eq!(
+        maybe_rewrite("git log $#").as_deref(),
+        Some("trs git log $#")
+    );
+}
+
+#[test]
+fn git_inside_a_claude_worktree_is_left_unwrapped() {
+    let wt = Some("/repo/.claude/worktrees/feat/src");
+    assert!(git_in_claude_worktree(wt, "git status"));
+    assert!(git_in_claude_worktree(wt, "cd x && FOO=1 git log -3"));
+    assert!(git_in_claude_worktree(wt, "/usr/bin/git diff"));
+    assert!(!git_in_claude_worktree(wt, "cargo test"));
+    assert!(!git_in_claude_worktree(Some("/repo/src"), "git status"));
+    assert!(!git_in_claude_worktree(None, "git status"));
 }

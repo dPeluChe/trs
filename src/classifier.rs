@@ -23,14 +23,15 @@ pub(crate) use crate::exec::build_command;
 
 pub(crate) use crate::classifier_args::preprocess_tail_args;
 use crate::classifier_args::{
-    has_structured_output_flag, strip_git_global_opts, unwrap_shell_c, unwrap_timeout,
+    has_structured_output_flag, is_help_request, strip_git_global_opts, unwrap_shell_c,
+    unwrap_timeout,
 };
 
 /// Classify an external command into the parser to pipe through, or None
 /// for passthrough (generic compression).
 pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseCommands> {
     // If user explicitly requests structured output, don't parse — passthrough
-    if has_structured_output_flag(args) {
+    if has_structured_output_flag(args) || is_help_request(cmd, args) {
         return None;
     }
 

@@ -14,12 +14,13 @@
 use std::io::Read;
 
 use crate::rewrite_decide::{looks_like_env_assignment, maybe_rewrite};
+use crate::rewrite_gate::Gate;
 
 /// Run the rewrite logic. Called from main.rs. `agent_flag` is the
 /// `--caller <label>` set by the installing hook template — the
 /// shell-agnostic attribution channel (the `TRS_AGENT=x` command prefix is
 /// POSIX-only; PowerShell/cmd parse it as a bogus command name).
-pub(crate) fn run_rewrite(agent_flag: Option<&str>) {
+pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool) {
     let mut input = String::new();
     if std::io::stdin().read_to_string(&mut input).is_err() {
         return;
@@ -27,6 +28,12 @@ pub(crate) fn run_rewrite(agent_flag: Option<&str>) {
 
     let input = input.trim();
     if input.is_empty() {
+        return;
+    }
+
+    if segments {
+        let segs = crate::rewrite_permissions::split_segments(input);
+        println!("{}", serde_json::json!(segs));
         return;
     }
 
@@ -164,7 +171,7 @@ impl HookEvent {
 /// different output shapes:
 ///   Claude Code → hookSpecificOutput.updatedInput.command
 ///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
-///   Cursor      → top-level `permission` + top-level `updated_input.command`
+///   Cursor      → top-level `updated_input.command` (a hook `allow` never approves)
 fn build_hook_response(
     json: &serde_json::Value,
     agent_flag: Option<&str>,
@@ -198,45 +205,69 @@ fn build_hook_response(
 
     // Bypass telemetry — log the agent-attributed observation before the
     // short-circuit so `stats --by-agent` can surface per-agent rates.
+    let label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
     if cmd_bypasses_trs(cmd) {
-        crate::tracker::log_bypass(
-            cmd,
-            Some(flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()))),
-        );
+        crate::tracker::log_bypass(cmd, Some(label));
         return None;
     }
 
+    // Cheap decisions first: the gate below reads the agent's settings files.
     let rewritten = maybe_rewrite(cmd)?;
-    let rewritten = tag_with_agent(
-        &rewritten,
-        flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label())),
-    );
+    if git_in_claude_worktree(json.get("cwd").and_then(|v| v.as_str()), cmd) {
+        return None;
+    }
+    // Agents match their permission rules against the rewritten command, so
+    // the hook applies them to the original one (rewrite_gate.rs).
+    let gate = crate::rewrite_gate::gate_for(label, cmd, json);
+    if gate == Gate::Skip {
+        return None;
+    }
+    let rewritten = tag_with_agent(&rewritten, label);
 
     let response = match event {
         // Handled above; kept here so the match stays exhaustive if the
         // early return ever moves.
         HookEvent::Unknown => return None,
+        // Gemini ignores a hook `decision: "allow"`; the rewrite applies without one.
         HookEvent::GeminiBeforeTool => serde_json::json!({
             "systemMessage": "trs auto-rewrite",
-            "decision": "allow",
             "hookSpecificOutput": {
                 "tool_input": { "command": rewritten }
             }
         }),
         HookEvent::CursorPreToolUse => serde_json::json!({
-            "permission": "allow",
             "updated_input": { "command": rewritten }
         }),
-        HookEvent::ClaudePreToolUse => serde_json::json!({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "allow",
-                "permissionDecisionReason": "trs auto-rewrite",
-                "updatedInput": { "command": rewritten }
+        HookEvent::ClaudePreToolUse => {
+            let mut out = serde_json::json!({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "updatedInput": { "command": rewritten }
+                }
+            });
+            if gate == Gate::Allow {
+                out["hookSpecificOutput"]["permissionDecision"] = "allow".into();
+                out["hookSpecificOutput"]["permissionDecisionReason"] = "trs auto-rewrite".into();
             }
-        }),
+            out
+        }
     };
     Some(response)
+}
+
+/// Claude's worktree guard refuses `trs git …` inside `.claude/worktrees/*`
+/// ("cannot be shown not to be git"), so git commands there run unwrapped.
+fn git_in_claude_worktree(cwd: Option<&str>, cmd: &str) -> bool {
+    let in_worktree = cwd.is_some_and(|c| c.replace('\\', "/").contains("/.claude/worktrees/"));
+    in_worktree
+        && crate::rewrite_permissions::split_segments(cmd)
+            .iter()
+            .any(|seg| {
+                crate::rewrite_permissions::strip_env(seg)
+                    .split_whitespace()
+                    .next()
+                    .is_some_and(|w| crate::text_util::cmd_basename(w) == "git")
+            })
 }
 
 /// True when `cmd` is bypassing trs via a `TRS_SKIP=` or `TRS_DISABLE=`

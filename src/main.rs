@@ -71,6 +71,14 @@ mod reducer;
 mod report;
 mod rewrite;
 mod rewrite_decide;
+mod rewrite_gate;
+mod rewrite_perm_codex;
+mod rewrite_perm_cursor;
+mod rewrite_perm_devin;
+mod rewrite_perm_droid;
+mod rewrite_perm_gemini;
+mod rewrite_permissions;
+mod rewrite_rules;
 mod router;
 mod safe_folds;
 #[allow(dead_code)]
@@ -178,8 +186,8 @@ fn run() {
     let router = Router::new();
 
     match &cli.command {
-        Some(Commands::Rewrite { caller }) => {
-            rewrite::run_rewrite(caller.as_deref());
+        Some(Commands::Rewrite { caller, segments }) => {
+            rewrite::run_rewrite(caller.as_deref(), *segments);
         }
         Some(Commands::Discover { all, since }) => {
             discover::run_discover(*all, *since);

@@ -67,7 +67,7 @@ output shapes. `src/rewrite.rs::HookEvent` dispatches on the
 |---|---|---|
 | `PreToolUse` (capital P) | Claude Code | `hookSpecificOutput.updatedInput.command` |
 | `BeforeTool` | Gemini CLI | `hookSpecificOutput.tool_input.command` + top-level `decision` |
-| `preToolUse` (lowercase p) | Cursor | top-level `permission` + top-level `updated_input.command` |
+| `preToolUse` (lowercase p) | Cursor | top-level `updated_input.command` (no `permission`) |
 | *missing / unknown* | fallback | Claude format |
 
 Claude's `PreToolUse` and Cursor's `preToolUse` differ ONLY by case. If you
@@ -117,7 +117,28 @@ show up as `claude` in attribution today.
 | Template | `CLAUDE_HOOKS` |
 | Test prompt | hook-based |
 
-No known quirks. Canonical client: we treat its format as the default.
+Canonical client: we treat its format as the default. One quirk, permissions:
+Claude Code matches `permissions.allow/ask/deny` against the command **after**
+the hook rewrote it (checked on a real Claude Code with a rewriting hook), and a
+hook `permissionDecision: "allow"` overrides them. A blanket `allow` therefore
+ran `git push` even with `deny: Bash(git push:*)`, and a plain rewrite made a
+user's `allow: Bash(git status:*)` stop matching `trs git status`. So for the
+`claude` label, `src/rewrite_permissions.rs` reads the user's rules and applies
+them to the **original** command (every `&&`/`||`/`;`/`|` part):
+
+| Original command | Hook does |
+|---|---|
+| matches a `deny` or `ask` rule | no rewrite, Claude handles the original |
+| every part matches an `allow` rule or is read-only (`ls`, `cat`, `git status`, …) | rewrite and `allow` |
+| anything else | rewrite, no decision: Claude's own prompt applies |
+| a settings file exists but cannot be parsed | no rewrite (fail closed) |
+
+Sources: `~/.claude` (or `CLAUDE_CONFIG_DIR`), managed settings, and
+`.claude/settings{,.local}.json` from the cwd upwards. A project's `allow` counts
+only when `~/.claude.json` marks the folder trusted (Claude ignores it
+otherwise); its `deny`/`ask` always count. Rules passed with `--settings` are
+invisible to the hook. The other agents each have their own gate, see
+[Permissions per agent](#permissions-per-agent).
 
 ### Gemini CLI
 
@@ -187,7 +208,7 @@ Output envelope is identical to Claude Code.
 | Hook key 1.x | `"tool.execute.before"` (string literal, not `before_tool_call`) |
 | Hook key 2.x | `ctx.tool.hook("execute.before")` and `ctx.shell.hook("create.before")` |
 | Tool name check | 1.x `input.tool === "bash"`, 2.x `input.tool === "shell"` |
-| Mutation | 1.x `output.args.command = "trs ..."`, 2.x `input.input = { ...input.input, command: "trs ..." }` |
+| Mutation | 1.x `output.args.command = viaTrs(cmd)`, 2.x `input.input = { ...input.input, command: viaTrs(cmd) }` |
 | Template | `OPENCODE_PLUGIN` (one default export serves both) |
 | Docs | https://opencode.ai/docs/plugins/ |
 
@@ -200,6 +221,13 @@ Output envelope is identical to Claude Code.
   never runs, so nothing is routed through trs. 1.x (checked on 1.19.3) reads
   `server` from the same default export, so the template defines both.
   `trs doctor` flags a plugin file without `export default`.
+- The plugin does not decide what to wrap. `viaTrs` pipes the command into
+  `trs rewrite` (plain-text mode) and uses its answer, so pipes, redirects,
+  `$(...)` and bypass prefixes behave as for the hook agents (a blind
+  `trs ${cmd}` made `ls | wc -l` read compressed text). It fails open: no
+  `trs` on PATH, a timeout or an error keeps the original command. Kilo, Pi,
+  OpenClaw and Hermes use the same helper; `tests/cli_plugin_templates.rs`
+  runs it. `trs doctor` flags a plugin written before this.
 - 2.x env hook: `shell.create.before` fires for every shell, including the
   user's own `!cmd`; the tool hook is the only one that sees the agent's.
 - Older docs showed `before_tool_call` hook with `ctx.tool` / `ctx.input`;
@@ -249,11 +277,9 @@ trusted), trs falls back to the `~/.codex/AGENTS.md` block instructing
 Codex to prefix `trs`. Prefixing is always safe: trs never
 double-wraps a command already starting with `trs`.
 
-**Caveat.** `codex exec` (non-interactive) does NOT dispatch
-`PreToolUse`; the hook only fires in interactive sessions. (Issue
-openai/codex#18491 remains open but only concerns `read_file`/`grep`
-hook dispatch, which trs doesn't use. It is not an `updatedInput`
-limitation.)
+**Caveat.** `codex exec` dispatches `PreToolUse` too (verified on 0.166),
+but only once the hook is trusted (`[hooks.state]` in `config.toml`, or
+`--dangerously-bypass-hook-trust`); an untrusted hook silently does not run.
 
 Validate with the hook-based test prompt on ≥ 0.134, or the rules-based
 test prompt on the fallback (see `docs/agent-test-prompts.md` section
@@ -275,6 +301,10 @@ Empirical testing against agy v1.0.1 showed user-defined entries in
 go through `Step_RunCommand` and bypass the user-visible PreToolHook
 pipeline entirely. The full investigation lives at
 [`docs/development/antigravity-hooks-research.md`](antigravity-hooks-research.md).
+
+**Update (agy 1.4.12).** "Rules-only" is stale for the CLI: it now has its own
+`hooks.json` with `decision`/`overwrite` replies. trs does not use it yet
+(TASK_TODO P3); until then the rules file stays the integration.
 
 **Detection**:
 - IDE: `app_exists("Antigravity")` ∨ `~/.gemini/antigravity-ide/`
@@ -316,6 +346,53 @@ for the exact checklist.
 
 Windsurf Cascade has no pre-execution hook: rules-based voluntary
 adoption only (like Codex's fallback on older builds).
+
+## Permissions per agent
+
+Most agents match their permission rules against the command **after** the
+rewrite, so `git push` becomes `TRS_AGENT=x trs git push` and a user's
+`deny: git push` or `allow: git status` stops matching. A hook `allow` can also
+skip the rules entirely. Each agent therefore has a gate
+(`src/rewrite_gate.rs`, one `src/rewrite_perm_<agent>.rs` per host) that reads
+the user's rules and applies them to the **original** command. Outcomes:
+`Skip` (no rewrite, the agent handles the original), `Allow` (rewrite and
+approve), `Defer` (rewrite, no decision, the agent's own prompt applies). Every
+gate fails closed: an unreadable or unknown rule file means `Skip`, and a
+project's `allow` counts only when the folder is trusted (deny/ask always count).
+
+| Agent | Rules read | Gate result | Unverified |
+|---|---|---|---|
+| Claude Code | `settings{,.local}.json`, managed | Skip / Allow / Defer | `--settings` rules invisible |
+| Codex | `$CODEX_HOME/rules/*.rules`, trusted `.codex/rules` | Skip on any matching rule, else Allow (Codex needs the allow for `updatedInput`) | managed `requirements.toml`, `--ignore-rules` |
+| Factory Droid | `commandAllowlist/Denylist/Blocklist` in `~/.factory`, project settings, the managed `settings.json` and the cached org settings | Skip on deny/block, Allow if all parts listed, Defer only in `auto-high`, else Skip; Skip when `permissionRules` is present | `--settings` overlays, org cache file, `permissionRules` format |
+| Gemini CLI | `settings.json`, `policies/*.toml`, trusted project settings | never Allow (Gemini ignores a hook allow); Skip on deny/ask, narrow `tools.allowed`, or read-only commands | system settings, admin policies, `-y` |
+| Devin CLI | `~/.config/devin/config.json`, `.devin/config{,.local}.json` | Skip on deny/ask, Allow if all parts match `Exec(...)`, else Defer | org rules, dangerous mode, trust |
+| Cursor | `Shell(...)` deny rules in `$CURSOR_CONFIG_DIR` or `~/.cursor/cli-config.json` | Skip on deny, else rewrite with no decision (a hook `allow` never approves nor beats a deny) | `ask` rules (no effect seen), project `.cursor/cli.json` |
+| Copilot CLI / VS Code | none readable | no `allow` is sent; `--deny-tool` flags and VS Code auto-approve settings are invisible | flags |
+| OpenCode 2.x | `permission.bash` via `ctx.permission.assert` | plugin asks about the original segments (`trs rewrite --segments`, a JSON array) before rewriting | 1.x config shape |
+| Kilo / OpenCode 1.x | `client.config.get()` | rewrite only if no ask/deny rule for `bash` | |
+| Pi | none (no permission engine) | rewrite lives only in the bash `spawnHook`; never mutate `event.input` so user gates see the original | |
+| Antigravity | n/a | rules file only; agy 1.4.12 has its own `hooks.json` with `decision`/`overwrite`, unused by trs | |
+
+Notes:
+
+- **Gemini**: read-only commands (`git status`, `ls`) are skipped, because
+  Gemini auto-allows them (the list reuses Claude's; Gemini's own safe set is unverified) and the rewrite would add a prompt. `tools.exclude`
+  and `confirmationRequired` do not narrow in 0.63; only TOML policies express
+  a narrow deny or ask.
+- **Droid**: a rewritten command loses its `riskLevel` (counts as high), so
+  outside `auto-high` an unlisted command is not rewritten. Verified live on Droid 1.2.0: the denylist
+  is matched on the rewritten text and a hook `allow` skips it; the blocklist is
+  not skipped; the allowlist is matched on the original; a project's legacy
+  lists count without folder trust.
+- **Codex**: `FOO=1 cmd` and `trs cmd` do not match a `["cmd"]` rule, hence the
+  gate. A malformed `.rules` file stops Codex from starting at all.
+- **OpenCode 2.x**: one `assert` call with all segments as `resources`, so a
+  deny on any segment denies the command and the user sees a single prompt. A
+  `permission.evaluate` hook turns the follow-up ask into allow for calls
+  already approved.
+- **Copilot CLI**: a hook `allow` overrides `--deny-tool`, even for rules that
+  match the rewritten text, so trs no longer sends it.
 
 ## Test prompts
 
