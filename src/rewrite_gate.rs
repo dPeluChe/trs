@@ -16,14 +16,17 @@ pub(crate) enum Gate {
 }
 
 pub(crate) fn gate_for(label: &str, cmd: &str, json: &Value) -> Gate {
-    let cwd = json.get("cwd").and_then(|v| v.as_str());
+    let cwd = json
+        .get("cwd")
+        .or_else(|| json.pointer("/workspace_roots/0"))
+        .and_then(|v| v.as_str());
     let mode = json.get("permission_mode").and_then(|v| v.as_str());
     match label {
         "claude" => crate::rewrite_permissions::gate(cmd, cwd),
         "codex" => crate::rewrite_perm_codex::gate(cmd, cwd),
         "droid" => crate::rewrite_perm_droid::gate(cmd, cwd, mode),
         "devin-cli" => crate::rewrite_perm_devin::gate(cmd, cwd),
-        "cursor" => crate::rewrite_perm_cursor::gate(cmd),
+        "cursor" => crate::rewrite_perm_cursor::gate(cmd, cwd),
         "gemini" => crate::rewrite_perm_gemini::gate(cmd, cwd),
         // Rules this hook cannot read (flags, IDE settings) or an agent not
         // verified yet: rewrite, but never send an approval of our own.

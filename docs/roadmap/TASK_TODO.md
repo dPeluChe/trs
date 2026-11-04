@@ -79,22 +79,21 @@ Do not name those projects in commits, docs or the changelog when shipping these
 
 ### P2: small and cheap
 
-- [ ] **Tier-3 passthrough keeps only the head** (`src/classifier_exec.rs` ~line 205): an error at the end is lost. Keep head + tail + signal lines.
-- [ ] **Runtime anchor guard**: when a cut is 90% or more and fewer than 70% of the anchors survive (paths, file:line, hashes, error lines; extraction exists in `docs/development/benchmarks/truth.py`), fall back to the original or add the tee path. Targets the `git show --stat` row (91% cut, 67% anchors). Gate by size to limit latency.
-- [ ] **`trs stats`**: leave rows above ~30,000 chars out of the headline (the agent never saw the rest of them), leave failed runs out of the percentages (the known "100% saved" defect), and add a recall rate (a later read of a `[trs] full output:` path). Also check that `stats`, `--by-agent`, the reports and the site claims share one computation.
-- [ ] **Atomic, locked writes for the `AGENTS.md` / `CLAUDE.md` block injection**: a similar tool lost a 16 KB file to two concurrent `init` runs. trs has no lock or temp-file rename in the init path (`init_install*.rs`). Refuse to write if text outside the block would be lost.
-- [ ] **Tests**: determinism sweep (every parser fixture twice, identical bytes; check `HashMap` use in `types/fs.rs`), compression ratchet (per-fixture ratio and handler in a JSON baseline, fail on a drop over 2 points or a routing change, `tests/cli_compression_ratchet.rs`), and `must_preserve` literals on the failure fixtures.
-- [ ] **Token estimator**: bytes/4 (`src/reducer/output.rs:31`, `router/handlers/common.rs:128`) may overstate percentages by ~25% against a calibrated divisor. Measure the divisor or label the figures "est.".
-- [ ] **Stale doc**: `docs/support/other-token-savers.md` describes one tool as "Node-based compressor, global npm package", which is wrong.
-- [ ] **Hook command strings on Windows**: check the Codex/Copilot hook commands run under PowerShell as well as cmd.exe (a similar tool had "hook exited with code 1" there).
+- [x] **Tier-3 passthrough keeps only the head**: now head + tail + error lines (`src/passthrough_cut.rs`).
+- [x] **Runtime anchor guard** (`src/anchor_guard.rs`, points at the saved raw output instead of falling back): when a cut is 90% or more and fewer than 70% of the anchors survive (paths, file:line, hashes, error lines; extraction exists in `docs/development/benchmarks/truth.py`), fall back to the original or add the tee path. Targets the `git show --stat` row (91% cut, 67% anchors). Gate by size to limit latency.
+- [~] **`trs stats`** (failed and oversized runs are left out now, `ok` field in the history; recall rate still open): leave rows above ~30,000 chars out of the headline (the agent never saw the rest of them), leave failed runs out of the percentages (the known "100% saved" defect), and add a recall rate (a later read of a `[trs] full output:` path). Also check that `stats`, `--by-agent`, the reports and the site claims share one computation.
+- [x] **Atomic writes (no lock; a changed file is refused) for the `AGENTS.md` / `CLAUDE.md` block injection**: a similar tool lost a 16 KB file to two concurrent `init` runs. trs has no lock or temp-file rename in the init path (`init_install*.rs`). Refuse to write if text outside the block would be lost.
+- [x] **Tests** (`tests/cli_compression_ratchet.rs`; the `HashMap` in find fixed): determinism sweep (every parser fixture twice, identical bytes; check `HashMap` use in `types/fs.rs`), compression ratchet (per-fixture ratio and handler in a JSON baseline, fail on a drop over 2 points or a routing change, `tests/cli_compression_ratchet.rs`), and `must_preserve` literals on the failure fixtures.
+- [x] **Token estimator** (stats prints a note that token figures are estimates): bytes/4 (`src/reducer/output.rs:31`, `router/handlers/common.rs:128`) may overstate percentages by ~25% against a calibrated divisor. Measure the divisor or label the figures "est.".
+- [x] **Stale doc**: `docs/support/other-token-savers.md` describes one tool as "Node-based compressor, global npm package", which is wrong.
+- [~] **Hook command strings on Windows** (all are plain `trs rewrite [--caller x]`, no shell syntax; live PowerShell check still open): check the Codex/Copilot hook commands run under PowerShell as well as cmd.exe (a similar tool had "hook exited with code 1" there).
 - [ ] **Permission gates, follow-ups from the simplify, review and live checks (2026-11-04)**:
   - One `AgentPolicy` table (label, gate, response shape) instead of editing `known_agent_label`, `agent_label_from` and `gate_for` per agent. Legacy installs without `--caller` fall back to the `claude` label (an old Droid/Devin hook gets Claude's gate): send an allow only for a positively identified agent.
   - JS plugins: `trs rewrite --json` returning rewrite, segments and gate in one spawn (OpenCode 2.x spawns twice); cache `client.config.get` per directory; async `spawn` instead of `spawnSync`.
   - Inject config roots instead of `cfg!(test)` branches in the gates (Droid and Gemini already do).
   - `trs doctor` checks for the OpenClaw and Hermes plugins (the blind `trs ` prefix copies are the bug this branch fixes).
-  - `-h` as a real option (`git grep -h`, `eza -h`, `rsync -h`) is treated as help and left unwrapped; check it after env and wrapper prefixes.
-  - Droid: parse `permissionRules` instead of skipping the rewrite when it is present; `--settings` / `FACTORY_RUNTIME_SETTINGS_PATH` overlays are invisible to the hook.
-  - Cursor: `ask` Shell rules had no effect on 2026.10.22; project `.cursor/cli.json` unverified; `Shell(cmd args)` is an exact match in Cursor, the gate over-matches by prefix (fails safe).
+  - Droid: the `--settings` flag overlay is invisible to the hook (the env overlay is read now).
+  - Cursor: `ask` Shell rules had no effect on 2026.10.22; project `.cursor/cli.json` is read but not verified live; `Shell(cmd args)` is an exact match in Cursor, the gate over-matches by prefix (fails safe).
   - Gemini: its own auto-allowed command set is not Claude's `read_only` list; verify and use its own.
 
 ### P3: measure before claiming

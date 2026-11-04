@@ -40,6 +40,7 @@ fn recent_efficiency_ignores_an_old_outlier() {
         cwd: String::new(),
         agent: None,
         bypass: None,
+        ok: None,
     };
     let entries = vec![
         e(21, 380_000_000, 370_000_000), // the aws-shaped week: ~3% saved
@@ -55,4 +56,24 @@ fn recent_efficiency_ignores_an_old_outlier() {
 
     // Empty window reports nothing rather than a fake 0%.
     assert!(efficiency_since(&entries, now, 0).is_none());
+}
+
+#[test]
+fn failed_and_oversized_runs_stay_out_of_the_totals() {
+    let e = |in_bytes: usize, ok: Option<bool>| HistoryEntry {
+        ts: 0,
+        cmd: "x".into(),
+        in_bytes,
+        out_bytes: 0,
+        saved_pct: 100,
+        ms: 0,
+        cwd: String::new(),
+        agent: None,
+        bypass: None,
+        ok,
+    };
+    assert!(e(500, None).counts_toward_totals());
+    assert!(e(500, Some(true)).counts_toward_totals());
+    assert!(!e(500, Some(false)).counts_toward_totals());
+    assert!(!e(30_001, None).counts_toward_totals());
 }

@@ -64,7 +64,7 @@ pub(crate) fn install_agent_with_home(
                     "\n"
                 };
                 let updated = format!("{}{}{}\n", existing, sep, import_line);
-                fs::write(&root_path, updated)
+                crate::fs_atomic::write_if_unchanged(&root_path, &existing, &updated)
                     .map_err(|e| format!("{}: {}", root_path.display(), e))?;
             }
             // The `@import` line into the root config is an implementation
@@ -122,7 +122,8 @@ pub(crate) fn install_agent_with_home(
             } else {
                 format!("{}{}", existing.trim_end(), sentinel_wrapped())
             };
-            fs::write(&path, updated).map_err(|e| format!("{}: {}", path.display(), e))?;
+            crate::fs_atomic::write_if_unchanged(&path, &existing, &updated)
+                .map_err(|e| format!("{}: {}", path.display(), e))?;
             Ok(format!(
                 "updated {}",
                 crate::path_display::tilde(&path.display().to_string())
@@ -165,7 +166,7 @@ pub(crate) fn remove_agent_with_home(
                 } else {
                     stripped
                 };
-                fs::write(&root_path, final_content)
+                crate::fs_atomic::write_if_unchanged(&root_path, &existing, &final_content)
                     .map_err(|e| format!("{}: {}", root_path.display(), e))?;
             }
             Ok(format!("removed {} and import line", saver_path.display()))
@@ -203,8 +204,12 @@ pub(crate) fn remove_agent_with_home(
             let existing = fs::read_to_string(&path).unwrap_or_default();
             if existing.contains(SENTINEL_START) && existing.contains(SENTINEL_END) {
                 let stripped = replace_between(&existing, SENTINEL_START, SENTINEL_END, "");
-                fs::write(&path, stripped.trim_end_matches('\n').to_string() + "\n")
-                    .map_err(|e| format!("{}: {}", path.display(), e))?;
+                crate::fs_atomic::write_if_unchanged(
+                    &path,
+                    &existing,
+                    &(stripped.trim_end_matches('\n').to_string() + "\n"),
+                )
+                .map_err(|e| format!("{}: {}", path.display(), e))?;
                 Ok(format!(
                     "removed output-saver block from {}",
                     path.display()

@@ -95,3 +95,21 @@ pub(crate) fn word_prefix(cmd: &str, prefix: &str) -> bool {
 pub(crate) fn is_trusted(dir: &Path, trusted: &[PathBuf]) -> bool {
     dir.ancestors().any(|a| trusted.iter().any(|t| t == a))
 }
+
+/// Every dir from cwd up to the git root (or cwd), minus `skip` (the user's home).
+pub(crate) fn project_dirs(cwd: &Path, skip: Option<&Path>) -> Vec<PathBuf> {
+    let root = cwd
+        .ancestors()
+        .find(|d| d.join(".git").exists())
+        .unwrap_or(cwd);
+    let mut dirs = Vec::new();
+    for d in cwd.ancestors() {
+        if Some(d) != skip {
+            dirs.push(d.to_path_buf());
+        }
+        if d == root {
+            break;
+        }
+    }
+    dirs
+}

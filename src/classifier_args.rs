@@ -145,17 +145,31 @@ pub(crate) fn unwrap_timeout(args: &[String]) -> Option<Vec<String>> {
 
 /// Programs where `-h` is a real option (human-readable sizes, no filename).
 const H_IS_AN_OPTION: &[&str] = &[
-    "ls", "grep", "egrep", "fgrep", "du", "df", "free", "sort", "tree", "dir", "vdir",
+    "ls", "grep", "egrep", "fgrep", "du", "df", "free", "sort", "tree", "dir", "vdir", "eza",
+    "exa", "rsync",
 ];
 
 /// `cmd --help` / `cmd -h`: usage text, not a result. Parsing it misreads it
 /// (`gh pr list -h` came back as a PR count, `cargo test -h` as "ok").
 pub(crate) fn is_help_request<S: AsRef<str>>(cmd: &str, args: &[S]) -> bool {
     let program = crate::text_util::cmd_basename(cmd);
-    args.iter()
+    let args: Vec<&str> = args
+        .iter()
         .map(AsRef::as_ref)
         .take_while(|a| *a != "--")
-        .any(|a| a == "--help" || (a == "-h" && !H_IS_AN_OPTION.contains(&program)))
+        .collect();
+    if args.contains(&"--help") {
+        return true;
+    }
+    if !args.contains(&"-h") {
+        return false;
+    }
+    // `git grep -h` drops the filename; every other `git <sub> -h` is usage.
+    let git_grep = program == "git" && {
+        let owned: Vec<String> = args.iter().map(|a| a.to_string()).collect();
+        strip_git_global_opts(&owned).first().map(String::as_str) == Some("grep")
+    };
+    !(git_grep || H_IS_AN_OPTION.contains(&program))
 }
 
 /// Check if the command args contain flags that indicate structured output.

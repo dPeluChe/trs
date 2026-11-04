@@ -54,7 +54,7 @@ pub(crate) fn install_openclaw_plugin(opts: InstallOpts) -> Result<String, Strin
         } else {
             ensure_parent(&config_path)?;
             let pretty = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
-            fs::write(&config_path, format!("{}\n", pretty))
+            crate::fs_atomic::write_atomic(&config_path, &format!("{}\n", pretty))
                 .map_err(|e| format!("Cannot write {}: {}", config_path.display(), e))?;
             println!("  enabled plugins.entries.trs in {}", config_path.display());
         }
@@ -102,7 +102,7 @@ pub(crate) fn install_hermes_plugin(opts: InstallOpts) -> Result<String, String>
                 );
             } else {
                 ensure_parent(&config_path)?;
-                fs::write(&config_path, new_config)
+                crate::fs_atomic::write_atomic(&config_path, &new_config)
                     .map_err(|e| format!("Cannot write {}: {}", config_path.display(), e))?;
                 println!(
                     "  added trs-rewrite to plugins.enabled in {}",
@@ -146,7 +146,8 @@ fn write_plugin_file(path: &Path, content: &str, opts: InstallOpts) -> Result<bo
             println!("  {} (would refresh trs plugin)", path.display());
             return Ok(true);
         }
-        fs::write(path, content).map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
+        crate::fs_atomic::write_atomic(path, content)
+            .map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
         println!("  {} (refreshed)", path.display());
         return Ok(true);
     }
@@ -155,7 +156,8 @@ fn write_plugin_file(path: &Path, content: &str, opts: InstallOpts) -> Result<bo
         return Ok(true);
     }
     ensure_parent(path)?;
-    fs::write(path, content).map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
+    crate::fs_atomic::write_atomic(path, content)
+        .map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
     println!("  {} (created)", path.display());
     Ok(true)
 }

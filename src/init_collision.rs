@@ -393,7 +393,7 @@ pub(crate) fn scrub_file(path: &Path) -> Result<bool, String> {
     if changed {
         let pretty =
             serde_json::to_string_pretty(&val).map_err(|e| format!("{}: {}", path.display(), e))?;
-        fs::write(path, format!("{}\n", pretty))
+        crate::fs_atomic::write_atomic(path, &format!("{}\n", pretty))
             .map_err(|e| format!("{}: {}", path.display(), e))?;
     }
     Ok(changed)

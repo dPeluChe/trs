@@ -42,7 +42,14 @@ fn usage_text_is_not_parsed_as_a_result() {
 
 #[test]
 fn the_hook_does_not_wrap_a_help_request() {
-    for cmd in ["cargo test --help", "gh pr list -h", "rg -h"] {
+    for cmd in [
+        "cargo test --help",
+        "gh pr list -h",
+        "rg -h",
+        "git log -h",
+        "FOO=1 gh pr list -h",
+        "sudo gh pr list -h",
+    ] {
         let out = Command::cargo_bin("trs")
             .unwrap()
             .arg("rewrite")
@@ -51,7 +58,14 @@ fn the_hook_does_not_wrap_a_help_request() {
             .unwrap();
         assert!(out.stdout.is_empty(), "{cmd} was wrapped");
     }
-    for cmd in ["grep -h foo a.txt", "ls -lh"] {
+    for cmd in [
+        "grep -h foo a.txt",
+        "ls -lh",
+        "git grep -h foo",
+        "git -C . grep -h foo",
+        "eza -h",
+        "rsync -h a b",
+    ] {
         let out = Command::cargo_bin("trs")
             .unwrap()
             .arg("rewrite")

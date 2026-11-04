@@ -95,3 +95,39 @@ fn a_projects_lists_count_without_folder_trust() {
     assert_eq!(decision(&run("git branch -D old").unwrap()), Some("allow"));
     assert!(run("git tag v1").is_none());
 }
+
+const RULES: &str = r#"{"permissionRules":{"version":1,"rules":[
+    {"id":"u/push","decision":"ask","match":{"prefix":["git","push"]}},
+    {"id":"u/make","decision":"allow","match":{"prefix":["make","test"]}}]}}"#;
+
+/// Droid 1.2.0 reads `permissionRules`; the hook applies them to the original command.
+#[test]
+fn permission_rules_stop_or_approve_the_rewrite() {
+    let (home, cwd) = setup();
+    write(home.path(), ".factory/settings.json", RULES);
+    assert!(hook(home.path(), cwd.path(), "git push origin main", "auto-high").is_none());
+    let v = hook(home.path(), cwd.path(), "make test -j4", "off").unwrap();
+    assert_eq!(decision(&v), Some("allow"));
+}
+
+#[test]
+fn a_runtime_settings_overlay_is_read() {
+    let (home, cwd) = setup();
+    write(
+        home.path(),
+        "overlay.json",
+        r#"{"commandDenylist":["make"]}"#,
+    );
+    let input = json!({
+        "hook_event_name": "PreToolUse", "tool_name": "Execute", "permission_mode": "auto-high",
+        "tool_input": { "command": "make all", "riskLevel": "low" }, "cwd": cwd.path(),
+    });
+    let overlay = home.path().join("overlay.json");
+    let run = |envs: &[(&str, &Path)]| {
+        let mut all = vec![("FACTORY_HOME_OVERRIDE", home.path())];
+        all.extend_from_slice(envs);
+        run_hook("droid", &input, home.path(), &all, &[], None)
+    };
+    assert!(run(&[("FACTORY_RUNTIME_SETTINGS_PATH", &overlay)]).is_none());
+    assert!(run(&[]).is_some());
+}

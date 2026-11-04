@@ -133,7 +133,8 @@ fn write_agents_md_block(path: &Path, opts: InstallOpts) -> Result<String, Strin
                     path.display()
                 ));
             }
-            fs::write(path, updated).map_err(|e| e.to_string())?;
+            crate::fs_atomic::write_if_unchanged(path, &content, &updated)
+                .map_err(|e| e.to_string())?;
             return Ok(format!("{} (refreshed)", path.display()));
         }
 
@@ -160,7 +161,8 @@ fn write_agents_md_block(path: &Path, opts: InstallOpts) -> Result<String, Strin
         }
         ensure_parent(path)?;
         let updated = format!("{}\n{}", content, CODEX_AGENTS_SECTION);
-        fs::write(path, updated).map_err(|e| e.to_string())?;
+        crate::fs_atomic::write_if_unchanged(path, &content, &updated)
+            .map_err(|e| e.to_string())?;
         return Ok(path.display().to_string());
     }
     if opts.dry_run {
@@ -226,7 +228,8 @@ pub(crate) fn install_antigravity_rules(opts: InstallOpts) -> Result<String, Str
                     path.display()
                 ));
             }
-            fs::write(&path, updated).map_err(|e| e.to_string())?;
+            crate::fs_atomic::write_if_unchanged(&path, &content, &updated)
+                .map_err(|e| e.to_string())?;
             return Ok(format!("{} (refreshed)", path.display()));
         }
 
@@ -241,7 +244,8 @@ pub(crate) fn install_antigravity_rules(opts: InstallOpts) -> Result<String, Str
         }
         ensure_parent(&path)?;
         let updated = format!("{}\n{}", content, ANTIGRAVITY_RULES_SECTION);
-        fs::write(&path, updated).map_err(|e| e.to_string())?;
+        crate::fs_atomic::write_if_unchanged(&path, &content, &updated)
+            .map_err(|e| e.to_string())?;
     } else {
         if opts.dry_run {
             return Ok(format!(
@@ -273,7 +277,8 @@ pub(crate) fn install_rules(
             return Ok(format!("{} (would append trs rules)", path.display()));
         }
         let updated = format!("{}\n\n{}", existing.trim_end(), content);
-        fs::write(&path, updated).map_err(|e| e.to_string())?;
+        crate::fs_atomic::write_if_unchanged(&path, &existing, &updated)
+            .map_err(|e| e.to_string())?;
     } else {
         if opts.dry_run {
             return Ok(format!("{} (would create with trs rules)", path.display()));

@@ -1,6 +1,6 @@
 //! Filesystem-related data structures (ls, find) for command handlers.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 // ============================================================
 // LS Data Structures
@@ -102,7 +102,7 @@ pub(crate) struct FindOutput {
     /// Hidden entries.
     pub(crate) hidden: Vec<String>,
     /// File extensions with counts.
-    pub(crate) extensions: HashMap<String, usize>,
+    pub(crate) extensions: BTreeMap<String, usize>,
     /// Permission denied or error entries.
     pub(crate) errors: Vec<FindError>,
     /// Total count of entries (excluding errors).

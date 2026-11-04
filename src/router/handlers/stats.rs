@@ -123,6 +123,14 @@ pub fn handle_stats(input: &StatsInput) {
         None => entries,
     };
 
+    // `--history` lists every run; every other view shares one filtered set.
+    let all = entries.len();
+    let mut entries = entries;
+    if !input.history {
+        entries.retain(|e| e.counts_toward_totals());
+    }
+    let left_out = all - entries.len();
+
     if input.coverage {
         let limit = input.limit.unwrap_or(15);
         super::stats_coverage::print_coverage(
@@ -163,6 +171,12 @@ pub fn handle_stats(input: &StatsInput) {
     } else {
         let top_limit = input.limit.unwrap_or(DEFAULT_TOP_LIMIT);
         print_summary(&entries, top_limit, input.days);
+    }
+    if left_out > 0 && !input.history {
+        println!(
+            "\n{left_out} runs left out of the totals (failed, or over {} KB raw).",
+            tracker::HistoryEntry::TOTALS_MAX_BYTES / 1000
+        );
     }
 }
 

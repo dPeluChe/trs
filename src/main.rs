@@ -22,6 +22,7 @@
 use clap::Parser;
 
 mod ai_tool;
+mod anchor_guard;
 mod audit_docs;
 mod audit_docs_detect;
 mod audit_docs_report;
@@ -63,6 +64,7 @@ mod output_saver;
 mod output_saver_core;
 mod output_saver_write;
 mod parse_out;
+mod passthrough_cut;
 mod path_display;
 #[allow(dead_code)]
 mod process;
@@ -98,6 +100,7 @@ pub use commands::{Commands, ParseCommands, TestRunner};
 use classifier::preprocess_tail_args;
 use classifier_exec::execute_and_parse;
 mod fast_find;
+mod fs_atomic;
 mod read_intercept;
 use router::{CommandContext, Router};
 
