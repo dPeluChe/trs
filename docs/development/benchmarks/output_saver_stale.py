@@ -26,20 +26,34 @@ REPO = {
         "`make deploy` was removed. Run `./scripts/release.sh`.\n"
     ),
     "pyproject.toml": '[project]\nname = "orders-svc"\nversion = "2.6.0"\nrequires-python = ">=3.12"\n',
-    "src/defaults.py": "TIMEOUT = 30\nPORT = 8080\nMAX_ATTEMPTS = 3\n",
+    "setup.cfg": "[options]\npython_requires = >=3.9\n",
+    ".env.example": "APP_TIMEOUT=30\nAPP_PORT=8080\nTOKEN_TTL_MINUTES=15\n",
+    "config/overrides.json": '{"timeout": 45, "retries": 4, "port_offset": 1010, "dark_mode": false}\n',
+    "src/defaults.py": (
+        "TIMEOUT = 30\nPORT = 8080\nRETRIES = 2  # 3 attempts\n"
+        "TOKEN_TTL_MINUTES = 15\nDARK_MODE = True\n"
+    ),
     "src/settings.py": (
-        "import os\n\nfrom . import defaults\n\n"
-        "TIMEOUT = int(os.environ.get('APP_TIMEOUT', 45))\n"
-        "PORT = int(os.environ.get('APP_PORT', 9090))\n"
-        "MAX_ATTEMPTS = defaults.MAX_ATTEMPTS + 2\n"
+        "import json\nfrom pathlib import Path\n\nfrom . import defaults\n\n"
+        "_o = json.loads((Path(__file__).parent.parent / 'config/overrides.json').read_text())\n"
+        "TIMEOUT = _o.get('timeout', defaults.TIMEOUT)\n"
+        "RETRIES = _o.get('retries', defaults.RETRIES)\n"
+        "PORT = defaults.PORT + _o.get('port_offset', 0)\n"
+        "DARK_MODE = _o.get('dark_mode', defaults.DARK_MODE)\n"
     ),
     "src/client.py": (
-        "from .settings import MAX_ATTEMPTS, TIMEOUT\n\n\n"
-        "def call(send):\n    for _ in range(MAX_ATTEMPTS):\n"
+        "from .settings import RETRIES, TIMEOUT\n\n\n"
+        "def call(send):\n    for _ in range(1 + RETRIES):\n"
         "        r = send(timeout=TIMEOUT)\n        if r.ok:\n            return r\n"
     ),
-    "src/auth.py": "TOKEN_TTL_SECONDS = 3600\n",
-    "src/flags.py": "FLAGS = {'dark_mode': False, 'beta_search': False}\n",
+    "src/session.py": "SESSION_HOURS = 1\n\n\ndef ttl_seconds():\n    return SESSION_HOURS * 3600\n",
+    "src/auth.py": (
+        "from .session import ttl_seconds\n\n\n"
+        "def issue(user):\n    return {'sub': user, 'expires_in': ttl_seconds()}\n"
+    ),
+    "src/legacy_auth.py": "# Unused since 2.0.\nfrom .defaults import TOKEN_TTL_MINUTES\n\nTTL = TOKEN_TTL_MINUTES * 60\n",
+    "src/flags.py": "from .settings import DARK_MODE\n\nFLAGS = {'dark_mode': DARK_MODE, 'beta_search': False}\n",
+    "src/server.py": "from .settings import PORT\n\n\ndef serve(app):\n    app.bind(('0.0.0.0', PORT))\n",
     "src/routes.py": (
         "ROUTES = {\n    ('POST', '/orders'): 'gone_410',\n"
         "    ('POST', '/v2/orders'): 'create_order',\n}\n"
@@ -48,12 +62,18 @@ REPO = {
     "Makefile": "test:\n\tpython3 -m unittest\n",
 }
 
+# Filler so finding the override chain takes a search, not one listing.
+for _i in range(30):
+    REPO[f"src/mod_{_i:02d}.py"] = "".join(
+        f"def f{_i}_{j}(x):\n    \"\"\"Helper {j}.\"\"\"\n    return (x * {j + 2}) % {_i + 7}\n\n\n" for j in range(12)
+    )
+
 # task: (prompt, regex for the true value, regex for the stale value)
 FACTS = {
     "timeout": ("What is the default request timeout?", r"\b45\b", r"\b30\b"),
     "attempts": ("How many attempts does the client make per request?", r"\b5\b|\bfive\b", r"\b3\b|\bthree\b"),
     "port": ("Which port does this service listen on by default?", r"\b9090\b", r"\b8080\b"),
-    "ttl": ("How long do access tokens live?", r"\b3600\b|\b60 min|\b(1|one) hour", r"\b15\b"),
+    "ttl": ("How long do the access tokens this service issues live?", r"\b3600\b|\b60 min|\b(1|one) hour", r"\b15\b"),
     "flag": ("Is dark_mode on by default?", r"(?i)\b(no|off|false|disabled)\b", r"(?i)README|\bon by default"),
     "route": ("Which endpoint do I call to create an order?", r"/v2/orders", r"POST /orders"),
     "deploy": ("How do I deploy this service?", r"release\.sh", r"make deploy"),
