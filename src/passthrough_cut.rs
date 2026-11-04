@@ -3,53 +3,55 @@
 
 use crate::router::handlers::common_markers::is_error_line;
 
-/// `text` unchanged when it fits in `max` bytes, else head + error lines + tail.
-/// Returns the cut text and whether anything was dropped.
-pub(crate) fn cut(text: &str, max: usize) -> (String, bool) {
+/// `None` when `text` fits in `max` bytes, else head + error lines + tail.
+pub(crate) fn cut(text: &str, max: usize) -> Option<String> {
     if text.len() <= max {
-        return (text.to_string(), false);
+        return None;
     }
     let lines: Vec<&str> = text.lines().collect();
-    let (head_budget, tail_budget, signal_budget) = (max / 2, max / 4, max / 4);
-
-    let mut head_end = 0;
-    let mut used = 0;
-    while head_end < lines.len() && used + lines[head_end].len() < head_budget {
-        used += lines[head_end].len() + 1;
-        head_end += 1;
-    }
-    let mut tail_start = lines.len();
-    used = 0;
-    while tail_start > head_end && used + lines[tail_start - 1].len() < tail_budget {
-        tail_start -= 1;
-        used += lines[tail_start].len() + 1;
+    let head_end = fit(lines.iter().copied(), max / 2);
+    let tail_len = fit(lines[head_end..].iter().rev().copied(), max / 4);
+    let tail_start = lines.len() - tail_len;
+    if head_end == 0 && tail_len == 0 {
+        return Some(cut_bytes(text, max));
     }
 
     let mut signals = Vec::new();
-    used = 0;
+    let mut used = 0;
     for line in &lines[head_end..tail_start] {
-        if is_error_line(line) && used + line.len() < signal_budget {
+        if used + line.len() >= max / 4 {
+            break;
+        }
+        if is_error_line(line) {
             used += line.len() + 1;
             signals.push(*line);
         }
     }
 
-    if head_end == 0 && tail_start == lines.len() {
-        return (cut_bytes(text, max), true);
-    }
     let omitted = tail_start - head_end - signals.len();
     let mut out = lines[..head_end].join("\n");
-    if !signals.is_empty() {
+    if signals.is_empty() {
+        out.push_str(&format!("\n[trs: {omitted} lines omitted]\n"));
+    } else {
         out.push_str(&format!(
             "\n[trs: {omitted} lines omitted, error lines kept]\n"
         ));
         out.push_str(&signals.join("\n"));
         out.push_str("\n[trs: ...]\n");
-    } else {
-        out.push_str(&format!("\n[trs: {omitted} lines omitted]\n"));
     }
     out.push_str(&lines[tail_start..].join("\n"));
-    (out, true)
+    Some(out)
+}
+
+/// How many leading lines fit in `budget` bytes (newlines counted).
+fn fit<'a>(lines: impl Iterator<Item = &'a str>, budget: usize) -> usize {
+    let mut used = 0;
+    lines
+        .take_while(|l| {
+            used += l.len() + 1;
+            used <= budget
+        })
+        .count()
 }
 
 /// One giant line (minified output): keep both ends at char boundaries.
@@ -82,14 +84,13 @@ mod tests {
 
     #[test]
     fn short_text_is_untouched() {
-        assert_eq!(cut("a\nb\n", 100), ("a\nb\n".to_string(), false));
+        assert_eq!(cut("a\nb\n", 100), None);
     }
 
     #[test]
     fn the_tail_survives() {
         let text = format!("{}FAILED at the very end\n", long(500));
-        let (out, cut_any) = cut(&text, 1000);
-        assert!(cut_any);
+        let out = cut(&text, 1000).unwrap();
         assert!(out.contains("line 0 of"));
         assert!(out.contains("FAILED at the very end"));
         assert!(out.len() < 1300, "{}", out.len());
@@ -98,7 +99,7 @@ mod tests {
     #[test]
     fn an_error_in_the_middle_is_kept() {
         let text = format!("{}error: boom in the middle\n{}", long(300), long(300));
-        let (out, _) = cut(&text, 1000);
+        let out = cut(&text, 1000).unwrap();
         assert!(out.contains("error: boom in the middle"));
         assert!(out.contains("error lines kept"));
     }
@@ -106,7 +107,7 @@ mod tests {
     #[test]
     fn multibyte_text_does_not_panic() {
         let text = "ñandú ".repeat(2000);
-        let (out, _) = cut(&text, 500);
+        let out = cut(&text, 500).unwrap();
         assert!(out.starts_with("ñandú") && out.contains("bytes omitted"));
     }
 }

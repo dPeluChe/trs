@@ -12,39 +12,44 @@ const MIN_RAW_BYTES: usize = 2 * 1024;
 const MIN_CUT_PCT: usize = 90;
 const MIN_KEPT_PCT: usize = 70;
 
+/// Raw output beyond this is not scanned: bounded latency on huge outputs.
+const SCAN_BYTES: usize = 256 * 1024;
+
+/// Paths, with an optional `:line`, so `file:line` counts as the one anchor it is.
 static PATH: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[\w./-]+\.(?:rs|ts|tsx|js|py|go|md|json|toml|sh|swift|lock)\b").unwrap()
+    Regex::new(r"[\w./-]+\.(?:rs|ts|tsx|js|py|go|md|json|toml|sh|swift|lock)\b(?::\d+)?").unwrap()
 });
-static FILE_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\w./-]+\.\w+:\d+").unwrap());
 static HASH: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b[0-9a-f]{7,40}\b").unwrap());
 
-fn anchors(text: &str) -> HashSet<&str> {
-    let mut found: HashSet<&str> = HashSet::new();
-    for rx in [&*PATH, &*FILE_LINE] {
-        found.extend(rx.find_iter(text).map(|m| m.as_str()));
-    }
-    // A hash needs a digit and a letter, or "deadbeef"-free words qualify.
-    found.extend(HASH.find_iter(text).map(|m| m.as_str()).filter(|h| {
-        h.bytes().any(|b| b.is_ascii_digit()) && h.bytes().any(|b| b.is_ascii_lowercase())
-    }));
-    found
+/// A hex run is a commit hash only if it mixes digits and letters.
+fn looks_like_hash(h: &str) -> bool {
+    h.bytes().any(|b| b.is_ascii_digit()) && h.bytes().any(|b| b.is_ascii_lowercase())
 }
 
 /// True when the summary cut at least 90% of a sizeable output and under 70%
-/// of its anchors survive in it.
+/// of its anchors survive in it. A hash survives as its 7-char prefix.
 pub(crate) fn anchors_lost(raw: &str, summary: &str) -> bool {
     if raw.len() < MIN_RAW_BYTES || summary.len() * 100 > raw.len() * (100 - MIN_CUT_PCT) {
         return false;
     }
-    let found = anchors(raw);
-    if found.is_empty() {
+    let mut end = raw.len().min(SCAN_BYTES);
+    while !raw.is_char_boundary(end) {
+        end -= 1;
+    }
+    let raw = &raw[..end];
+    let paths: HashSet<&str> = PATH.find_iter(raw).map(|m| m.as_str()).collect();
+    let hashes: HashSet<&str> = HASH
+        .find_iter(raw)
+        .map(|m| m.as_str())
+        .filter(|h| looks_like_hash(h))
+        .collect();
+    let total = paths.len() + hashes.len();
+    if total == 0 {
         return false;
     }
-    let kept = found
-        .iter()
-        .filter(|a| summary.contains(*a) || (a.len() > 7 && summary.contains(&a[..7])))
-        .count();
-    kept * 100 < found.len() * MIN_KEPT_PCT
+    let kept = paths.iter().filter(|p| summary.contains(*p)).count()
+        + hashes.iter().filter(|h| summary.contains(&h[..7])).count();
+    kept * 100 < total * MIN_KEPT_PCT
 }
 
 #[cfg(test)]

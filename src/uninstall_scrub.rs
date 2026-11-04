@@ -44,7 +44,7 @@ pub(crate) fn scrub_trs_from_json(path: &Path, dry_run: bool) -> Result<Option<S
         )));
     }
     let pretty = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
-    fs::write(path, format!("{}\n", pretty)).map_err(|e| e.to_string())?;
+    crate::fs_atomic::write_atomic(path, &format!("{}\n", pretty)).map_err(|e| e.to_string())?;
     Ok(Some(format!(
         "scrubbed {} trs entry/entries from {}",
         removed,

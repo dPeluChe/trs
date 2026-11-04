@@ -91,7 +91,7 @@ pub(in crate::rewrite_perm_droid) fn restricts(cmd: &str, rules: &[Rule]) -> boo
 /// One simple command is covered by an `allow` rule. Strict on purpose: the
 /// literal words, no env or wrapper stripped, and no redirect or expansion.
 pub(super) fn allows(seg: &str, rules: &[Rule]) -> bool {
-    if seg.contains(['>', '<', '$', '`']) {
+    if !rules.iter().any(|r| r.allow) || seg.contains(['>', '<', '$', '`']) {
         return false;
     }
     let toks = tokens(seg);

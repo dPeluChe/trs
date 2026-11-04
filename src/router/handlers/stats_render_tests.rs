@@ -60,7 +60,6 @@ fn recent_efficiency_ignores_an_old_outlier() {
 
 #[test]
 fn failed_and_oversized_runs_stay_out_of_the_totals() {
-    use super::super::stats::counts_toward_totals;
     let e = |in_bytes: usize, ok: Option<bool>| HistoryEntry {
         ts: 0,
         cmd: "x".into(),
@@ -73,8 +72,8 @@ fn failed_and_oversized_runs_stay_out_of_the_totals() {
         bypass: None,
         ok,
     };
-    assert!(counts_toward_totals(&e(500, None)));
-    assert!(counts_toward_totals(&e(500, Some(true))));
-    assert!(!counts_toward_totals(&e(500, Some(false))));
-    assert!(!counts_toward_totals(&e(30_001, None)));
+    assert!(e(500, None).counts_toward_totals());
+    assert!(e(500, Some(true)).counts_toward_totals());
+    assert!(!e(500, Some(false)).counts_toward_totals());
+    assert!(!e(30_001, None).counts_toward_totals());
 }

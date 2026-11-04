@@ -62,6 +62,7 @@ fn the_hook_does_not_wrap_a_help_request() {
         "grep -h foo a.txt",
         "ls -lh",
         "git grep -h foo",
+        "git -C . grep -h foo",
         "eza -h",
         "rsync -h a b",
     ] {

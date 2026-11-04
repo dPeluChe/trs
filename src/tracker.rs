@@ -55,6 +55,17 @@ pub struct HistoryEntry {
     pub ok: Option<bool>,
 }
 
+impl HistoryEntry {
+    /// Raw size above which a run stays out of savings totals: an agent reading
+    /// it raw would have had it cut anyway, so most "saved" bytes were never real.
+    pub const TOTALS_MAX_BYTES: usize = 30_000;
+
+    /// Failed and oversized runs do not count toward savings percentages.
+    pub fn counts_toward_totals(&self) -> bool {
+        self.ok != Some(false) && self.in_bytes <= Self::TOTALS_MAX_BYTES
+    }
+}
+
 /// Returns the path to the history file: `~/.trs/history.jsonl`.
 fn history_path() -> Option<PathBuf> {
     dirs_path().map(|d| d.join("history.jsonl"))

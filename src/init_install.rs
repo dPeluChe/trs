@@ -84,7 +84,7 @@ fn write_hook(dir: &Path, path: &Path, content: &str, opts: InstallOpts) -> Resu
             if opts.dry_run {
                 return Ok(format!("{} (would refresh trs plugin)", path.display()));
             }
-            fs::write(path, content)
+            crate::fs_atomic::write_atomic(path, content)
                 .map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
             return Ok(format!("{} (refreshed)", path.display()));
         }
@@ -97,7 +97,8 @@ fn write_hook(dir: &Path, path: &Path, content: &str, opts: InstallOpts) -> Resu
         return Ok(format!("{} (would create)", path.display()));
     }
     fs::create_dir_all(dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
-    fs::write(path, content).map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
+    crate::fs_atomic::write_atomic(path, content)
+        .map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
     Ok(path.display().to_string())
 }
 
@@ -210,7 +211,7 @@ pub(crate) fn merge_json_hook(
     }
     fs::create_dir_all(dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
     let pretty = serde_json::to_string_pretty(&root).map_err(|e| e.to_string())?;
-    fs::write(path, format!("{}\n", pretty))
+    crate::fs_atomic::write_atomic(path, &format!("{}\n", pretty))
         .map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
     Ok(path.display().to_string())
 }
@@ -273,7 +274,7 @@ pub(crate) fn scrub_legacy_codex_hook(
         )));
     }
     let pretty = serde_json::to_string_pretty(&val).map_err(|e| e.to_string())?;
-    fs::write(path, format!("{}\n", pretty)).map_err(|e| e.to_string())?;
+    crate::fs_atomic::write_atomic(path, &format!("{}\n", pretty)).map_err(|e| e.to_string())?;
     println!(
         "    scrubbed {} legacy trs entry/entries from {}",
         removed,

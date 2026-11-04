@@ -5,7 +5,7 @@
 
 use crate::rewrite_gate::Gate;
 use crate::rewrite_permissions::split_segments;
-use crate::rewrite_rules::{read_json, string_list, word_prefix, Rules};
+use crate::rewrite_rules::{project_dirs, read_json, string_list, word_prefix, Rules};
 use std::path::{Path, PathBuf};
 
 pub(crate) fn gate(cmd: &str, cwd: Option<&str>) -> Gate {
@@ -58,17 +58,11 @@ fn deny_rules(config: Option<&Path>, cwd: Option<&str>) -> Option<Vec<String>> {
         .into_iter()
         .collect();
     if let Some(cwd) = cwd {
-        let cwd = Path::new(cwd);
-        let root = cwd
-            .ancestors()
-            .find(|d| d.join(".git").exists())
-            .unwrap_or(cwd);
-        for dir in cwd.ancestors() {
-            files.push(dir.join(".cursor/cli.json"));
-            if dir == root {
-                break;
-            }
-        }
+        files.extend(
+            project_dirs(Path::new(cwd), None)
+                .into_iter()
+                .map(|d| d.join(".cursor/cli.json")),
+        );
     }
     let mut deny = Vec::new();
     for file in files {

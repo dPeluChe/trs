@@ -64,7 +64,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let combined = format!("{}{}", stdout, stderr);
         let compact = crate::classifier_transfer::compact_git_transfer(&combined, subcmd);
         print!("{}", compact);
-        let full_cmd = format!("{} {}", cmd, args.join(" "));
+        let full_cmd = full_cmd(cmd, args);
         track(&full_cmd, in_bytes, compact.len(), start, &output.status);
         if !output.status.success() {
             emit_failure_footer(&output.status, &full_cmd, &stdout, &stderr);
@@ -184,8 +184,11 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                 let dropped = crate::parse_out::take_dropped();
                 let mostly_cut = stdout_ref.len() >= RECOVERABLE_MIN_BYTES
                     && parsed.len() * 10 <= stdout_ref.len();
-                let lost = crate::anchor_guard::anchors_lost(stdout_ref, &parsed);
-                if output.status.success() && (dropped || mostly_cut || lost) {
+                if output.status.success()
+                    && (dropped
+                        || mostly_cut
+                        || crate::anchor_guard::anchors_lost(stdout_ref, &parsed))
+                {
                     if let Some(path) = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr) {
                         let line = format!("[trs] full output: {}\n", path);
                         print!("{}", line);
@@ -199,18 +202,21 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         } else {
             // Tier 3: Passthrough with truncation (parser failed)
             let passthrough_max = crate::config::config().limits.passthrough_max_chars;
-            let (mut truncated, was_cut) = crate::passthrough_cut::cut(stdout_ref, passthrough_max);
-            if was_cut {
-                let saved = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr)
-                    .map(|path| format!(", full output: {path}"))
-                    .unwrap_or_default();
-                truncated.push_str(&format!(
-                    "\n[trs:passthrough cut to {} of {} chars{}]",
-                    passthrough_max,
-                    stdout_ref.len(),
-                    saved
-                ));
-            }
+            let truncated = match crate::passthrough_cut::cut(stdout_ref, passthrough_max) {
+                Some(mut cut) => {
+                    let saved = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr)
+                        .map(|path| format!(", full output: {path}"))
+                        .unwrap_or_default();
+                    cut.push_str(&format!(
+                        "\n[trs:passthrough cut to {} of {} chars{}]",
+                        passthrough_max,
+                        stdout_ref.len(),
+                        saved
+                    ));
+                    cut
+                }
+                None => stdout_ref.to_string(),
+            };
             print!("{}", truncated);
             out_bytes = truncated.len();
         }

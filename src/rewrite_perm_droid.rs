@@ -6,7 +6,7 @@
 mod matcher;
 
 use crate::rewrite_gate::Gate;
-use crate::rewrite_rules::read_json;
+use crate::rewrite_rules::{project_dirs, read_json};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -167,24 +167,6 @@ fn load(roots: &Roots, cwd: Option<&str>) -> Option<Lists> {
         }
     }
     Some(lists)
-}
-
-/// Every dir from cwd up to the git root (or cwd); the home dir is the user level.
-fn project_dirs(cwd: &Path, home: Option<&Path>) -> Vec<PathBuf> {
-    let root = cwd
-        .ancestors()
-        .find(|d| d.join(".git").exists())
-        .unwrap_or(cwd);
-    let mut dirs = Vec::new();
-    for d in cwd.ancestors() {
-        if Some(d) != home {
-            dirs.push(d.to_path_buf());
-        }
-        if d == root {
-            break;
-        }
-    }
-    dirs
 }
 
 /// `Some(json)`, or `None` if the file exists but is unusable. A missing file is `{}`.

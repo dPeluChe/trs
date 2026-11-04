@@ -99,15 +99,6 @@ const DEFAULT_HISTORY_LIMIT: usize = 20;
 /// Default row cap for the summary's Top Commands table.
 const DEFAULT_TOP_LIMIT: usize = 15;
 
-/// Raw size above which a run stays out of the totals: an agent reading it raw
-/// would have had it cut anyway, so most of the "saved" bytes were never real.
-const TOTALS_MAX_BYTES: usize = 30_000;
-
-/// Failed runs and oversized ones do not count toward savings percentages.
-pub(super) fn counts_toward_totals(e: &tracker::HistoryEntry) -> bool {
-    e.ok != Some(false) && e.in_bytes <= TOTALS_MAX_BYTES
-}
-
 /// Execute the stats command and print results to stdout.
 pub fn handle_stats(input: &StatsInput) {
     let entries = if input.project {
@@ -134,11 +125,10 @@ pub fn handle_stats(input: &StatsInput) {
 
     // `--history` lists every run; every other view shares one filtered set.
     let all = entries.len();
-    let entries: Vec<tracker::HistoryEntry> = if input.history {
-        entries
-    } else {
-        entries.into_iter().filter(counts_toward_totals).collect()
-    };
+    let mut entries = entries;
+    if !input.history {
+        entries.retain(|e| e.counts_toward_totals());
+    }
     let left_out = all - entries.len();
 
     if input.coverage {
@@ -185,7 +175,7 @@ pub fn handle_stats(input: &StatsInput) {
     if left_out > 0 && !input.history {
         println!(
             "\n{left_out} runs left out of the totals (failed, or over {} KB raw).",
-            TOTALS_MAX_BYTES / 1000
+            tracker::HistoryEntry::TOTALS_MAX_BYTES / 1000
         );
     }
 }

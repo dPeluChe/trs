@@ -9,12 +9,8 @@ use std::path::Path;
 /// A symlinked file is written through, so the link survives.
 pub(crate) fn write_atomic(path: &Path, content: &str) -> io::Result<()> {
     let target = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    let name = target.file_name().map(|n| n.to_string_lossy().into_owned());
-    let tmp = target.with_file_name(format!(
-        ".{}.trs-tmp-{}",
-        name.unwrap_or_default(),
-        std::process::id()
-    ));
+    let name = target.file_name().unwrap_or_default().to_string_lossy();
+    let tmp = target.with_file_name(format!(".{name}.trs-tmp-{}", std::process::id()));
     fs::write(&tmp, content)?;
     if let Ok(meta) = fs::metadata(&target) {
         let _ = fs::set_permissions(&tmp, meta.permissions());

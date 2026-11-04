@@ -106,7 +106,8 @@ fn finish(title: &str, path: Option<PathBuf>, submit: bool) {
 /// Parser-coverage report: which commands trs sees a lot of and compresses
 /// badly. This is the input a parser request needs.
 pub(crate) fn run_coverage(days: Option<u64>, output: Option<&str>, submit: bool) {
-    let entries = crate::tracker::read_history();
+    let mut entries = crate::tracker::read_history();
+    entries.retain(|e| e.counts_toward_totals());
     if entries.is_empty() {
         eprintln!("no history yet. Use trs for a few days, then run this again.");
         return;
