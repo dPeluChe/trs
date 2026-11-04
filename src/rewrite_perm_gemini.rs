@@ -117,7 +117,7 @@ fn system_dir() -> PathBuf {
 fn read_settings(path: &Path) -> Option<policy::Settings> {
     match std::fs::read_to_string(path) {
         Ok(text) => parse_settings(&text),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some(policy::Settings {
+        Err(e) if crate::rewrite_rules::is_missing(&e) => Some(policy::Settings {
             folder_trust: true,
             ..Default::default()
         }),

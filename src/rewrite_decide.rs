@@ -228,7 +228,7 @@ pub(crate) fn looks_like_env_assignment(token: &str) -> bool {
     name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-fn strip_transparent_prefix(cmd: &str) -> Option<(&str, &str)> {
+pub(crate) fn strip_transparent_prefix(cmd: &str) -> Option<(&str, &str)> {
     for prefix in TRANSPARENT_PREFIX_BUILTINS {
         if let Some(rest) = strip_word_prefix(cmd, prefix) {
             return Some((prefix, rest));

@@ -1,7 +1,6 @@
-//! Claude Code checks its permission rules against the command *after* the
-//! hook rewrote it, and a hook `allow` overrides them, so a `deny`/`ask` rule
-//! for `git push` never saw `trs git push`. The hook reads the user's rules
-//! and applies them to the original command. Details: docs/development/agent-integrations.md.
+//! Claude matches its rules after the hook rewrote the command and a hook
+//! `allow` overrides them: apply the rules to the original here.
+//! Details: docs/development/agent-integrations.md.
 
 use crate::rewrite_gate::Gate;
 use crate::rewrite_rules::{is_trusted, read_json, word_prefix, Rules};
@@ -119,12 +118,26 @@ pub(crate) fn rule_matches(rule: &str, cmd: &str) -> bool {
     cmd == inner
 }
 
+/// `*` matches any run of bytes; linear backtracking (one star to retry).
 pub(crate) fn glob(pat: &[u8], s: &[u8]) -> bool {
-    match pat.split_first() {
-        None => s.is_empty(),
-        Some((b'*', rest)) => (0..=s.len()).any(|i| glob(rest, &s[i..])),
-        Some((c, rest)) => s.first() == Some(c) && glob(rest, &s[1..]),
+    let (mut p, mut i) = (0, 0);
+    let mut star: Option<(usize, usize)> = None;
+    while i < s.len() {
+        if p < pat.len() && pat[p] == b'*' {
+            star = Some((p, i));
+            p += 1;
+        } else if p < pat.len() && pat[p] == s[i] {
+            p += 1;
+            i += 1;
+        } else if let Some((sp, si)) = star {
+            p = sp + 1;
+            star = Some((sp, si + 1));
+            i = si + 1;
+        } else {
+            return false;
+        }
     }
+    pat[p..].iter().all(|&c| c == b'*')
 }
 
 /// Leading `NAME=value` words removed.
@@ -139,8 +152,19 @@ pub(crate) fn strip_env(seg: &str) -> &str {
     rest
 }
 
-/// Commands Claude approves without asking; anything with a redirect or
-/// substitution is not, and options that write or execute are refused.
+/// The command a rule is written against: `VAR=` words and the wrappers trs
+/// rewrites through (`time git push`) removed.
+pub(crate) fn strip_wrappers(seg: &str) -> &str {
+    let mut rest = strip_env(seg);
+    while let Some((_, inner)) = crate::rewrite_decide::strip_transparent_prefix(rest) {
+        rest = strip_env(inner.trim_start());
+    }
+    rest
+}
+
+/// Commands Claude approves without asking inside the working dir; anything
+/// with a redirect or substitution is not, options that write or execute are
+/// refused, and so are paths that may leave the project.
 pub(crate) fn read_only(seg: &str) -> bool {
     let seg = seg.replace("2>&1", "");
     if seg.contains(['>', '<', '`', '$']) {
@@ -150,9 +174,9 @@ pub(crate) fn read_only(seg: &str) -> bool {
     let Some(&prog) = words.first() else {
         return false;
     };
-    let risky = words
-        .iter()
-        .any(|w| w.starts_with("--output") || *w == "--pre");
+    let risky = words.iter().any(|w| {
+        w.starts_with("--output") || *w == "--pre" || w.starts_with(['/', '~']) || w.contains("..")
+    });
     if risky {
         return false;
     }
@@ -255,6 +279,17 @@ mod tests {
         assert_eq!(gate_with(&r, "rm -rf build"), Gate::Skip);
         assert_eq!(gate_with(&r, "CI=1 rm -rf build"), Gate::Skip);
         assert_eq!(gate_with(&r, "git status && rm -rf build"), Gate::Skip);
+        assert_eq!(gate_with(&r, "time git push"), Gate::Skip);
+        assert_eq!(gate_with(&r, "nohup CI=1 rm -rf build"), Gate::Skip);
+    }
+
+    #[test]
+    fn glob_handles_stars_without_blowing_up() {
+        assert!(glob(b"git * main", b"git push origin main"));
+        assert!(glob(b"*", b""));
+        assert!(!glob(b"git *", b"gi"));
+        let long = "a ".repeat(5000);
+        assert!(!glob(b"* b * c * d *", long.as_bytes()));
     }
 
     #[test]
@@ -270,6 +305,10 @@ mod tests {
         assert_eq!(gate_with(&r, "git branch -D x"), Gate::Defer);
         assert_eq!(gate_with(&r, "git diff --output=out.txt"), Gate::Defer);
         assert_eq!(gate_with(&r, "cat a > b"), Gate::Defer);
+        assert_eq!(gate_with(&r, "ls src"), Gate::Allow);
+        assert_eq!(gate_with(&r, "cat ~/.aws/credentials"), Gate::Defer);
+        assert_eq!(gate_with(&r, "ls /etc"), Gate::Defer);
+        assert_eq!(gate_with(&r, "cat ../x"), Gate::Defer);
         assert_eq!(gate_with(&r, ""), Gate::Defer);
     }
 

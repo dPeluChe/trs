@@ -1,7 +1,7 @@
 //! Pieces shared by the per-agent permission gates (`rewrite_perm_*`).
 
 use crate::rewrite_gate::Gate;
-use crate::rewrite_permissions::strip_env;
+use crate::rewrite_permissions::strip_wrappers;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
@@ -24,7 +24,7 @@ impl Rules {
         let (mut any, mut all_allowed) = (false, true);
         for seg in segs {
             any = true;
-            let bare = strip_env(seg);
+            let bare = strip_wrappers(seg);
             if self
                 .deny
                 .iter()
@@ -60,7 +60,7 @@ impl Rules {
 pub(crate) fn read_json(path: &Path) -> Option<Option<Value>> {
     match std::fs::read_to_string(path) {
         Ok(text) => serde_json::from_str(&text).ok().map(Some),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Some(None),
+        Err(e) if is_missing(&e) => Some(None),
         Err(_) => None,
     }
 }
@@ -73,6 +73,14 @@ pub(crate) fn string_list(json: &Value, pointer: &str) -> Vec<String> {
         .filter_map(Value::as_str)
         .map(String::from)
         .collect()
+}
+
+/// Missing file, or a parent that is a file: nothing to read either way.
+pub(crate) fn is_missing(e: &std::io::Error) -> bool {
+    matches!(
+        e.kind(),
+        std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+    )
 }
 
 /// `prefix` is the whole command or its leading words.

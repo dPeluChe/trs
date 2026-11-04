@@ -62,8 +62,12 @@ pub(crate) const OPENCODE_PLUGIN: &str = concat!(
     r#"
 // 2.x checks permission rules on the rewritten text: ask about the original.
 const segmentsOf = (cmd) => {
-  const lines = runTrs(["rewrite", "--segments"], cmd).split(/\r?\n/).filter(Boolean);
-  return lines.length ? lines : null;
+  try {
+    const segs = JSON.parse(runTrs(["rewrite", "--segments"], cmd));
+    return Array.isArray(segs) && segs.length ? segs : null;
+  } catch {
+    return null;
+  }
 };
 
 const isPermissionError = (e) => {
@@ -100,7 +104,7 @@ export default {
     if (canAsk) {
       // The original was approved by assert: do not prompt again on the rewrite.
       await ctx.permission.hook("evaluate", (input) => {
-        if (input.effect === "ask" && approved.has(input.source?.id)) input.effect = "allow";
+        if (input.effect === "ask" && approved.delete(input.source?.id)) input.effect = "allow";
       });
     }
     await ctx.tool.hook("execute.before", async (input) => {
@@ -155,11 +159,8 @@ export const TrsPlugin = async ({ client, directory } = {}) => {
 "#
 );
 
-// Pi (pi.dev) extension: overrides the bash tool with a `spawnHook` that
-// prepends `trs` and tags the run via `TRS_AGENT=pi` (attribution lives in the
-// env, not a shell prefix — works on every platform). Auto-discovered from
-// ~/.pi/agent/extensions/ (global) or .pi/extensions/ (project); `/reload` to
-// pick up changes. Reference: https://pi.dev (earendil-works/pi).
+// Pi (pi.dev) extension: a bash `spawnHook` asks `trs rewrite` and tags the run
+// via the `TRS_AGENT=pi` env. `/reload` picks up changes (https://pi.dev).
 pub(crate) const PI_EXTENSION: &str = concat!(
     "// trs plugin: route commands through trs for token-optimized output\n",
     r#"import { createBashTool } from "@earendil-works/pi-coding-agent";

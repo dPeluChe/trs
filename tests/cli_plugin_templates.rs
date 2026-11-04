@@ -264,17 +264,24 @@ console.log(JSON.stringify({
 }
 
 #[test]
-fn trs_rewrite_segments_prints_one_simple_command_per_line() {
+fn trs_rewrite_segments_prints_a_json_array_of_simple_commands() {
     let out = Command::cargo_bin("trs")
         .unwrap()
         .args(["rewrite", "--segments"])
-        .write_stdin("cd a && git push; echo 'x && y' | cat")
+        .write_stdin("cd a && git push; echo 'x && y' | cat; git commit -m \"t\n\nb\"")
         .output()
         .unwrap();
     assert!(out.status.success());
+    let segs: Vec<String> = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(
-        String::from_utf8_lossy(&out.stdout),
-        "cd a\ngit push\necho 'x && y'\ncat\n"
+        segs,
+        [
+            "cd a",
+            "git push",
+            "echo 'x && y'",
+            "cat",
+            "git commit -m \"t\n\nb\""
+        ]
     );
 }
 

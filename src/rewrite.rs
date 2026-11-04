@@ -32,10 +32,8 @@ pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool) {
     }
 
     if segments {
-        println!(
-            "{}",
-            crate::rewrite_permissions::split_segments(input).join("\n")
-        );
+        let segs = crate::rewrite_permissions::split_segments(input);
+        println!("{}", serde_json::json!(segs));
         return;
     }
 

@@ -1,4 +1,5 @@
-//! Permission gate for Codex: its exec-policy `.rules` match the REWRITTEN command and the hook must answer `allow` for the rewrite to apply, so the gate only decides Allow (rewrite) or Skip (leave the command alone).
+//! Codex matches its `.rules` on the REWRITTEN command and needs a hook `allow`
+//! to apply the rewrite: the gate only decides Allow or Skip.
 //! Contract: docs/development/agent-integrations.md (permissions).
 
 use crate::rewrite_gate::Gate;
@@ -109,7 +110,7 @@ fn load(home: Option<&Path>, cwd: Option<&Path>) -> Option<Vec<Pattern>> {
     for dir in dirs {
         let entries = match std::fs::read_dir(&dir) {
             Ok(entries) => entries,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) if crate::rewrite_rules::is_missing(&e) => continue,
             Err(_) => return None,
         };
         for entry in entries {
@@ -126,7 +127,7 @@ fn load(home: Option<&Path>, cwd: Option<&Path>) -> Option<Vec<Pattern>> {
 fn trusted_projects(config: &Path) -> Option<Vec<PathBuf>> {
     let text = match std::fs::read_to_string(config) {
         Ok(text) => text,
-        Err(e) => return (e.kind() == std::io::ErrorKind::NotFound).then(Vec::new),
+        Err(e) => return (crate::rewrite_rules::is_missing(&e)).then(Vec::new),
     };
     let doc: toml::Table = text.parse().ok()?;
     let Some(projects) = doc.get("projects") else {
