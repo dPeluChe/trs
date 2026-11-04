@@ -104,7 +104,7 @@ Do not name those projects in commits, docs or the changelog when shipping these
 - [x] **Re-run rate after compression** (`src/rerun_rate.rs`, shown by `trs stats`) (from the TokenEconomizer paper, which found fixed output compression raised cost in 12 of 30 cells): in `history.jsonl`, how often the same command is rerun right after a compressed output. Also repeated failing commands per repo, for `stats` or `doctor`. Local data only, no new hook.
 - [x] **Needle preservation in the generic reducer** (the tier-3 cut, `src/passthrough_cut.rs`: unique UUID, hash or URL lines are kept after the error lines, same budget): keep lines with a rare token (UUID, hash, URL, id) when it cuts, so the agent does not rerun a narrower query. Cap it so id-dense logs still compress.
 - [x] **`audit-docs`** (`src/audit_docs_volatile.rs`: only stamps that get rewritten, not every date): flag dates, "Updated:" and "As of YYYY-MM" in `CLAUDE.md` / `AGENTS.md`, they break the prompt-cache prefix (`src/audit_docs_detect.rs`).
-- [~] **Output-saver rules** (held: the A/B shows no gain from the block beyond a one-line "be concise", and each added line is input in every session; add a rule only with a marker that appears in replies, e.g. rewritten comments, and rerun the A/B): add "keep comments you were not asked to change", "write commits, PRs and docs in normal prose", "full sentences for questions to the user". The block is the canonical source for comment limits, so flag downstream stacks. Each line costs tokens in every session; measure first (item above).
+- [x] **Output-saver rules** (decided by pre-registered tests, 2026-11-04: no rule block beat "Answer concisely." on tokens, cost, turns or correct answers, so the block shrank to 698 bytes, see `docs/development/output-cost-findings.md`; a line joins the block only with a test it passes).
 - [x] **Output-saver measurement from transcripts** (`docs/development/benchmarks/transcript_output.py`; on this machine the transcripts start after the install, so it has no before data): output tokens per reply before vs after install, with a confidence interval, labelled "estimated" (`docs/features/output-saver.md` admits `stats` cannot measure the output side).
 
 ### P4: larger features, decide later
@@ -118,10 +118,13 @@ Do not name those projects in commits, docs or the changelog when shipping these
 - [ ] **Import-block collapse** for `trs read` aggressive mode, only if `truth.py` anchors hold.
 - [ ] **PostToolUse output compression** (agents' own Read/Grep/Web tools) where the agent allows output replacement (about 8 of 20 agents in a similar tool's matrix). Different product direction; keep as a note.
 
+- [ ] **Output-saver in long sessions**: rerun the arms on a 30+ turn task and on a weaker model, the two cases the tests did not cover; also retest the one-line control's lead on turns and cost, which was not pre-registered (`docs/development/output-cost-findings.md`).
+
 ### Do not copy
 
 - API proxies, injected retrieve tools and cross-turn pointer dedup (trs cannot see context compaction).
 - Delegating reads to a cheaper model, default-on telemetry, accounts, cloud routing.
+- Long reply-rule blocks: they did not beat one line in any test.
 - Persona or terse-speech modes, dictionary/abbreviation codebooks, LLM-based compressors with low fidelity.
 - Per-turn re-injection hooks, dollar headlines built on estimates, headline percentages from N=1 or synthetic corpora.
 - Code from non-commercial or BUSL-licensed projects: ideas only.

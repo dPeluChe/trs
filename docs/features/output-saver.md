@@ -29,61 +29,17 @@ step. `trs doctor` surfaces the same drift signal inline.
 
 ## What the block says
 
-Three sections (reply rules, check before answering, code authoring). Size and cost: see
-[What the block costs](#what-the-block-costs). The reply rules:
+Two headings, three rules. Size and cost: see [What the block costs](#what-the-block-costs).
 
-- **Numeric token budget.** "Keep replies under ~100 words unless the
-  task needs more. Between tool calls, stay under ~25 words."
-- **Task-shape calibration.** "Match shape to task, a one-line
-  question gets a one-line answer, no headers."
-- **Open with the answer, end when it ends.** Explain only what is
-  non-obvious. A BAD/GOOD pair shows the shape.
-- **Let tool output speak for itself.** Don't restate or recap what
-  the diff already shows.
-- **Structured output when the data is structured.** Bullets, tables,
-  JSON, prose only when the reader is human and the content is
-  narrative.
-- **Persistence.** The rules hold for every reply, not just the first;
-  agents drift back to preambles over a long session unless reminded.
-- **No em dashes.** Comma, colon, parentheses, period, or "and". The block
-  itself contains none: a prompt that uses the tell teaches every agent
-  that the tell is fine.
-- **Never invent file paths, function names, or API fields.** If
-  unknown, return `UNKNOWN` or `null`, guessing costs more tokens
-  than asking.
-- **Safety beats brevity.** Security warnings, irreversible/destructive
-  confirmations, and any multi-step order a misread would break get full
-  clarity, even past the word limit.
-
-Then **`## Check before answering`**, aimed at the quality of the answer, not
-at its size:
-
-- **Read once.** Don't reread a file or doc already in the conversation
-  unless it may have changed.
-- **Verify against the code or the running project**, not memory or docs
-  alone: docs go stale.
-- **Prefer the most recent source** (latest commit, current version, newest
-  doc), and say so when sources disagree.
-
-These three are unmeasured: the agentic A/B below scores cost and a pass/fail
-check, not whether an answer was better grounded. They stay because they
-cost about 70 tokens and target stale-doc errors, not because a saving was
-shown.
-
-Then a separate **`## Code authoring`** section, its own heading, so an
-agent scanning the block applies it when writing code, not just when
-replying in chat:
-
-- **Reuse before re-implementing.** A helper, type, or pattern already
-  a few files over beats writing a new one.
-- **Smallest diff** that solves it, preferring deletion.
-- **One pass.** Don't iterate on passing code or refactor unless asked.
-- **Code comments: none by default.** If one is truly needed, a terse
-  WHY-only note (not a walkthrough), at most 3 lines, ~200 characters;
-  never paragraph docstrings or restated code. A longer logic explanation
-  goes to `docs/` with a one-line pointer in the comment (the prohibition
-  has a destination, so knowledge isn't lost). A minimal BAD/GOOD pair
-  anchors the calibration better than the numbers alone.
+- **`Answer concisely.`** One line, because longer reply rules never beat it
+  (see [Measuring impact](#measuring-impact)).
+- **Never invent file paths, function names, or API fields.** If unknown, say
+  `UNKNOWN` or return `null`.
+- **`## Code authoring`: code comments.** None by default. If one is truly
+  needed, a terse WHY-only note (not a walkthrough), at most 3 lines, ~200
+  characters; never paragraph docstrings or restated code. A longer logic
+  explanation goes to `docs/` with a one-line pointer in the comment. A minimal
+  BAD/GOOD pair anchors the calibration.
 
 These code-comment limits (WHY-only, ~3 lines, ~200 chars) are the
 **canonical** source, downstream configs that replicate them should
@@ -93,69 +49,14 @@ signal to re-sync.
 Plus an explicit user-override clause so the rules never fight a
 user's deliberate instructions.
 
-Run `trs output-saver --print` to see the exact text before
-installing.
+Run `trs output-saver --print` to see the exact text before installing.
 
-## Why these rules: research backing
+## Why it is this short
 
-The current rules block is the result of a 2026-Q2 research pass into
-public prompt-engineering patterns for response-length reduction. Two
-classes of sources informed each rule:
-
-1. **Anthropic's own Claude Code system prompt** (publicly leaked and
-   archived at [`asgeirtj/system_prompts_leaks`][leak-1] and
-   [`Piebald-AI/claude-code-system-prompts`][leak-2]). Anthropic
-   A/B-tested numeric token budgets against the qualitative "be
-   concise" baseline and reported ~1.2% output token reduction in
-   production. This is the strongest empirical signal available for a
-   terminal-tooling agent like Claude Code, the closest match to
-   trs's deployment shape.
-
-2. **Positive vs negative instruction studies** ([eval.16x.engineer
-   pink-elephant analysis][pink-1], [gadlet.com on negative
-   prompting][pink-2]). InstructGPT-class models reliably comply less
-   with "Don't do X" than with "Do Y", the negation primes the
-   forbidden behavior. Our previous block leaned heavily on negatives
-   ("No preambles", "No narration", "Don't iterate"); the rewrite
-   flips them where the positive alternative is unambiguous.
-
-### Rule-by-rule provenance
-
-| Rule | Source | Status |
-|---|---|---|
-| Numeric token budget | Claude Code system prompt | Empirically validated by Anthropic A/B |
-| Task-shape calibration | Claude Code system prompt | Opinion-but-Anthropic-validated |
-| "Open with the answer or the diff" | Pink-elephant studies (positive form) | Replaces older negative "No preambles / No narration"; absorbs the older "Result first" rule |
-| Tool output speaks for itself | Pink-elephant rewrite | Positive form of old "No narration" |
-| Structured when data is structured | Carryover from v0.5 | Internal opinion |
-| Never invent | Carryover from v0.5 | Common LLM hallucination guard |
-| Persistence | [caveman][cav] SKILL ("ACTIVE EVERY RESPONSE, no filler drift") | Counters verbosity regression over long sessions |
-| Full clarity on safety | [caveman][cav] auto-clarity + [ponytail][pony] "when NOT to be lazy" | Guards against dangerous over-compression |
-| Check before answering | Added after the agentic A/B | Unmeasured; aimed at answer quality, not size |
-| Reuse before re-implementing | [ponytail][pony] ladder rung 2 ("the most common slop") | Code-quality lift |
-| One pass | Carryover from v0.5 | Internal opinion |
-| Code comments: none by default | Claude Code system prompt | Direct lift; addresses a known bloat source agents emit |
-
-[cav]: https://github.com/juliusbrussee/caveman
-[pony]: https://github.com/DietrichGebert/ponytail
-
-### What was deliberately NOT added
-
-- **`<answer>` XML delimiters**: Anthropic-documented for *parsing*
-  structured outputs, not brevity. Wrong tool for this surface.
-- **CoT (chain-of-thought) suppression in the prompt**: extended
-  thinking is controlled by API parameters (`max_thinking_tokens`),
-  not by reply-text instructions. Out of scope here.
-- **GPT-5 `<verbosity>low</verbosity>` tag**: empirically validated
-  by OpenAI for Codex / GPT-5+ agents, but requires per-agent
-  conditional content (Claude doesn't honor it). Worth a follow-up
-  with agent-specific templates; not in the current single-template
-  shape.
-
-[leak-1]: https://github.com/asgeirtj/system_prompts_leaks/blob/main/Anthropic/claude-code.md
-[leak-2]: https://github.com/Piebald-AI/claude-code-system-prompts
-[pink-1]: https://eval.16x.engineer/blog/the-pink-elephant-negative-instructions-llms-effectiveness-analysis
-[pink-2]: https://gadlet.com/posts/negative-prompting/
+Earlier versions had numeric word budgets, shape rules, style rules, turn-saving
+rules and answer checks, drawn from published agent prompts and prompt-engineering
+studies. Measured against a one-line control, none of it paid its input cost, so
+the block keeps only what the one line cannot say.
 
 ## Coverage matrix
 
@@ -253,8 +154,8 @@ Measured on this version (`trs output-saver --print`, and the file `trs init
 
 | What | Bytes | Tokens (bytes / 4, an estimate) |
 | --- | --- | --- |
-| The rules block (`--print`, inline installs) | 2,334 | ~580 |
-| `~/.claude/trs.md` (block plus the "Shell output" introduction) | 3,362 | ~840 |
+| The rules block (`--print`, inline installs) | 698 | ~175 |
+| `~/.claude/trs.md` (block plus the "Shell output" introduction) | 1,726 | ~430 |
 
 Earlier versions of this page said ~300 tokens; that was wrong for both. A
 unit test (`the_block_stays_inside_the_size_the_doc_quotes`) now fails when
@@ -263,7 +164,7 @@ the block grows past these sizes without this table being updated.
 With prompt caching the block sits in the cached prefix, so after the first
 request it is billed at a fraction of normal input. At typical API ratios
 (output about 5x input, cached read about 0.1x input; check your provider's
-price list) ~840 cached tokens cost about as much per turn as ~17 output
+price list) ~430 cached tokens cost about as much per turn as ~9 output
 tokens, so the block pays for itself only if it removes more than that from
 each reply. On a flat-rate plan the price is the context window, not money.
 
@@ -280,7 +181,7 @@ fidelity cases: a negation, a number, a destructive-action warning):
 | --- | --- | --- | --- |
 | no block | 425 | 177 | 100% |
 | "Answer concisely." (one line) | 208 | 86 | 100% |
-| the trs block | 188 | 70 | 95% (1 miss in 40; the same case reran 5 of 5) |
+| the trs block at that date | 188 | 70 | 95% (1 miss in 40; the same case reran 5 of 5) |
 
 - The block against no instruction: **-237 output tokens per reply** (95% CI
   -331 to -137).
@@ -295,7 +196,7 @@ long sessions, N=5 per prompt, and `output_tokens` includes thinking, not only
 the prose the block steers. It says nothing about the code-authoring rules
 (comment style, no invented paths), which this test does not exercise. Per-call
 billing sees no benefit either: output is a small share of most bills, and the
-block adds ~580 to ~840 input tokens to every session (previous section).
+block it tested added about 590 to 850 input tokens to every session.
 Rerun it on your model before relying on the block for cost.
 
 The `trs stats` dashboard tracks input-side savings from `trs rewrite` but
@@ -336,10 +237,27 @@ allowlist lacked `sed`, 50 of 120 runs hit a permission denial and every
 failure was one of them.
 
 What this does not show: tasks of 2 to 7 turns leave little to batch, one
-model at low effort, no long sessions where the "persistence" rule might
-matter. Because the longer block bought nothing over a one-line control, the
-shipped block stays short: the reply rules above, the three checks, and the
-code-authoring rules, with no turn-saving or style section.
+model at low effort, no long sessions.
+
+**Did the longer block earn its place?** No. Criteria were committed before
+the runs (2026-11-04): against "Answer concisely.", a 2,334-byte block (word
+budgets, style rules, "read once / verify against code / prefer the newest
+source") had to win on concision or on correct answers, with a 95% CI excluding
+zero, or the block would shrink to the one-line control plus the comment rule
+and the "never invent" rule. That is the block shipped now.
+
+| Test | "Answer concisely." | Longer block | Difference (95% CI) |
+| --- | --- | --- | --- |
+| Concision: output tokens per reply (`output_saver_ab.py --n 5`, 40 per arm) | 213 | 192 | -22 (-80 to +39) |
+| Quality: correct answers (`output_saver_agentic.py --suite stale --n 5`, 40 per arm) | 95% | 90% | -5 points (-17.5 to +5) |
+| Same runs: cost per run | $0.045 | $0.049 | +$0.005 (+$0.002 to +$0.007) |
+
+No instruction at all scored 95% on the quality test too. Both pilots had the
+control near the ceiling, the fixture was hardened once before the sweep, and
+almost every miss was one trap task (a default port changed by an override), so
+this test could not show a small gain. Runs of one task are not independent, and
+the shipped short block was not itself rerun. On this model the agent already
+read the code without being told to.
 
 ## Interaction with `trs init`
 
@@ -351,6 +269,7 @@ rules, and vice versa.
 
 ## See also
 
+- [What actually moves agent cost](../development/output-cost-findings.md): the findings behind this block and how to run the next test.
 - [`trs init`](init.md): the input-side compression via hooks.
 - [`trs audit-docs`](audit-docs.md): audit CLAUDE.md / AGENTS.md
   files for bloat; pairs well with output-saver.

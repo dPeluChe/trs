@@ -12,6 +12,10 @@ comparisons here and let the numbers guide the decisions we make in trs.
 The goal is internal knowledge: "what do we actually do better, and where
 should we improve?", not to publish a leaderboard.
 
+## What we learned
+
+[`output-cost-findings.md`](../output-cost-findings.md) records where agent cost actually goes, what the output-saver tests showed and how to run the next one.
+
 ## What's in here
 
 | Script | Purpose |
@@ -21,6 +25,7 @@ should we improve?", not to publish a leaderboard.
 | [`transcript_output.py`](./transcript_output.py) | Output tokens per assistant message before vs after the output-saver block, from your own Claude Code transcripts, per model, with a bootstrap 95% CI. Observational and labelled estimated |
 | [`output_saver_ab.py`](./output_saver_ab.py) | A/B for the output-saver block with a control: no block, "Answer concisely.", the trs block; isolated `claude -p` runs, style markers, fidelity cases (negation, number, destructive warning), bootstrap CI. Spends usage, refuses without `--yes`; `--dry-run` tests the harness for free |
 | [`output_saver_agentic.py`](./output_saver_agentic.py) | Agentic A/B for the output-saver block: tools on, small repo tasks with a test as success check, compares arms (`--arm NAME=FILE`) on `total_cost_usd`, turns, output tokens and success with a bootstrap CI. Parallel (`--jobs`), spend caps (`--total-cap-usd`), no `bypassPermissions` (scoped Bash allowlist). Spends usage, refuses without `--yes` |
+| [`output_saver_stale.py`](./output_saver_stale.py) | Fixture for `output_saver_agentic.py --suite stale`: a repo whose docs contradict its code, to score correct answers per arm |
 | [`truth.py`](./truth.py) | Whether trs kept what the agent needed. Pipelines sent through the real hook must print what the raw pipeline prints; paths, `file:line` refs, hashes and error lines from the raw output must survive; a plain `tail` cut to trs's size is the control; anchors found only in the middle half of the raw output are scored on their own (BLIND when a cut of 50% or more keeps under half of them). Tokens via tiktoken `o200k_base` when installed |
 | [`chain-rewrite.sh`](./chain-rewrite.sh) | Verifies the hook rewriter handles `A && B` chains, pipes, redirections, transparent wrappers (`time`, `nohup`, `noglob`, etc.), and edge cases |
 
