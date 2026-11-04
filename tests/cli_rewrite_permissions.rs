@@ -150,17 +150,18 @@ fn a_legacy_hook_without_caller_is_identified_by_its_tool_name() {
             .unwrap()
             .to_string()
     };
+    // Windows shells cannot take a `TRS_AGENT=x` prefix, so there is no tag to read.
+    let label_is = |v: &Value, label: &str| {
+        cfg!(windows) || tagged(v).starts_with(&format!("TRS_AGENT={label} "))
+    };
     for tool in [Some("Bash"), None] {
         let v = run(tool).unwrap();
         assert_eq!(decision(&v), Some("allow"));
-        assert!(tagged(&v).starts_with("TRS_AGENT=claude "));
+        assert!(label_is(&v, "claude"));
     }
     for (tool, label) in [("Execute", "droid"), ("exec", "devin-cli")] {
         let v = run(Some(tool)).unwrap_or_else(|| panic!("{tool}"));
-        assert!(
-            tagged(&v).starts_with(&format!("TRS_AGENT={label} ")),
-            "{tool}"
-        );
+        assert!(label_is(&v, label), "{tool}");
     }
     let v = run(Some("SomethingNew")).unwrap();
     assert_eq!(decision(&v), None, "an unknown tool is not approved");
