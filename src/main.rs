@@ -73,6 +73,7 @@ mod process;
 #[allow(dead_code)]
 mod reducer;
 mod report;
+mod rerun_rate;
 mod rewrite;
 mod rewrite_decide;
 mod rewrite_gate;
