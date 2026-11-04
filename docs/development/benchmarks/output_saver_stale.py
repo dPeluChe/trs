@@ -1,8 +1,8 @@
 """Stale-doc fixture for output_saver_agentic.py (`--suite stale`).
 
 A small service whose prose disagrees with its code or with a newer doc. Each
-task asks for one fact. `ok` means the reply gives the true value; `STALE` holds
-the old value, so a reply with both is one that surfaced the disagreement.
+task asks for one fact. `ok` means the reply gives the true value; `FACTS` also
+holds the old value, so a reply with both is one that surfaced the disagreement.
 """
 
 import re

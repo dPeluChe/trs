@@ -40,7 +40,7 @@ system prompt aimed at fewer steps cut median cost 17.9%.
 
 | Test | Runs | Arms | Result |
 | --- | --- | --- | --- |
-| Chat replies, no tools (`output_saver_ab.py`) | 40 per arm | none, one line, block | Block vs none -235 tokens (CI -326 to -141). Block vs one line -22 (CI -80 to +39). Fidelity 100% in every arm |
+| Chat replies, no tools (`output_saver_ab.py`) | 40 per arm | none, one line, block | Run 2, with the longer block: vs none -235 tokens (CI -326 to -141), vs one line -22 (CI -80 to +39), fidelity 100% in every arm. Run 1, older block: -237 and -20, fidelity 95%, see the feature doc |
 | Small repo tasks, tools on (`output_saver_agentic.py`) | 24 per arm | none, one line, 3 blocks | No arm differs on cost or turns. Blocks about $0.004 per run above none |
 | Stale docs vs code (`--suite stale`) | 40 per arm | none, one line, block | Correct: 95%, 95%, 90%. Block vs one line -5 points (CI -17.5 to +5) |
 

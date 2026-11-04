@@ -29,7 +29,7 @@ step. `trs doctor` surfaces the same drift signal inline.
 
 ## What the block says
 
-Two sections. Size and cost: see [What the block costs](#what-the-block-costs).
+Two headings, three rules. Size and cost: see [What the block costs](#what-the-block-costs).
 
 - **`Answer concisely.`** One line, because longer reply rules never beat it
   (see [Measuring impact](#measuring-impact)).
@@ -57,20 +57,6 @@ Earlier versions had numeric word budgets, shape rules, style rules, turn-saving
 rules and answer checks, drawn from published agent prompts and prompt-engineering
 studies. Measured against a one-line control, none of it paid its input cost, so
 the block keeps only what the one line cannot say.
-
-### What was deliberately NOT added
-
-- **`<answer>` XML delimiters**: Anthropic-documented for *parsing*
-  structured outputs, not brevity. Wrong tool for this surface.
-- **CoT (chain-of-thought) suppression in the prompt**: extended
-  thinking is controlled by API parameters (`max_thinking_tokens`),
-  not by reply-text instructions. Out of scope here.
-- **GPT-5 `<verbosity>low</verbosity>` tag**: empirically validated
-  by OpenAI for Codex / GPT-5+ agents, but requires per-agent
-  conditional content (Claude doesn't honor it). Worth a follow-up
-  with agent-specific templates; not in the current single-template
-  shape.
-
 
 ## Coverage matrix
 
@@ -251,8 +237,7 @@ allowlist lacked `sed`, 50 of 120 runs hit a permission denial and every
 failure was one of them.
 
 What this does not show: tasks of 2 to 7 turns leave little to batch, one
-model at low effort, no long sessions where the "persistence" rule might
-matter.
+model at low effort, no long sessions.
 
 **Did the longer block earn its place?** No. Criteria were committed before
 the runs (2026-11-04): against "Answer concisely.", a 2,334-byte block (word
