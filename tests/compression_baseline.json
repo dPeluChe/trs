@@ -1,0 +1,772 @@
+{
+  "bun_test_all_failed.txt": {
+    "handler": "test --runner bun",
+    "in": 291,
+    "out": 253
+  },
+  "bun_test_all_passed.txt": {
+    "handler": "test --runner bun",
+    "in": 309,
+    "out": 31
+  },
+  "bun_test_empty.txt": {
+    "handler": "test --runner bun",
+    "in": 0,
+    "out": 25
+  },
+  "bun_test_large.txt": {
+    "handler": "test --runner bun",
+    "in": 1019,
+    "out": 33
+  },
+  "bun_test_mixed.txt": {
+    "handler": "test --runner bun",
+    "in": 354,
+    "out": 177
+  },
+  "bun_test_multiple_suites.txt": {
+    "handler": "test --runner bun",
+    "in": 533,
+    "out": 31
+  },
+  "bun_test_non_tty.txt": {
+    "handler": "test --runner bun",
+    "in": 148,
+    "out": 31
+  },
+  "bun_test_real_failures.txt": {
+    "handler": "test --runner bun",
+    "in": 1603,
+    "out": 604
+  },
+  "bun_test_single_failed.txt": {
+    "handler": "test --runner bun",
+    "in": 209,
+    "out": 188
+  },
+  "bun_test_single_passed.txt": {
+    "handler": "test --runner bun",
+    "in": 115,
+    "out": 31
+  },
+  "bun_test_with_skipped.txt": {
+    "handler": "test --runner bun",
+    "in": 303,
+    "out": 31
+  },
+  "bun_test_with_todo.txt": {
+    "handler": "test --runner bun",
+    "in": 227,
+    "out": 31
+  },
+  "git_diff_added.txt": {
+    "handler": "git-diff",
+    "in": 220,
+    "out": 154
+  },
+  "git_diff_binary.txt": {
+    "handler": "git-diff",
+    "in": 141,
+    "out": 44
+  },
+  "git_diff_copied.txt": {
+    "handler": "git-diff",
+    "in": 161,
+    "out": 68
+  },
+  "git_diff_deleted.txt": {
+    "handler": "git-diff",
+    "in": 245,
+    "out": 165
+  },
+  "git_diff_empty.txt": {
+    "handler": "git-diff",
+    "in": 1,
+    "out": 12
+  },
+  "git_diff_large.txt": {
+    "handler": "git-diff",
+    "in": 1820,
+    "out": 958
+  },
+  "git_diff_long_paths.txt": {
+    "handler": "git-diff",
+    "in": 795,
+    "out": 260
+  },
+  "git_diff_mixed.txt": {
+    "handler": "git-diff",
+    "in": 1097,
+    "out": 610
+  },
+  "git_diff_modified.txt": {
+    "handler": "git-diff",
+    "in": 218,
+    "out": 107
+  },
+  "git_diff_multiple.txt": {
+    "handler": "git-diff",
+    "in": 528,
+    "out": 252
+  },
+  "git_diff_renamed.txt": {
+    "handler": "git-diff",
+    "in": 309,
+    "out": 154
+  },
+  "git_status_ahead.txt": {
+    "handler": "git-status",
+    "in": 161,
+    "out": 24
+  },
+  "git_status_all_status_codes.txt": {
+    "handler": "git-status",
+    "in": 755,
+    "out": 513
+  },
+  "git_status_behind.txt": {
+    "handler": "git-status",
+    "in": 178,
+    "out": 22
+  },
+  "git_status_clean.txt": {
+    "handler": "git-status",
+    "in": 100,
+    "out": 11
+  },
+  "git_status_conflict.txt": {
+    "handler": "git-status",
+    "in": 388,
+    "out": 99
+  },
+  "git_status_copied.txt": {
+    "handler": "git-status",
+    "in": 187,
+    "out": 54
+  },
+  "git_status_detached.txt": {
+    "handler": "git-status",
+    "in": 62,
+    "out": 30
+  },
+  "git_status_diverged.txt": {
+    "handler": "git-status",
+    "in": 160,
+    "out": 34
+  },
+  "git_status_empty.txt": {
+    "handler": "git-status",
+    "in": 0,
+    "out": 6
+  },
+  "git_status_german_clean.txt": {
+    "handler": "git-status",
+    "in": 124,
+    "out": 11
+  },
+  "git_status_long_paths.txt": {
+    "handler": "git-status",
+    "in": 453,
+    "out": 248
+  },
+  "git_status_mixed.txt": {
+    "handler": "git-status",
+    "in": 532,
+    "out": 156
+  },
+  "git_status_no_branch.txt": {
+    "handler": "git-status",
+    "in": 135,
+    "out": 47
+  },
+  "git_status_porcelain.txt": {
+    "handler": "git-status",
+    "in": 155,
+    "out": 210
+  },
+  "git_status_porcelain_v2.txt": {
+    "handler": "git-status",
+    "in": 387,
+    "out": 11
+  },
+  "git_status_renamed.txt": {
+    "handler": "git-status",
+    "in": 383,
+    "out": 89
+  },
+  "git_status_spanish_clean.txt": {
+    "handler": "git-status",
+    "in": 111,
+    "out": 11
+  },
+  "git_status_spanish_staged.txt": {
+    "handler": "git-status",
+    "in": 249,
+    "out": 77
+  },
+  "git_status_staged.txt": {
+    "handler": "git-status",
+    "in": 223,
+    "out": 70
+  },
+  "git_status_typechange.txt": {
+    "handler": "git-status",
+    "in": 257,
+    "out": 39
+  },
+  "git_status_unstaged.txt": {
+    "handler": "git-status",
+    "in": 318,
+    "out": 80
+  },
+  "git_status_untracked.txt": {
+    "handler": "git-status",
+    "in": 191,
+    "out": 75
+  },
+  "git_status_whitespace_only.txt": {
+    "handler": "git-status",
+    "in": 8,
+    "out": 6
+  },
+  "grep_binary_file.txt": {
+    "handler": "grep",
+    "in": 39,
+    "out": 33
+  },
+  "grep_context_after.txt": {
+    "handler": "grep",
+    "in": 101,
+    "out": 91
+  },
+  "grep_context_before.txt": {
+    "handler": "grep",
+    "in": 82,
+    "out": 72
+  },
+  "grep_context_lines.txt": {
+    "handler": "grep",
+    "in": 156,
+    "out": 128
+  },
+  "grep_empty.txt": {
+    "handler": "grep",
+    "in": 0,
+    "out": 17
+  },
+  "grep_large.txt": {
+    "handler": "grep",
+    "in": 2932,
+    "out": 2721
+  },
+  "grep_long_paths.txt": {
+    "handler": "grep",
+    "in": 215,
+    "out": 241
+  },
+  "grep_mixed.txt": {
+    "handler": "grep",
+    "in": 262,
+    "out": 307
+  },
+  "grep_multiple_files.txt": {
+    "handler": "grep",
+    "in": 90,
+    "out": 116
+  },
+  "grep_ripgrep_heading.txt": {
+    "handler": "grep",
+    "in": 147,
+    "out": 135
+  },
+  "grep_simple.txt": {
+    "handler": "grep",
+    "in": 27,
+    "out": 27
+  },
+  "grep_single_file_multiple_matches.txt": {
+    "handler": "grep",
+    "in": 114,
+    "out": 95
+  },
+  "grep_special_chars.txt": {
+    "handler": "grep",
+    "in": 179,
+    "out": 205
+  },
+  "grep_with_colon_in_content.txt": {
+    "handler": "grep",
+    "in": 132,
+    "out": 183
+  },
+  "grep_with_column.txt": {
+    "handler": "grep",
+    "in": 62,
+    "out": 88
+  },
+  "grep_without_line_numbers.txt": {
+    "handler": "grep",
+    "in": 51,
+    "out": 77
+  },
+  "jest_all_failed.txt": {
+    "handler": "test --runner jest",
+    "in": 268,
+    "out": 165
+  },
+  "jest_all_passed.txt": {
+    "handler": "test --runner jest",
+    "in": 335,
+    "out": 32
+  },
+  "jest_empty.txt": {
+    "handler": "test --runner jest",
+    "in": 0,
+    "out": 15
+  },
+  "jest_large.txt": {
+    "handler": "test --runner jest",
+    "in": 815,
+    "out": 34
+  },
+  "jest_mixed.txt": {
+    "handler": "test --runner jest",
+    "in": 553,
+    "out": 140
+  },
+  "jest_multiple_suites.txt": {
+    "handler": "test --runner jest",
+    "in": 425,
+    "out": 32
+  },
+  "jest_single_suite_failed.txt": {
+    "handler": "test --runner jest",
+    "in": 460,
+    "out": 129
+  },
+  "jest_single_suite_passed.txt": {
+    "handler": "test --runner jest",
+    "in": 155,
+    "out": 24
+  },
+  "jest_with_nested_describe.txt": {
+    "handler": "test --runner jest",
+    "in": 285,
+    "out": 24
+  },
+  "jest_with_skipped.txt": {
+    "handler": "test --runner jest",
+    "in": 272,
+    "out": 35
+  },
+  "jest_with_todo.txt": {
+    "handler": "test --runner jest",
+    "in": 203,
+    "out": 43
+  },
+  "logs_access.txt": {
+    "handler": "logs",
+    "in": 1013,
+    "out": 886
+  },
+  "logs_all_levels.txt": {
+    "handler": "logs",
+    "in": 582,
+    "out": 1027
+  },
+  "logs_application.txt": {
+    "handler": "logs",
+    "in": 1549,
+    "out": 1475
+  },
+  "logs_colon_format.txt": {
+    "handler": "logs",
+    "in": 436,
+    "out": 643
+  },
+  "logs_empty.txt": {
+    "handler": "logs",
+    "in": 0,
+    "out": 12
+  },
+  "logs_errors_only.txt": {
+    "handler": "logs",
+    "in": 613,
+    "out": 1226
+  },
+  "logs_iso8601_timestamp.txt": {
+    "handler": "logs",
+    "in": 315,
+    "out": 402
+  },
+  "logs_json_format.txt": {
+    "handler": "logs",
+    "in": 689,
+    "out": 364
+  },
+  "logs_large.txt": {
+    "handler": "logs",
+    "in": 1702,
+    "out": 1818
+  },
+  "logs_mixed_format.txt": {
+    "handler": "logs",
+    "in": 519,
+    "out": 772
+  },
+  "logs_multiline_error.txt": {
+    "handler": "logs",
+    "in": 1238,
+    "out": 1620
+  },
+  "logs_pipe_format.txt": {
+    "handler": "logs",
+    "in": 262,
+    "out": 447
+  },
+  "logs_repeated_lines.txt": {
+    "handler": "logs",
+    "in": 365,
+    "out": 770
+  },
+  "logs_simple.txt": {
+    "handler": "logs",
+    "in": 215,
+    "out": 378
+  },
+  "logs_syslog_format.txt": {
+    "handler": "logs",
+    "in": 384,
+    "out": 438
+  },
+  "logs_with_exceptions.txt": {
+    "handler": "logs",
+    "in": 997,
+    "out": 1306
+  },
+  "logs_with_source.txt": {
+    "handler": "logs",
+    "in": 395,
+    "out": 440
+  },
+  "ls_broken_symlink.txt": {
+    "handler": "ls",
+    "in": 162,
+    "out": 88
+  },
+  "ls_empty.txt": {
+    "handler": "ls",
+    "in": 0,
+    "out": 8
+  },
+  "ls_generated_dirs.txt": {
+    "handler": "ls",
+    "in": 70,
+    "out": 103
+  },
+  "ls_long_format.txt": {
+    "handler": "ls",
+    "in": 216,
+    "out": 63
+  },
+  "ls_long_format_with_symlinks.txt": {
+    "handler": "ls",
+    "in": 297,
+    "out": 106
+  },
+  "ls_long_paths.txt": {
+    "handler": "ls",
+    "in": 159,
+    "out": 169
+  },
+  "ls_mixed.txt": {
+    "handler": "ls",
+    "in": 602,
+    "out": 230
+  },
+  "ls_permission_denied.txt": {
+    "handler": "ls",
+    "in": 124,
+    "out": 138
+  },
+  "ls_simple.txt": {
+    "handler": "ls",
+    "in": 47,
+    "out": 67
+  },
+  "ls_special_chars.txt": {
+    "handler": "ls",
+    "in": 106,
+    "out": 112
+  },
+  "ls_with_directories.txt": {
+    "handler": "ls",
+    "in": 62,
+    "out": 97
+  },
+  "ls_with_hidden.txt": {
+    "handler": "ls",
+    "in": 67,
+    "out": 91
+  },
+  "npm_test_all_failed.txt": {
+    "handler": "test --runner npm",
+    "in": 288,
+    "out": 181
+  },
+  "npm_test_all_passed.txt": {
+    "handler": "test --runner npm",
+    "in": 338,
+    "out": 31
+  },
+  "npm_test_empty.txt": {
+    "handler": "test --runner npm",
+    "in": 0,
+    "out": 25
+  },
+  "npm_test_large.txt": {
+    "handler": "test --runner npm",
+    "in": 1214,
+    "out": 33
+  },
+  "npm_test_mixed.txt": {
+    "handler": "test --runner npm",
+    "in": 432,
+    "out": 156
+  },
+  "npm_test_multiple_suites.txt": {
+    "handler": "test --runner npm",
+    "in": 570,
+    "out": 31
+  },
+  "npm_test_single_failed.txt": {
+    "handler": "test --runner npm",
+    "in": 205,
+    "out": 140
+  },
+  "npm_test_single_passed.txt": {
+    "handler": "test --runner npm",
+    "in": 169,
+    "out": 31
+  },
+  "npm_test_with_header.txt": {
+    "handler": "test --runner npm",
+    "in": 206,
+    "out": 31
+  },
+  "npm_test_with_skipped.txt": {
+    "handler": "test --runner npm",
+    "in": 287,
+    "out": 31
+  },
+  "npm_test_with_todo.txt": {
+    "handler": "test --runner npm",
+    "in": 229,
+    "out": 31
+  },
+  "pnpm_test_all_failed.txt": {
+    "handler": "test --runner pnpm",
+    "in": 288,
+    "out": 181
+  },
+  "pnpm_test_all_passed.txt": {
+    "handler": "test --runner pnpm",
+    "in": 338,
+    "out": 31
+  },
+  "pnpm_test_empty.txt": {
+    "handler": "test --runner pnpm",
+    "in": 0,
+    "out": 26
+  },
+  "pnpm_test_large.txt": {
+    "handler": "test --runner pnpm",
+    "in": 1214,
+    "out": 33
+  },
+  "pnpm_test_mixed.txt": {
+    "handler": "test --runner pnpm",
+    "in": 432,
+    "out": 156
+  },
+  "pnpm_test_single_failed.txt": {
+    "handler": "test --runner pnpm",
+    "in": 205,
+    "out": 140
+  },
+  "pnpm_test_single_passed.txt": {
+    "handler": "test --runner pnpm",
+    "in": 169,
+    "out": 31
+  },
+  "pnpm_test_with_header.txt": {
+    "handler": "test --runner pnpm",
+    "in": 182,
+    "out": 31
+  },
+  "pnpm_test_with_skipped.txt": {
+    "handler": "test --runner pnpm",
+    "in": 287,
+    "out": 31
+  },
+  "pnpm_test_with_todo.txt": {
+    "handler": "test --runner pnpm",
+    "in": 229,
+    "out": 31
+  },
+  "pytest_all_failed.txt": {
+    "handler": "test --runner pytest",
+    "in": 785,
+    "out": 379
+  },
+  "pytest_all_passed.txt": {
+    "handler": "test --runner pytest",
+    "in": 175,
+    "out": 22
+  },
+  "pytest_empty.txt": {
+    "handler": "test --runner pytest",
+    "in": 0,
+    "out": 15
+  },
+  "pytest_large.txt": {
+    "handler": "test --runner pytest",
+    "in": 939,
+    "out": 23
+  },
+  "pytest_long_paths.txt": {
+    "handler": "test --runner pytest",
+    "in": 278,
+    "out": 22
+  },
+  "pytest_mixed.txt": {
+    "handler": "test --runner pytest",
+    "in": 555,
+    "out": 183
+  },
+  "pytest_real_default.txt": {
+    "handler": "test --runner pytest",
+    "in": 1334,
+    "out": 280
+  },
+  "pytest_real_quiet.txt": {
+    "handler": "test --runner pytest",
+    "in": 971,
+    "out": 280
+  },
+  "pytest_real_verbose.txt": {
+    "handler": "test --runner pytest",
+    "in": 7006,
+    "out": 306
+  },
+  "pytest_single_failed.txt": {
+    "handler": "test --runner pytest",
+    "in": 365,
+    "out": 179
+  },
+  "pytest_single_passed.txt": {
+    "handler": "test --runner pytest",
+    "in": 54,
+    "out": 22
+  },
+  "pytest_with_error.txt": {
+    "handler": "test --runner pytest",
+    "in": 416,
+    "out": 88
+  },
+  "pytest_with_header.txt": {
+    "handler": "test --runner pytest",
+    "in": 448,
+    "out": 22
+  },
+  "pytest_with_xfail.txt": {
+    "handler": "test --runner pytest",
+    "in": 213,
+    "out": 55
+  },
+  "tail_app.log": {
+    "handler": "logs",
+    "in": 404,
+    "out": 580
+  },
+  "tail_empty.log": {
+    "handler": "logs",
+    "in": 1,
+    "out": 12
+  },
+  "tail_json.log": {
+    "handler": "logs",
+    "in": 803,
+    "out": 297
+  },
+  "tail_large.log": {
+    "handler": "logs",
+    "in": 629,
+    "out": 798
+  },
+  "tail_mixed.log": {
+    "handler": "logs",
+    "in": 235,
+    "out": 483
+  },
+  "tail_small.log": {
+    "handler": "logs",
+    "in": 23,
+    "out": 56
+  },
+  "tail_with_special_chars.log": {
+    "handler": "logs",
+    "in": 251,
+    "out": 409
+  },
+  "vitest_all_failed.txt": {
+    "handler": "test --runner vitest",
+    "in": 303,
+    "out": 179
+  },
+  "vitest_all_passed.txt": {
+    "handler": "test --runner vitest",
+    "in": 221,
+    "out": 36
+  },
+  "vitest_empty.txt": {
+    "handler": "test --runner vitest",
+    "in": 0,
+    "out": 15
+  },
+  "vitest_large.txt": {
+    "handler": "test --runner vitest",
+    "in": 508,
+    "out": 38
+  },
+  "vitest_mixed.txt": {
+    "handler": "test --runner vitest",
+    "in": 272,
+    "out": 142
+  },
+  "vitest_mixed_skipped.txt": {
+    "handler": "test --runner vitest",
+    "in": 208,
+    "out": 48
+  },
+  "vitest_single_failed.txt": {
+    "handler": "test --runner vitest",
+    "in": 212,
+    "out": 140
+  },
+  "vitest_single_passed.txt": {
+    "handler": "test --runner vitest",
+    "in": 135,
+    "out": 36
+  },
+  "vitest_with_skipped.txt": {
+    "handler": "test --runner vitest",
+    "in": 160,
+    "out": 47
+  },
+  "vitest_with_todo.txt": {
+    "handler": "test --runner vitest",
+    "in": 173,
+    "out": 55
+  }
+}
