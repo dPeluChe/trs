@@ -18,7 +18,7 @@ should we improve?", not to publish a leaderboard.
 |--------|---------|
 | [`benchmark.sh`](./benchmark.sh) | Comparative runs against rtk and token-saver on a curated set of real-world commands |
 | [`benchmark-real.sh`](./benchmark-real.sh) | Longer, more varied workload (slower, more representative) |
-| [`truth.py`](./truth.py) | Whether trs kept what the agent needed. Pipelines sent through the real hook must print what the raw pipeline prints; paths, `file:line` refs, hashes and error lines from the raw output must survive; a plain `tail` cut to trs's size is the control. Tokens via tiktoken `o200k_base` when installed |
+| [`truth.py`](./truth.py) | Whether trs kept what the agent needed. Pipelines sent through the real hook must print what the raw pipeline prints; paths, `file:line` refs, hashes and error lines from the raw output must survive; a plain `tail` cut to trs's size is the control; anchors found only in the middle half of the raw output are scored on their own (BLIND when a cut of 50% or more keeps under half of them). Tokens via tiktoken `o200k_base` when installed |
 | [`chain-rewrite.sh`](./chain-rewrite.sh) | Verifies the hook rewriter handles `A && B` chains, pipes, redirections, transparent wrappers (`time`, `nohup`, `noglob`, etc.), and edge cases |
 
 ## How to use

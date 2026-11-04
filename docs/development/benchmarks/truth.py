@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Does trs keep what the agent needed? Bytes alone cannot say.
 
-Three checks, each aimed at a way a byte benchmark scores a loss as a win:
+Four checks, each aimed at a way a byte benchmark scores a loss as a win:
 
 1. Pipelines. Every pipeline goes through `trs rewrite`, exactly as an agent's
    hook would send it, and must print what the raw pipeline prints. A pipe
@@ -13,6 +13,14 @@ Three checks, each aimed at a way a byte benchmark scores a loss as a win:
 3. A naive control. The raw output's last lines, cut to trs's byte count.
    Where `tail` keeps more anchors in the same space, trs is not earning
    the compression.
+
+4. Buried needles. A saving that keeps the head and the tail of an output can
+   still blind the model to an answer in the middle. The anchors (paths,
+   `file:line`, hashes) found in the middle half of the raw output are
+   scored on their own; a row that cuts 50% or more but keeps under 50% of
+   them is flagged BLIND. This is the offline half of a comprehension check
+   (plant an answer, ask for it): it needs no model, so it costs nothing and
+   runs in CI. The model-in-the-loop half is part of the output-saver A/B.
 
 Tokens are counted with tiktoken (o200k_base) when it is installed, else
 bytes/4, and the header says which.
@@ -61,6 +69,7 @@ ANCHORS = {
 }
 ERROR_LINE = re.compile(r"error|fail|panick|warning|FAIL", re.I)
 RISK_CUT, RISK_KEEP = 90.0, 70.0
+BLIND_CUT, BLIND_KEEP, BLIND_MIN = 50.0, 50.0, 3
 
 
 def find_trs():
@@ -108,6 +117,15 @@ def anchors(text):
         if ERROR_LINE.search(line):
             found.add(("error", " ".join(line.split())[:40]))
     return found
+
+
+def buried(raw):
+    """Anchors that appear only in the middle half of the raw output."""
+    lines = raw.splitlines()
+    n = len(lines)
+    middle = "\n".join(lines[n // 4 : n - n // 4])
+    edges = "\n".join(lines[: n // 4] + lines[n - n // 4 :])
+    return {a for a in anchors(middle) if a[0] != "error"} - anchors(edges)
 
 
 def kept(found, text):
@@ -160,9 +178,9 @@ def main():
     print(f"  {len(PIPELINES) - bad}/{len(PIPELINES)} match\n")
 
     print("Anchors: what survives, and whether plain tail would keep more")
-    head = f"  {'command':30}{'raw tok':>8}{'trs tok':>8}{'cut':>6}{'anchors':>9}{'kept':>6}{'tail':>6}  flag"
+    head = f"  {'command':30}{'raw tok':>8}{'trs tok':>8}{'cut':>6}{'anchors':>9}{'kept':>6}{'tail':>6}{'buried':>8}  flag"
     print(head)
-    risks = 0
+    risks = blind = 0
     for c in COMMANDS:
         raw = sh(c, stderr=True)
         out = sh(f"{trs} {c}", stderr=True)
@@ -175,7 +193,12 @@ def main():
         n = len(found)
         k = kept(found, out) * 100 / n if n else 100.0
         t = kept(found, naive_tail(raw, len(out))) * 100 / n if n else 100.0
+        deep = buried(raw)
+        b = kept(deep, out) * 100 / len(deep) if deep else 100.0
         flags = []
+        if len(deep) >= BLIND_MIN and cut >= BLIND_CUT and b < BLIND_KEEP:
+            flags.append("BLIND")
+            blind += 1
         if ot > rt:
             flags.append("GREW")
         if cut >= RISK_CUT and k < RISK_KEEP:
@@ -183,8 +206,9 @@ def main():
             risks += 1
         if t > k:
             flags.append("tail-wins")
-        print(f"  {c[:30]:30}{rt:8}{ot:8}{cut:5.0f}%{n:9}{k:5.0f}%{t:5.0f}%  {' '.join(flags)}")
+        print(f"  {c[:30]:30}{rt:8}{ot:8}{cut:5.0f}%{n:9}{k:5.0f}%{t:5.0f}%{b:7.0f}%  {' '.join(flags)}")
     print(f"\n  RISK = cut >= {RISK_CUT:.0f}% with under {RISK_KEEP:.0f}% of anchors kept ({risks} rows)")
+    print(f"  BLIND = cut >= {BLIND_CUT:.0f}% with under {BLIND_KEEP:.0f}% of the middle-only anchors kept ({blind} rows)")
     sys.exit(1 if bad else 0)
 
 
