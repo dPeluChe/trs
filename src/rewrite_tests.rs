@@ -114,7 +114,7 @@ fn test_agent_flag_attributes_rewrite() {
     );
     // Devin CLI must be whitelisted — else `--caller devin-cli` silently
     // falls back to `claude` (the bug found in live validation). Regression
-    // guard: keep `devin-cli` in `known_agent_label`.
+    // guard: keep `devin-cli` in `rewrite_gate::AGENTS`.
     let out = build_hook_response(&input, Some("devin-cli")).expect("should rewrite");
     assert_eq!(
         out["hookSpecificOutput"]["updatedInput"]["command"],

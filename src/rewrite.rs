@@ -55,25 +55,9 @@ fn handle_json_protocol(json: &serde_json::Value, agent_flag: Option<&str>) {
 }
 
 /// Map a user-supplied label to its canonical static form. Whitelist, not
-/// pass-through: only labels we ship templates for can attribute runs.
+/// pass-through: only labels with a row in `rewrite_gate::AGENTS` can attribute runs.
 fn known_agent_label(s: &str) -> Option<&'static str> {
-    Some(match s {
-        "claude" => "claude",
-        "gemini" => "gemini",
-        "cursor" => "cursor",
-        "codex" => "codex",
-        "vscode" => "vscode",
-        "copilot-cli" => "copilot-cli",
-        "droid" => "droid",
-        "antigravity" => "antigravity",
-        "opencode" => "opencode",
-        "kilo" => "kilo",
-        "pi" => "pi",
-        "openclaw" => "openclaw",
-        "hermes" => "hermes",
-        "devin-cli" => "devin-cli",
-        _ => return None,
-    })
+    crate::rewrite_gate::policy(s).map(|p| p.label)
 }
 
 /// VS Code and Copilot CLI load the same `~/.copilot/hooks/trs.json`, so its
@@ -137,11 +121,11 @@ impl HookEvent {
     /// run. Whitelist (not pass-through): an arbitrary inherited TRS_AGENT
     /// value must not silently relabel runs.
     fn agent_label_from(&self, has_antigravity_env: bool, trs_agent: Option<&str>) -> &'static str {
-        match trs_agent {
-            Some("codex") => return "codex",
-            Some("vscode") => return "vscode",
-            Some("copilot-cli") => return "copilot-cli",
-            _ => {}
+        let from_env = trs_agent
+            .and_then(crate::rewrite_gate::policy)
+            .filter(|p| p.from_env);
+        if let Some(p) = from_env {
+            return p.label;
         }
         self.agent_label_for(has_antigravity_env)
     }
@@ -218,9 +202,18 @@ fn build_hook_response(
     }
     // Agents match their permission rules against the rewritten command, so
     // the hook applies them to the original one (rewrite_gate.rs).
-    let gate = crate::rewrite_gate::gate_for(label, cmd, json);
+    let mut gate = crate::rewrite_gate::gate_for(label, cmd, json);
     if gate == Gate::Skip {
         return None;
+    }
+    // Without `--caller`, "claude" is a guess; an older Droid/Devin hook has
+    // another tool name. Approve only what Claude itself would have sent.
+    if gate == Gate::Allow
+        && flag_label.is_none()
+        && event == HookEvent::ClaudePreToolUse
+        && !is_claude_tool(json)
+    {
+        gate = Gate::Defer;
     }
     let rewritten = tag_with_agent(&rewritten, label);
 
@@ -253,6 +246,12 @@ fn build_hook_response(
         }
     };
     Some(response)
+}
+
+fn is_claude_tool(json: &serde_json::Value) -> bool {
+    json.get("tool_name")
+        .and_then(|v| v.as_str())
+        .is_none_or(|t| t == "Bash")
 }
 
 /// Claude's worktree guard refuses `trs git …` inside `.claude/worktrees/*`

@@ -152,7 +152,7 @@ pub(crate) const VSCODE_HOOKS: &str = r#"{
 // updatedInput: validated live 2026-07-07 — Devin honors
 // `hookSpecificOutput.updatedInput` (commands run rewritten as `trs …`),
 // even though its docs only mention `decision`/`additionalContext`.
-// Attribution requires `devin-cli` in rewrite.rs `known_agent_label`, else
+// Attribution requires a `devin-cli` row in `rewrite_gate::AGENTS`, else
 // `--caller devin-cli` falls back to `claude`. Devin also reads `.claude`
 // hooks by default (`read_config_from.claude`); set it false so this hook
 // wins over the transitive Claude one.

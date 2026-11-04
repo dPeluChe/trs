@@ -88,7 +88,7 @@ Do not name those projects in commits, docs or the changelog when shipping these
 - [x] **Stale doc**: `docs/support/other-token-savers.md` describes one tool as "Node-based compressor, global npm package", which is wrong.
 - [~] **Hook command strings on Windows** (all are plain `trs rewrite [--caller x]`, no shell syntax; live PowerShell check still open): check the Codex/Copilot hook commands run under PowerShell as well as cmd.exe (a similar tool had "hook exited with code 1" there).
 - [ ] **Permission gates, follow-ups from the simplify, review and live checks (2026-11-04)**:
-  - One `AgentPolicy` table (label, gate, response shape) instead of editing `known_agent_label`, `agent_label_from` and `gate_for` per agent. Legacy installs without `--caller` fall back to the `claude` label (an old Droid/Devin hook gets Claude's gate): send an allow only for a positively identified agent.
+  - [x] One `AgentPolicy` table (`rewrite_gate.rs`: label, `TRS_AGENT` source, gate) instead of editing `known_agent_label`, `agent_label_from` and `gate_for` per agent; the response shape stays per envelope (`HookEvent`), not per agent. A hook without `--caller` on Claude's envelope is approved only for tool `Bash` (an old Droid/Devin hook is rewritten, not approved).
   - JS plugins: `trs rewrite --json` returning rewrite, segments and gate in one spawn (OpenCode 2.x spawns twice); cache `client.config.get` per directory; async `spawn` instead of `spawnSync`.
   - Inject config roots instead of `cfg!(test)` branches in the gates (Droid and Gemini already do).
   - `trs doctor` checks for the OpenClaw and Hermes plugins (the blind `trs ` prefix copies are the bug this branch fixes).
