@@ -129,11 +129,12 @@ pub(crate) fn run_checks() -> Vec<Check> {
         check_agent_docs_health(),
     ];
     checks.extend(check_script_plugins());
+    checks.extend(check_host_plugins());
     checks
 }
 
 use crate::doctor_checks::*;
-use crate::doctor_hooks::{check_hooks_installed, check_script_plugins};
+use crate::doctor_hooks::{check_hooks_installed, check_host_plugins, check_script_plugins};
 
 /// Print doctor results in spark-style format.
 pub(crate) fn print_report(checks: &[Check]) {

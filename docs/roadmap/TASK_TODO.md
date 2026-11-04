@@ -91,7 +91,7 @@ Do not name those projects in commits, docs or the changelog when shipping these
   - [x] One `AgentPolicy` table (`rewrite_gate.rs`: label, `TRS_AGENT` source, gate) instead of editing the label, gate and `TRS_AGENT` lookups per agent; the response shape stays per envelope (`HookEvent`), not per agent. A hook without `--caller` on Claude's envelope is identified by its `tool_name` (row `.tool(..)`: Bash, Execute, exec): an old Droid/Devin hook gets its own label and gate, an unknown tool is rewritten but never approved.
   - [x] JS plugins (OpenCode, Kilo): `trs rewrite --json` returns rewrite and segments in one spawn (2.x spawned twice); async `spawn` instead of `spawnSync` (hooks there are already async); the config read is cached 2 s per plugin instance. Pi and OpenClaw stay on sync `spawnSync` (their hook signatures are not verified async).
   - Inject config roots instead of `cfg!(test)` branches in the gates (Droid and Gemini already do).
-  - `trs doctor` checks for the OpenClaw and Hermes plugins (the blind `trs ` prefix copies are the bug this branch fixes).
+  - [x] `trs doctor` checks the OpenClaw and Hermes plugins (stale copy, and installed but not enabled in `openclaw.json` / `config.yaml`); messages name the plugin.
   - Droid: the `--settings` flag overlay is invisible to the hook (the env overlay is read now).
   - Cursor: `ask` Shell rules had no effect on 2026.10.22; project `.cursor/cli.json` is read but not verified live; `Shell(cmd args)` is an exact match in Cursor, the gate over-matches by prefix (fails safe).
   - Gemini: its own auto-allowed command set is not Claude's `read_only` list; verify and use its own.

@@ -81,13 +81,74 @@ pub(crate) fn check_script_plugins() -> Vec<Check> {
 fn script_plugin_check(name: &'static str, content: &str, default_export: bool) -> Check {
     const REFRESH: &str = "trs init --all --global --force, then restart the agent";
     if default_export && !content.contains("export default") {
-        return Check::warn(name, "old format, OpenCode 2.x will not load it").with_hint(REFRESH);
+        return Check::warn(
+            name,
+            format!("{name}: old format, OpenCode 2.x will not load it"),
+        )
+        .with_hint(REFRESH);
     }
     if !content.contains("\"rewrite\"") {
-        return Check::warn(name, "old version, it rewrites pipes and redirects too")
-            .with_hint(REFRESH);
+        return Check::warn(
+            name,
+            format!("{name}: old version, it rewrites pipes and redirects too"),
+        )
+        .with_hint(REFRESH);
     }
-    Check::pass(name, "current")
+    Check::pass(name, format!("{name} is current"))
+}
+
+/// OpenClaw and Hermes load a plugin by name from their own config, so the
+/// file alone is not enough: stale content and a missing config entry both
+/// leave trs out of the loop (or, for a copy that predates `trs rewrite`,
+/// prefix every command blindly).
+pub(crate) fn check_host_plugins() -> Vec<Check> {
+    let mut out = Vec::new();
+    if let Ok(home) = crate::init::home_dir() {
+        let dir = home.join(".openclaw");
+        if let Ok(content) = std::fs::read_to_string(dir.join("plugins/trs/index.js")) {
+            let enabled = openclaw_enabled(&dir);
+            out.push(host_plugin_check("openclaw plugin", &content, enabled));
+        }
+    }
+    if let Ok(dir) = crate::init_install_plugins::hermes_home() {
+        if let Ok(content) = std::fs::read_to_string(dir.join("plugins/trs-rewrite/__init__.py")) {
+            let enabled = hermes_enabled(&dir);
+            out.push(host_plugin_check("hermes plugin", &content, enabled));
+        }
+    }
+    out
+}
+
+/// `enabled` is `None` when the config could not be judged (left alone then).
+fn host_plugin_check(name: &'static str, content: &str, enabled: Option<bool>) -> Check {
+    let check = script_plugin_check(name, content, false);
+    if check.status != crate::doctor::CheckStatus::Pass || enabled != Some(false) {
+        return check;
+    }
+    Check::warn(
+        name,
+        format!("{name}: installed but not enabled in the agent's config"),
+    )
+    .with_hint("trs init --all --global, then restart the agent")
+}
+
+fn openclaw_enabled(dir: &std::path::Path) -> Option<bool> {
+    let text = std::fs::read_to_string(dir.join("openclaw.json")).unwrap_or_else(|_| "{}".into());
+    let mut root: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let plugin_dir = dir.join("plugins").join("trs").display().to_string();
+    let changed =
+        crate::init_install_plugins::merge_openclaw_config(&mut root, &plugin_dir).ok()?;
+    Some(!changed)
+}
+
+fn hermes_enabled(dir: &std::path::Path) -> Option<bool> {
+    use crate::init_install_plugins::{patch_hermes_config, HermesConfigPatch};
+    let text = std::fs::read_to_string(dir.join("config.yaml")).unwrap_or_default();
+    match patch_hermes_config(&text) {
+        HermesConfigPatch::AlreadyPresent => Some(true),
+        HermesConfigPatch::Patched(_) => Some(false),
+        HermesConfigPatch::Manual => None,
+    }
 }
 
 /// Runs that came through a hook carry an `agent` label; direct runs don't.
@@ -134,6 +195,39 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn host_plugins_are_checked_for_staleness_and_for_being_enabled() {
+        use super::{hermes_enabled, host_plugin_check, openclaw_enabled};
+        use crate::init_templates::{HERMES_PLUGIN_INIT, OPENCLAW_PLUGIN_INDEX};
+        let ok = host_plugin_check("openclaw plugin", OPENCLAW_PLUGIN_INDEX, Some(true));
+        assert_eq!(ok.status, CheckStatus::Pass);
+        let off = host_plugin_check("openclaw plugin", OPENCLAW_PLUGIN_INDEX, Some(false));
+        assert_eq!(off.status, CheckStatus::Warn);
+        let unknown = host_plugin_check("hermes plugin", HERMES_PLUGIN_INIT, None);
+        assert_eq!(unknown.status, CheckStatus::Pass);
+        let blind = "register(api) { api.on('x', (e) => `trs ${e}`) }";
+        let stale = host_plugin_check("openclaw plugin", blind, Some(true));
+        assert_eq!(stale.status, CheckStatus::Warn);
+
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(openclaw_enabled(dir.path()), Some(false));
+        assert_eq!(hermes_enabled(dir.path()), Some(false));
+        let plugin = dir.path().join("plugins/trs").display().to_string();
+        let cfg = format!(
+            r#"{{"plugins":{{"entries":{{"trs":{{"enabled":true}}}},"load":{{"paths":["{plugin}"]}}}}}}"#
+        );
+        std::fs::write(dir.path().join("openclaw.json"), cfg).unwrap();
+        assert_eq!(openclaw_enabled(dir.path()), Some(true));
+        std::fs::write(
+            dir.path().join("config.yaml"),
+            "plugins:\n  enabled:\n    - trs-rewrite\n",
+        )
+        .unwrap();
+        assert_eq!(hermes_enabled(dir.path()), Some(true));
+        std::fs::write(dir.path().join("openclaw.json"), "{ nope").unwrap();
+        assert_eq!(openclaw_enabled(dir.path()), None);
     }
 
     #[test]
