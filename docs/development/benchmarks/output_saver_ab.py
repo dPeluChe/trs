@@ -150,7 +150,7 @@ def main():
             for i in range(args.n):
                 reply, toks, cost = run(prompt, texts[arm], args.model, args.max_budget_usd)
                 m = markers(reply)
-                m.update(arm=arm, case=cid, run=i, tokens=toks, cost=cost)
+                m.update(arm=arm, case=cid, run=i, tokens=toks, cost=cost, reply=reply)
                 m["faithful"] = None if check is None else int(bool(re.search(check, reply)))
                 rows.append(m)
     if args.out:

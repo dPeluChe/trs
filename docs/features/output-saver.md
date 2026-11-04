@@ -264,13 +264,33 @@ each reply. On a flat-rate plan the price is the context window, not money.
 ## Measuring impact
 
 The block doesn't compress existing output; it steers what gets generated.
-**There is no measured figure for the saving yet.** An earlier version of this
-page quoted "~30-40% fewer tokens on simple tasks"; that was anecdotal, with no
-control arm, and projects that did compare reply-style rules with a plain "be
-concise" instruction found small or zero differences on current models. Output
-is also a small share of most bills. Treat the rules as a style preference
-until the A/B in `docs/roadmap/TASK_TODO.md` (no block, "Answer concisely.",
-this block) has run.
+
+**A/B with a control** (`docs/development/benchmarks/output_saver_ab.py`,
+2026-11-04, Claude Code 2.1.318 with `--model sonnet`, no tools, isolated
+sessions, 8 prompts x 5 runs = 40 replies per arm; three of the prompts are
+fidelity cases: a negation, a number, a destructive-action warning):
+
+| Arm | Output tokens / reply | Words / reply | Fidelity cases passed |
+| --- | --- | --- | --- |
+| no block | 425 | 177 | 100% |
+| "Answer concisely." (one line) | 208 | 86 | 100% |
+| the trs block | 188 | 70 | 95% (1 miss in 40; the same case reran 5 of 5) |
+
+- The block against no instruction: **-237 output tokens per reply** (95% CI
+  -331 to -137).
+- The block against the one-line "Answer concisely.": **-20 per reply, CI -79
+  to +42**. Not distinguishable. Most of the saving comes from asking for
+  brevity at all, not from the block's other rules.
+- Preamble, closing filler and em dashes were already near zero in every arm on
+  this model, so the block's rules against them had nothing to remove here.
+
+Read it with these limits: one model, eight short prompts with no tools or
+long sessions, N=5 per prompt, and `output_tokens` includes thinking, not only
+the prose the block steers. It says nothing about the code-authoring rules
+(comment style, no invented paths), which this test does not exercise. Per-call
+billing sees no benefit either: output is a small share of most bills, and the
+block adds ~590 to ~850 input tokens to every session (previous section).
+Rerun it on your model before relying on the block for cost.
 
 The `trs stats` dashboard tracks input-side savings from `trs rewrite` but
 cannot measure output-side savings, they happen outside any process we run.
