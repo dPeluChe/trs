@@ -1,7 +1,25 @@
 //! Tier-3 passthrough cut: keep the head, the tail and the error lines of the
-//! middle, so a failure at the end of a long output survives.
+//! middle, so a failure at the end of a long output survives. Lines carrying an
+//! identifier that appears nowhere else (UUID, hash, URL) come next, within the
+//! same budget, so the agent does not rerun a narrower query to find them.
 
 use crate::router::handlers::common_markers::is_error_line;
+use regex::Regex;
+use std::collections::HashMap;
+use std::sync::LazyLock;
+
+static NEEDLE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|https?://[^\s"')>]+|\b[0-9a-f]{12,64}\b"#,
+    )
+    .unwrap()
+});
+
+fn needles(line: &str) -> impl Iterator<Item = &str> {
+    NEEDLE.find_iter(line).map(|m| m.as_str()).filter(|t| {
+        !t.bytes().all(|b| b.is_ascii_hexdigit()) || crate::anchor_guard::looks_like_hash(t)
+    })
+}
 
 /// `None` when `text` fits in `max` bytes, else head + error lines + tail.
 pub(crate) fn cut(text: &str, max: usize) -> Option<String> {
@@ -16,17 +34,43 @@ pub(crate) fn cut(text: &str, max: usize) -> Option<String> {
         return Some(cut_bytes(text, max));
     }
 
-    let mut signals = Vec::new();
+    let middle = &lines[head_end..tail_start];
+    let mut kept = vec![false; middle.len()];
     let mut used = 0;
-    for line in &lines[head_end..tail_start] {
-        if used + line.len() >= max / 4 {
+    let budget = max / 4;
+    // Errors first, then needles, both capped by one budget: an id-dense log
+    // still shrinks to `max`.
+    let mut take = |i: usize, kept: &mut Vec<bool>| {
+        let cost = middle[i].len() + 1;
+        let fits = used + cost < budget;
+        if fits {
+            used += cost;
+            kept[i] = true;
+        }
+        fits
+    };
+    for i in 0..middle.len() {
+        if is_error_line(middle[i]) && !take(i, &mut kept) {
             break;
         }
-        if is_error_line(line) {
-            used += line.len() + 1;
-            signals.push(*line);
+    }
+    let mut seen: HashMap<&str, usize> = HashMap::new();
+    for line in &lines {
+        for t in needles(line) {
+            *seen.entry(t).or_default() += 1;
         }
     }
+    for i in 0..middle.len() {
+        let rare = !kept[i] && needles(middle[i]).any(|t| seen[t] == 1);
+        if rare && !take(i, &mut kept) {
+            break;
+        }
+    }
+    let signals: Vec<&str> = middle
+        .iter()
+        .zip(&kept)
+        .filter_map(|(l, k)| k.then_some(*l))
+        .collect();
 
     let omitted = tail_start - head_end - signals.len();
     let mut out = lines[..head_end].join("\n");
@@ -34,7 +78,7 @@ pub(crate) fn cut(text: &str, max: usize) -> Option<String> {
         out.push_str(&format!("\n[trs: {omitted} lines omitted]\n"));
     } else {
         out.push_str(&format!(
-            "\n[trs: {omitted} lines omitted, error lines kept]\n"
+            "\n[trs: {omitted} lines omitted, error and unique-id lines kept]\n"
         ));
         out.push_str(&signals.join("\n"));
         out.push_str("\n[trs: ...]\n");
@@ -101,7 +145,37 @@ mod tests {
         let text = format!("{}error: boom in the middle\n{}", long(300), long(300));
         let out = cut(&text, 1000).unwrap();
         assert!(out.contains("error: boom in the middle"));
-        assert!(out.contains("error lines kept"));
+        assert!(out.contains("lines kept"));
+    }
+
+    #[test]
+    fn a_unique_id_in_the_middle_is_kept_and_a_repeated_one_is_not() {
+        let uuid = "3f2b8c1e-9d4a-4e6b-8a1f-5c7d2e9b0a14";
+        let text = format!(
+            "{}saved order {uuid} ok\n{}\
+             seen https://example.com/a/very/specific/path\n{}",
+            long(300),
+            long(100),
+            long(300)
+        );
+        let out = cut(&text, 1000).unwrap();
+        assert!(out.contains(uuid));
+        assert!(out.contains("https://example.com/a/very/specific/path"));
+
+        let repeated: String = (0..600)
+            .map(|i| format!("worker {i} handled 5d41402abc4b2a76b9719d911017c592\n"))
+            .collect();
+        let out = cut(&repeated, 1000).unwrap();
+        assert!(!out.contains("worker 300 "), "a repeated id is no needle");
+    }
+
+    #[test]
+    fn an_id_dense_log_still_shrinks_to_the_budget() {
+        let dense: String = (0..2000)
+            .map(|i| format!("req {i:012x}{i:04} done in 3ms\n"))
+            .collect();
+        let out = cut(&dense, 2000).unwrap();
+        assert!(out.len() <= 2300, "{}", out.len());
     }
 
     #[test]

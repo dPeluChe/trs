@@ -22,7 +22,7 @@ static PATH: LazyLock<Regex> = LazyLock::new(|| {
 static HASH: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\b[0-9a-f]{7,40}\b").unwrap());
 
 /// A hex run is a commit hash only if it mixes digits and letters.
-fn looks_like_hash(h: &str) -> bool {
+pub(crate) fn looks_like_hash(h: &str) -> bool {
     h.bytes().any(|b| b.is_ascii_digit()) && h.bytes().any(|b| b.is_ascii_lowercase())
 }
 
