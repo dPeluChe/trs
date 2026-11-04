@@ -355,3 +355,17 @@ fn the_old_cursor_file_counts_as_installed_so_refresh_migrates_it() {
         Status::NotInstalled
     ));
 }
+
+/// The block is input in every session, so its size is a cost the doc quotes
+/// (docs/features/output-saver.md, "What the block costs"). Growing it past
+/// these bounds means re-measuring and updating that section.
+#[test]
+fn the_block_stays_inside_the_size_the_doc_quotes() {
+    let block = crate::output_saver::BLOCK.len();
+    let file = standalone_file().len();
+    assert!(block <= 2_600, "BLOCK is {block} bytes, doc says ~2.4 KB");
+    assert!(
+        file <= 3_700,
+        "standalone file is {file} bytes, doc says ~3.4 KB"
+    );
+}

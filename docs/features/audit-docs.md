@@ -66,6 +66,16 @@ rules files. An import is flagged as dead if:
   extension), we explicitly skip npm-package-style `@scope/package`
   mentions to avoid false positives.
 
+## Date stamps
+
+Lines like `Updated: 2026-11-04`, `As of 2026-11`, a bare `YYYY-MM-DD` or
+`Today is ...` outside code fences. The agent's prompt cache is keyed on the
+exact prefix of what it loads, so a stamp that gets rewritten on every edit
+invalidates the cached prefix each time, and the file stops being a stable
+prefix. Git already records when a file changed; keep the date out of the file.
+A verification date you want to keep (a dated live check) is also flagged: it is
+advisory, not an error.
+
 ## Embedded bloat
 
 Fenced code blocks, JSON blobs, SQL queries, and HTML tables inside

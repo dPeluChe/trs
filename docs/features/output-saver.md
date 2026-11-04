@@ -29,8 +29,8 @@ step. `trs doctor` surfaces the same drift signal inline.
 
 ## What the block says
 
-Two sections (reply rules, then code authoring), ~300 tokens total.
-The reply rules:
+Two sections (reply rules, then code authoring). Size and cost: see
+[What the block costs](#what-the-block-costs). The reply rules:
 
 - **Numeric token budget.** "Keep replies under ~100 words unless the
   task needs more. Between tool calls, stay under ~25 words."
@@ -239,18 +239,43 @@ For `InlineFile` installs, the content between the sentinels is
 removed along with the sentinels themselves, surrounding user
 content is preserved exactly.
 
+## What the block costs
+
+It is input on every session, whether or not it helps that turn.
+Measured on this version (`trs output-saver --print`, and the file `trs init
+--global` writes for Claude Code):
+
+| What | Bytes | Tokens (bytes / 4, an estimate) |
+| --- | --- | --- |
+| The rules block (`--print`, inline installs) | 2,353 | ~590 |
+| `~/.claude/trs.md` (block plus the "Shell output" introduction) | 3,392 | ~850 |
+
+Earlier versions of this page said ~300 tokens; that was wrong for both. A
+unit test (`the_block_stays_inside_the_size_the_doc_quotes`) now fails when
+the block grows past these sizes without this table being updated.
+
+With prompt caching the block sits in the cached prefix, so after the first
+request it is billed at a fraction of normal input. At typical API ratios
+(output about 5x input, cached read about 0.1x input; check your provider's
+price list) ~850 cached tokens cost about as much per turn as ~17 output
+tokens, so the block pays for itself only if it removes more than that from
+each reply. On a flat-rate plan the price is the context window, not money.
+
 ## Measuring impact
 
-The block doesn't compress existing output; it steers what gets
-generated. Exact savings depend on your agent, model, and prompts.
-Anecdotally: ~30-40% fewer tokens on simple tasks (where preambles
-are proportionally the bulk of replies), less on long reasoning
-replies where the compression target is narration and speculation.
+The block doesn't compress existing output; it steers what gets generated.
+**There is no measured figure for the saving yet.** An earlier version of this
+page quoted "~30-40% fewer tokens on simple tasks"; that was anecdotal, with no
+control arm, and projects that did compare reply-style rules with a plain "be
+concise" instruction found small or zero differences on current models. Output
+is also a small share of most bills. Treat the rules as a style preference
+until the A/B in `docs/roadmap/TASK_TODO.md` (no block, "Answer concisely.",
+this block) has run.
 
-The `trs stats` dashboard tracks input-side savings from `trs rewrite`
-but cannot measure output-side savings, they happen outside any
-process we run. If you want to measure, compare before/after
-token-usage numbers in your agent's own dashboard.
+The `trs stats` dashboard tracks input-side savings from `trs rewrite` but
+cannot measure output-side savings, they happen outside any process we run. To
+measure, compare before/after token-usage numbers in your agent's own
+dashboard.
 
 ## Interaction with `trs init`
 

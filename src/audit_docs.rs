@@ -128,13 +128,21 @@ pub fn run_audit_docs(root: &Path) {
 
     let duplicates = find_near_duplicates(&all_blocks);
     let dead_refs = find_dead_refs(&docs, root);
+    let volatile = crate::audit_docs_volatile::find_volatile(&docs);
     let mut inline_bloat = find_inline_bloat(&docs);
     // Resolve symbol references against the project source — tells the user
     // "this function already exists in src/X, drop the duplicate from your
     // doc and link to the source".
     resolve_symbol_matches(&mut inline_bloat, root);
 
-    render_report(&docs, &all_blocks, &duplicates, &dead_refs, &inline_bloat);
+    render_report(
+        &docs,
+        &all_blocks,
+        &duplicates,
+        &dead_refs,
+        &inline_bloat,
+        &volatile,
+    );
 }
 
 // ================================================================
