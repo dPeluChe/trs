@@ -3,16 +3,15 @@
 //! The fix touches only the status: output stays byte-exact (#162 holds).
 //! The guard makes shells without pipefail keep today's behavior.
 
-use crate::rewrite_decide::{split_env_prefix, unquoted_indices};
+use crate::rewrite_decide::unquoted_indices;
+use crate::rewrite_permissions::strip_env;
+use crate::text_util::cmd_basename;
 
 const GUARD: &str = r#"[ -n "$BASH_VERSION$ZSH_VERSION" ] && set -o pipefail;"#;
 
 /// `cmd` with pipefail on for its last statement, the only one whose status
 /// the shell reports, or `None` when that status is not safe to change.
 pub(super) fn wrap(cmd: &str) -> Option<String> {
-    if cfg!(windows) {
-        return None;
-    }
     let cut = unquoted_indices(cmd)
         .filter_map(|i| match cmd.as_bytes()[i] {
             b';' | b'\n' => Some(i + 1),
@@ -42,23 +41,22 @@ fn single_pipe(seg: &str) -> Option<(&str, &str)> {
     let mut pipe = None;
     for i in unquoted_indices(seg) {
         match b[i] {
-            b'|' if pipe.is_none() && b.get(i + 1) != Some(&b'|') => pipe = Some(i),
+            b'|' if pipe.is_none() => pipe = Some(i),
             b'|' | b';' | b'(' | b')' | b'<' => return None,
-            b'>' if !seg[i.saturating_sub(1)..].starts_with("2>&1") => return None,
-            b'&' if !seg[i.saturating_sub(2)..].starts_with("2>&1") => return None,
+            b'>' if !b[i.saturating_sub(1)..].starts_with(b"2>&1") => return None,
+            b'&' if !b[i.saturating_sub(2)..].starts_with(b"2>&1") => return None,
             _ => {}
         }
     }
     let at = pipe?;
-    (b.get(at + 1) != Some(&b'&')).then(|| (seg[..at].trim(), seg[at + 1..].trim()))
+    Some((seg[..at].trim(), seg[at + 1..].trim()))
 }
 
 /// Tools whose exit status is the verdict. Others stay out on purpose: `grep`
 /// finding nothing or `find` hitting one unreadable dir are not failures.
 fn is_status_tool(producer: &str) -> bool {
-    let body = split_env_prefix(producer).map_or(producer, |(_, rest)| rest);
-    let mut words = body.split_whitespace();
-    let program = words.next().unwrap_or("").rsplit('/').next().unwrap_or("");
+    let mut words = strip_env(producer).split_whitespace();
+    let program = cmd_basename(words.next().unwrap_or(""));
     let first = words.next().unwrap_or("");
     let second = words.next().unwrap_or("");
     let is_check = |s: &str| {
@@ -84,14 +82,12 @@ fn is_status_tool(producer: &str) -> bool {
 fn sink_reads_everything(sink: &str) -> bool {
     let mut words = sink.split_whitespace();
     let program = words.next().unwrap_or("");
-    let flags = words.take_while(|w| w.starts_with('-'));
+    let mut flags = words.take_while(|w| w.starts_with('-'));
     let short_has =
         |w: &str, set: &str| !w.starts_with("--") && w.chars().skip(1).any(|c| set.contains(c));
     match program {
-        "tail" => !flags
-            .into_iter()
-            .any(|w| short_has(w, "fF") || w.starts_with("--follow")),
-        "grep" => !flags.into_iter().any(|w| {
+        "tail" => !flags.any(|w| short_has(w, "fF") || w.starts_with("--follow")),
+        "grep" => !flags.any(|w| {
             short_has(w, "qmlL")
                 || ["--quiet", "--silent", "--max-count", "--files-with"]
                     .iter()
@@ -216,6 +212,7 @@ mod tests {
             "cargo test > out.log | tail",
             "cargo test $(cat args) | tail",
             "cargo test 'a|b'",
+            "pytest é>x | tail",
             "cat <<EOF | tail\nx\nEOF",
         ] {
             assert_eq!(wrap(cmd), None, "{cmd}");

@@ -72,9 +72,8 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // env-prefix split because `OUT=$(cmd)` otherwise splits mid-substitution
     // and produces a mangled command.
     if captures_output(trimmed) {
-        return crate::config::config()
-            .hooks
-            .pipe_status
+        let opted_in = !cfg!(windows) && crate::config::config().hooks.pipe_status;
+        return opted_in
             .then(|| crate::rewrite_pipe_status::wrap(trimmed))
             .flatten();
     }
@@ -189,7 +188,7 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
 /// ASCII letter or underscore, then alphanumeric or underscore, contains
 /// `=`. Excludes `--flag=val` and URL-ish strings. Multi-token prefixes
 /// (`A=1 B=2 cargo build`) are collected left-to-right.
-pub(crate) fn split_env_prefix(cmd: &str) -> Option<(String, &str)> {
+pub(super) fn split_env_prefix(cmd: &str) -> Option<(String, &str)> {
     let mut rest = cmd;
     let mut collected: Vec<&str> = Vec::new();
     loop {
