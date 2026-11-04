@@ -61,6 +61,8 @@ const DEFAULT_DENY: &[&str] = &[
 struct Roots {
     user_home: Option<PathBuf>,
     managed: Option<PathBuf>,
+    /// `FACTORY_RUNTIME_SETTINGS_PATH`: a settings overlay for one run.
+    runtime: Option<PathBuf>,
 }
 
 #[derive(Default)]
@@ -68,6 +70,7 @@ struct Lists {
     allow: Vec<String>,
     deny: Vec<String>,
     block: Vec<String>,
+    rules: Vec<matcher::Rule>,
 }
 
 /// `cmd` is the ORIGINAL command; `cwd` and `permission_mode` come from the hook payload.
@@ -95,6 +98,7 @@ fn roots() -> Roots {
     Roots {
         user_home: home,
         managed: Some(managed),
+        runtime: std::env::var_os("FACTORY_RUNTIME_SETTINGS_PATH").map(PathBuf::from),
     }
 }
 
@@ -102,7 +106,10 @@ fn gate_in(roots: &Roots, cmd: &str, cwd: Option<&str>, mode: Option<&str>) -> G
     let Some(lists) = load(roots, cwd) else {
         return Gate::Skip;
     };
-    if matcher::denied(cmd, &lists.deny) || matcher::blocked(cmd, &lists.block) {
+    if matcher::denied(cmd, &lists.deny)
+        || matcher::blocked(cmd, &lists.block)
+        || matcher::restricts(cmd, &lists.rules)
+    {
         return Gate::Skip;
     }
     let mut allow: HashSet<String> = lists.allow.iter().flat_map(|a| matcher::keys(a)).collect();
@@ -111,7 +118,7 @@ fn gate_in(roots: &Roots, cmd: &str, cwd: Option<&str>, mode: Option<&str>) -> G
             allow.remove(&k);
         }
     }
-    if matcher::all_allowed(cmd, &allow) {
+    if matcher::all_allowed(cmd, &allow, &lists.rules) {
         return Gate::Allow;
     }
     // Droid drops riskLevel from a rewritten command (it counts as high), so
@@ -130,24 +137,32 @@ fn load(roots: &Roots, cwd: Option<&str>) -> Option<Lists> {
         allow: DEFAULT_ALLOW.iter().map(|s| s.to_string()).collect(),
         deny: DEFAULT_DENY.iter().map(|s| s.to_string()).collect(),
         block: Vec::new(),
+        rules: Vec::new(),
     };
     if let Some(home) = &roots.user_home {
         for name in ["settings.json", "settings.local.json"] {
-            merge(&mut lists, &read(&home.join(".factory").join(name))?)?;
+            merge(&mut lists, &read(&home.join(".factory").join(name))?, false)?;
         }
     }
     if let Some(path) = &roots.managed {
-        merge(&mut lists, &read(path)?)?;
+        merge(&mut lists, &read(path)?, false)?;
+    }
+    if let Some(path) = &roots.runtime {
+        merge(&mut lists, &read(path)?, false)?;
     }
     // Org settings Droid fetched from its API and cached locally.
     if let Some(home) = &roots.user_home {
         let cache = read(&home.join(".factory/org-managed-settings.cache.json"))?;
-        merge(&mut lists, cache.get("managedSettings").unwrap_or(&cache))?;
+        merge(
+            &mut lists,
+            cache.get("managedSettings").unwrap_or(&cache),
+            false,
+        )?;
     }
     if let Some(cwd) = cwd {
         for dir in project_dirs(Path::new(cwd), roots.user_home.as_deref()) {
             for name in ["settings.json", "settings.local.json"] {
-                merge(&mut lists, &read(&dir.join(".factory").join(name))?)?;
+                merge(&mut lists, &read(&dir.join(".factory").join(name))?, true)?;
             }
         }
     }
@@ -181,14 +196,17 @@ fn read(path: &Path) -> Option<serde_json::Value> {
 }
 
 /// A list key that is present but not an array of strings makes the file unusable,
-/// and so does `permissionRules`, a newer rule format this gate does not read.
-/// Droid honors the legacy lists of an untrusted project too (verified on 1.2.0).
-fn merge(lists: &mut Lists, json: &serde_json::Value) -> Option<()> {
+/// and so does a `permissionRules` block that is not the documented version 1.
+/// Droid honors the legacy lists of an untrusted project too (verified on 1.2.0),
+/// but not its `permissionRules` allows, so `project` files contribute no allow rule.
+fn merge(lists: &mut Lists, json: &serde_json::Value, project: bool) -> Option<()> {
     let rules = json
         .pointer("/general/permissionRules")
         .or_else(|| json.get("permissionRules"));
-    if rules.is_some_and(|r| !r.is_null()) {
-        return None;
+    if let Some(container) = rules.filter(|r| !r.is_null()) {
+        lists
+            .rules
+            .extend(matcher::parse_rules(container, project)?);
     }
     let take = |key: &str, into: &mut Vec<String>| -> Option<()> {
         let Some(v) = json.get(key) else {
@@ -217,6 +235,7 @@ mod tests {
         let roots = Roots {
             user_home: Some(home.to_path_buf()),
             managed: None,
+            runtime: None,
         };
         gate_in(&roots, cmd, cwd.to_str(), mode)
     }
@@ -288,6 +307,7 @@ mod tests {
             r#"{"commandDenylist":"git push"}"#,
             "[]",
             r#"{"general":{"permissionRules":[{"tool":"Execute"}]}}"#,
+            r#"{"permissionRules":{"version":2,"rules":[]}}"#,
         ] {
             write(home.path(), ".factory/settings.json", bad);
             assert_eq!(
@@ -296,5 +316,40 @@ mod tests {
                 "{bad}"
             );
         }
+    }
+
+    #[test]
+    fn permission_rules_decide_like_droid() {
+        let (home, cwd) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        write(
+            home.path(),
+            ".factory/settings.json",
+            r#"{"permissionRules":{"version":1,"rules":[
+                {"id":"u/push","decision":"ask","match":{"prefix":["git","push"]}},
+                {"id":"u/pub","decision":"block","match":{"prefix":["npm","publish"]}},
+                {"id":"u/make","decision":"allow","match":{"prefix":["make",["build","test"]]}}]}}"#,
+        );
+        let g = |c| run(home.path(), cwd.path(), c, Some("off"));
+        assert_eq!(g("git push origin main"), Gate::Skip);
+        assert_eq!(g("npm publish"), Gate::Skip);
+        assert_eq!(g("make test -j4"), Gate::Allow);
+        assert_eq!(g("make test && git push"), Gate::Skip);
+        assert_eq!(g("make deploy"), Gate::Skip);
+    }
+
+    #[test]
+    fn a_projects_rule_allow_is_ignored_but_its_ask_counts() {
+        let (home, proj) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        std::fs::create_dir_all(proj.path().join(".git")).unwrap();
+        write(
+            proj.path(),
+            ".factory/settings.json",
+            r#"{"permissionRules":{"version":1,"rules":[
+                {"id":"p/make","decision":"allow","match":{"prefix":["make"]}},
+                {"id":"p/tag","decision":"ask","match":{"prefix":["git","tag"]}}]}}"#,
+        );
+        let g = |c| run(home.path(), proj.path(), c, Some("off"));
+        assert_eq!(g("make all"), Gate::Skip);
+        assert_eq!(g("git tag v1"), Gate::Skip);
     }
 }

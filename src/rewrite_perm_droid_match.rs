@@ -7,6 +7,10 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
+#[path = "rewrite_perm_droid_rules.rs"]
+mod rules;
+pub(super) use rules::{parse as parse_rules, restricts, Rule};
+
 const WRAPPERS: [&str; 4] = ["sudo", "time", "nohup", "env"];
 const SHELLS: [&str; 5] = ["sh", "bash", "zsh", "dash", "ksh"];
 const READERS: [&str; 5] = ["head", "tail", "grep", "cat", "echo"];
@@ -166,8 +170,9 @@ fn has_file_redirect(seg: &str) -> bool {
     FD_REDIRECT.replace_all(seg, " ").contains('>')
 }
 
-/// Droid runs the command unprompted only if every part is a listed key.
-pub(super) fn all_allowed(cmd: &str, allow: &HashSet<String>) -> bool {
+/// Droid runs the command unprompted only if every part is a listed key or
+/// covered by an `allow` rule.
+pub(super) fn all_allowed(cmd: &str, allow: &HashSet<String>, rules: &[Rule]) -> bool {
     if ["$(", "`", "<(", ">("].iter().any(|t| cmd.contains(t)) {
         return false;
     }
@@ -178,15 +183,15 @@ pub(super) fn all_allowed(cmd: &str, allow: &HashSet<String>) -> bool {
     if parts.is_empty() || split_segments(cmd).iter().any(|s| FUNC_DEF.is_match(s)) {
         return false;
     }
-    let needed: Vec<&String> = parts
+    let covered = |(raw, k): &(&str, String)| allow.contains(k) || rules::allows(raw, rules);
+    let needed: Vec<&(&str, String)> = parts
         .iter()
         .filter(|(raw, k)| !(READERS.contains(&k.as_str()) && !has_file_redirect(raw)))
-        .map(|(_, k)| k)
         .collect();
     if needed.is_empty() {
-        return parts.iter().all(|(_, k)| allow.contains(k));
+        return parts.iter().all(covered);
     }
-    needed.iter().all(|k| allow.contains(*k))
+    needed.into_iter().all(covered)
 }
 
 fn pattern_regex(pat: &str, anchored: bool) -> Option<Regex> {
@@ -404,15 +409,15 @@ mod tests {
     #[test]
     fn allow_needs_every_part_listed() {
         let allow = set(&["ls", "git status", "npm test"]);
-        assert!(all_allowed("git status | cat", &allow));
-        assert!(all_allowed("git status > /tmp/o", &allow));
-        assert!(all_allowed("npm test -- --x", &allow));
-        assert!(all_allowed("cd x && ls -la", &allow));
-        assert!(!all_allowed("git push", &allow));
-        assert!(!all_allowed("ls && pwd", &allow));
-        assert!(!all_allowed("echo $(ls)", &allow));
-        assert!(!all_allowed("cat a > b", &allow));
-        assert!(!all_allowed("TRS_AGENT=droid trs git status", &allow));
-        assert!(!all_allowed("cd x", &allow));
+        assert!(all_allowed("git status | cat", &allow, &[]));
+        assert!(all_allowed("git status > /tmp/o", &allow, &[]));
+        assert!(all_allowed("npm test -- --x", &allow, &[]));
+        assert!(all_allowed("cd x && ls -la", &allow, &[]));
+        assert!(!all_allowed("git push", &allow, &[]));
+        assert!(!all_allowed("ls && pwd", &allow, &[]));
+        assert!(!all_allowed("echo $(ls)", &allow, &[]));
+        assert!(!all_allowed("cat a > b", &allow, &[]));
+        assert!(!all_allowed("TRS_AGENT=droid trs git status", &allow, &[]));
+        assert!(!all_allowed("cd x", &allow, &[]));
     }
 }
