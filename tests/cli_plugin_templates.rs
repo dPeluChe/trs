@@ -5,6 +5,8 @@
 
 use assert_cmd::Command;
 
+mod support;
+
 fn rewrite(cmd: &str) -> String {
     let out = Command::cargo_bin("trs")
         .unwrap()
@@ -100,21 +102,15 @@ fn run_node(plugin_text: &str, driver: &str) -> Option<serde_json::Value> {
     let bin = dir.path().join("bin");
     std::fs::create_dir(&bin).unwrap();
     let log = dir.path().join("spawns.log");
-    let shim = bin.join("trs");
     let real = assert_cmd::cargo::cargo_bin("trs");
-    std::fs::write(
-        &shim,
-        format!(
-            "#!/bin/sh\necho x >> \"$TRS_SPAWN_LOG\"\nexec \"{}\" \"$@\"\n",
+    support::fake_program(
+        &bin.join("trs"),
+        &format!(
+            "echo x >> \"$TRS_SPAWN_LOG\"\nexec \"{}\" \"$@\"",
             real.display()
         ),
-    )
-    .unwrap();
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
-    let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
+    );
+    let path = support::path_with(&bin);
     let out = std::process::Command::new(node)
         .arg(&driver_path)
         .env("PATH", path)
@@ -337,7 +333,7 @@ fn trs_rewrite_json_answers_rewrite_and_segments_in_one_call() {
     );
     assert_eq!(
         run("ls | wc -l"),
-        serde_json::json!({"rewrite": null, "segments": []})
+        serde_json::json!({"rewrite": null, "segments": ["ls", "wc -l"]})
     );
 }
 

@@ -34,17 +34,10 @@ mod tests {
 
     fn entry(cmd: &str, ptr: Option<bool>, bypass: Option<bool>) -> HistoryEntry {
         HistoryEntry {
-            ts: 0,
             cmd: cmd.into(),
-            in_bytes: 0,
-            out_bytes: 0,
-            saved_pct: 0,
-            ms: 0,
-            cwd: String::new(),
-            agent: None,
             bypass,
-            ok: None,
             ptr,
+            ..Default::default()
         }
     }
 

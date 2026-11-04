@@ -125,7 +125,11 @@ pub fn handle_stats(input: &StatsInput) {
 
     // `--history` lists every run; every other view shares one filtered set.
     let all = entries.len();
-    let recall = crate::pointer_recall::recall(&entries);
+    let (pointers, reads) = if input.history {
+        (0, 0)
+    } else {
+        crate::pointer_recall::recall(&entries)
+    };
     let mut entries = entries;
     if !input.history {
         entries.retain(|e| e.counts_toward_totals());
@@ -179,10 +183,10 @@ pub fn handle_stats(input: &StatsInput) {
             tracker::HistoryEntry::TOTALS_MAX_BYTES / 1000
         );
     }
-    if recall.0 > 0 && !input.history {
+    if pointers > 0 {
         println!(
             "\nSaved-output pointers: {}; read back by a shell command: {} (reads through an agent's own file tool are not seen).",
-            recall.0, recall.1
+            pointers, reads
         );
     }
 }

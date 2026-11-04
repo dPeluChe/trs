@@ -102,16 +102,18 @@ fn script_plugin_check(name: &'static str, content: &str, default_export: bool) 
 /// leave trs out of the loop (or, for a copy that predates `trs rewrite`,
 /// prefix every command blindly).
 pub(crate) fn check_host_plugins() -> Vec<Check> {
+    use crate::init_install_plugins::{
+        hermes_home, hermes_plugin_dir, openclaw_home, openclaw_plugin_dir,
+    };
     let mut out = Vec::new();
-    if let Ok(home) = crate::init::home_dir() {
-        let dir = home.join(".openclaw");
-        if let Ok(content) = std::fs::read_to_string(dir.join("plugins/trs/index.js")) {
+    if let Ok(dir) = openclaw_home() {
+        if let Ok(content) = std::fs::read_to_string(openclaw_plugin_dir(&dir).join("index.js")) {
             let enabled = openclaw_enabled(&dir);
             out.push(host_plugin_check("openclaw plugin", &content, enabled));
         }
     }
-    if let Ok(dir) = crate::init_install_plugins::hermes_home() {
-        if let Ok(content) = std::fs::read_to_string(dir.join("plugins/trs-rewrite/__init__.py")) {
+    if let Ok(dir) = hermes_home() {
+        if let Ok(content) = std::fs::read_to_string(hermes_plugin_dir(&dir).join("__init__.py")) {
             let enabled = hermes_enabled(&dir);
             out.push(host_plugin_check("hermes plugin", &content, enabled));
         }
@@ -135,7 +137,9 @@ fn host_plugin_check(name: &'static str, content: &str, enabled: Option<bool>) -
 fn openclaw_enabled(dir: &std::path::Path) -> Option<bool> {
     let text = std::fs::read_to_string(dir.join("openclaw.json")).unwrap_or_else(|_| "{}".into());
     let mut root: serde_json::Value = serde_json::from_str(&text).ok()?;
-    let plugin_dir = dir.join("plugins").join("trs").display().to_string();
+    let plugin_dir = crate::init_install_plugins::openclaw_plugin_dir(dir)
+        .display()
+        .to_string();
     let changed =
         crate::init_install_plugins::merge_openclaw_config(&mut root, &plugin_dir).ok()?;
     Some(!changed)

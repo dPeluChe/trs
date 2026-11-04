@@ -38,15 +38,10 @@ pub(crate) fn run_rewrite(agent_flag: Option<&str>, segments: bool, json_out: bo
     }
 
     if json_out {
-        // Segments only matter (a permission question) when something is rewritten.
-        let rewrite = maybe_rewrite(input);
-        let segs = match rewrite {
-            Some(_) => crate::rewrite_permissions::split_segments(input),
-            None => Vec::new(),
-        };
+        let segs = crate::rewrite_permissions::split_segments(input);
         println!(
             "{}",
-            serde_json::json!({ "rewrite": rewrite, "segments": segs })
+            serde_json::json!({ "rewrite": maybe_rewrite(input), "segments": segs })
         );
         return;
     }
@@ -202,11 +197,13 @@ fn build_hook_response(
     let tool = json.get("tool_name").and_then(|v| v.as_str());
     let mut label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
     // No `--caller` and Claude's envelope: an older Droid/Devin hook is told
-    // apart from Claude by its tool name.
-    if flag_label.is_none() && label == "claude" {
-        label = tool
-            .and_then(crate::rewrite_gate::by_tool)
-            .map_or(label, |p| p.label);
+    // apart from Claude by its tool name; an unknown name is a guess.
+    let mut guessed = false;
+    if let (None, "claude", Some(t)) = (flag_label, label, tool) {
+        match crate::rewrite_gate::by_tool(t) {
+            Some(p) => label = p.label,
+            None => guessed = true,
+        }
     }
     if cmd_bypasses_trs(cmd) {
         crate::tracker::log_bypass(cmd, Some(label));
@@ -224,12 +221,8 @@ fn build_hook_response(
     if gate == Gate::Skip {
         return None;
     }
-    // Still "claude" with an unknown tool name: a guess, so never approve it.
-    let guessed_claude = flag_label.is_none()
-        && label == "claude"
-        && event == HookEvent::ClaudePreToolUse
-        && tool.is_some_and(|t| t != "Bash");
-    let gate = if gate == Gate::Allow && guessed_claude {
+    // A guessed agent is never approved.
+    let gate = if gate == Gate::Allow && guessed {
         Gate::Defer
     } else {
         gate
