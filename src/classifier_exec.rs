@@ -66,7 +66,13 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         print!("{}", compact);
         let duration_ms = start.elapsed().as_millis() as u64;
         let full_cmd = format!("{} {}", cmd, args.join(" "));
-        crate::tracker::log_execution(&full_cmd, in_bytes, compact.len(), duration_ms);
+        crate::tracker::log_run(
+            &full_cmd,
+            in_bytes,
+            compact.len(),
+            duration_ms,
+            output.status.success(),
+        );
         if !output.status.success() {
             emit_failure_footer(&output.status, &full_cmd, &stdout, &stderr);
         }
@@ -108,7 +114,13 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         out_bytes = stdout_ref.len();
         let duration_ms = start.elapsed().as_millis() as u64;
         let fcmd = full_cmd(cmd, args);
-        crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
+        crate::tracker::log_run(
+            &fcmd,
+            in_bytes,
+            out_bytes,
+            duration_ms,
+            output.status.success(),
+        );
         if !output.status.success() {
             emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
         }
@@ -128,7 +140,13 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                 compressed.len() + point_to_raw(&output.status, cmd, args, &stdout, &stderr);
             let duration_ms = start.elapsed().as_millis() as u64;
             let fcmd = full_cmd(cmd, args);
-            crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
+            crate::tracker::log_run(
+                &fcmd,
+                in_bytes,
+                out_bytes,
+                duration_ms,
+                output.status.success(),
+            );
             if !output.status.success() {
                 emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
             }
@@ -226,7 +244,13 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     // Track execution (fire-and-forget)
     let duration_ms = start.elapsed().as_millis() as u64;
     let fcmd = full_cmd(cmd, args);
-    crate::tracker::log_execution(&fcmd, in_bytes, out_bytes, duration_ms);
+    crate::tracker::log_run(
+        &fcmd,
+        in_bytes,
+        out_bytes,
+        duration_ms,
+        output.status.success(),
+    );
 
     // Tee system: on failure, save full raw output for recovery
     if !output.status.success() {

@@ -48,6 +48,11 @@ pub struct HistoryEntry {
     /// the field still deserialize.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bypass: Option<bool>,
+    /// `Some(false)` when the command exited non-zero. Stats leave those runs
+    /// out of the percentages: a failure's output is not a saving. Old lines
+    /// without the field count as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ok: Option<bool>,
 }
 
 /// Returns the path to the history file: `~/.trs/history.jsonl`.
@@ -189,6 +194,11 @@ fn open_user_only(path: &Path) -> std::io::Result<fs::File> {
 
 /// Log a command execution to the history file.
 pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: u64) {
+    log_run(cmd, in_bytes, out_bytes, duration_ms, true);
+}
+
+/// Like `log_execution`, recording whether the command succeeded.
+pub fn log_run(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: u64, ok: bool) {
     let saved_pct = if in_bytes == 0 || out_bytes >= in_bytes {
         0u8
     } else {
@@ -227,6 +237,7 @@ pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: 
         cwd,
         agent,
         bypass: None,
+        ok: (!ok).then_some(false),
     });
 }
 
@@ -303,6 +314,7 @@ pub fn log_bypass(cmd: &str, agent: Option<&str>) {
         cwd,
         agent: agent.map(String::from),
         bypass: Some(true),
+        ok: None,
     });
 }
 
