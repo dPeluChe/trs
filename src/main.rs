@@ -63,6 +63,7 @@ mod output_saver;
 mod output_saver_core;
 mod output_saver_write;
 mod parse_out;
+mod passthrough_cut;
 mod path_display;
 #[allow(dead_code)]
 mod process;

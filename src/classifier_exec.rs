@@ -201,25 +201,18 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         } else {
             // Tier 3: Passthrough with truncation (parser failed)
             let passthrough_max = crate::config::config().limits.passthrough_max_chars;
-            let truncated = if stdout_ref.len() > passthrough_max {
-                let mut end = passthrough_max;
-                while !stdout_ref.is_char_boundary(end) {
-                    end -= 1;
-                }
-                let cut = &stdout_ref[..end];
+            let (mut truncated, was_cut) = crate::passthrough_cut::cut(stdout_ref, passthrough_max);
+            if was_cut {
                 let saved = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr)
                     .map(|path| format!(", full output: {path}"))
                     .unwrap_or_default();
-                format!(
-                    "{}\n[trs:passthrough truncated at {} chars of {}{}]",
-                    cut,
+                truncated.push_str(&format!(
+                    "\n[trs:passthrough cut to {} of {} chars{}]",
                     passthrough_max,
                     stdout_ref.len(),
                     saved
-                )
-            } else {
-                stdout_ref.to_string()
-            };
+                ));
+            }
             print!("{}", truncated);
             out_bytes = truncated.len();
         }
