@@ -64,15 +64,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let combined = format!("{}{}", stdout, stderr);
         let compact = crate::classifier_transfer::compact_git_transfer(&combined, subcmd);
         print!("{}", compact);
-        let duration_ms = start.elapsed().as_millis() as u64;
         let full_cmd = format!("{} {}", cmd, args.join(" "));
-        crate::tracker::log_run(
-            &full_cmd,
-            in_bytes,
-            compact.len(),
-            duration_ms,
-            output.status.success(),
-        );
+        track(&full_cmd, in_bytes, compact.len(), start, &output.status);
         if !output.status.success() {
             emit_failure_footer(&output.status, &full_cmd, &stdout, &stderr);
         }
@@ -112,15 +105,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     {
         print!("{}", stdout_ref);
         out_bytes = stdout_ref.len();
-        let duration_ms = start.elapsed().as_millis() as u64;
         let fcmd = full_cmd(cmd, args);
-        crate::tracker::log_run(
-            &fcmd,
-            in_bytes,
-            out_bytes,
-            duration_ms,
-            output.status.success(),
-        );
+        track(&fcmd, in_bytes, out_bytes, start, &output.status);
         if !output.status.success() {
             emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
         }
@@ -138,15 +124,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             print!("{}", compressed);
             out_bytes =
                 compressed.len() + point_to_raw(&output.status, cmd, args, &stdout, &stderr);
-            let duration_ms = start.elapsed().as_millis() as u64;
             let fcmd = full_cmd(cmd, args);
-            crate::tracker::log_run(
-                &fcmd,
-                in_bytes,
-                out_bytes,
-                duration_ms,
-                output.status.success(),
-            );
+            track(&fcmd, in_bytes, out_bytes, start, &output.status);
             if !output.status.success() {
                 emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
             }
@@ -243,20 +222,24 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     }
 
     // Track execution (fire-and-forget)
-    let duration_ms = start.elapsed().as_millis() as u64;
     let fcmd = full_cmd(cmd, args);
-    crate::tracker::log_run(
-        &fcmd,
-        in_bytes,
-        out_bytes,
-        duration_ms,
-        output.status.success(),
-    );
+    track(&fcmd, in_bytes, out_bytes, start, &output.status);
 
     // Tee system: on failure, save full raw output for recovery
     if !output.status.success() {
         emit_failure_footer(&output.status, &fcmd, &stdout, &stderr);
     }
+}
+
+fn track(
+    cmd: &str,
+    in_bytes: usize,
+    out_bytes: usize,
+    start: std::time::Instant,
+    status: &std::process::ExitStatus,
+) {
+    let ms = start.elapsed().as_millis() as u64;
+    crate::tracker::log_run(cmd, in_bytes, out_bytes, ms, status.success());
 }
 
 /// When the generic pass cut a dense line from a successful command, save the
