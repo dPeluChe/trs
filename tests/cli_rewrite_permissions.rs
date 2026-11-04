@@ -126,14 +126,16 @@ fn project_allow_rules_count_only_in_a_trusted_folder() {
     assert_eq!(decision(&run("cargo build").unwrap()), Some("allow"));
 }
 
-/// An install from before `--caller` has no label: a Droid or Devin hook then
-/// gets Claude's gate, so only Claude's own tool name may earn an approval.
+/// An install from before `--caller` has no label: Claude's own tool name keeps
+/// Claude's gate, an older Droid or Devin hook is told apart by its tool name,
+/// and an unknown tool is rewritten but never approved.
 #[test]
-fn a_legacy_hook_without_caller_is_approved_only_for_claudes_bash_tool() {
+fn a_legacy_hook_without_caller_is_identified_by_its_tool_name() {
     let home = tempfile::tempdir().unwrap();
     let run = |tool: Option<&str>| -> Option<Value> {
         let mut input = json!({
             "hook_event_name": "PreToolUse",
+            "permission_mode": "auto-high",
             "tool_input": { "command": "git status" },
             "cwd": home.path(),
         });
@@ -142,10 +144,24 @@ fn a_legacy_hook_without_caller_is_approved_only_for_claudes_bash_tool() {
         }
         run_hook_with(&[], &input, home.path(), &[], &["CLAUDE_CONFIG_DIR"], None)
     };
-    assert_eq!(decision(&run(Some("Bash")).unwrap()), Some("allow"));
-    assert_eq!(decision(&run(None).unwrap()), Some("allow"));
-    for tool in ["Execute", "exec"] {
-        let v = run(Some(tool)).unwrap();
-        assert_eq!(decision(&v), None, "{tool}: rewritten, not approved");
+    let tagged = |v: &Value| {
+        v["hookSpecificOutput"]["updatedInput"]["command"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    for tool in [Some("Bash"), None] {
+        let v = run(tool).unwrap();
+        assert_eq!(decision(&v), Some("allow"));
+        assert!(tagged(&v).starts_with("TRS_AGENT=claude "));
     }
+    for (tool, label) in [("Execute", "droid"), ("exec", "devin-cli")] {
+        let v = run(Some(tool)).unwrap_or_else(|| panic!("{tool}"));
+        assert!(
+            tagged(&v).starts_with(&format!("TRS_AGENT={label} ")),
+            "{tool}"
+        );
+    }
+    let v = run(Some("SomethingNew")).unwrap();
+    assert_eq!(decision(&v), None, "an unknown tool is not approved");
 }

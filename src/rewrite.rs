@@ -185,7 +185,15 @@ fn build_hook_response(
 
     // Bypass telemetry — log the agent-attributed observation before the
     // short-circuit so `stats --by-agent` can surface per-agent rates.
-    let label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
+    let tool = json.get("tool_name").and_then(|v| v.as_str());
+    let mut label = flag_label.unwrap_or_else(|| copilot_cli_or(event.agent_label()));
+    // No `--caller` and Claude's envelope: an older Droid/Devin hook is told
+    // apart from Claude by its tool name.
+    if flag_label.is_none() && label == "claude" {
+        label = tool
+            .and_then(crate::rewrite_gate::by_tool)
+            .map_or(label, |p| p.label);
+    }
     if cmd_bypasses_trs(cmd) {
         crate::tracker::log_bypass(cmd, Some(label));
         return None;
@@ -202,10 +210,9 @@ fn build_hook_response(
     if gate == Gate::Skip {
         return None;
     }
-    // Without `--caller`, "claude" is a guess; an older Droid/Devin hook has
-    // another tool name. Approve only what Claude itself would have sent.
-    let tool = json.get("tool_name").and_then(|v| v.as_str());
+    // Still "claude" with an unknown tool name: a guess, so never approve it.
     let guessed_claude = flag_label.is_none()
+        && label == "claude"
         && event == HookEvent::ClaudePreToolUse
         && tool.is_some_and(|t| t != "Bash");
     let gate = if gate == Gate::Allow && guessed_claude {

@@ -22,6 +22,9 @@ pub(crate) struct AgentPolicy {
     pub label: &'static str,
     /// The hook command sets `TRS_AGENT=<label>` (shares Claude's envelope).
     pub from_env: bool,
+    /// The `tool_name` this agent sends on Claude's envelope, so a hook
+    /// installed without `--caller` is still told apart from Claude's own.
+    tool: Option<&'static str>,
     gate: GateFn,
 }
 
@@ -35,16 +38,26 @@ const fn row(label: &'static str, from_env: bool, gate: GateFn) -> AgentPolicy {
     AgentPolicy {
         label,
         from_env,
+        tool: None,
         gate,
     }
 }
 
+impl AgentPolicy {
+    const fn tool(mut self, name: &'static str) -> Self {
+        self.tool = Some(name);
+        self
+    }
+}
+
 /// A new `--caller` agent starts as one row here (plus its template in
-/// init_templates.rs); `defer` until its rules are verified.
+/// init_templates.rs); `defer` until its rules are verified. An agent on
+/// Claude's envelope also declares its `.tool(..)`.
 static AGENTS: &[AgentPolicy] = &[
     row("claude", false, |c, d, _| {
         crate::rewrite_permissions::gate(c, d)
-    }),
+    })
+    .tool("Bash"),
     row("gemini", false, |c, d, _| {
         crate::rewrite_perm_gemini::gate(c, d)
     }),
@@ -56,7 +69,7 @@ static AGENTS: &[AgentPolicy] = &[
     }),
     row("vscode", true, defer),
     row("copilot-cli", true, defer),
-    row("droid", false, crate::rewrite_perm_droid::gate),
+    row("droid", false, crate::rewrite_perm_droid::gate).tool("Execute"),
     row("antigravity", false, defer),
     row("opencode", false, defer),
     row("kilo", false, defer),
@@ -65,11 +78,17 @@ static AGENTS: &[AgentPolicy] = &[
     row("hermes", false, defer),
     row("devin-cli", false, |c, d, _| {
         crate::rewrite_perm_devin::gate(c, d)
-    }),
+    })
+    .tool("exec"),
 ];
 
 pub(crate) fn policy(label: &str) -> Option<&'static AgentPolicy> {
     AGENTS.iter().find(|p| p.label == label)
+}
+
+/// The agent that owns a `tool_name` on Claude's envelope.
+pub(crate) fn by_tool(name: &str) -> Option<&'static AgentPolicy> {
+    AGENTS.iter().find(|p| p.tool == Some(name))
 }
 
 pub(crate) fn gate_for(label: &str, cmd: &str, json: &Value) -> Gate {
@@ -86,9 +105,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn labels_are_unique() {
+    fn labels_and_tool_names_are_unique() {
         for (i, p) in AGENTS.iter().enumerate() {
             assert!(AGENTS[i + 1..].iter().all(|q| q.label != p.label));
+            assert!(p.tool.is_none() || AGENTS[i + 1..].iter().all(|q| q.tool != p.tool));
         }
     }
 }
