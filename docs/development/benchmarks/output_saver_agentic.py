@@ -17,7 +17,7 @@ data. It spends real usage: it prints the call count and refuses without --yes.
 
 Usage:  python3 docs/development/benchmarks/output_saver_agentic.py --yes --n 3
         --arm old=old.md --arm new=new.md [--model sonnet] [--effort low]
-        [--tasks fix,find] [--total-cap-usd 25] [--out results.json]
+        [--tasks fix,find] [--suite stale] [--total-cap-usd 25] [--out results.json]
 """
 
 import argparse
@@ -34,6 +34,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+import output_saver_stale as stale
 from bench_stats import boot_diff
 
 REPO = {
@@ -137,16 +138,18 @@ TASKS = {
 ALLOWED = "Read Edit Write Glob Grep Bash(python3:*) Bash(python:*) Bash(cd:*) Bash(grep:*) Bash(ls:*) Bash(cat:*) Bash(find:*) Bash(head:*) Bash(wc:*) Bash(sed:*) Bash(diff:*)"
 
 
-def run_one(prompt, arm_text, check, model, effort, budget):
+def run_one(prompt, arm_text, check, model, effort, budget, repo=REPO, allowed=ALLOWED):
     cwd = tempfile.mkdtemp(prefix="agentic-")
     try:
-        for name, body in REPO.items():
-            open(os.path.join(cwd, name), "w").write(body)
+        for name, body in repo.items():
+            path = os.path.join(cwd, name)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            open(path, "w").write(body)
         open(os.path.join(cwd, "CLAUDE.md"), "w").write(arm_text)
         cmd = [
             "claude", "-p", prompt, "--output-format", "json", "--setting-sources", "project",
             "--no-session-persistence", "--permission-mode", "acceptEdits",
-            "--allowedTools", ALLOWED, "--max-budget-usd", str(budget),
+            "--allowedTools", allowed, "--max-budget-usd", str(budget),
         ]
         cmd += ["--model", model] if model else []
         cmd += ["--effort", effort] if effort else []
@@ -158,7 +161,7 @@ def run_one(prompt, arm_text, check, model, effort, budget):
         return {
             "cost": d.get("total_cost_usd", 0.0), "turns": d.get("num_turns", 0),
             "out_tok": u.get("output_tokens", 0), "error": bool(d.get("is_error")),
-            "denied": len(d.get("permission_denials") or []), "ok": int(bool(check(cwd, reply))), "secs": round(time.time() - t0), "reply": reply[:400],
+            "denied": len(d.get("permission_denials") or []), "ok": int(bool(check(cwd, reply))), "secs": round(time.time() - t0), "reply": reply[:2000],
         }
     finally:
         shutil.rmtree(cwd, ignore_errors=True)
@@ -183,7 +186,7 @@ def summarize(rows, arms):
         for b in base + [x for x in arms if x not in ("none", "concise", a) and by[x]][:1]:
             if a == b or not by[a] or not by[b]:
                 continue
-            for k in ("cost", "turns"):
+            for k in ("cost", "turns", "ok"):
                 x, y = [r[k] for r in by[b]], [r[k] for r in by[a]]
                 lo, hi = boot_diff(x, y)
                 print(f"{a:9} vs {b:8} {k:5} {statistics.fmean(y) - statistics.fmean(x):+.3f} (95% CI {lo:+.3f}..{hi:+.3f})")
@@ -193,7 +196,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", action="append", default=[], metavar="NAME=FILE")
     ap.add_argument("--n", type=int, default=3)
-    ap.add_argument("--tasks", default=",".join(TASKS))
+    ap.add_argument("--suite", choices=["repo", "stale"], default="repo")
+    ap.add_argument("--tasks")
     ap.add_argument("--model")
     ap.add_argument("--effort")
     ap.add_argument("--max-budget-usd", type=float, default=1.0)
@@ -207,7 +211,10 @@ def main():
     for spec in args.arm:
         name, _, path = spec.partition("=")
         texts[name] = open(path).read()
-    tasks = args.tasks.split(",")
+    suite = {"repo": REPO, "tasks": TASKS, "allowed": ALLOWED}
+    if args.suite == "stale":
+        suite = {"repo": stale.REPO, "tasks": stale.TASKS, "allowed": stale.ALLOWED}
+    tasks = args.tasks.split(",") if args.tasks else list(suite["tasks"])
     calls = len(texts) * len(tasks) * args.n
     print(f"{len(texts)} arms x {len(tasks)} tasks x N={args.n} = {calls} runs, cap ${args.total_cap_usd}", file=sys.stderr)
     if not args.yes:
@@ -225,9 +232,9 @@ def main():
         i, t, arm = job
         if spent[0] >= args.total_cap_usd:
             return
-        prompt, check = TASKS[t]
+        prompt, check = suite["tasks"][t]
         try:
-            r = run_one(prompt, texts[arm], check, args.model, args.effort, args.max_budget_usd)
+            r = run_one(prompt, texts[arm], check, args.model, args.effort, args.max_budget_usd, suite["repo"], suite["allowed"])
         except (subprocess.TimeoutExpired, json.JSONDecodeError) as e:
             print(f"run failed ({arm}/{t}): {type(e).__name__}", file=sys.stderr)
             return
@@ -244,6 +251,12 @@ def main():
     if spent[0] >= args.total_cap_usd:
         print(f"cap reached at ${spent[0]:.2f}", file=sys.stderr)
     summarize(rows, list(texts))
+    if args.suite == "stale":
+        print("\nreplies giving both values (disagreement visible):")
+        for a in texts:
+            rs = [stale.surfaced(r["task"], r["reply"]) for r in rows if r["arm"] == a]
+            if rs:
+                print(f"  {a:9}{statistics.fmean(rs) * 100:4.0f}%")
 
 
 if __name__ == "__main__":

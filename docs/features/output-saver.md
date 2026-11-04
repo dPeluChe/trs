@@ -341,6 +341,23 @@ matter. Because the longer block bought nothing over a one-line control, the
 shipped block stays short: the reply rules above, the three checks, and the
 code-authoring rules, with no turn-saving or style section.
 
+**Does the block earn its place?** Criteria fixed before these runs, on
+2026-11-04, so the result cannot move them. Both compare the block to the
+one-line "Answer concisely." control:
+
+- Concision (`output_saver_ab.py --n 5`, 40 replies per arm): the block wins if
+  the 95% CI on output tokens per reply excludes zero in its favor.
+- Quality (`output_saver_agentic.py --suite stale --n 5`, 8 one-fact questions
+  on a repo whose docs contradict its code, 40 runs per arm): the block wins if
+  the 95% CI on correct answers excludes zero in its favor. A one-round pilot
+  comes first: if the control is near 100%, the tasks are too easy and get
+  harder before the sweep.
+- If the block wins neither, it shrinks to the one-line control plus the
+  comment rule and the "never invent" rule.
+
+With 40 runs per arm only large gaps show, about 25 points, and runs of one
+task are not independent. A null here does not prove there is no effect.
+
 ## Interaction with `trs init`
 
 For Claude Code and Gemini CLI, `trs init --global` now writes `trs.md`
