@@ -284,6 +284,7 @@ rules, and vice versa.
 
 ## See also
 
+- [What actually moves agent cost](../development/output-cost-findings.md): the findings behind this block and how to run the next test.
 - [`trs init`](init.md): the input-side compression via hooks.
 - [`trs audit-docs`](audit-docs.md): audit CLAUDE.md / AGENTS.md
   files for bloat; pairs well with output-saver.

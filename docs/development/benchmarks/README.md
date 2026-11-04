@@ -12,6 +12,10 @@ comparisons here and let the numbers guide the decisions we make in trs.
 The goal is internal knowledge: "what do we actually do better, and where
 should we improve?", not to publish a leaderboard.
 
+## What we learned
+
+[`output-cost-findings.md`](../output-cost-findings.md) records where agent cost actually goes, what the output-saver tests showed and how to run the next one.
+
 ## What's in here
 
 | Script | Purpose |
