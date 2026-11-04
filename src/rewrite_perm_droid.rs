@@ -139,6 +139,11 @@ fn load(roots: &Roots, cwd: Option<&str>) -> Option<Lists> {
     if let Some(path) = &roots.managed {
         merge(&mut lists, &read(path)?)?;
     }
+    // Org settings Droid fetched from its API and cached locally.
+    if let Some(home) = &roots.user_home {
+        let cache = read(&home.join(".factory/org-managed-settings.cache.json"))?;
+        merge(&mut lists, cache.get("managedSettings").unwrap_or(&cache))?;
+    }
     if let Some(cwd) = cwd {
         for dir in project_dirs(Path::new(cwd), roots.user_home.as_deref()) {
             for name in ["settings.json", "settings.local.json"] {
@@ -259,6 +264,20 @@ mod tests {
         let g = |c| run(home.path(), proj.path(), c, Some("off"));
         assert_eq!(g("make all"), Gate::Allow);
         assert_eq!(g("deploy now"), Gate::Skip);
+    }
+
+    #[test]
+    fn org_lists_cached_from_the_api_count() {
+        let (home, cwd) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        write(
+            home.path(),
+            ".factory/org-managed-settings.cache.json",
+            r#"{"managedSettings":{"commandDenylist":["make deploy"]}}"#,
+        );
+        assert_eq!(
+            run(home.path(), cwd.path(), "make deploy", Some("auto-high")),
+            Gate::Skip
+        );
     }
 
     #[test]

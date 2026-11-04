@@ -7,14 +7,19 @@ mod support;
 use serde_json::{json, Value};
 use support::{decision, run_hook};
 
-/// Run `trs rewrite --caller devin-cli` with `user` as `~/.config/devin/config.json`
+/// Run `trs rewrite --caller devin-cli` with `user` as Devin's user `config.json`
 /// and `project` as the project's `.devin/config.json`. `None` = command left alone.
 fn hook(user: Option<&str>, project: Option<&str>, cmd: &str) -> Option<Value> {
     let home = tempfile::tempdir().unwrap();
     let proj = tempfile::tempdir().unwrap();
     if let Some(s) = user {
-        std::fs::create_dir_all(home.path().join(".config/devin")).unwrap();
-        std::fs::write(home.path().join(".config/devin/config.json"), s).unwrap();
+        // APPDATA is `home` too, where Devin keeps its config on Windows.
+        let rel = if cfg!(windows) {
+            "devin/config.json"
+        } else {
+            ".config/devin/config.json"
+        };
+        support::write_file(home.path(), rel, s);
     }
     if let Some(s) = project {
         std::fs::create_dir_all(proj.path().join(".devin")).unwrap();

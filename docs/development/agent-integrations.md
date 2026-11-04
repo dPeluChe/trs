@@ -364,7 +364,7 @@ project's `allow` counts only when the folder is trusted (deny/ask always count)
 |---|---|---|---|
 | Claude Code | `settings{,.local}.json`, managed | Skip / Allow / Defer | `--settings` rules invisible |
 | Codex | `$CODEX_HOME/rules/*.rules`, trusted `.codex/rules` | Skip on any matching rule, else Allow (Codex needs the allow for `updatedInput`) | managed `requirements.toml`, `--ignore-rules` |
-| Factory Droid | `commandAllowlist/Denylist/Blocklist` in `~/.factory`, project settings and the managed `settings.json` | Skip on deny/block, Allow if all parts listed, Defer only in `auto-high`, else Skip; Skip when `permissionRules` is present | `--settings` overlays, org cache file, `permissionRules` format |
+| Factory Droid | `commandAllowlist/Denylist/Blocklist` in `~/.factory`, project settings, the managed `settings.json` and the cached org settings | Skip on deny/block, Allow if all parts listed, Defer only in `auto-high`, else Skip; Skip when `permissionRules` is present | `--settings` overlays, org cache file, `permissionRules` format |
 | Gemini CLI | `settings.json`, `policies/*.toml`, trusted project settings | never Allow (Gemini ignores a hook allow); Skip on deny/ask, narrow `tools.allowed`, or read-only commands | system settings, admin policies, `-y` |
 | Devin CLI | `~/.config/devin/config.json`, `.devin/config{,.local}.json` | Skip on deny/ask, Allow if all parts match `Exec(...)`, else Defer | org rules, dangerous mode, trust |
 | Cursor | `Shell(...)` deny rules in `$CURSOR_CONFIG_DIR` or `~/.cursor/cli-config.json` | Skip on deny, else rewrite with no decision (a hook `allow` never approves nor beats a deny) | `ask` rules (no effect seen), project `.cursor/cli.json` |

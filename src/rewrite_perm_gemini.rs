@@ -312,7 +312,7 @@ mod tests {
         assert_eq!(run(&d, cwd, &no, "cargo build"), Gate::Skip);
         std::fs::write(
             d.path().join("trustedFolders.json"),
-            format!(r#"{{"{}": "TRUST_FOLDER"}}"#, proj.path().display()),
+            serde_json::json!({ proj.path().to_str().unwrap(): "TRUST_FOLDER" }).to_string(),
         )
         .unwrap();
         assert_eq!(
