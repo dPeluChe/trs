@@ -15,6 +15,7 @@ pub(crate) fn render_report(
     duplicates: &[DupPair],
     dead_refs: &[DeadRef],
     inline_bloat: &[InlineBloat],
+    volatile: &[crate::audit_docs_volatile::VolatileLine],
 ) {
     let total_tokens: usize = docs.iter().map(|d| d.tokens).sum();
     println!(
@@ -124,6 +125,8 @@ pub(crate) fn render_report(
             println!("  ... +{} more", dead_refs.len() - 10);
         }
     }
+
+    crate::audit_docs_volatile::print_volatile(volatile);
 
     // Inline bloat: large code fences, reference-data dumps, big tables
     if !inline_bloat.is_empty() {
@@ -242,6 +245,7 @@ pub(crate) fn render_report(
     let any_finding = !duplicates.is_empty()
         || !dead_refs.is_empty()
         || has_bloat_file
+        || !volatile.is_empty()
         || !inline_bloat.is_empty();
     println!();
     if !any_finding {

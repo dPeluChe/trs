@@ -72,3 +72,6 @@ henri-landing-report.html
 
 # temp research/learning doc
 INGEST_RESEARCH.md
+
+__pycache__/
+*.pyc

@@ -130,6 +130,7 @@ pub fn handle_stats(input: &StatsInput) {
     } else {
         crate::pointer_recall::recall(&entries)
     };
+    let reruns = (!input.history && !input.json).then(|| crate::rerun_rate::analyze(&entries));
     let mut entries = entries;
     if !input.history {
         entries.retain(|e| e.counts_toward_totals());
@@ -188,6 +189,9 @@ pub fn handle_stats(input: &StatsInput) {
             "\nSaved-output pointers: {}; read back by a shell command: {} (reads through an agent's own file tool are not seen).",
             pointers, reads
         );
+    }
+    if let Some(r) = &reruns {
+        crate::rerun_rate::print(r);
     }
 }
 

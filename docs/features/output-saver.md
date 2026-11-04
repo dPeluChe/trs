@@ -29,48 +29,55 @@ step. `trs doctor` surfaces the same drift signal inline.
 
 ## What the block says
 
-Two sections (reply rules, then code authoring), ~300 tokens total.
-The reply rules:
+Three sections (reply rules, check before answering, code authoring). Size and cost: see
+[What the block costs](#what-the-block-costs). The reply rules:
 
 - **Numeric token budget.** "Keep replies under ~100 words unless the
   task needs more. Between tool calls, stay under ~25 words."
 - **Task-shape calibration.** "Match shape to task, a one-line
   question gets a one-line answer, no headers."
-- **Open and end positively.** "Open with the answer or the diff.
-  End when the answer ends."
-- **Result first; explanation only if non-obvious.** State the
-  finding, show the fix, stop.
+- **Open with the answer, end when it ends.** Explain only what is
+  non-obvious. A BAD/GOOD pair shows the shape.
 - **Let tool output speak for itself.** Don't restate or recap what
   the diff already shows.
 - **Structured output when the data is structured.** Bullets, tables,
   JSON, prose only when the reader is human and the content is
   narrative.
-- **Persistence.** The rules hold for every reply, not just the first, 
+- **Persistence.** The rules hold for every reply, not just the first;
   agents drift back to preambles over a long session unless reminded.
-- **No em dashes.** Comma, colon, parentheses, period, or "and". It is
-  the top tell of generated text and almost nobody types one; the en dash
-  goes too, in prose. Numeric ranges keep their hyphen. The block itself
-  contains none, which is the point: a prompt that uses the tell teaches
-  every agent that the tell is fine.
-- **Concrete over abstract in prose.** No rule-of-three padding, no tier-1
-  slop (delve, leverage, robust, seamless, streamline, potenciar,
-  impulsar). This is the same cut as cutting tokens, not a second one.
-- **No invented abbreviations or causal arrows.** `cfg/impl/req/res` and
-  `→` split into the same tokens as the full word, so they save nothing
-  and cost clarity.
+- **No em dashes.** Comma, colon, parentheses, period, or "and". The block
+  itself contains none: a prompt that uses the tell teaches every agent
+  that the tell is fine.
 - **Never invent file paths, function names, or API fields.** If
   unknown, return `UNKNOWN` or `null`, guessing costs more tokens
   than asking.
-- **Full clarity, never compressed, on safety.** Security warnings,
-  irreversible/destructive confirmations, and any multi-step order a
-  misread would break stay verbatim-clear.
+- **Safety beats brevity.** Security warnings, irreversible/destructive
+  confirmations, and any multi-step order a misread would break get full
+  clarity, even past the word limit.
+
+Then **`## Check before answering`**, aimed at the quality of the answer, not
+at its size:
+
+- **Read once.** Don't reread a file or doc already in the conversation
+  unless it may have changed.
+- **Verify against the code or the running project**, not memory or docs
+  alone: docs go stale.
+- **Prefer the most recent source** (latest commit, current version, newest
+  doc), and say so when sources disagree.
+
+These three are unmeasured: the agentic A/B below scores cost and a pass/fail
+check, not whether an answer was better grounded. They stay because they
+cost about 70 tokens and target stale-doc errors, not because a saving was
+shown.
+
 Then a separate **`## Code authoring`** section, its own heading, so an
 agent scanning the block applies it when writing code, not just when
 replying in chat:
 
 - **Reuse before re-implementing.** A helper, type, or pattern already
-  a few files over beats writing a new one. **One pass**, don't iterate
-  on passing code or refactor unless asked.
+  a few files over beats writing a new one.
+- **Smallest diff** that solves it, preferring deletion.
+- **One pass.** Don't iterate on passing code or refactor unless asked.
 - **Code comments: none by default.** If one is truly needed, a terse
   WHY-only note (not a walkthrough), at most 3 lines, ~200 characters;
   never paragraph docstrings or restated code. A longer logic explanation
@@ -118,14 +125,13 @@ classes of sources informed each rule:
 |---|---|---|
 | Numeric token budget | Claude Code system prompt | Empirically validated by Anthropic A/B |
 | Task-shape calibration | Claude Code system prompt | Opinion-but-Anthropic-validated |
-| "Open with the answer or the diff" | Pink-elephant studies (positive form) | Replaces older negative "No preambles / No narration" |
-| Result first | Carryover from v0.5 | Internal opinion, no published study |
+| "Open with the answer or the diff" | Pink-elephant studies (positive form) | Replaces older negative "No preambles / No narration"; absorbs the older "Result first" rule |
 | Tool output speaks for itself | Pink-elephant rewrite | Positive form of old "No narration" |
 | Structured when data is structured | Carryover from v0.5 | Internal opinion |
 | Never invent | Carryover from v0.5 | Common LLM hallucination guard |
 | Persistence | [caveman][cav] SKILL ("ACTIVE EVERY RESPONSE, no filler drift") | Counters verbosity regression over long sessions |
-| No invented abbreviations / arrows | [caveman][cav] SKILL | Non-obvious tokenizer insight, `cfg/impl` split like the full word |
 | Full clarity on safety | [caveman][cav] auto-clarity + [ponytail][pony] "when NOT to be lazy" | Guards against dangerous over-compression |
+| Check before answering | Added after the agentic A/B | Unmeasured; aimed at answer quality, not size |
 | Reuse before re-implementing | [ponytail][pony] ladder rung 2 ("the most common slop") | Code-quality lift |
 | One pass | Carryover from v0.5 | Internal opinion |
 | Code comments: none by default | Claude Code system prompt | Direct lift; addresses a known bloat source agents emit |
@@ -239,18 +245,101 @@ For `InlineFile` installs, the content between the sentinels is
 removed along with the sentinels themselves, surrounding user
 content is preserved exactly.
 
+## What the block costs
+
+It is input on every session, whether or not it helps that turn.
+Measured on this version (`trs output-saver --print`, and the file `trs init
+--global` writes for Claude Code):
+
+| What | Bytes | Tokens (bytes / 4, an estimate) |
+| --- | --- | --- |
+| The rules block (`--print`, inline installs) | 2,334 | ~580 |
+| `~/.claude/trs.md` (block plus the "Shell output" introduction) | 3,362 | ~840 |
+
+Earlier versions of this page said ~300 tokens; that was wrong for both. A
+unit test (`the_block_stays_inside_the_size_the_doc_quotes`) now fails when
+the block grows past these sizes without this table being updated.
+
+With prompt caching the block sits in the cached prefix, so after the first
+request it is billed at a fraction of normal input. At typical API ratios
+(output about 5x input, cached read about 0.1x input; check your provider's
+price list) ~840 cached tokens cost about as much per turn as ~17 output
+tokens, so the block pays for itself only if it removes more than that from
+each reply. On a flat-rate plan the price is the context window, not money.
+
 ## Measuring impact
 
-The block doesn't compress existing output; it steers what gets
-generated. Exact savings depend on your agent, model, and prompts.
-Anecdotally: ~30-40% fewer tokens on simple tasks (where preambles
-are proportionally the bulk of replies), less on long reasoning
-replies where the compression target is narration and speculation.
+The block doesn't compress existing output; it steers what gets generated.
 
-The `trs stats` dashboard tracks input-side savings from `trs rewrite`
-but cannot measure output-side savings, they happen outside any
-process we run. If you want to measure, compare before/after
-token-usage numbers in your agent's own dashboard.
+**A/B with a control** (`docs/development/benchmarks/output_saver_ab.py`,
+2026-11-04, Claude Code 2.1.318 with `--model sonnet`, no tools, isolated
+sessions, 8 prompts x 5 runs = 40 replies per arm; three of the prompts are
+fidelity cases: a negation, a number, a destructive-action warning):
+
+| Arm | Output tokens / reply | Words / reply | Fidelity cases passed |
+| --- | --- | --- | --- |
+| no block | 425 | 177 | 100% |
+| "Answer concisely." (one line) | 208 | 86 | 100% |
+| the trs block | 188 | 70 | 95% (1 miss in 40; the same case reran 5 of 5) |
+
+- The block against no instruction: **-237 output tokens per reply** (95% CI
+  -331 to -137).
+- The block against the one-line "Answer concisely.": **-20 per reply, CI -79
+  to +42**. Not distinguishable. Most of the saving comes from asking for
+  brevity at all, not from the block's other rules.
+- Preamble, closing filler and em dashes were already near zero in every arm on
+  this model, so the block's rules against them had nothing to remove here.
+
+Read it with these limits: one model, eight short prompts with no tools or
+long sessions, N=5 per prompt, and `output_tokens` includes thinking, not only
+the prose the block steers. It says nothing about the code-authoring rules
+(comment style, no invented paths), which this test does not exercise. Per-call
+billing sees no benefit either: output is a small share of most bills, and the
+block adds ~580 to ~840 input tokens to every session (previous section).
+Rerun it on your model before relying on the block for cost.
+
+The `trs stats` dashboard tracks input-side savings from `trs rewrite` but
+cannot measure output-side savings, they happen outside any process we run.
+To estimate them from your own Claude Code transcripts:
+
+```bash
+python3 docs/development/benchmarks/transcript_output.py --since YYYY-MM-DD
+```
+
+It compares `output_tokens` per assistant message before and after the date
+(default: when `~/.claude/trs.md` was created), per model, with a bootstrap 95%
+confidence interval on the difference. It is observational: the task mix
+changed between the periods, and `output_tokens` includes thinking and tool
+arguments, so the figure is an estimate and a hint, not proof. Transcripts only
+go back as far as Claude Code kept them; if none predate the install there is
+nothing to compare, and the script says so.
+
+**Agentic A/B** (`docs/development/benchmarks/output_saver_agentic.py`,
+2026-11-04, `--model sonnet --effort low`, tools on, 4 small repo tasks x 6
+runs = 24 per arm, a 30-module filler repo, 120 runs, about 6.6 USD). Mean
+per run, success checked by each task's own test:
+
+| Arm | Cost | Turns | Output tokens | Success |
+| --- | --- | --- | --- | --- |
+| none | $0.053 | 4.4 | 527 | 96% |
+| "Answer concisely." | $0.053 | 4.5 | 491 | 100% |
+| previous block | $0.057 | 4.4 | 489 | 92% |
+| longer block (style rules plus a "Fewer turns" section; not shipped) | $0.056 | 4.6 | 488 | 100% |
+| telegraphic-style rules | $0.056 | 4.8 | 535 | 96% |
+
+No arm differs from another in cost or turns: every 95% CI (bootstrap on the
+difference of means) spans zero. The block arms sit about $0.004 (7%) above
+"none", with a CI that just touches zero, which is what their input cost
+would predict. The "Fewer turns" rules did not reduce turns here (+0.25,
+CI -0.67..+1.13 against none). A first sweep was discarded: its Bash
+allowlist lacked `sed`, 50 of 120 runs hit a permission denial and every
+failure was one of them.
+
+What this does not show: tasks of 2 to 7 turns leave little to batch, one
+model at low effort, no long sessions where the "persistence" rule might
+matter. Because the longer block bought nothing over a one-line control, the
+shipped block stays short: the reply rules above, the three checks, and the
+code-authoring rules, with no turn-saving or style section.
 
 ## Interaction with `trs init`
 

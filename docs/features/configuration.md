@@ -53,7 +53,11 @@ When a parser errors out mid-parse, trs falls back to truncated
 passthrough rather than silent failure. This is the truncation
 ceiling. Default 2000 chars. The full raw output is saved to
 `~/.trs/tee/` and its path printed, this limit only affects what flows into
-the agent's context.
+the agent's context. Inside the ceiling trs keeps the head, the tail, the
+error lines of the middle, then lines carrying an identifier that appears
+nowhere else in the output (a UUID, a hash, a URL), so the agent does not rerun
+a narrower query to find it. All of that shares the ceiling, so a log where
+every line has its own id still shrinks.
 
 ### `json_max_depth`
 
