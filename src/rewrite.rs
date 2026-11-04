@@ -173,7 +173,7 @@ impl HookEvent {
 /// different output shapes:
 ///   Claude Code → hookSpecificOutput.updatedInput.command
 ///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
-///   Cursor      → top-level `permission` + top-level `updated_input.command`
+///   Cursor      → top-level `updated_input.command` (a hook `allow` never approves)
 fn build_hook_response(
     json: &serde_json::Value,
     agent_flag: Option<&str>,
@@ -238,7 +238,6 @@ fn build_hook_response(
             }
         }),
         HookEvent::CursorPreToolUse => serde_json::json!({
-            "permission": "allow",
             "updated_input": { "command": rewritten }
         }),
         HookEvent::ClaudePreToolUse => {

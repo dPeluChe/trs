@@ -82,7 +82,7 @@ fn test_hook_response_cursor_format() {
         }"#,
     );
     let out = build_hook_response(&input, None).expect("should rewrite");
-    assert_eq!(out["permission"], serde_json::json!("allow"));
+    assert!(out["permission"].is_null());
     assert_eq!(
         out["updated_input"]["command"],
         serde_json::json!(agent_cmd("cursor", "trs git status"))

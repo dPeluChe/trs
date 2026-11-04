@@ -1,6 +1,6 @@
 //! Cursor: `~/.cursor/cli-config.json` holds `permissions.deny` entries like
-//! `Shell(git push)`. Unverified whether Cursor matches them against the
-//! rewritten command, so a deny on the original stops the rewrite.
+//! `Shell(git push)`. Cursor matches them against the REWRITTEN command (verified
+//! on 2026.10.22), so a deny on the original stops the rewrite.
 
 use crate::rewrite_gate::Gate;
 use crate::rewrite_permissions::split_segments;
@@ -18,7 +18,7 @@ fn gate_with(deny: &[String], cmd: &str) -> Gate {
         deny: deny.to_vec(),
         ..Rules::default()
     };
-    rules.decide(split_segments(cmd), shell_rule_matches, |_| true)
+    rules.decide(split_segments(cmd), shell_rule_matches, |_| false)
 }
 
 /// `Shell`, `Shell(*)`, `Shell(git push)`: whole-word prefix of the segment.
@@ -46,9 +46,11 @@ fn deny_rules() -> Option<Vec<String>> {
     if cfg!(test) {
         return Some(Vec::new());
     }
-    let path = crate::init::home_dir()
-        .ok()?
-        .join(".cursor/cli-config.json");
+    let dir = match std::env::var_os("CURSOR_CONFIG_DIR") {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => crate::init::home_dir().ok()?.join(".cursor"),
+    };
+    let path = dir.join("cli-config.json");
     Some(match read_json(&path)? {
         Some(json) => string_list(&json, "/permissions/deny"),
         None => Vec::new(),
@@ -65,7 +67,7 @@ mod tests {
         assert_eq!(gate_with(&deny, "git push origin main"), Gate::Skip);
         assert_eq!(gate_with(&deny, "cd x && rm -rf y"), Gate::Skip);
         assert_eq!(gate_with(&deny, "FOO=1 git push"), Gate::Skip);
-        assert_eq!(gate_with(&deny, "git status"), Gate::Allow);
+        assert_eq!(gate_with(&deny, "git status"), Gate::Defer);
         assert_eq!(gate_with(&["Shell".to_string()], "ls"), Gate::Skip);
     }
 }

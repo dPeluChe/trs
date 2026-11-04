@@ -67,7 +67,7 @@ output shapes. `src/rewrite.rs::HookEvent` dispatches on the
 |---|---|---|
 | `PreToolUse` (capital P) | Claude Code | `hookSpecificOutput.updatedInput.command` |
 | `BeforeTool` | Gemini CLI | `hookSpecificOutput.tool_input.command` + top-level `decision` |
-| `preToolUse` (lowercase p) | Cursor | top-level `permission` + top-level `updated_input.command` |
+| `preToolUse` (lowercase p) | Cursor | top-level `updated_input.command` (no `permission`) |
 | *missing / unknown* | fallback | Claude format |
 
 Claude's `PreToolUse` and Cursor's `preToolUse` differ ONLY by case. If you
@@ -367,7 +367,7 @@ project's `allow` counts only when the folder is trusted (deny/ask always count)
 | Factory Droid | `commandAllowlist/Denylist/Blocklist` in `~/.factory`, project settings and the managed `settings.json` | Skip on deny/block, Allow if all parts listed, Defer only in `auto-high`, else Skip; Skip when `permissionRules` is present | `--settings` overlays, org cache file, `permissionRules` format |
 | Gemini CLI | `settings.json`, `policies/*.toml`, trusted project settings | never Allow (Gemini ignores a hook allow); Skip on deny/ask, narrow `tools.allowed`, or read-only commands | system settings, admin policies, `-y` |
 | Devin CLI | `~/.config/devin/config.json`, `.devin/config{,.local}.json` | Skip on deny/ask, Allow if all parts match `Exec(...)`, else Defer | org rules, dangerous mode, trust |
-| Cursor | `Shell(...)` deny rules in `~/.cursor/cli-config.json` | Skip on deny, else Allow | whole gate (no binary here) |
+| Cursor | `Shell(...)` deny rules in `$CURSOR_CONFIG_DIR` or `~/.cursor/cli-config.json` | Skip on deny, else rewrite with no decision (a hook `allow` never approves nor beats a deny) | `ask` rules (no effect seen), project `.cursor/cli.json` |
 | Copilot CLI / VS Code | none readable | no `allow` is sent; `--deny-tool` flags and VS Code auto-approve settings are invisible | flags |
 | OpenCode 2.x | `permission.bash` via `ctx.permission.assert` | plugin asks about the original segments (`trs rewrite --segments`) before rewriting | 1.x config shape |
 | Kilo / OpenCode 1.x | `client.config.get()` | rewrite only if no ask/deny rule for `bash` | |
