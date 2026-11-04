@@ -105,7 +105,7 @@ Do not name those projects in commits, docs or the changelog when shipping these
 - [x] **Needle preservation in the generic reducer** (the tier-3 cut, `src/passthrough_cut.rs`: unique UUID, hash or URL lines are kept after the error lines, same budget): keep lines with a rare token (UUID, hash, URL, id) when it cuts, so the agent does not rerun a narrower query. Cap it so id-dense logs still compress.
 - [x] **`audit-docs`** (`src/audit_docs_volatile.rs`): flag dates, "Updated:" and "As of YYYY-MM" in `CLAUDE.md` / `AGENTS.md`, they break the prompt-cache prefix (`src/audit_docs_detect.rs`).
 - [ ] **Output-saver rules**: add "keep comments you were not asked to change", "write commits, PRs and docs in normal prose", "full sentences for questions to the user". The block is the canonical source for comment limits, so flag downstream stacks. Each line costs tokens in every session; measure first (item above).
-- [ ] **Output-saver measurement from transcripts**: output tokens per reply before vs after install, with a confidence interval, labelled "estimated" (`docs/features/output-saver.md` admits `stats` cannot measure the output side).
+- [x] **Output-saver measurement from transcripts** (`docs/development/benchmarks/transcript_output.py`; on this machine the transcripts start after the install, so it has no before data): output tokens per reply before vs after install, with a confidence interval, labelled "estimated" (`docs/features/output-saver.md` admits `stats` cannot measure the output side).
 
 ### P4: larger features, decide later
 

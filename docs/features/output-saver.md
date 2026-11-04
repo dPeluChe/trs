@@ -273,9 +273,20 @@ until the A/B in `docs/roadmap/TASK_TODO.md` (no block, "Answer concisely.",
 this block) has run.
 
 The `trs stats` dashboard tracks input-side savings from `trs rewrite` but
-cannot measure output-side savings, they happen outside any process we run. To
-measure, compare before/after token-usage numbers in your agent's own
-dashboard.
+cannot measure output-side savings, they happen outside any process we run.
+To estimate them from your own Claude Code transcripts:
+
+```bash
+python3 docs/development/benchmarks/transcript_output.py --since YYYY-MM-DD
+```
+
+It compares `output_tokens` per assistant message before and after the date
+(default: when `~/.claude/trs.md` was created), per model, with a bootstrap 95%
+confidence interval on the difference. It is observational: the task mix
+changed between the periods, and `output_tokens` includes thinking and tool
+arguments, so the figure is an estimate and a hint, not proof. Transcripts only
+go back as far as Claude Code kept them; if none predate the install there is
+nothing to compare, and the script says so.
 
 ## Interaction with `trs init`
 
