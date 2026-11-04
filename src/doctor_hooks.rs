@@ -218,10 +218,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(openclaw_enabled(dir.path()), Some(false));
         assert_eq!(hermes_enabled(dir.path()), Some(false));
-        let plugin = dir.path().join("plugins/trs").display().to_string();
-        let cfg = format!(
-            r#"{{"plugins":{{"entries":{{"trs":{{"enabled":true}}}},"load":{{"paths":["{plugin}"]}}}}}}"#
-        );
+        let plugin = crate::init_install_plugins::openclaw_plugin_dir(dir.path());
+        let cfg = serde_json::json!({"plugins": {
+            "entries": {"trs": {"enabled": true}},
+            "load": {"paths": [plugin.display().to_string()]},
+        }});
+        let cfg = cfg.to_string();
         std::fs::write(dir.path().join("openclaw.json"), cfg).unwrap();
         assert_eq!(openclaw_enabled(dir.path()), Some(true));
         std::fs::write(
