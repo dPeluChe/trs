@@ -79,9 +79,9 @@ fn tokenize(seg: &str) -> Vec<String> {
     out
 }
 
-/// `$CODEX_HOME` or `~/.codex`; unit tests never read the developer's own.
+/// `$CODEX_HOME` or `~/.codex`.
 fn codex_home() -> Option<PathBuf> {
-    if cfg!(test) {
+    if !crate::rewrite_rules::reads_host_config() {
         return None;
     }
     std::env::var_os("CODEX_HOME")

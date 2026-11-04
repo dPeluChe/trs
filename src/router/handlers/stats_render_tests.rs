@@ -41,6 +41,7 @@ fn recent_efficiency_ignores_an_old_outlier() {
         agent: None,
         bypass: None,
         ok: None,
+        ptr: None,
     };
     let entries = vec![
         e(21, 380_000_000, 370_000_000), // the aws-shaped week: ~3% saved
@@ -71,6 +72,7 @@ fn failed_and_oversized_runs_stay_out_of_the_totals() {
         agent: None,
         bypass: None,
         ok,
+        ptr: None,
     };
     assert!(e(500, None).counts_toward_totals());
     assert!(e(500, Some(true)).counts_toward_totals());

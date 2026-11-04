@@ -27,8 +27,7 @@ fn gate_with(rules: &Rules, cmd: &str) -> Gate {
 /// The bool marks project files: their `allow` is ignored (no trust state to read).
 fn config_files(dir: Option<&Path>) -> Vec<(PathBuf, bool)> {
     let mut files = Vec::new();
-    // Unit tests must not read the developer's own config.
-    if !cfg!(test) {
+    if crate::rewrite_rules::reads_host_config() {
         let user = if cfg!(windows) {
             std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("devin/config.json"))
         } else {

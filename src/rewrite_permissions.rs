@@ -39,7 +39,7 @@ fn load_rules(cwd: Option<&str>) -> Option<Rules> {
 
 /// Folders where the user accepted Claude Code's trust dialog.
 fn trusted_dirs() -> Vec<PathBuf> {
-    if cfg!(test) {
+    if !crate::rewrite_rules::reads_host_config() {
         return Vec::new();
     }
     let file = match std::env::var_os("CLAUDE_CONFIG_DIR") {
@@ -64,8 +64,7 @@ fn trusted_dirs() -> Vec<PathBuf> {
 /// Settings files in Claude's precedence; the folder is set for project files.
 fn settings_files(cwd: Option<&str>) -> Vec<(PathBuf, Option<&Path>)> {
     let mut files = Vec::new();
-    // Unit tests must not read the developer's own settings.
-    if !cfg!(test) {
+    if crate::rewrite_rules::reads_host_config() {
         let user_dir = std::env::var_os("CLAUDE_CONFIG_DIR")
             .map(PathBuf::from)
             .or_else(|| crate::init::home_dir().ok().map(|h| h.join(".claude")));

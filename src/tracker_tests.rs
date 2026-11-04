@@ -45,6 +45,7 @@ fn maybe_rotate_active_renames_when_month_differs() {
         agent: None,
         bypass: None,
         ok: None,
+        ptr: None,
     };
     writeln!(f, "{}", serde_json::to_string(&entry).unwrap()).unwrap();
     drop(f);
@@ -78,6 +79,7 @@ fn maybe_rotate_active_is_noop_in_same_month() {
         agent: None,
         bypass: None,
         ok: None,
+        ptr: None,
     };
     let mut f = fs::File::create(&active).unwrap();
     writeln!(f, "{}", serde_json::to_string(&entry).unwrap()).unwrap();
@@ -181,6 +183,7 @@ fn test_history_entry_serialization() {
         agent: None,
         bypass: None,
         ok: None,
+        ptr: None,
     };
 
     let json = serde_json::to_string(&entry).unwrap();
@@ -215,6 +218,7 @@ fn test_bypass_entry_round_trip() {
         agent: Some("claude".into()),
         bypass: Some(true),
         ok: None,
+        ptr: None,
     };
     let json = serde_json::to_string(&entry).unwrap();
     assert!(json.contains("\"bypass\":true"));

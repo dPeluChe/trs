@@ -96,6 +96,13 @@ pub(crate) fn is_trusted(dir: &Path, trusted: &[PathBuf]) -> bool {
     dir.ancestors().any(|a| trusted.iter().any(|t| t == a))
 }
 
+/// Whether a gate reads this machine's own agent config. Unit tests in this
+/// crate never do (they would depend on the developer's settings); the
+/// integration tests run the real binary under a temp HOME instead.
+pub(crate) const fn reads_host_config() -> bool {
+    !cfg!(test)
+}
+
 /// Every dir from cwd up to the git root (or cwd), minus `skip` (the user's home).
 pub(crate) fn project_dirs(cwd: &Path, skip: Option<&Path>) -> Vec<PathBuf> {
     let root = cwd

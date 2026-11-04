@@ -9,7 +9,9 @@ use crate::rewrite_rules::{project_dirs, read_json, string_list, word_prefix, Ru
 use std::path::{Path, PathBuf};
 
 pub(crate) fn gate(cmd: &str, cwd: Option<&str>) -> Gate {
-    let config = if cfg!(test) { None } else { config_dir() };
+    let config = crate::rewrite_rules::reads_host_config()
+        .then(config_dir)
+        .flatten();
     match deny_rules(config.as_deref(), cwd) {
         Some(rules) => gate_with(&rules, cmd),
         None => Gate::Skip,
