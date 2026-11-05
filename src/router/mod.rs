@@ -75,14 +75,14 @@ impl Router {
                 capture_stderr,
                 capture_duration,
             } => {
-                let input = RunInput::from((
-                    command,
-                    args,
-                    capture_stdout.unwrap_or(true),
-                    capture_stderr.unwrap_or(true),
-                    capture_duration.unwrap_or(true),
-                    None, // timeout not supported via CLI yet
-                ));
+                let input = RunInput {
+                    command: command.clone(),
+                    args: args.clone(),
+                    capture_stdout: capture_stdout.unwrap_or(true),
+                    capture_stderr: capture_stderr.unwrap_or(true),
+                    capture_duration: capture_duration.unwrap_or(true),
+                    timeout: None, // timeout not supported via CLI yet
+                };
                 self.run_handler.execute(&input, ctx)
             }
             Commands::Search {

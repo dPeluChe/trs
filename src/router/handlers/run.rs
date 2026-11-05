@@ -220,25 +220,3 @@ pub(crate) struct RunInput {
     /// Optional timeout in seconds
     pub timeout: Option<u64>,
 }
-
-impl From<(&String, &Vec<String>, bool, bool, bool, Option<u64>)> for RunInput {
-    fn from(
-        (command, args, capture_stdout, capture_stderr, capture_duration, timeout): (
-            &String,
-            &Vec<String>,
-            bool,
-            bool,
-            bool,
-            Option<u64>,
-        ),
-    ) -> Self {
-        Self {
-            command: command.clone(),
-            args: args.clone(),
-            capture_stdout,
-            capture_stderr,
-            capture_duration,
-            timeout,
-        }
-    }
-}

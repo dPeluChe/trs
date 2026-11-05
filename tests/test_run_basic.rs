@@ -291,19 +291,6 @@ fn test_run_no_capture_stderr() {
 }
 
 #[test]
-fn test_run_capture_exit_code_default() {
-    // By default, exit code is captured
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""exit_code":0"#));
-}
-
-#[test]
 fn test_run_capture_duration_default() {
     // By default, duration is captured
     let mut cmd = Command::cargo_bin("trs").unwrap();

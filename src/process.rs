@@ -23,7 +23,7 @@ pub struct ProcessOutput {
     pub stdout: String,
     /// Captured standard error.
     pub stderr: String,
-    /// Exit code of the process (if available).
+    /// Exit code of the process; None when a signal killed it.
     pub exit_code: Option<i32>,
     /// Duration of the execution.
     pub duration: Duration,
