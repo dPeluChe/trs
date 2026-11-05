@@ -1,6 +1,6 @@
 # Supported AI agents
 
-Sixteen AI coding agents are supported end-to-end. Each row lists the
+Eighteen AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -20,7 +20,7 @@ install scope.
 | Devin Desktop | rules file only | — | ✓ (inline block) | `(untagged)` | global + project |
 | Devin CLI | programmatic hook | ✓ | — | `devin-cli` | global + project |
 | VS Code Copilot / Copilot CLI | programmatic hook | ✓ | ✓ | `vscode` / `copilot-cli` | global + project |
-| OpenClaw | plugin template | ✓ | — | `openclaw` | global |
+| OpenClaw | plugin template | ✓ | ✓ (unverified) | `openclaw` | global |
 | Hermes | plugin template | ✓ | — | `hermes` | global |
 | Trae | programmatic hook (unverified) | ✓ | — | `trae` | global + project |
 | Mistral Vibe | programmatic hook (unverified) | ✓ | — | `vibe` | global |
@@ -39,8 +39,7 @@ install scope.
   status`). Rules-only agents cannot do this; the model ends up
   running raw commands unless the user prefixes `trs` manually.
 - **Output-saver.** Whether `trs output-saver --install` can inject
-  the anti-preamble / result-first rules block (Pi, OpenClaw, and
-  Hermes are not yet wired). Antigravity 2.0 (IDE + CLI)
+  the rules block (Pi and Hermes are not yet wired). Antigravity 2.0 (IDE + CLI)
   shares Gemini's
   `~/.gemini/GEMINI.md` and `~/.gemini/trs.md` for the output-saver
   side; only the *hooks* are jetski-specific (see Antigravity section
@@ -140,8 +139,7 @@ install scope.
   start. The block tells the agent to prefix shell commands with
   `trs` when token-optimized output is desired.
 - **Output-saver.** Unchanged: `~/.gemini/trs.md` + the `@trs.md`
-  import in `~/.gemini/GEMINI.md` keeps the anti-preamble / numeric
-  budget rules active for both Antigravity surfaces. This part of the
+  import in `~/.gemini/GEMINI.md` keeps the rules block active for both Antigravity surfaces. This part of the
   integration **does** work because it's LLM-side (prompt context),
   not runtime hooks.
 - **Aliases.** `trs init antigravity` → IDE (back-compat).
@@ -303,10 +301,26 @@ install scope.
 Both follow each agent's published hook contract and are tested against its
 payload shape, but not on real binaries, so treat them as unverified.
 
+**Risk:** the hook rewrites the command and leaves approval to the agent. If the
+agent matches its deny rules against the rewritten command, a deny rule on the
+original won't fire. That is what happened on Grok Build, which is why trs never
+rewrites there. Check your deny rules before relying on them with these two.
+
 - **Trae:** `PreToolUse` on `RunCommand` in `.trae/hooks.json`. The hook rewrites
   the command, keeps `description` and `timeout`, and never sends a decision.
 - **Mistral Vibe:** a `pre_tool` entry in `~/.vibe/hooks.toml`, global only.
   `strict = false`, so a trs failure can't stop the bash tool.
+
+### Grok Build and Kiro
+
+Output-saver only, with no `trs init` entry.
+
+- **Grok Build:** `trs output-saver grok --install` writes `~/.grok/AGENTS.md`
+  (or `$GROK_HOME/AGENTS.md`), confirmed on 1.0.70. Grok also runs Claude Code's
+  hooks by default; the trs hook detects it and leaves its commands alone, so
+  Grok's deny rules keep working. [Why](../development/agent-integrations.md#grok-build).
+- **Kiro:** `trs output-saver kiro --install` writes
+  `~/.kiro/steering/trs.md`. Unverified on a real binary.
 
 ### OpenClaw
 

@@ -5,21 +5,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.8.10] - 2026-10-22
-
-### Bug Fixes
-
-- **cargo test:** The reported duration is now the sum of the suites, not the last one
-- **passthrough:** A truncated passthrough now saves the full output to the tee and names the path in its marker
+## [0.9.0] - 2026-11-05
 
 ### Features
 
-- **stats:** `--by-agent` prints the period it covers and explains what `(untagged)` means
+- Rest of P2 (AgentPolicy table, legacy hook identity, one-spawn plugins, doctor plugin checks, stats recall) (#210)
+- P3 measure before claiming (block size, A/B with control, rerun rate, unique-id needles, stamps) (#211)
+- **output-saver:** Shrink the block after pre-registered A/B tests (#212)
+- **rewrite:** Opt-in real exit status for piped build and test checks (#213)
+- **output-saver:** Targets for Grok Build, Kiro and OpenClaw (#214)
+- **init:** Hooks for Trae and Mistral Vibe (#216)
+
+### Bug Fixes
+
+- P1 from the learn-repos sweep (plugin pipes, permissions, help, worktrees, comments) (#208)
+- P2 small and cheap (passthrough tail, anchor guard, stats totals, atomic writes, ratchet, Droid/Cursor rules) (#209)
+- **rewrite:** Keep every tool input field when rewriting a command (#215)
+- **rewrite:** Never rewrite for Grok running Claude's hook (#218)
+
+### Documentation
+
+- **roadmap:** Add the learn-repos sweep, prioritised P1 to P4 (#207)
+- **grok:** Record the verified target and why it gets no hook (#217)
+- **roadmap:** Close P4 items that measured too small (#219)
+
+### Dependencies
+
+- **deps:** Bump the cargo-minor group across 1 directory with 4 updates (#205)
+
+## [0.8.10] - 2026-10-22
 
 ### Documentation
 
 - Make usetrs.dev match v0.8.9 and the binary (#201)
-- Docs version pins are checked against `Cargo.toml` in CI
 
 ## [0.8.9] - 2026-10-19
 

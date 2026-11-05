@@ -218,11 +218,44 @@ Read by eye before trusting a cell:
   PIDs in a list the agent rarely reads whole, and the full list is one path
   away.
 
+## trs alone on v0.9.0
+
+2026-11-04, same corpus, this repo's state that day, `compare.py --only trs
+--reps 1`, tokens counted with o200k_base. This is what usetrs.dev shows.
+`truth.py`: 9/9 pipelines match, 0 RISK rows, 1 BLIND row (`git diff HEAD~1`).
+`chain-rewrite.sh`: 43/43.
+
+| | tokens cut | anchors kept |
+|---|---:|---:|
+| all 38 commands (token-weighted) | 84% | 64% (mean 84% per command) |
+| without `ps aux` | 44% | |
+| median command | 29% | |
+| commands cut by half or more | 11 of 38 | |
+
+### The "up to 60%" on usetrs.dev
+
+The site said ~70% until v0.8.10. That came from 2026-10-21 data, before `trs
+stats` left failed runs and outputs over 30 KB out of its totals. Measured
+again on 2026-11-04, from the author's history:
+
+| window | commands | saved |
+|---|---:|---:|
+| all history (203 days) | 84,325 | 58% |
+| 90 days | 25,730 | 48% |
+| 30 days | 6,030 | 24% |
+| 7 days | 1,370 | 35% |
+
+The windows swing with the work: a month of low-output commands saves little.
+"Up to 60%" is a ceiling from the history, on the output trs handles, not on
+the bill: see [`output-cost-findings.md`](../output-cost-findings.md). Quote the
+table above for a given command. With oversized outputs counted back in, 30 days is 58%, but a few
+huge outputs carry that number.
+
 ## trs alone on v0.8.9
 
 2026-10-21, same corpus (now 38 commands: `docker ps -a` and `docker images`
 were added), this repo's state that day, `compare.py --only trs --reps 3`,
-tokens counted with o200k_base. This is what usetrs.dev shows.
+tokens counted with o200k_base.
 
 | | tokens cut | anchors kept |
 |---|---:|---:|
@@ -236,7 +269,7 @@ that one row. Every number here moves with the repo state: the September run
 had a 40k-token `git diff HEAD~5` (98% cut) where this one has 7.7k (26%).
 Quote the per-command rows, not one percentage.
 
-The ~70% on usetrs.dev is a different measurement: the author's history over 30
+The ~70% that usetrs.dev showed then was a different measurement: the author's history over 30
 days (2026-10-21), only commands run by agents through a hook (3,259, 10.4M
 input tokens): 73.3% saved. `trs stats --days 30` shows 68.9% over 8,359
 commands because it also counts test suites and hand-typed runs (3,649 of them

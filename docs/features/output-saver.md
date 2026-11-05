@@ -1,12 +1,13 @@
 # `trs output-saver`: reduce tokens on the agent's replies
 
 `trs rewrite` (wired up by [`trs init`](init.md)) compresses what
-agents **see**, the output of the shell commands they run. Agents
-still **emit** verbose replies: preambles ("Sure!"), narration
-("Now I will…"), speculative suggestions, hallucinated file paths.
+agents **see**, the output of the shell commands they run.
 
 `trs output-saver` installs a short rules block into each supported
-agent's global config so those replies come back tighter.
+agent's global config: answer concisely, never invent paths or API
+fields, keep code comments short. It is deliberately small: in
+pre-registered tests no longer block beat the line "Answer concisely."
+([findings](../development/output-cost-findings.md)).
 
 ## Quick reference
 
