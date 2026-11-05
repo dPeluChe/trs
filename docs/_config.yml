@@ -1,0 +1,3 @@
+# The digest quotes source code, and `{{` in it stops the whole Pages build.
+exclude:
+  - development/codebase-digest.md
