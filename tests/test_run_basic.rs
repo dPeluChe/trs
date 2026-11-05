@@ -469,3 +469,22 @@ fn test_run_ansi_codes_json_output() {
     // The output should contain "green" (possibly with ANSI codes)
     assert!(json["stdout"].as_str().unwrap().contains("green"));
 }
+
+#[test]
+fn test_run_output_larger_than_the_pipe_buffer_does_not_hang() {
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .timeout(std::time::Duration::from_secs(30))
+        .arg("--raw")
+        .arg("run")
+        .arg("sh")
+        .arg("-c")
+        .arg("head -c 300000 /dev/zero | tr '\\0' x")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output.iter().filter(|b| **b == b'x').count() == 300_000);
+}

@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 #[path = "process_helpers.rs"]
 mod helpers;
-use helpers::{capture_output, capture_partial_output, classify_spawn_error, ChildExt};
+use helpers::{classify_spawn_error, completed_output, ChildExt, OutputReaders};
 
 /// Result of a process execution.
 #[derive(Debug, Clone)]
@@ -287,26 +287,21 @@ impl ProcessBuilder {
             }
         };
 
+        let readers = OutputReaders::start(&mut child);
+
         // Handle timeout if specified
         let result = if let Some(timeout) = self.timeout {
             match child.wait_timeout(timeout) {
                 Ok(Some(status)) => {
                     // Process completed within timeout
-                    let output = capture_output(
-                        &mut child,
-                        status,
-                        self.capture_stdout,
-                        self.capture_stderr,
-                    );
-                    Ok(output)
+                    Ok(completed_output(status, readers))
                 }
                 Ok(None) => {
                     // Process timed out
                     let _ = child.kill();
                     let _ = child.wait();
 
-                    // Try to capture any partial output
-                    let (stdout, stderr) = capture_partial_output(&mut child);
+                    let (stdout, stderr) = readers.finish();
 
                     Err(ProcessError::Timeout {
                         command: self.command.clone(),
@@ -324,15 +319,7 @@ impl ProcessBuilder {
         } else {
             // No timeout, wait indefinitely
             match child.wait() {
-                Ok(status) => {
-                    let output = capture_output(
-                        &mut child,
-                        status,
-                        self.capture_stdout,
-                        self.capture_stderr,
-                    );
-                    Ok(output)
-                }
+                Ok(status) => Ok(completed_output(status, readers)),
                 Err(e) => Err(ProcessError::IoError {
                     command: self.command.clone(),
                     message: e.to_string(),

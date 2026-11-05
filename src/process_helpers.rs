@@ -1,7 +1,8 @@
 //! Helper functions for process execution.
 
-use std::io;
+use std::io::{self, Read};
 use std::process::ExitStatus;
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use super::{ProcessError, ProcessOutput};
@@ -22,41 +23,41 @@ pub(super) fn classify_spawn_error(command: &str, error: io::Error) -> ProcessEr
     }
 }
 
-/// Capture output from a completed child process.
-pub(super) fn capture_output(
-    child: &mut std::process::Child,
-    status: ExitStatus,
-    capture_stdout: bool,
-    capture_stderr: bool,
-) -> ProcessOutput {
-    let stdout = if capture_stdout {
-        child
-            .stdout
-            .take()
-            .map(|mut h| {
-                let mut buf = String::new();
-                let _ = std::io::Read::read_to_string(&mut h, &mut buf);
-                buf
-            })
-            .unwrap_or_default()
-    } else {
-        String::new()
-    };
+/// Reads a child's pipes on their own threads. Waiting first would deadlock
+/// once a child fills the OS pipe buffer (64 KB) and blocks on write.
+pub(super) struct OutputReaders {
+    stdout: Option<JoinHandle<String>>,
+    stderr: Option<JoinHandle<String>>,
+}
 
-    let stderr = if capture_stderr {
-        child
-            .stderr
-            .take()
-            .map(|mut h| {
-                let mut buf = String::new();
-                let _ = std::io::Read::read_to_string(&mut h, &mut buf);
-                buf
-            })
-            .unwrap_or_default()
-    } else {
-        String::new()
-    };
+impl OutputReaders {
+    pub(super) fn start(child: &mut std::process::Child) -> Self {
+        Self {
+            stdout: child.stdout.take().map(drain),
+            stderr: child.stderr.take().map(drain),
+        }
+    }
 
+    pub(super) fn finish(self) -> (String, String) {
+        (collect(self.stdout), collect(self.stderr))
+    }
+}
+
+fn drain(mut pipe: impl Read + Send + 'static) -> JoinHandle<String> {
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let _ = pipe.read_to_end(&mut buf);
+        String::from_utf8_lossy(&buf).into_owned()
+    })
+}
+
+fn collect(reader: Option<JoinHandle<String>>) -> String {
+    reader.and_then(|r| r.join().ok()).unwrap_or_default()
+}
+
+/// Build the output of a completed child process.
+pub(super) fn completed_output(status: ExitStatus, readers: OutputReaders) -> ProcessOutput {
+    let (stdout, stderr) = readers.finish();
     ProcessOutput {
         command: String::new(),
         args: Vec::new(),
@@ -66,32 +67,6 @@ pub(super) fn capture_output(
         duration: Duration::ZERO,
         timed_out: false,
     }
-}
-
-/// Capture partial output from a timed-out process.
-pub(super) fn capture_partial_output(child: &mut std::process::Child) -> (String, String) {
-    let stdout = child
-        .stdout
-        .take()
-        .map(|mut h| {
-            let mut buf = String::new();
-            // Use non-blocking read if possible
-            let _ = std::io::Read::read_to_string(&mut h, &mut buf);
-            buf
-        })
-        .unwrap_or_default();
-
-    let stderr = child
-        .stderr
-        .take()
-        .map(|mut h| {
-            let mut buf = String::new();
-            let _ = std::io::Read::read_to_string(&mut h, &mut buf);
-            buf
-        })
-        .unwrap_or_default();
-
-    (stdout, stderr)
 }
 
 /// Extension trait for Child to support timeout.
