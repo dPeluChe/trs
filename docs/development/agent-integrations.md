@@ -24,6 +24,12 @@ matrix below. Six distinct target paths across three mechanisms:
 | Factory Droid | inline with sentinels | `~/.factory/AGENTS.md` |
 | Antigravity IDE | `@import` (shared with Gemini), `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` (output-saver); hooks live separately, see below |
 | Antigravity CLI (`agy`) | `@import` (shared with Gemini), `~/.gemini/trs.md` + line in `~/.gemini/GEMINI.md` (output-saver); hooks live separately, see below |
+| Grok Build | inline with sentinels | `$GROK_HOME/AGENTS.md` (default `~/.grok/AGENTS.md`) |
+| Kiro | steering file with `inclusion: always` | `~/.kiro/steering/trs.md` |
+| OpenClaw | inline with sentinels | `~/.openclaw/workspace/SOUL.md` |
+
+Grok Build, Kiro and OpenClaw follow each agent's docs. No real binary has
+confirmed they load, so treat them as unverified until one does.
 
 Inline installs use the sentinels
 `<!-- trs:output-saver:start v1 -->` / `<!-- trs:output-saver:end -->`

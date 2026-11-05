@@ -356,6 +356,38 @@ fn the_old_cursor_file_counts_as_installed_so_refresh_migrates_it() {
     ));
 }
 
+#[test]
+fn kiro_steering_loads_on_every_chat_and_survives_a_refresh_check() {
+    let home = tempfile::tempdir().unwrap();
+    fs::create_dir_all(home.path().join(".kiro")).unwrap();
+    let target = resolve_target_with_home("kiro", Some(home.path()));
+    assert!(matches!(target, Target::RulesDir { .. }));
+    install_agent_with_home("kiro", Some(home.path())).unwrap();
+    let file = fs::read_to_string(home.path().join(".kiro/steering/trs.md")).unwrap();
+    assert!(file.starts_with("---\ninclusion: always\n---\n"), "{file}");
+    assert_eq!(
+        verify_agent_with_home("kiro", Some(home.path())),
+        VerifyStatus::Ok
+    );
+}
+
+#[test]
+fn grok_and_openclaw_keep_the_users_own_rules() {
+    for (id, rel) in [
+        ("grok", ".grok/AGENTS.md"),
+        ("openclaw", ".openclaw/workspace/SOUL.md"),
+    ] {
+        let home = tempfile::tempdir().unwrap();
+        let path = home.path().join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, "my own rules\n").unwrap();
+        install_agent_with_home(id, Some(home.path())).unwrap();
+        let file = fs::read_to_string(&path).unwrap();
+        assert!(file.contains("my own rules"), "{id}");
+        assert!(file.contains(SENTINEL_START), "{id}");
+    }
+}
+
 /// The block is input in every session, so its size is a cost the doc quotes
 /// (docs/features/output-saver.md, "What the block costs"). Growing it past
 /// these bounds means re-measuring and updating that section.

@@ -78,6 +78,11 @@ Codex, OpenCode, Kilo, and Droid are signatories of the
 [`AGENTS.md` convention](https://factory.ai/news/agents-md), which is
 why they share the same install mechanism.
 
+**Grok Build** (`$GROK_HOME/AGENTS.md`, default `~/.grok/AGENTS.md`), **Kiro**
+(`~/.kiro/steering/trs.md` with `inclusion: always`) and **OpenClaw**
+(`~/.openclaw/workspace/SOUL.md`) follow each agent's docs and are unverified on
+real binaries.
+
 **Antigravity IDE + CLI (`agy`)** share Gemini's `GEMINI.md`/`trs.md`
 for the output-saver only. Their *hooks* are jetski-specific and live
 in `~/.gemini/antigravity-{ide,cli}/hooks.json`, see

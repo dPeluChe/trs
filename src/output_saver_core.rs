@@ -91,11 +91,26 @@ pub(crate) const AGENTS: &[Agent] = &[
         id: "copilot",
         display: "VS Code Copilot / Copilot CLI",
     },
+    Agent {
+        id: "grok",
+        display: "Grok Build",
+    },
+    Agent {
+        id: "kiro",
+        display: "Kiro",
+    },
+    Agent {
+        id: "openclaw",
+        display: "OpenClaw",
+    },
 ];
 
 /// VS Code applies an `.instructions.md` file automatically only when its
 /// `applyTo` matches; without it the file is manual-only.
 pub(crate) const COPILOT_HEADER: &str = "---\napplyTo: \"**\"\n---\n\n";
+
+/// Kiro loads a steering file on every chat only with `inclusion: always`.
+pub(crate) const KIRO_HEADER: &str = "---\ninclusion: always\n---\n\n";
 
 /// Cursor applies a rule on every chat only with `alwaysApply: true`; a rule
 /// with no frontmatter is not guaranteed to load (docs: cursor.com/docs/rules).
@@ -228,6 +243,30 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
                 path: dir.join("instructions/trs.instructions.md"),
                 header: COPILOT_HEADER,
             })
+            .unwrap_or(Target::NotSupported {
+                reason: "HOME not set",
+            }),
+        // Paths below follow each agent's docs; no real binary has confirmed
+        // they load (docs/development/agent-integrations.md).
+        "grok" => std::env::var_os("GROK_HOME")
+            .map(PathBuf::from)
+            .or_else(|| push_home(".grok"))
+            .map(|dir| Target::InlineFile {
+                path: dir.join("AGENTS.md"),
+            })
+            .unwrap_or(Target::NotSupported {
+                reason: "HOME not set",
+            }),
+        "kiro" => push_home(".kiro/steering/trs.md")
+            .map(|path| Target::RulesDir {
+                path,
+                header: KIRO_HEADER,
+            })
+            .unwrap_or(Target::NotSupported {
+                reason: "HOME not set",
+            }),
+        "openclaw" => push_home(".openclaw/workspace/SOUL.md")
+            .map(|path| Target::InlineFile { path })
             .unwrap_or(Target::NotSupported {
                 reason: "HOME not set",
             }),

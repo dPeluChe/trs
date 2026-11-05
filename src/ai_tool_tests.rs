@@ -116,8 +116,12 @@ fn output_saver_agents_match_registry() {
     // The output_saver AGENTS list is a separate const (it owns its own
     // display order for `--show`/verify). This guards against its
     // display strings drifting from the identity registry: every agent
-    // id must resolve to a known tool whose display name matches.
-    for agent in crate::output_saver::AGENTS {
+    // id must resolve to a known tool whose display name matches. Grok and
+    // Kiro get rules only: trs has no hook for them yet.
+    for agent in crate::output_saver::AGENTS
+        .iter()
+        .filter(|a| !matches!(a.id, "grok" | "kiro"))
+    {
         let tool = AiTool::from_str(agent.id)
             .unwrap_or_else(|| panic!("output_saver agent id `{}` unknown to registry", agent.id));
         assert_eq!(
