@@ -175,7 +175,7 @@ fn target_paths(tool: &AiTool, _global: bool) -> Vec<PathBuf> {
             push_home(&mut v, ".trae/hooks.json");
             v.push(PathBuf::from(".trae/hooks.json"));
         }
-        AiTool::Vibe => push_home(&mut v, ".vibe/hooks.toml"),
+        AiTool::Vibe => push_home(&mut v, crate::init_templates::VIBE_HOOKS_FILE),
         AiTool::DevinCLI => {
             push_home(&mut v, ".config/devin/config.json");
             v.push(PathBuf::from(".devin/config.json"));

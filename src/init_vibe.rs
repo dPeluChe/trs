@@ -3,37 +3,48 @@
 //! a TOML round trip would lose.
 
 use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
 
 use crate::init::{home_dir, InstallOpts};
-use crate::init_templates::{VIBE_HOOK, VIBE_SENTINEL_START};
+use crate::init_install::ensure_parent;
+use crate::init_install_rules::refresh_sentinel_block;
+use crate::init_templates::{VIBE_HOOK, VIBE_HOOKS_FILE, VIBE_SENTINEL_END, VIBE_SENTINEL_START};
 
 pub(crate) fn install_vibe_hook(opts: InstallOpts) -> Result<String, String> {
     if !opts.global {
         eprintln!("note: Mistral Vibe hooks are global, installing to ~/.vibe");
     }
-    install_at(&home_dir()?.join(".vibe/hooks.toml"), opts)
+    install_at(&home_dir()?.join(VIBE_HOOKS_FILE), opts)
 }
 
 fn install_at(path: &Path, opts: InstallOpts) -> Result<String, String> {
-    let existing = fs::read_to_string(path).unwrap_or_default();
-    if existing.contains(VIBE_SENTINEL_START) {
+    let existing = match fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(e) if e.kind() == ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(format!("Cannot read {}: {}", path.display(), e)),
+    };
+    let updated = if existing.contains(VIBE_SENTINEL_START) {
+        refresh_sentinel_block(
+            &existing,
+            VIBE_SENTINEL_START,
+            VIBE_SENTINEL_END,
+            VIBE_HOOK.trim(),
+        )
+        .ok_or_else(|| format!("{} has a damaged trs block", path.display()))?
+    } else {
+        let body = existing.trim_end();
+        let gap = if body.is_empty() { "" } else { "\n\n" };
+        format!("{body}{gap}{VIBE_HOOK}")
+    };
+    if updated == existing {
         return Ok(format!("{} (already configured)", path.display()));
     }
     if opts.dry_run {
         return Ok(format!("{} (would add trs hook)", path.display()));
     }
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
-    }
-    let gap = if existing.is_empty() || existing.ends_with("\n\n") {
-        ""
-    } else if existing.ends_with('\n') {
-        "\n"
-    } else {
-        "\n\n"
-    };
-    crate::fs_atomic::write_atomic(path, &format!("{existing}{gap}{VIBE_HOOK}"))
+    ensure_parent(path)?;
+    crate::fs_atomic::write_if_unchanged(path, &existing, &updated)
         .map_err(|e| format!("Cannot write {}: {}", path.display(), e))?;
     Ok(path.display().to_string())
 }
@@ -41,7 +52,6 @@ fn install_at(path: &Path, opts: InstallOpts) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_templates::VIBE_SENTINEL_END;
     use crate::uninstall_scrub::remove_between_sentinels;
 
     fn opts() -> InstallOpts {
@@ -84,6 +94,19 @@ mod tests {
 
         remove_between_sentinels(&path, VIBE_SENTINEL_START, VIBE_SENTINEL_END, false).unwrap();
         assert_eq!(fs::read_to_string(&path).unwrap().trim(), mine.trim());
+    }
+
+    #[test]
+    fn a_stale_block_is_refreshed_in_place() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("hooks.toml");
+        let old = format!("{VIBE_SENTINEL_START}\nold\n{VIBE_SENTINEL_END}\n# after\n");
+        fs::write(&path, old).unwrap();
+        install_at(&path, opts()).unwrap();
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("trs rewrite --caller vibe"), "{after}");
+        assert!(after.ends_with("# after\n"), "{after}");
+        assert!(!after.contains("old"), "{after}");
     }
 
     #[test]

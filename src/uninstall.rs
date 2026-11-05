@@ -338,7 +338,7 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
             push_home(".trae/hooks.json");
             v.push(PathBuf::from(".trae/hooks.json"));
         }
-        AiTool::Vibe => push_home(".vibe/hooks.toml"),
+        AiTool::Vibe => push_home(crate::init_templates::VIBE_HOOKS_FILE),
         AiTool::DevinCLI => {
             // JSON merge target — scrub_trs_from_json drops the `trs rewrite`
             // entry and preserves the user's model/org_id/theme config.

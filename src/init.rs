@@ -339,7 +339,9 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
         }
         AiTool::Vibe => {
             return home_dir()
-                .map(|h| has_any_trs_marker_at_path(&h.join(".vibe/hooks.toml")))
+                .map(|h| {
+                    has_any_trs_marker_at_path(&h.join(crate::init_templates::VIBE_HOOKS_FILE))
+                })
                 .unwrap_or(false);
         }
         AiTool::Hermes => {

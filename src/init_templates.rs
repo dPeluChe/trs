@@ -100,6 +100,7 @@ pub(crate) const TRAE_HOOKS: &str = r#"{
   }
 }"#;
 
+pub(crate) const VIBE_HOOKS_FILE: &str = ".vibe/hooks.toml";
 pub(crate) const VIBE_SENTINEL_START: &str = "# trs:vibe-hook:start";
 pub(crate) const VIBE_SENTINEL_END: &str = "# trs:vibe-hook:end";
 
