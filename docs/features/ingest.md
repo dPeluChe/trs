@@ -229,7 +229,7 @@ trs ingest --changed --budget 32k -o /tmp/pr-context.md --warn-at 20k
 
 ## Live example: trs ingesting itself
 
-[`docs/development/codebase-digest.md`](../development/codebase-digest.md)
+[`docs/development/codebase-digest.md`](https://github.com/dPeluChe/trs/blob/main/docs/development/codebase-digest.md)
 is the output of `trs ingest --budget 128k` run against this repo.
 ~100 KB / ~26 k tokens covering 187 files, a realistic example of
 what a digest looks like, and a drop-in context primer for agents
