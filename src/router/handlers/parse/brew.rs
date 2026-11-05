@@ -61,6 +61,14 @@ impl ParseHandler {
             }
         }
 
+        if installed.is_empty()
+            && errors.is_empty()
+            && warnings.is_empty()
+            && !input.trim().is_empty()
+        {
+            return Self::emit_unparsed(&input, "brew", ctx);
+        }
+
         let output = match ctx.format {
             OutputFormat::Json => serde_json::json!({
                 "installed": installed,

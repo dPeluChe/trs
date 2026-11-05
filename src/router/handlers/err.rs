@@ -128,8 +128,13 @@ pub(crate) fn handle_err(command: &str, args: &[String], _ctx: &CommandContext) 
         i += 1;
     }
 
-    if matched_lines.is_empty() {
+    if matched_lines.is_empty() && output.status.success() {
         println!("clean: no errors or warnings");
+    } else if matched_lines.is_empty() {
+        // Failed with nothing the keywords caught: the tail is the best evidence.
+        for line in &all_lines[all_lines.len().saturating_sub(20)..] {
+            println!("{}", line);
+        }
     } else {
         for line in &matched_lines {
             println!("{}", line);

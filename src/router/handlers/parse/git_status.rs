@@ -3,6 +3,22 @@ use super::super::types::*;
 use super::ParseHandler;
 use crate::OutputFormat;
 
+const CLEAN_FOOTERS: [&str; 4] = [
+    "nothing to commit",
+    "working tree clean",
+    "árbol de trabajo limpio",
+    "Arbeitsverzeichnis unverändert",
+];
+
+/// `clean` needs git's own word for it: a translated or unknown layout parses
+/// to zero entries too. Porcelain says it by printing only `#` headers.
+fn reports_clean(input: &str) -> bool {
+    CLEAN_FOOTERS.iter().any(|f| input.contains(f))
+        || input
+            .lines()
+            .all(|l| l.trim().is_empty() || l.starts_with('#'))
+}
+
 impl ParseHandler {
     /// Handle the git-status subcommand.
     pub(crate) fn handle_git_status(
@@ -15,6 +31,10 @@ impl ParseHandler {
 
         // Parse the git status output
         let status = Self::parse_git_status(&input)?;
+
+        if status.is_clean && !reports_clean(&input) {
+            return Self::emit_unparsed(&input, "git-status", ctx);
+        }
 
         // If count flag is specified, output only the count
         if let Some(category) = count {
@@ -219,11 +239,8 @@ impl ParseHandler {
             }
 
             // Skip clean status lines and other non-file lines
-            if line.starts_with("nothing to commit")
-                || line.starts_with("no changes added")
-                || line.contains("working tree clean")
-                || line.contains("árbol de trabajo limpio")
-                || line.contains("Arbeitsverzeichnis unverändert")
+            if line.starts_with("no changes added")
+                || CLEAN_FOOTERS.iter().any(|f| line.contains(f))
             {
                 continue;
             }

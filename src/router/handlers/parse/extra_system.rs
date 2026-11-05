@@ -8,6 +8,12 @@ impl ParseHandler {
         ctx: &CommandContext,
     ) -> CommandResult {
         let input = Self::read_input(file)?;
+        let has_report = input
+            .lines()
+            .any(|l| l.contains("director") && l.contains("file"));
+        if !has_report && !input.trim().is_empty() {
+            return Self::emit_unparsed(&input, "tree", ctx);
+        }
         let input_bytes = input.len();
         let mut dirs: Vec<String> = Vec::new();
         let mut files: Vec<String> = Vec::new();
@@ -81,6 +87,10 @@ impl ParseHandler {
         // PORTS is a fixed-width column between STATUS and NAMES; its cells
         // contain spaces, so only the header's offsets can cut it out.
         let header = lines.first().copied().unwrap_or("");
+        // `--format` and `-q` print no header, and every line would misparse.
+        if !header.contains("CONTAINER ID") && !input.trim().is_empty() {
+            return Self::emit_unparsed(&input, "docker-ps", ctx);
+        }
         let ports_col = header.find("PORTS").zip(header.find("NAMES"));
         if lines.len() > 1 {
             for line in &lines[1..] {

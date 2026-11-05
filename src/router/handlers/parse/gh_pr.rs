@@ -78,6 +78,10 @@ impl ParseHandler {
             }
         }
 
+        if prs.is_empty() && !input.trim().is_empty() {
+            return Self::emit_unparsed(&input, "gh-pr", ctx);
+        }
+
         let output = match ctx.format {
             OutputFormat::Json => {
                 serde_json::json!({"pull_requests": prs, "count": prs.len()}).to_string()
@@ -166,6 +170,10 @@ impl ParseHandler {
                     }
                 }
             }
+        }
+
+        if issues.is_empty() && !input.trim().is_empty() {
+            return Self::emit_unparsed(&input, "gh-issue", ctx);
         }
 
         let output = match ctx.format {
@@ -276,6 +284,10 @@ impl ParseHandler {
                     _ => {}
                 }
             }
+        }
+
+        if fields.is_empty() && !input.trim().is_empty() {
+            return Self::emit_unparsed(&input, "gh-pr-view", ctx);
         }
 
         let output = match ctx.format {
@@ -412,6 +424,10 @@ impl ParseHandler {
                     });
                 }
             }
+        }
+
+        if checks.is_empty() && !input.trim().is_empty() {
+            return Self::emit_unparsed(&input, "gh-pr-checks", ctx);
         }
 
         let pass = checks.iter().filter(|c| c.status == "pass").count();

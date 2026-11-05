@@ -183,42 +183,15 @@ impl ParseHandler {
             }
 
             let parts: Vec<&str> = trimmed.split_whitespace().collect();
-            match parts.len() {
-                // wc with file: lines words bytes filename
-                4 => {
-                    let lines = parts[0].parse::<u64>().unwrap_or(0);
-                    let words = parts[1].parse::<u64>().unwrap_or(0);
-                    let bytes = parts[2].parse::<u64>().unwrap_or(0);
-                    let name = parts[3].to_string();
-                    entries.push((name, lines, words, bytes));
+            let counts: Vec<u64> = parts.iter().map_while(|p| p.parse().ok()).collect();
+            // Only the default three columns are known: a lone count may be
+            // bytes (`wc -c`), words or lines, and a name may hold spaces.
+            match (counts.as_slice(), parts.len()) {
+                ([lines, words, bytes], 4) => {
+                    entries.push((parts[3].to_string(), *lines, *words, *bytes))
                 }
-                // wc from stdin (no filename): lines words bytes
-                3 => {
-                    let first = parts[0].parse::<u64>().unwrap_or(0);
-                    let second = parts[1].parse::<u64>().unwrap_or(0);
-                    let third = parts[2].parse::<u64>().unwrap_or(0);
-                    // Could be "lines words bytes" (stdin) or "count count filename"
-                    if parts[2].parse::<u64>().is_ok() {
-                        entries.push((String::new(), first, second, third));
-                    } else {
-                        // "count filename" with extra column — treat as partial
-                        entries.push((parts[2].to_string(), first, second, 0));
-                    }
-                }
-                // wc -l/-w/-c: single count + filename (e.g. "22 file.ts")
-                2 => {
-                    let count = parts[0].parse::<u64>().unwrap_or(0);
-                    let name = parts[1].to_string();
-                    // We don't know which flag was used, show as lines
-                    entries.push((name, count, 0, 0));
-                }
-                // wc -l from stdin: just a number
-                1 => {
-                    if let Ok(count) = parts[0].parse::<u64>() {
-                        entries.push((String::new(), count, 0, 0));
-                    }
-                }
-                _ => continue,
+                ([lines, words, bytes], 3) => entries.push((String::new(), *lines, *words, *bytes)),
+                _ => return Self::emit_unparsed(&input, "wc", ctx),
             }
         }
 

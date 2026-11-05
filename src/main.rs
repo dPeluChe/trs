@@ -106,7 +106,6 @@ use classifier::preprocess_tail_args;
 use classifier_exec::execute_and_parse;
 mod fast_find;
 mod fs_atomic;
-mod read_intercept;
 use router::{CommandContext, Router};
 
 fn main() {
@@ -143,8 +142,26 @@ fn main() {
     }
 }
 
+/// Run the command as typed: trs can't read such arguments, so it stays out.
+fn run_unparsed() -> ! {
+    let mut args = std::env::args_os().skip(1);
+    let Some(program) = args.next() else {
+        std::process::exit(2)
+    };
+    match std::process::Command::new(program).args(args).status() {
+        Ok(status) => std::process::exit(status.code().unwrap_or(1)),
+        Err(_) => std::process::exit(127),
+    }
+}
+
 fn run() {
-    let args: Vec<String> = std::env::args().collect();
+    // `env::args` panics on non-UTF-8, which is a legal file name.
+    let Ok(args) = std::env::args_os()
+        .map(std::ffi::OsString::into_string)
+        .collect::<Result<Vec<String>, _>>()
+    else {
+        run_unparsed();
+    };
 
     // Fast path: bypass clap for external commands (saves ~2-4ms)
     if args.len() >= 2 && is_external_fast_path(&args) {
@@ -164,17 +181,6 @@ fn run() {
                     .map(|a| a.as_str())
                     .collect();
                 fast_find::run(&find_args, &ctx);
-                return;
-            }
-            // File-read intercepts: cat/head/sed -n X,Yp apply filter_minimal
-            // instead of spawning a subprocess and getting 0% compression.
-            if cmd == "cat" && read_intercept::try_cat(rest, &ctx) {
-                return;
-            }
-            if cmd == "head" && read_intercept::try_head(rest, &ctx) {
-                return;
-            }
-            if cmd == "sed" && read_intercept::try_sed(rest, &ctx) {
                 return;
             }
             execute_and_parse(cmd, rest, &ctx);

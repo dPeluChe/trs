@@ -187,7 +187,7 @@
   "git_status_porcelain_v2.txt": {
     "handler": "git-status",
     "in": 387,
-    "out": 11
+    "out": 387
   },
   "git_status_renamed.txt": {
     "handler": "git-status",
@@ -277,7 +277,7 @@
   "grep_ripgrep_heading.txt": {
     "handler": "grep",
     "in": 147,
-    "out": 135
+    "out": 147
   },
   "grep_simple.txt": {
     "handler": "grep",

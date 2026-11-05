@@ -30,6 +30,10 @@ impl ParseHandler {
         let input_bytes = input.len();
 
         let issues = parse_lint_issues(&input);
+        // Output with no recognized issue is not proof of a clean run.
+        if issues.is_empty() && !input.trim().is_empty() {
+            return Self::emit_unparsed(&input, "lint", ctx);
+        }
         let errors = issues
             .iter()
             .filter(|i| i.level == LintLevel::Error)

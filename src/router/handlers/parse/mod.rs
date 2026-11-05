@@ -1,6 +1,6 @@
 use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::*;
-use crate::ParseCommands;
+use crate::{OutputFormat, ParseCommands};
 
 pub(crate) mod aws;
 pub(crate) mod brew;
@@ -132,6 +132,24 @@ impl ParseHandler {
         if ctx.stats {
             CommandStats::new()
                 .with_reducer(reducer)
+                .with_input_bytes(input.len())
+                .with_output_bytes(out.len())
+                .print();
+        }
+        Ok(())
+    }
+
+    /// Hand back output the parser could not read. A summary of nothing would
+    /// read as "clean" or "no results", which is an answer the output never gave.
+    pub(crate) fn emit_unparsed(input: &str, name: &str, ctx: &CommandContext) -> CommandResult {
+        let out = match ctx.format {
+            OutputFormat::Json => serde_json::json!({ "output": input }).to_string(),
+            _ => input.to_string(),
+        };
+        crate::parse_out::emit(&out);
+        if ctx.stats {
+            CommandStats::new()
+                .with_reducer(format!("{name}-passthrough"))
                 .with_input_bytes(input.len())
                 .with_output_bytes(out.len())
                 .print();

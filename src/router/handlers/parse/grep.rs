@@ -2,6 +2,17 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::super::types::*;
 use super::ParseHandler;
 
+/// A line `parse_grep` would drop, so a summary would lose or deny a match.
+fn has_unparsed_match(input: &str) -> bool {
+    input.lines().map(str::trim).any(|line| {
+        !line.is_empty()
+            && line != "--"
+            && !line.starts_with("grep:")
+            && !(line.contains("matched ") && line.ends_with(" files"))
+            && ParseHandler::parse_grep_line(line).is_none()
+    })
+}
+
 impl ParseHandler {
     /// Handle the grep subcommand.
     pub(crate) fn handle_grep(
@@ -13,6 +24,11 @@ impl ParseHandler {
 
         // Parse the grep output
         let mut grep_output = Self::parse_grep(&input)?;
+
+        // One file without -n, or rg --heading: lines with no path on them.
+        if has_unparsed_match(&input) {
+            return Self::emit_unparsed(&input, "grep", ctx);
+        }
 
         // Apply truncation for large result sets (limits from config)
         let limits = &crate::config::config().limits;
