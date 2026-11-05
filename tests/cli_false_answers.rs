@@ -4,6 +4,8 @@ use assert_cmd::Command;
 use predicates::prelude::*;
 use std::io::Write;
 
+mod support;
+
 fn trs() -> Command {
     Command::cargo_bin("trs").unwrap()
 }
@@ -160,4 +162,23 @@ fn docker_ps_without_a_header_keeps_the_names() {
         .write_stdin("web\ndb\n")
         .assert()
         .stdout("web\ndb\n");
+}
+
+#[cfg(unix)]
+#[test]
+fn git_runs_in_english_so_its_parsers_can_read_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let git = dir.path().join("git");
+    support::fake_program(&git, "echo \"language=$LANGUAGE\"");
+    trs()
+        .env("PATH", support::path_with(dir.path()))
+        .env("LANGUAGE", "de")
+        .args(["git", "version"])
+        .assert()
+        .stdout(predicate::str::contains("language=C"));
+    trs()
+        .env("LANGUAGE", "de")
+        .args([git.to_str().unwrap(), "version"])
+        .assert()
+        .stdout(predicate::str::contains("language=C"));
 }

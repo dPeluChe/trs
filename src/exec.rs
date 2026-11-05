@@ -13,6 +13,15 @@
 /// the user's own shell would: PowerShell for `.ps1`, `cmd /C` otherwise (which
 /// honors PATHEXT and builtins). POSIX is unchanged — direct spawn.
 pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command {
+    let mut command = platform_command(cmd, args);
+    if crate::text_util::cmd_basename(cmd) == "git" {
+        // Parsers read git's English; LANGUAGE leaves encoding and sort order alone.
+        command.env("LANGUAGE", "C");
+    }
+    command
+}
+
+fn platform_command(cmd: &str, args: &[String]) -> std::process::Command {
     use std::process::Command;
     #[cfg(windows)]
     {
