@@ -166,6 +166,21 @@ fn docker_ps_without_a_header_keeps_the_names() {
 
 #[cfg(unix)]
 #[test]
+fn a_make_target_keeps_what_it_printed() {
+    let dir = tempfile::tempdir().unwrap();
+    let body =
+        "for i in 1 2 3 4 5 6 7 8; do echo \"row $i: the value someone wanted to read\"; done";
+    support::fake_program(&dir.path().join("make"), body);
+    trs()
+        .env("PATH", support::path_with(dir.path()))
+        .args(["make", "report"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("row 8: the value someone wanted"));
+}
+
+#[cfg(unix)]
+#[test]
 fn git_runs_in_english_so_its_parsers_can_read_it() {
     let dir = tempfile::tempdir().unwrap();
     let git = dir.path().join("git");
