@@ -4,8 +4,15 @@
 
 use assert_cmd::Command;
 
-fn parse(args: &[&str], fixture: &str) -> String {
-    let input = std::fs::read_to_string(format!("tests/fixture_data/{fixture}")).unwrap();
+fn fixture(name: &str) -> String {
+    std::fs::read_to_string(format!("tests/fixture_data/{name}")).unwrap()
+}
+
+fn parse(args: &[&str], name: &str) -> String {
+    parse_input(args, fixture(name))
+}
+
+fn parse_input(args: &[&str], input: String) -> String {
     let out = Command::cargo_bin("trs")
         .unwrap()
         .arg("parse")
@@ -125,16 +132,9 @@ fn node_test_failure_keeps_its_file_and_message_when_compacted() {
 
 #[test]
 fn node_test_counts_a_cancelled_test_as_a_failure() {
-    let fixture = "npm_test_real_node_passing.txt";
-    let input = std::fs::read_to_string(format!("tests/fixture_data/{fixture}")).unwrap();
-    let input = input.replace("ℹ cancelled 0", "ℹ cancelled 1");
-    let out = Command::cargo_bin("trs")
-        .unwrap()
-        .args(["--json", "parse", "test", "-t", "npm"])
-        .write_stdin(input)
-        .output()
-        .unwrap();
-    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let input = fixture("npm_test_real_node_passing.txt").replace("ℹ cancelled 0", "ℹ cancelled 1");
+    let out = parse_input(&["test", "-t", "npm", "--json"], input);
+    let json: serde_json::Value = serde_json::from_str(&out).unwrap();
     assert_eq!(json["success"], false);
     assert_eq!(json["summary"]["tests_failed"], 1);
 }

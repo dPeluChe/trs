@@ -3,6 +3,7 @@
 //! and that footer is what decides the verdict.
 
 use super::super::types::*;
+use crate::path_display::{cwd_prefix, normalize};
 
 #[derive(Default)]
 struct Failure {
@@ -27,8 +28,11 @@ const UNKNOWN_FILE: &str = "node --test";
 impl NodeTestRun {
     /// None unless `input` carries the footer, so other reporters keep their parsers.
     pub(crate) fn read(input: &str) -> Option<Self> {
+        if !input.contains("ℹ tests ") && !input.contains("# tests ") {
+            return None;
+        }
         let mut run = Self::default();
-        let (mut has_tests, mut has_pass) = (false, false);
+        let (mut tests, mut passed) = (None, None);
         for line in input.lines() {
             let line = line.trim();
             let Some(entry) = line.strip_prefix("ℹ ").or(line.strip_prefix("# ")) else {
@@ -39,8 +43,8 @@ impl NodeTestRun {
             };
             let count = value.parse::<usize>().ok();
             match (key, count) {
-                ("tests", Some(n)) => (run.tests, has_tests) = (n, true),
-                ("pass", Some(n)) => (run.passed, has_pass) = (n, true),
+                ("tests", Some(_)) => tests = count,
+                ("pass", Some(_)) => passed = count,
                 ("fail" | "cancelled", Some(n)) => run.failed += n,
                 ("skipped", Some(n)) => run.skipped = n,
                 ("todo", Some(n)) => run.todo = n,
@@ -50,27 +54,34 @@ impl NodeTestRun {
                 _ => {}
             }
         }
-        (has_tests && has_pass).then(|| run.with_failures(input))
-    }
-
-    fn with_failures(mut self, input: &str) -> Self {
-        self.failures = match input.split_once("failing tests:") {
-            Some((_, recap)) => spec_failures(recap),
-            None => tap_failures(input),
-        };
-        if self.failed > 0 && self.failures.is_empty() {
-            self.failures.push(Failure {
-                file: UNKNOWN_FILE.to_string(),
-                ..Failure::default()
-            });
-        }
-        self
+        run.tests = tests?;
+        run.passed = passed?;
+        run.failures = failures_of(input, run.failed);
+        Some(run)
     }
 }
 
+fn failures_of(input: &str, failed: usize) -> Vec<Failure> {
+    if failed == 0 {
+        return Vec::new();
+    }
+    let failures = match input.split_once("failing tests:") {
+        Some((_, recap)) => spec_failures(recap),
+        None => tap_failures(input),
+    };
+    if failures.is_empty() {
+        return vec![Failure {
+            file: UNKNOWN_FILE.to_string(),
+            ..Failure::default()
+        }];
+    }
+    failures
+}
+
 fn file_of(location: &str) -> String {
-    let path = location.rsplitn(3, ':').last().unwrap_or(location);
-    path.trim().to_string()
+    let path = normalize(location.rsplitn(3, ':').last().unwrap_or(location));
+    let cwd = normalize(&cwd_prefix());
+    path.strip_prefix(&cwd).unwrap_or(&path).to_string()
 }
 
 fn spec_failures(recap: &str) -> Vec<Failure> {
@@ -108,8 +119,11 @@ fn tap_failures(input: &str) -> Vec<Failure> {
             if let Some(location) = line.strip_prefix("location: ") {
                 failure.file = file_of(location.trim_matches('\''));
             } else if let Some(error) = line.strip_prefix("error: ") {
-                let multiline = error.starts_with('|');
-                let message = if multiline { lines.next() } else { Some(error) };
+                let message = if error.starts_with('|') {
+                    lines.next()
+                } else {
+                    Some(error)
+                };
                 failure.error = message.map(str::to_string);
             }
         }
