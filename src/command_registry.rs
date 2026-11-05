@@ -209,7 +209,7 @@ pub(crate) static REGISTRY: &[CommandSpec] = &[
 
     // ---- Build tools / compilers ----
     CommandSpec { names: &["make"], known: true,
-        keep_ratio: KeepRatio::flat(0.15), stderr: Stderr::Always },
+        keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Always },
     // `cmake` merges stderr but had no keep_ratio entry (default ratio).
     CommandSpec { names: &["cmake"], known: true,
         keep_ratio: KeepRatio::flat(DEFAULT_KEEP_RATIO), stderr: Stderr::Always },

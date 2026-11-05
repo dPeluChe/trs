@@ -164,6 +164,31 @@ fn docker_ps_without_a_header_keeps_the_names() {
         .stdout("web\ndb\n");
 }
 
+#[test]
+fn a_build_tool_query_keeps_its_answer() {
+    let answer = "Information about project \"App\":\n    Targets:\n        App\n";
+    trs()
+        .args(["parse", "build"])
+        .write_stdin(answer)
+        .assert()
+        .success()
+        .stdout(answer);
+}
+
+#[test]
+fn a_long_quiet_build_keeps_its_tail() {
+    let log: String = (1..=30).map(|i| format!("step {i}\n")).collect();
+    trs()
+        .args(["parse", "build"])
+        .write_stdin(log)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("build: ok"))
+        .stdout(predicate::str::contains("step 30"))
+        .stdout(predicate::str::contains("step 21"))
+        .stdout(predicate::str::contains("step 20").not());
+}
+
 #[cfg(unix)]
 #[test]
 fn a_make_target_keeps_what_it_printed() {

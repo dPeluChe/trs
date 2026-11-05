@@ -4,6 +4,8 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
 
+const BUILD_TAIL: usize = 10;
+
 impl ParseHandler {
     pub(crate) fn handle_build(
         file: &Option<std::path::PathBuf>,
@@ -97,8 +99,26 @@ impl ParseHandler {
             success = false;
         }
 
+        // Nothing here was a diagnostic, so it may be the answer: `xcodebuild
+        // -list`, an image digest, `gcc --version`. Only the tail fits a summary.
+        let found_nothing =
+            errors.is_empty() && warnings.is_empty() && creds.is_empty() && info_last.is_empty();
+        let quiet = success && found_nothing;
+        let unread: Vec<&str> = match quiet {
+            true => input.lines().filter(|l| !l.trim().is_empty()).collect(),
+            false => Vec::new(),
+        };
+        if unread.len() <= BUILD_TAIL && Self::unread(quiet, &input) {
+            return Self::emit_unparsed(&input, "build", ctx);
+        }
+        let tail = &unread[unread.len().saturating_sub(BUILD_TAIL)..];
+        if !tail.is_empty() {
+            crate::parse_out::mark_dropped();
+        }
+
         let output = match ctx.format {
             OutputFormat::Json => serde_json::json!({
+                "tail": tail,
                 "success": success,
                 "exit_code": exit_code,
                 "errors": errors,
@@ -144,6 +164,9 @@ impl ParseHandler {
                 }
                 if !info_last.is_empty() {
                     out.push_str(&format!("{}\n", info_last));
+                }
+                for line in tail {
+                    out.push_str(&format!("{}\n", line.trim_end()));
                 }
                 if !creds.is_empty() {
                     out.push_str(&format!(
