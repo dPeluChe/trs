@@ -527,7 +527,7 @@
   "npm_test_all_failed.txt": {
     "handler": "test --runner npm",
     "in": 288,
-    "out": 181
+    "out": 253
   },
   "npm_test_all_passed.txt": {
     "handler": "test --runner npm",
@@ -547,17 +547,32 @@
   "npm_test_mixed.txt": {
     "handler": "test --runner npm",
     "in": 432,
-    "out": 156
+    "out": 201
   },
   "npm_test_multiple_suites.txt": {
     "handler": "test --runner npm",
     "in": 570,
     "out": 31
   },
+  "npm_test_real_node_failing.txt": {
+    "handler": "test --runner npm",
+    "in": 947,
+    "out": 175
+  },
+  "npm_test_real_node_passing.txt": {
+    "handler": "test --runner npm",
+    "in": 196,
+    "out": 32
+  },
+  "npm_test_real_node_tap.txt": {
+    "handler": "test --runner npm",
+    "in": 1067,
+    "out": 150
+  },
   "npm_test_single_failed.txt": {
     "handler": "test --runner npm",
     "in": 205,
-    "out": 140
+    "out": 188
   },
   "npm_test_single_passed.txt": {
     "handler": "test --runner npm",
@@ -582,7 +597,7 @@
   "pnpm_test_all_failed.txt": {
     "handler": "test --runner pnpm",
     "in": 288,
-    "out": 181
+    "out": 253
   },
   "pnpm_test_all_passed.txt": {
     "handler": "test --runner pnpm",
@@ -602,12 +617,17 @@
   "pnpm_test_mixed.txt": {
     "handler": "test --runner pnpm",
     "in": 432,
-    "out": 156
+    "out": 201
+  },
+  "pnpm_test_real_node_failing.txt": {
+    "handler": "test --runner pnpm",
+    "in": 1101,
+    "out": 175
   },
   "pnpm_test_single_failed.txt": {
     "handler": "test --runner pnpm",
     "in": 205,
-    "out": 140
+    "out": 188
   },
   "pnpm_test_single_passed.txt": {
     "handler": "test --runner pnpm",

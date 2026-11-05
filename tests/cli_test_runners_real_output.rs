@@ -91,3 +91,50 @@ fn bun_counts_failing_files_and_a_lone_file() {
         assert_eq!(json["summary"]["suites_failed"], failed);
     }
 }
+
+#[test]
+fn node_test_verdict_comes_from_the_footer_in_every_reporter() {
+    for (runner, fixture, success, passed, failed, skipped) in [
+        ("npm", "npm_test_real_node_failing.txt", false, 2, 1, 1),
+        ("npm", "npm_test_real_node_tap.txt", false, 2, 1, 1),
+        ("npm", "npm_test_real_node_passing.txt", true, 1, 0, 1),
+        ("pnpm", "pnpm_test_real_node_failing.txt", false, 2, 1, 1),
+    ] {
+        let out = parse(&["test", "-t", runner, "--json"], fixture);
+        let json: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(json["success"], success, "{fixture}");
+        assert_eq!(json["is_empty"], false, "{fixture}");
+        assert_eq!(json["summary"]["tests_passed"], passed, "{fixture}");
+        assert_eq!(json["summary"]["tests_failed"], failed, "{fixture}");
+        assert_eq!(json["summary"]["tests_skipped"], skipped, "{fixture}");
+        if !success {
+            let failed_tests = json["failed_tests"].to_string();
+            assert!(failed_tests.contains("bad thing"), "{failed_tests}");
+        }
+    }
+}
+
+#[test]
+fn node_test_failure_keeps_its_file_and_message_when_compacted() {
+    let out = parse(&["test", "-t", "npm"], "npm_test_real_node_failing.txt");
+    assert!(out.contains("FAIL: bad.test.js"), "{out}");
+    assert!(out.contains("bad thing"), "{out}");
+    assert!(out.contains("1 == 2"), "{out}");
+    assert!(!out.contains("runInAsyncScope"), "{out}");
+}
+
+#[test]
+fn node_test_counts_a_cancelled_test_as_a_failure() {
+    let fixture = "npm_test_real_node_passing.txt";
+    let input = std::fs::read_to_string(format!("tests/fixture_data/{fixture}")).unwrap();
+    let input = input.replace("ℹ cancelled 0", "ℹ cancelled 1");
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args(["--json", "parse", "test", "-t", "npm"])
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(json["success"], false);
+    assert_eq!(json["summary"]["tests_failed"], 1);
+}

@@ -20,6 +20,9 @@ impl ParseHandler {
     /// ▶ test/file.test.js (12.345ms)
     /// ```
     pub(crate) fn parse_npm_test(input: &str) -> CommandResult<NpmTestOutput> {
+        if let Some(run) = super::node_test::NodeTestRun::read(input) {
+            return Ok(run.into_npm());
+        }
         let mut output = NpmTestOutput::default();
         let mut current_suite: Option<NpmTestSuite> = None;
         let mut current_test: Option<NpmTest> = None;

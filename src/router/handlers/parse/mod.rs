@@ -41,6 +41,7 @@ pub(crate) mod logs_json;
 pub(crate) mod ls;
 pub(crate) mod ls_format;
 pub(crate) mod maven;
+pub(crate) mod node_test;
 pub(crate) mod npm_format;
 pub(crate) mod npm_parse;
 pub(crate) mod ollama;
