@@ -113,7 +113,7 @@ pub(crate) fn unwrap_shell_c(args: &[String]) -> Option<Vec<String>> {
 }
 
 /// Options of `uv run`, `npx` and the like that take a separate value token.
-const RUNNER_VALUE_OPTS: &[&str] = &[
+pub(crate) const RUNNER_VALUE_OPTS: &[&str] = &[
     "--with",
     "--with-editable",
     "--with-requirements",
@@ -160,6 +160,17 @@ pub(crate) fn unwrap_runner<'a>(cmd: &str, args: &'a [String]) -> Option<&'a [St
         ("mise", "exec" | "x") => after(&["--"]),
         ("direnv", "exec") => rest.get(1..).filter(|inner| !inner.is_empty()),
         _ => None,
+    }
+}
+
+/// Whose stderr policy applies: `nix develop -c cargo build` is a cargo build.
+pub(crate) fn stderr_owner<'a>(name: &'a str, args: &'a [String]) -> (&'a str, String) {
+    match unwrap_runner(name, args).and_then(<[String]>::split_first) {
+        Some((inner, rest)) => {
+            let inner = crate::text_util::cmd_basename(inner);
+            (inner, subcommand(inner, rest))
+        }
+        None => (name, subcommand(name, args)),
     }
 }
 

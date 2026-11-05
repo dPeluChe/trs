@@ -129,6 +129,32 @@ fn runners_reach_the_parser_of_what_they_run() {
 }
 
 #[test]
+fn prettier_is_routed_however_it_is_launched() {
+    for (cmd, args) in [
+        ("npx", "prettier --check ."),
+        ("pnpm", "dlx prettier --check ."),
+        ("yarn", "dlx prettier --check ."),
+        ("npx", "@biomejs/biome check ."),
+        ("prettier", "--check ."),
+    ] {
+        assert!(
+            matches!(
+                classify_command(cmd, &argv(args)),
+                Some(ParseCommands::Lint { .. })
+            ),
+            "{cmd} {args}"
+        );
+    }
+}
+
+#[test]
+fn a_runner_takes_the_stderr_policy_of_what_it_runs() {
+    let args = argv("develop -c cargo build");
+    let (owner, sub) = crate::classifier_args::stderr_owner("nix", &args);
+    assert_eq!((owner, sub.as_str()), ("cargo", "build"));
+}
+
+#[test]
 fn a_runner_with_nothing_to_route_stays_out() {
     assert!(classify_command("just", &argv("test")).is_none());
     assert!(classify_command("npx", &argv("-c 'vitest run'")).is_none());

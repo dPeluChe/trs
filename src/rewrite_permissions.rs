@@ -151,12 +151,28 @@ pub(crate) fn strip_env(seg: &str) -> &str {
     rest
 }
 
+/// `uv run --with x rm -rf d` runs `rm`: a deny rule must see past the options.
+fn skip_runner_opts<'a>(wrapper: &str, mut body: &'a str) -> &'a str {
+    while wrapper.ends_with(" run") && body.starts_with('-') {
+        let Some((opt, rest)) = body.split_once(char::is_whitespace) else {
+            return body;
+        };
+        body = rest.trim_start();
+        if crate::classifier_args::RUNNER_VALUE_OPTS.contains(&opt) {
+            body = body
+                .split_once(char::is_whitespace)
+                .map_or("", |(_, r)| r.trim_start());
+        }
+    }
+    body
+}
+
 /// The command a rule is written against: `VAR=` words and the wrappers trs
 /// rewrites through (`time git push`) removed.
 pub(crate) fn strip_wrappers(seg: &str) -> &str {
     let mut rest = strip_env(seg);
-    while let Some((_, inner)) = crate::rewrite_decide::strip_transparent_prefix(rest) {
-        rest = strip_env(inner.trim_start());
+    while let Some((wrapper, inner)) = crate::rewrite_decide::strip_transparent_prefix(rest) {
+        rest = strip_env(skip_runner_opts(wrapper, inner.trim_start()));
     }
     rest
 }

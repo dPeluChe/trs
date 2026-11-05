@@ -489,4 +489,16 @@ fn an_option_after_a_wrapper_stays_with_the_wrapper() {
         maybe_rewrite("uv run pytest").as_deref(),
         Some("uv run trs pytest")
     );
+    assert_eq!(
+        maybe_rewrite("pipenv run pytest").as_deref(),
+        Some("pipenv run trs pytest")
+    );
+}
+
+#[test]
+fn a_rule_sees_the_command_behind_runner_options() {
+    use crate::rewrite_permissions::strip_wrappers;
+    assert_eq!(strip_wrappers("uv run --with x rm -rf d"), "rm -rf d");
+    assert_eq!(strip_wrappers("poetry run --quiet rm -rf d"), "rm -rf d");
+    assert_eq!(strip_wrappers("time -p rm"), "-p rm");
 }

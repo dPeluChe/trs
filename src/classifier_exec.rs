@@ -78,7 +78,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     // Notably excluded: cargo test — test results go to stdout and mixing in
     // cargo's stderr progress would confuse the test parser. The per-command
     // stderr policy lives in the unified command registry.
-    let combine_stderr = crate::command_registry::combine_stderr(name, subcmd);
+    let (owner, owner_sub) = crate::classifier_args::stderr_owner(name, args);
+    let combine_stderr = crate::command_registry::combine_stderr(owner, &owner_sub);
     let effective_stdout;
     let stdout_ref = if combine_stderr && !stderr.is_empty() {
         effective_stdout = format!("{}{}", stdout, stderr);

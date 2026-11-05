@@ -34,6 +34,7 @@ const TRANSPARENT_PREFIX_BUILTINS: &[&str] = &[
     "poetry run",
     "uv run",
     "pdm run",
+    "pipenv run",
 ];
 
 /// Decide if a command should be rewritten through trs. Returns
