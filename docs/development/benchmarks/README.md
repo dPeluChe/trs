@@ -224,49 +224,52 @@ Read by eye before trusting a cell:
 2026-11-05, v0.9.1 against the latest release of the closest similar tool, same
 corpus, `compare.py --only trs,rtk --reps 3`. The anchor score counted a reworded
 line as lost: `tests::x: src/main.rs:65:60: ...` scored as missing the `test x ...
-FAILED` it replaces. `truth.facts` reads anchors for meaning, for every tool alike:
+FAILED` it replaces. `truth.facts` reads the output for meaning, for every tool alike:
 
-- a diagnostic counts when most of its words survive;
-- code in a diff and commit prose stop counting as error lines;
-- `index` blob hashes stop counting as anchors;
+- a line counts as a diagnostic by its shape (`error:`, `FAILED`, `panicked at`),
+  not by holding the word `fail`, and it survives when most of its words do;
+- `index` blob hashes stop counting;
 - a Docker row can be reached by either of its two names.
 
-`anchors kept` stays in the tables, so nothing measured earlier changes meaning.
+RISK, BLIND and `tail-wins` now use facts, so they are not comparable with the
+sections below. `anchors kept` stays as the old literal column.
 
 | | trs 0.9.1 | rtk 1.1.0 |
 |---|---:|---:|
-| tokens cut, whole corpus | 89% | 85% |
-| tokens cut, no command over 25% of the corpus | 45% | 43% |
-| median command | 25% | 39% |
-| facts kept, whole corpus | 59% | 60% |
-| facts kept, mean per command | 92% | 82% |
-| commands with no fact left | 0 | 3 |
+| tokens cut, whole corpus | 87% | 83% |
+| mean cut per command | 32% | 34% |
+| median cut per command | 23% | 33% |
+| facts kept, mean per command | 91% | 80% |
+| facts kept, pooled | 57% | 46% |
+| commands with no fact left | 1 | 4 |
 | RISK rows | 2 | 1 |
 | pipelines | 9/9 | 8/9 |
-| hook ms | 4.4 | 15.2 |
+| hook ms | 5.2 | 18.2 |
 
-`ps aux` and `git diff HEAD~5` hold 84% of the corpus tokens, so they decide both
-whole-corpus rows. The real loss is `git diff HEAD~5`: 99% cut, 96 of 362 facts.
+`ps aux` and `git diff HEAD~5` hold 80% of the corpus tokens, so per-command scores
+say more than the totals. The real loss is `git diff HEAD~5`: 99% cut, 94 of 367
+facts, and BLIND. The corpus runs on this repo, so its diffs move with each commit.
 
-## Do agents go back for what was cut?
+## Do agents go back to an output?
 
-2026-11-05, `recovery.py --since 2026-06-01`, 2,588 transcripts, next 5 calls.
-A cut that forces a second call can cost more than it saved. Of 34,365 calls,
-2.4% went back for the same output and 1.8% drilled in with a narrower command.
+2026-11-05, `recovery.py --since 2026-06-01`, 2,594 transcripts, next 5 calls. Of
+35,130 calls, 1.2% asked for the same output again and 1.8% drilled in with a
+narrower command.
 
-| family | calls | went back | tee | bypass | repeat | drill |
+| family | calls | re-fetched | tee | bypass | repeat | drill |
 |---|---:|---:|---:|---:|---:|---:|
-| git show | 172 | 27.3% | 0 | 2 | 4 | 41 |
-| git diff | 2673 | 22.7% | 10 | 30 | 33 | 535 |
-| git status | 1928 | 13.0% | 1 | 161 | 89 | 0 |
-| git log | 5564 | 3.7% | 11 | 12 | 140 | 43 |
-| git branch | 1117 | 3.0% | 1 | 5 | 27 | 0 |
-| ls | 6283 | 2.8% | 4 | 27 | 142 | 0 |
-| grep | 12612 | 0.9% | 8 | 15 | 93 | 0 |
-| gh pr | 2786 | 0.6% | 3 | 15 | 0 | 0 |
+| git show | 173 | 26.0% | 0 | 2 | 2 | 41 |
+| git diff | 2695 | 22.2% | 10 | 31 | 7 | 549 |
+| git status | 1934 | 9.9% | 1 | 161 | 29 | 0 |
+| git log | 5577 | 1.8% | 11 | 12 | 33 | 44 |
+| gh pr | 2887 | 0.9% | 3 | 24 | 0 | 0 |
+| ls | 6634 | 0.6% | 4 | 29 | 10 | 0 |
+| git branch | 1129 | 0.6% | 1 | 6 | 0 | 0 |
+| grep | 12773 | 0.3% | 8 | 14 | 16 | 0 |
 
-Drill is a ceiling, since an agent also narrows on purpose. These calls span
-many trs versions, and a chain counts each of its steps.
+This has no control: a transcript does not say whether trs cut that output, and
+agents narrow a diff or pipe `git status` out of habit too. It ranks families; it
+does not price a cut. The calls span many trs versions.
 
 ## trs alone on v0.9.1
 
