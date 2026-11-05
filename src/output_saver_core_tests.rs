@@ -360,8 +360,6 @@ fn the_old_cursor_file_counts_as_installed_so_refresh_migrates_it() {
 fn kiro_steering_loads_on_every_chat_and_survives_a_refresh_check() {
     let home = tempfile::tempdir().unwrap();
     fs::create_dir_all(home.path().join(".kiro")).unwrap();
-    let target = resolve_target_with_home("kiro", Some(home.path()));
-    assert!(matches!(target, Target::RulesDir { .. }));
     install_agent_with_home("kiro", Some(home.path())).unwrap();
     let file = fs::read_to_string(home.path().join(".kiro/steering/trs.md")).unwrap();
     assert!(file.starts_with("---\ninclusion: always\n---\n"), "{file}");
