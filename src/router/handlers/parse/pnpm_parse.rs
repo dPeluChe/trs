@@ -21,6 +21,9 @@ impl ParseHandler {
     /// ▶ test/file.test.js (12.345ms)
     /// ```
     pub(crate) fn parse_pnpm_test(input: &str) -> CommandResult<PnpmTestOutput> {
+        if let Some(run) = super::node_test::NodeTestRun::read(input) {
+            return Ok(run.into_pnpm());
+        }
         let mut output = PnpmTestOutput::default();
         let mut current_suite: Option<PnpmTestSuite> = None;
         let mut current_test: Option<PnpmTest> = None;

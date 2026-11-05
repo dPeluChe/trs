@@ -1,0 +1,36 @@
+
+> x@1.0.0 test
+> node --test
+
+✔ good (0.98975ms)
+✖ bad thing (0.737792ms)
+✔ adds (1.009875ms)
+﹣ skipme (0.080708ms) # SKIP
+ℹ tests 4
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 104.455208
+
+✖ failing tests:
+
+test at bad.test.js:3:1
+✖ bad thing (0.737792ms)
+  AssertionError [ERR_ASSERTION]: 1 == 2
+      at TestContext.<anonymous> (/app/bad.test.js:3:29)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: '==',
+    diff: 'simple'
+  }

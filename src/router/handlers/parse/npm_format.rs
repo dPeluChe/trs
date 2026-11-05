@@ -79,10 +79,11 @@ impl ParseHandler {
 
         // Compact success summary - minimal output when all tests pass
         if output.success {
-            result.push_str(&format!(
-                "PASS: {} suites, {} tests",
-                output.summary.suites_total, output.summary.tests_passed
-            ));
+            result.push_str("PASS: ");
+            if output.summary.suites_total > 0 {
+                result.push_str(&format!("{} suites, ", output.summary.suites_total));
+            }
+            result.push_str(&format!("{} tests", output.summary.tests_passed));
             if output.summary.tests_skipped > 0 {
                 result.push_str(&format!(", {} skipped", output.summary.tests_skipped));
             }
@@ -108,6 +109,9 @@ impl ParseHandler {
             for test in &suite.tests {
                 if test.status == NpmTestStatus::Failed {
                     result.push_str(&format!("  ✖ {}\n", test.test_name));
+                    if let Some(ref msg) = test.error_message {
+                        result.push_str(&format!("      {}\n", msg));
+                    }
                 }
             }
         }
