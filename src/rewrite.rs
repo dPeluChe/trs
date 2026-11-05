@@ -252,7 +252,7 @@ fn build_hook_response(
         HookEvent::VibePreTool => serde_json::json!({
             "system_message": "trs auto-rewrite",
             "hook_specific_output": {
-                "tool_input": { "command": rewritten }
+                "tool_input": input_with_command(json, rewritten)
             }
         }),
         HookEvent::ClaudePreToolUse => {
@@ -262,12 +262,6 @@ fn build_hook_response(
                     "updatedInput": input_with_command(json, rewritten)
                 }
             });
-            // Trae replaces the input, so `description` and `timeout` must go back.
-            if let (Some(input), true) = (json.get("tool_input"), label == "trae") {
-                let mut input = input.clone();
-                input["command"] = rewritten.as_str().into();
-                out["hookSpecificOutput"]["updatedInput"] = input;
-            }
             if gate == Gate::Allow {
                 out["hookSpecificOutput"]["permissionDecision"] = "allow".into();
                 out["hookSpecificOutput"]["permissionDecisionReason"] = "trs auto-rewrite".into();

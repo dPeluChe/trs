@@ -413,9 +413,10 @@ fn vibe_is_answered_in_its_own_shape_whatever_its_event_is_called() {
         let input = serde_json::json!({
             "hook_event_name": event,
             "tool_name": "bash",
-            "tool_input": { "command": "git status" }
+            "tool_input": { "command": "git status", "timeout": 5 }
         });
         let out = build_hook_response(&input, Some("vibe")).unwrap();
+        assert_eq!(out["hook_specific_output"]["tool_input"]["timeout"], 5);
         assert_eq!(
             out["hook_specific_output"]["tool_input"]["command"],
             agent_cmd("vibe", "trs git status")
