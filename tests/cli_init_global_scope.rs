@@ -67,6 +67,7 @@ fn the_summary_counts_what_each_row_says() {
     let home = tempfile::tempdir().unwrap();
     let h = home.path();
     std::fs::create_dir_all(h.join(".gemini")).unwrap();
+    std::fs::create_dir_all(h.join(".pi")).unwrap();
     trs(h, &["init", "--all", "--global"]);
     let text = trs(h, &["init", "--all", "--global", "--force"]);
     let rows = text
