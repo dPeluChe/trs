@@ -235,7 +235,7 @@ fn run() {
             } else if let Some(tool_name) = tool {
                 match init::AiTool::from_str(tool_name) {
                     Some(t) => {
-                        if init::install_hook(&t, opts, false) {
+                        if init::install_hook(&t, opts, false) != init_install::Outcome::Failed {
                             init::install_finished(opts);
                         }
                     }
