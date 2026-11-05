@@ -2,6 +2,45 @@ use super::super::types::*;
 use super::ParseHandler;
 use crate::OutputFormat;
 
+/// Bytes of hunks a diff may print: about 500 change lines. Fewer print whole.
+const DIFF_BUDGET: usize = 24 * 1024;
+
+/// Fair shares of `budget`: a small file keeps everything, and what it leaves
+/// goes to the larger ones, so one huge file cannot starve the rest.
+fn shares(sizes: &[usize], budget: usize) -> Vec<usize> {
+    let mut by_size: Vec<usize> = (0..sizes.len()).collect();
+    by_size.sort_by_key(|&i| sizes[i]);
+    let mut left = budget;
+    let mut out = vec![0; sizes.len()];
+    for (done, &i) in by_size.iter().enumerate() {
+        out[i] = sizes[i].min(left / (sizes.len() - done));
+        left -= out[i];
+    }
+    out
+}
+
+/// Code first; generated files get only what the code leaves.
+fn file_budgets(files: &[GitDiffEntry], sizes: &[usize], budget: usize) -> Vec<usize> {
+    let of_kind = |generated: bool| -> Vec<usize> {
+        files
+            .iter()
+            .zip(sizes)
+            .map(|(f, &size)| {
+                let name = f.path.rsplit('/').next().unwrap_or(&f.path);
+                size * usize::from(crate::ingest::is_generated(name) == generated)
+            })
+            .collect()
+    };
+    let code = shares(&of_kind(false), budget);
+    let left = budget - code.iter().sum::<usize>();
+    let rest = shares(&of_kind(true), left);
+    code.iter().zip(rest).map(|(a, b)| a + b).collect()
+}
+
+fn hunk_bytes(lines: &[String]) -> usize {
+    lines.iter().map(|l| l.len() + 1).sum()
+}
+
 impl ParseHandler {
     pub(crate) fn format_git_diff(diff: &GitDiff, format: OutputFormat) -> String {
         match format {
@@ -89,61 +128,48 @@ impl ParseHandler {
         format!("{indicator} {name} ({change}){mode}")
     }
 
-    fn build_file_summary(diff: &GitDiff) -> String {
-        let mut summary = String::from("--- file summary ---\n");
-        for file in &diff.files {
-            if let Some(n) = file.stat_total {
-                summary.push_str(&format!("  {} | {}\n", file.path, n));
-                continue;
-            }
-            summary.push_str(&format!("  {}\n", Self::file_label(file)));
-        }
-        summary.push_str(&format!(
-            "total: +{} -{}\n",
-            diff.total_additions, diff.total_deletions
-        ));
-        summary.push_str("---\n");
-        summary
-    }
-
     pub(crate) fn format_git_diff_compact(diff: &GitDiff) -> String {
-        let mut output = String::new();
-
         if diff.is_empty {
-            output.push_str("diff: empty\n");
-            return output;
+            return String::from("diff: empty\n");
         }
 
-        // Estimate total change lines (only +/- lines, not context)
-        let total_change_lines: usize = diff.files.iter().map(|f| f.additions + f.deletions).sum();
+        let rendered: Vec<Vec<Vec<String>>> = diff
+            .files
+            .iter()
+            .map(|f| f.hunks.iter().map(Self::format_hunk_compressed).collect())
+            .collect();
+        let sizes: Vec<usize> = rendered
+            .iter()
+            .map(|hunks| hunks.iter().map(|h| hunk_bytes(h)).sum())
+            .collect();
+        let budgets = file_budgets(&diff.files, &sizes, DIFF_BUDGET);
 
-        // For very large diffs (>500 change lines), show summary only
-        if total_change_lines > 500 {
-            crate::parse_out::mark_dropped();
-            return Self::build_file_summary(diff);
-        }
-
-        // Show each file with inline stats + compressed hunks
-        output.push_str(&format!(
+        let mut output = format!(
             "{} files (+{} -{})\n",
             diff.files.len(),
             diff.total_additions,
             diff.total_deletions
-        ));
+        );
 
-        for file in &diff.files {
+        for ((file, hunks), &budget) in diff.files.iter().zip(&rendered).zip(&budgets) {
             if let Some(n) = file.stat_total {
                 output.push_str(&format!("{} | {}\n", file.path, n));
                 continue;
             }
             output.push_str(&format!("\n{}\n", Self::file_label(file)));
 
-            // Compressed hunks right after the file header
-            for hunk in &file.hunks {
-                let compressed = Self::format_hunk_compressed(hunk);
-                for line in &compressed {
+            let lengths: Vec<usize> = hunks.iter().map(|h| hunk_bytes(h)).collect();
+            let mut omitted = 0;
+            for (lines, share) in hunks.iter().zip(shares(&lengths, budget)) {
+                let kept = crate::passthrough_cut::fit(lines.iter().map(String::as_str), share);
+                for line in &lines[..kept] {
                     output.push_str(&format!("  {}\n", line));
                 }
+                omitted += lines.len() - kept;
+            }
+            if omitted > 0 {
+                crate::parse_out::mark_dropped();
+                output.push_str(&format!("  [trs: {omitted} lines omitted]\n"));
             }
         }
 
@@ -178,5 +204,35 @@ impl ParseHandler {
         }
 
         output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shares_give_small_files_everything_and_never_overspend() {
+        assert_eq!(shares(&[10, 1000, 30], 400), vec![10, 360, 30]);
+        assert_eq!(shares(&[0, 500, 500], 400), vec![0, 200, 200]);
+        assert_eq!(shares(&[5, 5], 400), vec![5, 5]);
+        assert_eq!(shares(&[], 400), Vec::<usize>::new());
+    }
+
+    fn entry(path: &str) -> GitDiffEntry {
+        GitDiffEntry {
+            path: path.to_string(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn generated_files_only_get_what_code_leaves() {
+        let files = [entry("Cargo.lock"), entry("src/a.rs"), entry("src/lock.rs")];
+        assert_eq!(file_budgets(&files, &[900, 10, 20], 400), vec![370, 10, 20]);
+        assert_eq!(
+            file_budgets(&files, &[900, 300, 300], 400),
+            vec![0, 200, 200]
+        );
     }
 }

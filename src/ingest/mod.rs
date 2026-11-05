@@ -67,6 +67,16 @@ pub(crate) const SKIP_FILES: &[&str] = &[
     "Thumbs.db",
 ];
 
+/// Lockfiles, bundles and declarations: a tool wrote them, so nobody reviews them.
+pub(crate) fn is_generated(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    SKIP_FILES.contains(&name)
+        || lower == "go.sum"
+        || [".lock", ".min.js", ".min.css", ".d.ts", ".map"]
+            .iter()
+            .any(|ext| lower.ends_with(ext))
+}
+
 /// Directories to always skip (generated/vendor/historical content).
 pub(crate) const SKIP_DIRS: &[&str] = &[
     ".git",

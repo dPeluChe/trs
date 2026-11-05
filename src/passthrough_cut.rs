@@ -72,7 +72,7 @@ pub(crate) fn cut(text: &str, max: usize) -> Option<String> {
 }
 
 /// How many leading lines fit in `budget` bytes (newlines counted).
-fn fit<'a>(lines: impl Iterator<Item = &'a str>, budget: usize) -> usize {
+pub(crate) fn fit<'a>(lines: impl Iterator<Item = &'a str>, budget: usize) -> usize {
     let mut used = 0;
     lines
         .take_while(|l| {

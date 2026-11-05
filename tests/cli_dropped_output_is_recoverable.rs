@@ -38,7 +38,7 @@ fn trs_git_diff(repo: &Path, home: &Path) -> String {
 
 #[test]
 fn a_summarized_diff_points_to_the_identical_raw_output() {
-    let repo = repo_with_changed_lines(700);
+    let repo = repo_with_changed_lines(4000);
     let home = tempfile::tempdir().unwrap();
     let out = trs_git_diff(repo.path(), home.path());
     let path = out

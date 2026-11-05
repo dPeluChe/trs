@@ -81,3 +81,59 @@ fn a_missing_final_newline_stays_visible() {
     );
     assert_eq!(out.matches("No newline at end of file").count(), 2, "{out}");
 }
+
+fn file_diff(path: &str, hunks: usize, lines: usize) -> String {
+    let mut out =
+        format!("diff --git a/{path} b/{path}\nindex 1..2 100644\n--- a/{path}\n+++ b/{path}\n");
+    for h in 0..hunks {
+        out.push_str(&format!("@@ -{h},1 +{h},{lines} @@ fn hunk_{h}\n"));
+        for l in 0..lines {
+            out.push_str(&format!("+line {l} of hunk {h}\n"));
+        }
+    }
+    out
+}
+
+fn section<'a>(out: &'a str, from: &str, to: &str) -> &'a str {
+    out.split(from).nth(1).unwrap().split(to).next().unwrap()
+}
+
+#[test]
+fn a_large_diff_keeps_code_from_every_file_and_says_what_it_cut() {
+    let diff = [
+        file_diff("Cargo.lock", 1, 900),
+        file_diff("src/huge.rs", 6, 900),
+        file_diff("src/small.rs", 1, 3),
+    ]
+    .concat();
+    let out = compact(&diff);
+    let small = out.split("M src/small.rs (+3/-0)").nth(1).unwrap();
+    assert!(small.contains("+line 2 of hunk 0"), "{out}");
+    assert!(!small.contains("omitted"), "{out}");
+    let huge = section(&out, "M src/huge.rs", "M src/small.rs");
+    assert!(huge.contains("fn hunk_5"), "every hunk gets a share: {out}");
+    assert!(huge.contains("lines omitted]"), "{out}");
+    let lock = section(&out, "M Cargo.lock", "M src/huge.rs");
+    assert!(lock.contains("[trs: 901 lines omitted]"), "{out}");
+    assert!(out.len() < 28 * 1024, "{}", out.len());
+}
+
+#[test]
+fn a_lockfile_prints_when_the_code_leaves_room() {
+    let diff = [file_diff("Cargo.lock", 1, 40), file_diff("src/a.rs", 1, 40)].concat();
+    let out = compact(&diff);
+    assert!(!out.contains("omitted"), "{out}");
+    assert!(
+        section(&out, "M Cargo.lock", "M src/a.rs").contains("+line 39"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_stat_table_prints_as_a_stat_table() {
+    let out = compact(" src/a.rs | 400 ++++\n src/b.rs | 300 ----\n 2 files changed, 400 insertions(+), 300 deletions(-)\n");
+    assert!(
+        out.contains("src/a.rs | 400") && out.contains("src/b.rs | 300"),
+        "{out}"
+    );
+}
