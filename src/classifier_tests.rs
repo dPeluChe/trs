@@ -87,6 +87,57 @@ fn bare_python_linters_and_formatters_route() {
 }
 
 #[test]
+fn runners_reach_the_parser_of_what_they_run() {
+    for (cmd, args) in [
+        ("npx", "-y vitest run"),
+        ("npx", "--yes -p vitest vitest run"),
+        ("bunx", "--bun vitest"),
+        ("uv", "run --with y --python 3.12 pytest -q"),
+        ("poetry", "run pytest"),
+        ("pipenv", "run pytest"),
+        ("pnpm", "exec vitest"),
+        ("yarn", "dlx vitest"),
+    ] {
+        assert!(
+            matches!(
+                classify_command(cmd, &argv(args)),
+                Some(ParseCommands::Test { .. })
+            ),
+            "{cmd} {args}"
+        );
+    }
+    for (cmd, args) in [
+        ("nix", "develop -c cargo test"),
+        ("nix", "develop .#ci --command cargo test"),
+        ("nix", "shell nixpkgs#cargo -c cargo test"),
+        ("mise", "exec rust@1.80 -- cargo test"),
+        ("mise", "x -- cargo test"),
+        ("direnv", "exec . cargo test"),
+    ] {
+        assert!(
+            matches!(
+                classify_command(cmd, &argv(args)),
+                Some(ParseCommands::CargoTest { .. })
+            ),
+            "{cmd} {args}"
+        );
+    }
+    assert!(matches!(
+        classify_command("uv", &argv("run --no-project python a.py")),
+        Some(ParseCommands::PythonTraceback { .. })
+    ));
+}
+
+#[test]
+fn a_runner_with_nothing_to_route_stays_out() {
+    assert!(classify_command("just", &argv("test")).is_none());
+    assert!(classify_command("npx", &argv("-c 'vitest run'")).is_none());
+    assert!(classify_command("nix", &argv("develop")).is_none());
+    assert!(classify_command("mise", &argv("run test")).is_none());
+    assert!(classify_command("uv", &argv("run --with")).is_none());
+}
+
+#[test]
 fn timeout_unwraps_inner_command() {
     assert!(matches!(
         classify_command("timeout", &argv("30 cargo test")),

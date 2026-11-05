@@ -93,7 +93,12 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // Transparent wrapper: `time cargo test` → `time trs cargo test`.
     // Strip → recurse → re-prepend keeps the wrapping semantics intact.
     if let Some((wrapper, body)) = strip_transparent_prefix(trimmed) {
-        return maybe_rewrite(body).map(|r| format!("{} {}", wrapper, r));
+        // `uv run --with x y` and `time -p y`: an option belongs to the wrapper.
+        match (body.starts_with('-'), wrapper.ends_with(" run")) {
+            (false, _) => return maybe_rewrite(body).map(|r| format!("{} {}", wrapper, r)),
+            (true, false) => return None,
+            (true, true) => {}
+        }
     }
 
     // Hot path: most commands are plain "git X" with no shell ops. One

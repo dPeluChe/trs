@@ -23,8 +23,8 @@ pub(crate) use crate::exec::build_command;
 
 pub(crate) use crate::classifier_args::preprocess_tail_args;
 use crate::classifier_args::{
-    has_structured_output_flag, is_help_request, strip_git_global_opts, unwrap_shell_c,
-    unwrap_timeout,
+    has_structured_output_flag, is_help_request, strip_git_global_opts, unwrap_runner,
+    unwrap_shell_c, unwrap_timeout,
 };
 
 /// Classify an external command into the parser to pipe through, or None
@@ -40,6 +40,12 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
     // parser as the bare name. Field data: `gh` invoked by absolute path
     // averaged 40 KB/cmd uncompressed before this.
     let cmd = crate::text_util::cmd_basename(cmd);
+
+    if let Some((inner, inner_args)) = unwrap_runner(cmd, args).and_then(<[String]>::split_first) {
+        if let Some(route) = classify_command(inner, inner_args) {
+            return Some(route);
+        }
+    }
 
     // For git commands, strip global options before detecting subcommand
     let effective_args;

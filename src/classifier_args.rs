@@ -112,6 +112,57 @@ pub(crate) fn unwrap_shell_c(args: &[String]) -> Option<Vec<String>> {
     Some(tokens)
 }
 
+/// Options of `uv run`, `npx` and the like that take a separate value token.
+const RUNNER_VALUE_OPTS: &[&str] = &[
+    "--with",
+    "--with-editable",
+    "--with-requirements",
+    "--python",
+    "-p",
+    "--project",
+    "--directory",
+    "--extra",
+    "--group",
+    "--env-file",
+    "--package",
+    "--index",
+];
+
+/// The argv from the first non-option on. `npx -c` takes a shell string, which
+/// has no single program to route by.
+fn after_runner_opts(args: &[String]) -> Option<&[String]> {
+    let mut i = 0;
+    while let Some(a) = args.get(i).map(String::as_str) {
+        match a {
+            "--" => return args.get(i + 1..).filter(|rest| !rest.is_empty()),
+            "-c" | "--call" => return None,
+            _ if !a.starts_with('-') => return Some(&args[i..]),
+            _ if RUNNER_VALUE_OPTS.contains(&a) => i += 2,
+            _ => i += 1,
+        }
+    }
+    None
+}
+
+/// The command a runner executes: its output is that command's, so the same
+/// parser applies. `just` and `task` are absent: a recipe name says nothing.
+pub(crate) fn unwrap_runner<'a>(cmd: &str, args: &'a [String]) -> Option<&'a [String]> {
+    let (sub, rest) = args.split_first()?;
+    let after = |marks: &[&str]| {
+        let at = rest.iter().position(|a| marks.contains(&a.as_str()))?;
+        rest.get(at + 1..).filter(|inner| !inner.is_empty())
+    };
+    match (cmd, sub.as_str()) {
+        ("uv" | "poetry" | "pdm" | "pipenv", "run") => after_runner_opts(rest),
+        ("npx" | "bunx", _) => after_runner_opts(args),
+        ("pnpm" | "yarn", "exec" | "dlx") => after_runner_opts(rest),
+        ("nix", "develop" | "shell") => after(&["-c", "--command"]),
+        ("mise", "exec" | "x") => after(&["--"]),
+        ("direnv", "exec") => rest.get(1..).filter(|inner| !inner.is_empty()),
+        _ => None,
+    }
+}
+
 /// Unwrap `timeout [OPTS] DURATION CMD [ARGS…]` to the inner command argv
 /// so it reaches the right parser, like `bash -c`. Skips leading flags (and
 /// the value of `-s/--signal/-k/--kill-after` when given as a separate
