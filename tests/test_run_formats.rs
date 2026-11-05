@@ -421,7 +421,6 @@ fn test_run_no_capture_all() {
     cmd.arg("run")
         .arg("--capture-stdout=false")
         .arg("--capture-stderr=false")
-        .arg("--capture-exit-code=false")
         .arg("--capture-duration=false")
         .arg("echo")
         .arg("test")
@@ -437,13 +436,12 @@ fn test_run_json_no_capture_all() {
         .arg("run")
         .arg("--capture-stdout=false")
         .arg("--capture-stderr=false")
-        .arg("--capture-exit-code=false")
         .arg("--capture-duration=false")
         .arg("echo")
         .arg("test")
         .assert()
         .success()
-        .stdout(predicate::str::contains(r#""exit_code":null"#))
+        .stdout(predicate::str::contains(r#""exit_code":0"#))
         .stdout(predicate::str::contains(r#""duration_ms":0"#));
 }
 

@@ -123,7 +123,6 @@ impl CommandHandler for RunHandler {
             .args(&input.args)
             .capture_stdout(input.capture_stdout)
             .capture_stderr(input.capture_stderr)
-            .capture_exit_code(input.capture_exit_code)
             .capture_duration(input.capture_duration);
 
         // Add timeout if specified
@@ -157,8 +156,7 @@ impl CommandHandler for RunHandler {
                 // Print output
                 print!("{}", formatted);
 
-                // Propagate exit code (only if we captured it)
-                if input.capture_exit_code && !output.success() {
+                if !output.success() {
                     return Err(CommandError::ExecutionError {
                         message: format!("Command exited with code {}", output.code()),
                         exit_code: output.exit_code,
@@ -218,30 +216,27 @@ pub(crate) struct RunInput {
     pub args: Vec<String>,
     pub capture_stdout: bool,
     pub capture_stderr: bool,
-    pub capture_exit_code: bool,
     pub capture_duration: bool,
     /// Optional timeout in seconds
     pub timeout: Option<u64>,
 }
 
-impl From<(&String, &Vec<String>, bool, bool, bool, bool, Option<u64>)> for RunInput {
+impl From<(&String, &Vec<String>, bool, bool, bool, Option<u64>)> for RunInput {
     fn from(
-        (
-            command,
-            args,
-            capture_stdout,
-            capture_stderr,
-            capture_exit_code,
-            capture_duration,
-            timeout,
-        ): (&String, &Vec<String>, bool, bool, bool, bool, Option<u64>),
+        (command, args, capture_stdout, capture_stderr, capture_duration, timeout): (
+            &String,
+            &Vec<String>,
+            bool,
+            bool,
+            bool,
+            Option<u64>,
+        ),
     ) -> Self {
         Self {
             command: command.clone(),
             args: args.clone(),
             capture_stdout,
             capture_stderr,
-            capture_exit_code,
             capture_duration,
             timeout,
         }

@@ -73,7 +73,6 @@ impl Router {
                 args,
                 capture_stdout,
                 capture_stderr,
-                capture_exit_code,
                 capture_duration,
             } => {
                 let input = RunInput::from((
@@ -81,7 +80,6 @@ impl Router {
                     args,
                     capture_stdout.unwrap_or(true),
                     capture_stderr.unwrap_or(true),
-                    capture_exit_code.unwrap_or(true),
                     capture_duration.unwrap_or(true),
                     None, // timeout not supported via CLI yet
                 ));

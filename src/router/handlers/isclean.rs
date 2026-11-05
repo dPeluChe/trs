@@ -13,7 +13,6 @@ impl IsCleanHandler {
             .args(vec!["status", "--porcelain"])
             .capture_stdout(true)
             .capture_stderr(true)
-            .capture_exit_code(true)
             .capture_duration(true)
             .run();
 

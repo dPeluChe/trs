@@ -151,7 +151,6 @@ pub struct ProcessBuilder {
     timeout: Option<Duration>,
     capture_stdout: bool,
     capture_stderr: bool,
-    capture_exit_code: bool,
     capture_duration: bool,
 }
 
@@ -167,7 +166,6 @@ impl ProcessBuilder {
             timeout: None,
             capture_stdout: true,
             capture_stderr: true,
-            capture_exit_code: true,
             capture_duration: true,
         }
     }
@@ -239,12 +237,6 @@ impl ProcessBuilder {
         self
     }
 
-    /// Set whether to capture exit code.
-    pub fn capture_exit_code(mut self, capture: bool) -> Self {
-        self.capture_exit_code = capture;
-        self
-    }
-
     /// Set whether to capture execution duration.
     pub fn capture_duration(mut self, capture: bool) -> Self {
         self.capture_duration = capture;
@@ -305,7 +297,6 @@ impl ProcessBuilder {
                         status,
                         self.capture_stdout,
                         self.capture_stderr,
-                        self.capture_exit_code,
                     );
                     Ok(output)
                 }
@@ -339,7 +330,6 @@ impl ProcessBuilder {
                         status,
                         self.capture_stdout,
                         self.capture_stderr,
-                        self.capture_exit_code,
                     );
                     Ok(output)
                 }

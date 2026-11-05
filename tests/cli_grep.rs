@@ -390,7 +390,6 @@ fn test_run_command_capture_exit_code_default() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
         .arg("run")
-        .arg("--capture-exit-code=true")
         .arg("echo")
         .arg("test")
         .assert()
@@ -399,33 +398,16 @@ fn test_run_command_capture_exit_code_default() {
 }
 
 #[test]
-fn test_run_command_no_capture_exit_code() {
-    // When --capture-exit-code=false, exit_code is null in JSON output
+fn test_run_rejects_the_removed_capture_exit_code_flag() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("--capture-exit-code=false")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("\"exit_code\":null"));
-}
-
-#[test]
-fn test_run_command_no_capture_exit_code_non_zero() {
-    // When exit code is not captured, even non-zero exit commands show null
-    // and the command succeeds (error is not propagated)
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
+    cmd.arg("run")
         .arg("--capture-exit-code=false")
         .arg("sh")
         .arg("-c")
-        .arg("exit 42")
+        .arg("exit 0")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("\"exit_code\":null"));
+        .failure()
+        .stderr(predicate::str::contains("--capture-exit-code"));
 }
 
 #[test]
@@ -434,7 +416,6 @@ fn test_run_command_capture_exit_code_non_zero() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
         .arg("run")
-        .arg("--capture-exit-code=true")
         .arg("sh")
         .arg("-c")
         .arg("exit 42")

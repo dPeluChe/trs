@@ -21,19 +21,15 @@ pub enum Commands {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
 
-        /// Capture stdout (default: true, set --no-capture-stdout to inherit)
+        /// Capture stdout (default: true, set --capture-stdout=false to inherit)
         #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
         capture_stdout: Option<bool>,
 
-        /// Capture stderr (default: true, set --no-capture-stderr to inherit)
+        /// Capture stderr (default: true, set --capture-stderr=false to inherit)
         #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
         capture_stderr: Option<bool>,
 
-        /// Capture exit code (default: true, set --no-capture-exit-code to disable)
-        #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
-        capture_exit_code: Option<bool>,
-
-        /// Capture execution duration (default: true, set --no-capture-duration to disable)
+        /// Capture execution duration (default: true, set --capture-duration=false to disable)
         #[arg(long, default_missing_value = "true", default_value = "true", num_args = 0..=1)]
         capture_duration: Option<bool>,
     },
