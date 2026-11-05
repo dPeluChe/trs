@@ -72,7 +72,7 @@ ANCHORS = {
 ERROR_LINE = re.compile(r"error|fail|panick|warning|FAIL", re.I)
 DIAGNOSTIC = re.compile(r"^\s*(?:error|warning)\b|\bFAIL(?:ED)?\b|panicked at|\b\d+ failed\b|^\s*\(fail\)|^E\s")
 WORD = re.compile(r"[A-Za-z_][\w:.-]{3,}\w|\d+")
-RECOVERY_NOTES = ("[trs] full output", "lines: git show")
+WAY_BACK = re.compile(r"(?m)^\s*\[(?:trs\b.*full output: |\+\d+ lines: git show )")
 RISK_CUT, RISK_KEEP = 90.0, 70.0
 BLIND_CUT, BLIND_KEEP, BLIND_MIN = 50.0, 50.0, 3
 
@@ -262,7 +262,7 @@ def main():
             risks += 1
         if t > f:
             flags.append("tail-wins")
-        if f < RISK_KEEP and not any(m in out for m in RECOVERY_NOTES):
+        if f < RISK_KEEP and not WAY_BACK.search(out):
             flags.append("SILENT")
             silent += 1
         print(f"  {c[:30]:30}{rt:8}{ot:8}{cut:5.0f}%{n:9}{k:5.0f}%{f:5.0f}%{t:5.0f}%{b:7.0f}%  {' '.join(flags)}")

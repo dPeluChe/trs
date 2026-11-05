@@ -273,26 +273,27 @@ does not price a cut. The calls span many trs versions.
 
 ## A large diff shares a budget
 
-2026-11-05, same run as above after the change. Past 500 change lines, `git diff`
-used to print a file list and nothing else. It now keeps 400 lines spread fairly:
-lockfiles and bundles get none, a small file keeps everything, and each hunk of a
-large one gets its share, with `[+N lines cut]` and the saved raw output after it.
+2026-11-05, same corpus after the change. Past 500 change lines, `git diff` used to
+print a file list and nothing else. It now has one renderer and a 24 KB budget of
+hunks, with no threshold: code shares it fairly, generated files get what the code
+leaves, and each hunk of a large file gets a share. A diff that fits prints whole.
+Each cut says `[trs: N lines omitted]`, and the raw output is saved.
 
 | `git diff HEAD~5` | tokens cut | facts kept |
-|---|---:|---:|
+|---:|---:|---:|
 | trs before | 99% | 94 of 367 |
-| trs now | 86% | 155 of 386 |
-| rtk 1.1.0 | 85% | 158 of 386 |
+| trs now | 85% | 152 of 383 |
+| rtk 1.1.0 | 85% | 155 of 383 |
 
 | | before | now | rtk 1.1.0 |
 |---|---:|---:|---:|
-| tokens cut, whole corpus | 87% | 83% | 82% |
-| facts kept, pooled | 57% | 62% | 47% |
-| facts kept, mean per command | 91% | 92% | 78% |
+| tokens cut, whole corpus | 87% | 84% | 84% |
+| facts kept, pooled | 57% | 61% | 46% |
+| facts kept, mean per command | 91% | 92% | 79% |
 | RISK rows | 2 | 1 | 1 |
 
 The whole-corpus cut fell because that one diff now spends tokens on code. BLIND
-stays on that row: 400 lines cannot carry the middle of a 2,500-line diff.
+stays on that row: 24 KB cannot carry the middle of a 2,500-line diff.
 
 `truth.py` adds SILENT: under 70% of facts kept with no way back named. No row has
 it. Zero context lines in small diffs stays as measured above: nothing is noted

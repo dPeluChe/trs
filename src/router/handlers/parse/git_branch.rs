@@ -94,7 +94,7 @@ fn render_compact(current: &str, local: &[String], remote: &[String]) -> String 
 }
 
 /// `chore/a, chore/b, chore/c` as `chore/{a, b, c}`: same names, one prefix.
-fn nest_tails(tails: &[&&str]) -> Vec<String> {
+fn nest_tails(tails: &[&str]) -> Vec<String> {
     let mut groups: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     let mut out: Vec<String> = Vec::new();
     for tail in tails {
@@ -107,7 +107,7 @@ fn nest_tails(tails: &[&&str]) -> Vec<String> {
         if rests.len() < COLLAPSE_THRESHOLD {
             out.extend(rests.iter().map(|r| format!("{head}/{r}")));
         } else {
-            out.push(format!("{head}/{{{}}}", rests.join(", ")));
+            out.push(format!("{head}/{{{}}}", nest_tails(&rests).join(", ")));
         }
     }
     out
@@ -138,21 +138,18 @@ fn render_group(out: &mut String, branches: &[&String], indent: &str) {
             continue;
         }
         // Collapse: show first NAMES_SHOWN_PER_GROUP tails + count of the rest.
-        let shown: Vec<&&str> = children.iter().take(NAMES_SHOWN_PER_GROUP).collect();
+        let shown = &children[..children.len().min(NAMES_SHOWN_PER_GROUP)];
         let hidden = children.len() - shown.len();
+        let mut more = String::new();
         if hidden > 0 {
             crate::parse_out::mark_dropped();
+            more = format!(" (+{} more)", hidden);
         }
-        let more = if hidden > 0 {
-            format!(" (+{} more)", hidden)
-        } else {
-            String::new()
-        };
         out.push_str(&format!(
             "{}  {}/{{{}}}{}\n",
             indent,
             prefix,
-            nest_tails(&shown).join(", "),
+            nest_tails(shown).join(", "),
             more,
         ));
     }

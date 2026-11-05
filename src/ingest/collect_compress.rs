@@ -51,10 +51,7 @@ pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<Compr
     ) {
         return None;
     }
-    if lower_name.ends_with(".lock")
-        || lower_name.ends_with(".min.js")
-        || lower_name.ends_with(".min.css")
-        || lower_name.ends_with(".d.ts")
+    if super::is_generated(name)
         || lower_name == "__init__.py"
         || lower_name == ".gitkeep"
         || lower_name == ".nojekyll"
