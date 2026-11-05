@@ -3,6 +3,34 @@ use super::super::types::*;
 use super::ParseHandler;
 use crate::OutputFormat;
 
+/// Both paths of `diff --git a/path b/path`. A path may hold spaces, so the
+/// split is the ` b/` where both sides agree; a rename falls back to the last one.
+fn diff_header_paths(line: &str) -> (String, Option<String>) {
+    let rest = line.strip_prefix("diff --git ").unwrap_or(line);
+    let side = |s: &'static str, p: &str| p.strip_prefix(s).unwrap_or(p).to_string();
+    let splits: Vec<usize> = rest.match_indices(" b/").map(|(i, _)| i).collect();
+    let cut = |i: usize| (side("a/", &rest[..i]), side("b/", &rest[i + 1..]));
+    if let Some(same) = splits.iter().map(|&i| cut(i)).find(|(a, b)| a == b) {
+        return (same.1, None);
+    }
+    match splits.last() {
+        Some(&i) => {
+            let (old, new) = cut(i);
+            (new, Some(old))
+        }
+        None => {
+            let mut parts = rest.split_whitespace();
+            let old = parts.next().unwrap_or("");
+            let new = parts.next().unwrap_or("");
+            if old == new {
+                (new.to_string(), None)
+            } else {
+                (new.to_string(), Some(old.to_string()))
+            }
+        }
+    }
+}
+
 impl ParseHandler {
     pub(crate) fn handle_git_diff(
         file: &Option<std::path::PathBuf>,
@@ -95,28 +123,7 @@ impl ParseHandler {
                     diff.files.push(file);
                 }
 
-                // Parse the file path from "diff --git a/path b/path"
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                let (path, new_path) = if parts.len() >= 3 {
-                    // Format: "diff --git a/new b/new"
-                    let a_path = parts
-                        .get(2)
-                        .unwrap_or(&"")
-                        .strip_prefix("a/")
-                        .unwrap_or(parts.get(2).unwrap_or(&""));
-                    let b_path = parts
-                        .get(3)
-                        .unwrap_or(&"")
-                        .strip_prefix("b/")
-                        .unwrap_or(parts.get(3).unwrap_or(&""));
-                    if a_path != b_path {
-                        (b_path.to_string(), Some(a_path.to_string()))
-                    } else {
-                        (b_path.to_string(), None)
-                    }
-                } else {
-                    (String::new(), None)
-                };
+                let (path, new_path) = diff_header_paths(line);
 
                 current_file = Some(GitDiffEntry {
                     path,
@@ -125,6 +132,7 @@ impl ParseHandler {
                     additions: 0,
                     deletions: 0,
                     is_binary: false,
+                    mode: None,
                     stat_total: None,
                     hunks: Vec::new(),
                 });
@@ -183,8 +191,21 @@ impl ParseHandler {
                 continue;
             }
 
+            if let Some(mode) = line.strip_prefix("old mode ") {
+                if let Some(ref mut file) = current_file {
+                    file.mode = Some(mode.to_string());
+                }
+                continue;
+            }
+            if let Some(mode) = line.strip_prefix("new mode ") {
+                if let Some(ref mut file) = current_file {
+                    file.mode = file.mode.take().map(|old| format!("{old} -> {mode}"));
+                }
+                continue;
+            }
+
             // Detect binary file
-            if line.contains("Binary files ") && line.contains(" differ") {
+            if line.starts_with("Binary files ") || line == "GIT binary patch" {
                 if let Some(ref mut file) = current_file {
                     file.is_binary = true;
                 }
@@ -205,21 +226,19 @@ impl ParseHandler {
                 continue;
             }
 
-            // Count additions and deletions in hunks, and collect hunk lines
+            // Headers end at the first @@: `-- comment` removed reads `--- comment`.
             if in_hunk {
                 if let Some(ref mut file) = current_file {
-                    if line.starts_with('+') && !line.starts_with("+++") {
+                    if line.starts_with('+') {
                         file.additions += 1;
-                    } else if line.starts_with('-') && !line.starts_with("---") {
+                    } else if line.starts_with('-') {
                         file.deletions += 1;
                     }
                 }
-                // Collect hunk lines (context, additions, deletions — skip --- and +++ headers)
-                if !line.starts_with("---") && !line.starts_with("+++") {
-                    if let Some(ref mut hunk) = current_hunk {
-                        hunk.lines.push(line.to_string());
-                    }
+                if let Some(ref mut hunk) = current_hunk {
+                    hunk.lines.push(line.to_string());
                 }
+                continue;
             }
 
             // Handle "--- a/path" and "+++ b/path" to confirm paths
@@ -303,6 +322,7 @@ impl ParseHandler {
                     new_path: None,
                     change_type: String::new(),
                     is_binary,
+                    mode: None,
                     stat_total: if is_binary { None } else { total },
                     ..Default::default()
                 });

@@ -26,6 +26,7 @@ impl ParseHandler {
                     "additions": file.additions,
                     "deletions": file.deletions,
                     "is_binary": file.is_binary,
+                    "mode": file.mode,
                 })
             }).collect::<Vec<_>>(),
             "total_additions": diff.total_additions,
@@ -48,7 +49,9 @@ impl ParseHandler {
 
         // Only keep change lines (+/-), drop context lines entirely
         for line in &hunk.lines {
-            if line.starts_with('+') || line.starts_with('-') {
+            if line.starts_with('\\') {
+                result.push(line.clone());
+            } else if line.starts_with('+') || line.starts_with('-') {
                 // A changed minified bundle or lockfile blob: keep its ends.
                 let (line, cut) = crate::safe_folds::elide_dense(line);
                 if cut {
@@ -61,6 +64,31 @@ impl ParseHandler {
         result
     }
 
+    /// `(+0/-0)` alone would read as untouched on a binary or a chmod.
+    fn file_label(file: &GitDiffEntry) -> String {
+        let indicator = match file.change_type.as_str() {
+            "A" => "+",
+            "D" => "-",
+            "R" => "R",
+            "C" => "C",
+            _ => "M",
+        };
+        let name = match file.new_path {
+            Some(ref old) => format!("{} -> {}", old, file.path),
+            None => file.path.clone(),
+        };
+        let change = if file.is_binary {
+            "binary".to_string()
+        } else {
+            format!("+{}/-{}", file.additions, file.deletions)
+        };
+        let mode = match file.mode {
+            Some(ref m) => format!(" mode {m}"),
+            None => String::new(),
+        };
+        format!("{indicator} {name} ({change}){mode}")
+    }
+
     fn build_file_summary(diff: &GitDiff) -> String {
         let mut summary = String::from("--- file summary ---\n");
         for file in &diff.files {
@@ -68,24 +96,7 @@ impl ParseHandler {
                 summary.push_str(&format!("  {} | {}\n", file.path, n));
                 continue;
             }
-            let indicator = match file.change_type.as_str() {
-                "A" => "+",
-                "D" => "-",
-                "R" => "R",
-                "C" => "C",
-                _ => "M",
-            };
-            if let Some(ref old_path) = file.new_path {
-                summary.push_str(&format!(
-                    "  {} {} -> {} (+{}/-{})\n",
-                    indicator, old_path, file.path, file.additions, file.deletions
-                ));
-            } else {
-                summary.push_str(&format!(
-                    "  {} {} (+{}/-{})\n",
-                    indicator, file.path, file.additions, file.deletions
-                ));
-            }
+            summary.push_str(&format!("  {}\n", Self::file_label(file)));
         }
         summary.push_str(&format!(
             "total: +{} -{}\n",
@@ -125,26 +136,7 @@ impl ParseHandler {
                 output.push_str(&format!("{} | {}\n", file.path, n));
                 continue;
             }
-            let indicator = match file.change_type.as_str() {
-                "A" => "+",
-                "D" => "-",
-                "R" => "R",
-                "C" => "C",
-                _ => "M",
-            };
-
-            // File header with inline stats
-            if let Some(ref new_path) = file.new_path {
-                output.push_str(&format!(
-                    "\n{} {} -> {} (+{}/-{})\n",
-                    indicator, new_path, file.path, file.additions, file.deletions
-                ));
-            } else {
-                output.push_str(&format!(
-                    "\n{} {} (+{}/-{})\n",
-                    indicator, file.path, file.additions, file.deletions
-                ));
-            }
+            output.push_str(&format!("\n{}\n", Self::file_label(file)));
 
             // Compressed hunks right after the file header
             for hunk in &file.hunks {
