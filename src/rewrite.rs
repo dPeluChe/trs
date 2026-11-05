@@ -156,7 +156,7 @@ impl HookEvent {
 /// nothing (the agent runs the original command unchanged). All clients
 /// share the same input envelope (`tool_input.command`) but expect
 /// different output shapes:
-///   Claude Code → hookSpecificOutput.updatedInput.command
+///   Claude Code → hookSpecificOutput.updatedInput, the full input with `command` replaced
 ///   Gemini CLI  → hookSpecificOutput.tool_input.command (+ top-level `decision`)
 ///   Cursor      → top-level `updated_input.command` (a hook `allow` never approves)
 fn build_hook_response(
@@ -244,10 +244,14 @@ fn build_hook_response(
             "updated_input": { "command": rewritten }
         }),
         HookEvent::ClaudePreToolUse => {
+            // `updatedInput` replaces the whole input: sending `command` alone
+            // made Claude Code drop `run_in_background` and `timeout`.
+            let mut input = json["tool_input"].clone();
+            input["command"] = rewritten.into();
             let mut out = serde_json::json!({
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
-                    "updatedInput": { "command": rewritten }
+                    "updatedInput": input
                 }
             });
             if gate == Gate::Allow {
