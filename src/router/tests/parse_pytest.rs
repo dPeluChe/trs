@@ -359,7 +359,6 @@ fn test_router_run_command_success() {
         args: vec!["test".to_string()],
         capture_stdout: Some(true),
         capture_stderr: Some(true),
-        capture_exit_code: Some(true),
         capture_duration: Some(true),
     };
 
@@ -381,7 +380,6 @@ fn test_router_run_command_failure() {
         args: vec![],
         capture_stdout: Some(true),
         capture_stderr: Some(true),
-        capture_exit_code: Some(true),
         capture_duration: Some(true),
     };
 

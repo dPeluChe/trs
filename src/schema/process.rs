@@ -41,7 +41,7 @@ pub struct ProcessOutputSchema {
     /// Standard error.
     #[serde(default)]
     pub stderr: String,
-    /// Exit code (if captured).
+    /// Exit code; absent when a signal killed the process.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
     /// Duration in milliseconds.

@@ -385,61 +385,28 @@ fn test_run_command_no_capture_both() {
 }
 
 #[test]
-fn test_run_command_capture_exit_code_default() {
-    // By default, exit code is captured
+fn test_run_rejects_the_removed_capture_exit_code_flag() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("--capture-exit-code=true")
-        .arg("echo")
-        .arg("test")
+    cmd.arg("run")
+        .arg("--capture-exit-code=false")
+        .arg("sh")
+        .arg("-c")
+        .arg("exit 0")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("\"exit_code\":0"));
+        .code(2)
+        .stderr(predicate::str::contains("--capture-exit-code"));
 }
 
 #[test]
-fn test_run_command_no_capture_exit_code() {
-    // When --capture-exit-code=false, exit_code is null in JSON output
+fn test_run_non_zero_reports_the_exit_on_stderr() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
         .arg("run")
-        .arg("--capture-exit-code=false")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("\"exit_code\":null"));
-}
-
-#[test]
-fn test_run_command_no_capture_exit_code_non_zero() {
-    // When exit code is not captured, even non-zero exit commands show null
-    // and the command succeeds (error is not propagated)
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("--capture-exit-code=false")
         .arg("sh")
         .arg("-c")
         .arg("exit 42")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("\"exit_code\":null"));
-}
-
-#[test]
-fn test_run_command_capture_exit_code_non_zero() {
-    // When exit code is captured, non-zero exit code is visible
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("--capture-exit-code=true")
-        .arg("sh")
-        .arg("-c")
-        .arg("exit 42")
-        .assert()
-        .code(42) // Exit code 42 is now propagated correctly
+        .code(42)
         .stderr(predicate::str::contains("exited with code 42"));
 }
 

@@ -330,40 +330,13 @@ fn test_run_no_capture_stderr() {
 }
 
 #[test]
-fn test_run_no_capture_exit_code() {
-    let result = ProcessBuilder::new("false").capture_exit_code(false).run();
-
-    assert!(result.is_ok());
-    let output = result.unwrap();
-    // When exit code is not captured, it should be None
-    assert_eq!(output.exit_code, None);
-    // success() should return false because exit_code is None
-    assert!(!output.success());
-}
-
-#[test]
-fn test_run_capture_exit_code_default() {
-    // By default, exit code should be captured
+fn test_run_reports_exit_code_zero() {
     let result = ProcessBuilder::new("echo").arg("hello").run();
 
     assert!(result.is_ok());
     let output = result.unwrap();
     assert_eq!(output.exit_code, Some(0));
     assert!(output.success());
-}
-
-#[test]
-fn test_run_capture_exit_code_non_zero() {
-    let result = ProcessBuilder::new("sh")
-        .arg("-c")
-        .arg("exit 42")
-        .capture_exit_code(true)
-        .run();
-
-    assert!(result.is_ok());
-    let output = result.unwrap();
-    assert_eq!(output.exit_code, Some(42));
-    assert!(!output.success());
 }
 
 #[test]

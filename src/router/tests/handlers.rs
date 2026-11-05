@@ -17,7 +17,6 @@ fn test_run_handler_success() {
         args: vec!["hello".to_string()],
         capture_stdout: true,
         capture_stderr: true,
-        capture_exit_code: true,
         capture_duration: true,
         timeout: None,
     };
@@ -40,7 +39,6 @@ fn test_run_handler_command_not_found() {
         args: vec![],
         capture_stdout: true,
         capture_stderr: true,
-        capture_exit_code: true,
         capture_duration: true,
         timeout: None,
     };
@@ -70,7 +68,6 @@ fn test_run_handler_non_zero_exit() {
         args: vec![],
         capture_stdout: true,
         capture_stderr: true,
-        capture_exit_code: true,
         capture_duration: true,
         timeout: None,
     };
@@ -100,7 +97,6 @@ fn test_run_handler_json_format() {
         args: vec!["test".to_string()],
         capture_stdout: true,
         capture_stderr: true,
-        capture_exit_code: true,
         capture_duration: true,
         timeout: None,
     };
@@ -122,36 +118,11 @@ fn test_run_handler_no_capture_stdout() {
         args: vec!["test".to_string()],
         capture_stdout: false,
         capture_stderr: true,
-        capture_exit_code: true,
         capture_duration: true,
         timeout: None,
     };
 
     // When stdout is not captured, the command should still succeed
-    let result = handler.execute(&input, &ctx);
-    assert!(result.is_ok());
-}
-
-#[test]
-fn test_run_handler_no_capture_exit_code() {
-    let handler = RunHandler;
-    let ctx = CommandContext {
-        format: OutputFormat::Json,
-        stats: false,
-        enabled_formats: vec![OutputFormat::Json],
-    };
-    let input = RunInput {
-        command: "sh".to_string(),
-        args: vec!["-c".to_string(), "exit 42".to_string()],
-        capture_stdout: true,
-        capture_stderr: true,
-        capture_exit_code: false,
-        capture_duration: true,
-        timeout: None,
-    };
-
-    // When exit code is not captured, the error is NOT propagated
-    // even though the command exited with a non-zero code
     let result = handler.execute(&input, &ctx);
     assert!(result.is_ok());
 }

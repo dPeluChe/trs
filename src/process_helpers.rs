@@ -28,7 +28,6 @@ pub(super) fn capture_output(
     status: ExitStatus,
     capture_stdout: bool,
     capture_stderr: bool,
-    capture_exit_code: bool,
 ) -> ProcessOutput {
     let stdout = if capture_stdout {
         child
@@ -63,11 +62,7 @@ pub(super) fn capture_output(
         args: Vec::new(),
         stdout,
         stderr,
-        exit_code: if capture_exit_code {
-            status.code()
-        } else {
-            None
-        },
+        exit_code: status.code(),
         duration: Duration::ZERO,
         timed_out: false,
     }
