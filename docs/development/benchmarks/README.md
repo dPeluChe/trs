@@ -302,6 +302,24 @@ there, because the file itself is the way back.
 `git branch -a` drops nothing to gain ground. The tool that cuts more here prints
 `... +20 more` and hides real branches, so trs only nests repeated prefixes.
 
+## trs alone on v0.9.2
+
+2026-11-05, same corpus and command as below. This is what usetrs.dev shows.
+`truth.py`: 9/9 pipelines match, 0 RISK rows, 0 SILENT rows, 1 BLIND row
+(`git diff HEAD~5`). `compare.py`: 1 RISK row (`ps aux`). `chain-rewrite.sh`: 43/43.
+Startup: 3.61 ms median over 300 runs of `trs --version`.
+
+| | tokens cut | anchors kept | facts kept |
+|---|---:|---:|---:|
+| all 38 commands (token-weighted) | 84% | 55% | 63% |
+| mean per command | 32% | 84% | 92% |
+| median command | 24% | | |
+| commands cut by half or more | 11 of 38 | | |
+
+The cut fell from 85% on v0.9.1 by design: `git diff HEAD~5` now prints code from
+every file instead of a file list. The site shows that row in place of
+`git diff HEAD~1`, since a large diff no longer becomes a summary.
+
 ## trs alone on v0.9.1
 
 2026-11-04, same corpus and command as below. This is what usetrs.dev shows.

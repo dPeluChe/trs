@@ -1,4 +1,4 @@
-# labs-tarscli (335 files, 51.5k tokens, rust)
+# labs-tarscli (337 files, 51.7k tokens, rust)
 
 > Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands
 
@@ -28,7 +28,7 @@
   ci.yml  release.yml
 
 docs/
-  CNAME  install.ps1  install.sh  llms.txt  robots.txt
+  CNAME  _config.yml  install.ps1  install.sh  llms.txt  robots.txt
 
 docs/commands/
   audit-docs.md  doctor.md  init.md  output-saver.md  stats.md  
@@ -41,7 +41,7 @@ docs/development/
 docs/development/benchmarks/
   README.md  bench_stats.py  benchmark-real.sh  benchmark.sh  
   chain-rewrite.sh  output_saver_ab.py  output_saver_agentic.py  
-  output_saver_stale.py  transcript_output.py  truth.py
+  output_saver_stale.py  recovery.py  transcript_output.py  truth.py
 
 docs/development/benchmarks/compare/
   compare.py  corpus.txt  fixtures.py  setup.sh
@@ -188,7 +188,7 @@ From the import graph (fan-in↓ / fan-out↑), no AST:
 - **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/73↑)
 - **core**: high fan-in, everything routes through → `ingest` (25↓/5↑), `init` (19↓/10↑), `tracker` (13↓/2↑)
 - **leaf**: used by many, import nothing (utils, types) → `text_util` (11↓/0↑), `fs_atomic` (8↓/0↑)
-- **internal**: mid-graph plumbing → `router/handlers` (5↓/16↑), `rewrite_gate` (10↓/6↑), `classifier_exec` (1↓/14↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/11↑), `classifier` (7↓/5↑), `init_templates` (10↓/2↑), `output_saver` (10↓/2↑) +10 more
+- **internal**: mid-graph plumbing → `router/handlers` (5↓/16↑), `rewrite_gate` (10↓/6↑), `classifier_exec` (1↓/14↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/12↑), `classifier` (7↓/5↑), `init_templates` (10↓/2↑), `output_saver` (10↓/2↑) +10 more
 
 ## README.md
 
@@ -297,6 +297,20 @@ All notable changes to trs are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2026-11-05
+
+### Features
+
+- diff: Share a byte budget across a large diff (#231)
+
+### Bug Fixes
+
+- pages: Keep the codebase digest out of the site build (#228)
+
+### Other
+
+- Score facts and measure what agents go back for (#230)
+
 ## [0.9.1] - 2026-11-05
 
 ### Features
@@ -317,21 +331,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rest of P2 (AgentPolicy table, legacy hook identity, one-spawn plugins, doctor plugin checks, stats recall) (#210)
 - P3 measure before claiming (block size, A/B with control, rerun rate, unique-id needles, stamps) (#211)
-- output-saver: Shrink the block after pre-registered A/B tests (#212)
-- rewrite: Opt-in real exit status for piped build and test checks (#213)
-- output-saver: Targets for Grok Build, Kiro and OpenClaw (#214)
-- init: Hooks for Trae and Mistral Vibe (#216)
-
-### Bug Fixes
-
-- P1 from the learn-repos sweep (plugin pipes, permissions, help, worktrees, comments) (#208)
-- P2 small and cheap (passthrough tail, anchor guard, stats totals, atomic writes, ratchet, Droid/Cursor rules) (#209)
-- rewrite: Keep every tool input field when rewriting a command (#215)
-- rewrite: Never rewrite for Grok running Claude's hook (#218)
-
-### Documentation
-
-... (714 lines, hidden sections: [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07 · [0.8.5] - 2026-09-26 · [0.8.4] - 2026-09-26 · [0.8.3] - 2026-09-25)
+... (728 lines, hidden sections: [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07 · [0.8.5] - 2026-09-26 · [0.8.4] - 2026-09-26 · [0.8.3] - 2026-09-25)
 
 ## CLAUDE.md
 
@@ -448,7 +448,7 @@ git config core.hooksPath .githooks
 **Cargo.toml**
 [package]
 name = "trs-cli"
-version = "0.9.1"
+version = "0.9.2"
 edition = "2021"
 description = "Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands"
 license = "MIT"
@@ -714,6 +714,11 @@ permissions:
 ## docs/
 
 **CNAME**: usetrs.dev
+**_config.yml**
+# The digest quotes source code, and `{{` in it stops the whole Pages build.
+exclude:
+  - development/codebase-digest.md
+
 **install.ps1**
 function Write-Info    { param($msg) Write-Host "▸ $msg" -ForegroundColor Cyan
 function Write-Ok      { param($msg) Write-Host "✓ $msg" -ForegroundColor Green
@@ -891,6 +896,7 @@ should we improve?", not to publish a leaderboard.
 
 **bench_stats.py**
 
+
   def boot_diff(before, after, fn=statistics.fmean, resamples=2000, seed=11):
       rng = random.Random(seed)
       diffs = sorted(
@@ -898,6 +904,20 @@ should we improve?", not to publish a leaderboard.
           for _ in range(resamples)
       )
       return diffs[int(0.025 * resamples)], diffs[int(0.975 * resamples) - 1]
+
+  def records(path, *needles):
+      them, which is most of a 4 GB transcript folder."""
+      try:
+          lines = open(path, encoding="utf-8", errors="replace")
+      except OSError:
+          return
+      for line in lines:
+          if needles and not any(n in line for n in needles):
+              continue
+          try:
+              yield json.loads(line)
+          except ValueError:
+              continue
 
 **benchmark-real.sh**
 BLUE='\033[0;34m'
@@ -952,6 +972,16 @@ TRS_BIN="$REPO_ROOT/target/release/trs"
   def work(job)
 
 **output_saver_stale.py**: def _check(true_re) | def surfaced(task, reply)
+**recovery.py**
+  def segments(cmd)
+  def family(cmd)
+  def body(result)
+  def calls(path, since)
+  def recovery(cmd, fam, text, after)
+  def tally(session, window, count, stats, first, back)
+  def median(values)
+  def main()
+
 **transcript_output.py**
   def default_since()
   def messages(projects_dir)
@@ -964,9 +994,15 @@ TRS_BIN="$REPO_ROOT/target/release/trs"
   def sh(cmd, stderr=False)
   def hook(trs, cmd)
   def anchors(text)
-  def buried(raw)
-  def kept(found, text)
+  def facts(text)
+  def docker_rows(raw)
+  def facts_lost(found, text)
   def has(kind, a)
+  def share(found, text)
+  def risky(cut, keep)
+  def buried(raw)
+  def present(kind, a, text, flat)
+  def kept(found, text)
   def naive_tail(raw, budget)
   def main()
 
@@ -980,7 +1016,7 @@ TRS_BIN="$REPO_ROOT/target/release/trs"
   def run(cmd, env, cwd)
   def claw(text)
   def corpus()
-  def score(raw, out, found)
+  def score(raw, out, found, fact)
   def main()
   def report(rows, pipes, tools)
   def agg(t)
@@ -2562,7 +2598,7 @@ if [ -n "$1" ]; then
 **passthrough_cut.rs**
   fn needles(line: &str) -> impl Iterator<Item = &str>
   pub fn cut(text: &str, max: usize) -> Option<String>
-  fn fit<'a>(lines: impl Iterator<Item = &'a str>, budget: usize) -> usize
+  pub fn fit<'a>(lines: impl Iterator<Item = &'a str>, budget: usize) -> usize
   fn cut_bytes(text: &str, max: usize) -> String
   mod tests
   fn long(n: usize) -> String
@@ -3916,6 +3952,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub use remote::{is_remote_ref, resolve_remote, TmpMode
   pub use resolve::resolve_project_root
   pub use store::{list_ingests, read_digest
+  pub fn is_generated(name: &str) -> bool
   pub enum IngestLevel
 
   impl IngestLevel
@@ -4869,7 +4906,12 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   impl ParseHandler
   pub fn handle_git_branch(
   fn render_compact(current: &str, local: &[String], remote: &[String]) -> String
+  fn nest_tails(tails: &[&str]) -> Vec<String>
   fn render_group(out: &mut String, branches: &[&String], indent: &str)
+  mod tests
+  fn names(v: &[&str]) -> Vec<String>
+  fn a_remote_is_a_shadow_only_of_the_same_branch()
+  fn shared_prefixes_nest_with_every_name_kept()
 
 **git_commit.rs**
   impl ParseHandler
@@ -4899,14 +4941,21 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn commit_header(input: &str) -> Option<String>
 
 **git_diff_format.rs**
+  fn shares(sizes: &[usize], budget: usize) -> Vec<usize>
+  fn file_budgets(files: &[GitDiffEntry], sizes: &[usize], budget: usize) -> Vec<usize>
+  fn hunk_bytes(lines: &[String]) -> usize
+
   impl ParseHandler
   pub fn format_git_diff(diff: &GitDiff, format: OutputFormat) -> String
   pub fn format_git_diff_json(diff: &GitDiff) -> String
   fn format_hunk_compressed(hunk: &GitDiffHunk) -> Vec<String>
   fn file_label(file: &GitDiffEntry) -> String
-  fn build_file_summary(diff: &GitDiff) -> String
   pub fn format_git_diff_compact(diff: &GitDiff) -> String
   pub fn format_git_diff_raw(diff: &GitDiff) -> String
+  mod tests
+  fn shares_give_small_files_everything_and_never_overspend()
+  fn entry(path: &str) -> GitDiffEntry
+  fn generated_files_only_get_what_code_leaves()
 
 **git_log.rs**
   fn apply_truncate(subject: &str, max: Option<usize>) -> String
@@ -5778,4 +5827,4 @@ pub(crate) enum LogLevel {
   fn test_test_output_round_trip()
 
 ---
-*trs ingest v0.9.0 | 93ms | 201.7KB*
+*trs ingest v0.9.2 | 114ms | 202.8KB*
