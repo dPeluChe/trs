@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.9.1] - 2026-11-05
+
+### Features
+
+- **classify:** Route runners to the parser of what they run (#226)
+
+### Bug Fixes
+
+- **git:** Never call a diff empty when it has output (#221)
+- **parse:** Never answer "clean" or "empty" for output a parser could not read (#222)
+- **git:** Run git in English so its parsers can read it (#223)
+- **diff:** Keep what a compact diff was losing (#224)
+- **build:** Stop reducing output to "build: ok" (#225)
+
 ## [0.9.0] - 2026-11-05
 
 ### Features

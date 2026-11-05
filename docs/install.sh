@@ -7,7 +7,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/dPeluChe/trs/main/docs/install.sh | sh
 #
 # Options (env vars):
-#   TRS_VERSION=v0.9.0   pin a specific release (default: latest)
+#   TRS_VERSION=v0.9.1   pin a specific release (default: latest)
 #   TRS_INSTALL_DIR=...   override install location
 #
 # Install dir selection (in priority order):

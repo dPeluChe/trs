@@ -72,9 +72,10 @@ cargo.
 
 | Command | What gets parsed |
 |---|---|
-| `make` / `cmake` | warnings and errors kept, compile-command echoes dropped |
+| `cmake` | warnings and errors kept, compile-command echoes dropped |
+| `make` | generic path: a target prints anything, so its output stays |
 | `gcc` / `g++` / `clang` / `javac` | `error:` / `warning:` lines, grouped |
-| `swift` | `build`, `test`, `run` |
+| `swift` | `build`; `run` and `test` stay generic, their output is the answer |
 | `xcodebuild` | among the chattiest output there is: compile echoes, "Write auxiliary files" and dependency checks go, `error:` / `warning:` and the BUILD SUCCEEDED/FAILED sentinel stay |
 
 ### Build: Java (Maven, Gradle)
@@ -239,6 +240,13 @@ ship inside the single-binary install.
 | `trs ingest` | whole-repo digest for agent context |
 
 ## Dispatch mechanisms
+
+### Runners
+
+`uv run`, `poetry run`, `pdm run`, `pipenv run`, `npx`, `bunx`, `pnpm exec|dlx`,
+`yarn exec|dlx`, `nix develop|shell -c`, `mise exec|x --` and `direnv exec` reach
+the parser of the command they run, and take its stderr policy. `just`, `task`,
+`mise run` and `make` stay generic: a recipe name does not say what runs.
 
 ### Chain-aware rewrite
 

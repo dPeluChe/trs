@@ -218,6 +218,41 @@ Read by eye before trusting a cell:
   PIDs in a list the agent rarely reads whole, and the full list is one path
   away.
 
+## trs alone on v0.9.1
+
+2026-11-04, same corpus and command as below. This is what usetrs.dev shows.
+`truth.py`: 9/9 pipelines match, 1 RISK row (`git diff HEAD~5`), 0 BLIND rows.
+`chain-rewrite.sh`: 43/43. Startup: 3.65 ms median, against 3.6 ms on v0.9.0 with
+the same loop.
+
+| | tokens cut | anchors kept |
+|---|---:|---:|
+| all 38 commands (token-weighted) | 85% | 62% (mean 84% per command) |
+| median command | 27% | |
+| commands cut by half or more | 13 of 38 | |
+
+Do not compare the rows without `ps aux` to v0.9.0 (44% then, 61% now): the corpus
+runs on this repo, and `git diff HEAD~5` grew past the 500-changed-line limit, so
+it became a file summary (22,799 to 640 tokens, 97% cut). That row is the RISK:
+the file list plus the path to the raw output, not the changes. Corrections that
+trade savings for truth do not show in this corpus: it has no `make` target and no
+translated `git status`.
+
+### Rereads: measured, not built
+
+A cache for repeated reads looked large because `sed` and `cat` are 38% of what
+agents receive. Over 40 days of transcripts (233 MB of tool output, deduplicated by
+tool-use id, since a resumed session repeats its history):
+
+| shape | share of tool output |
+|---|---:|
+| same command, same output | 0.04% |
+| `sed -n` range already seen in full | 0.07% |
+| `sed -n` lines already seen, upper bound | 0.15% |
+
+Agents read each range once, and a cache would claim "unchanged" to an agent whose
+context was compacted. Counting lines without that deduplication gives a false 7%.
+
 ## trs alone on v0.9.0
 
 2026-11-04, same corpus, this repo's state that day, `compare.py --only trs

@@ -1,6 +1,6 @@
-# labs-tarscli (274 files, 42.2k tokens, rust)
+# labs-tarscli (335 files, 51.5k tokens, rust)
 
-> Token-reducing shell for AI agents: compact terminal output, ~70% fewer tokens on real agent commands
+> Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands
 
 ## Structure
 
@@ -8,6 +8,12 @@
   README.md  .gitignore  AGENTS.md  CHANGELOG.md  CLAUDE.md  
   CODE_OF_CONDUCT.md  CONTRIBUTING.md  Cargo.toml  LICENSE  
   README.es.md  SECURITY.md  cliff.toml  lefthook.yml
+
+.cargo/
+  config.toml
+
+.devin/rules/
+  trs.md
 
 .githooks/
   commit-msg  pre-commit  pre-push
@@ -29,10 +35,16 @@ docs/commands/
   upgrade.md
 
 docs/development/
-  agent-integrations.md  antigravity-hooks-research.md
+  agent-integrations.md  antigravity-hooks-research.md  
+  output-cost-findings.md
 
 docs/development/benchmarks/
-  README.md  benchmark-real.sh  benchmark.sh  chain-rewrite.sh
+  README.md  bench_stats.py  benchmark-real.sh  benchmark.sh  
+  chain-rewrite.sh  output_saver_ab.py  output_saver_agentic.py  
+  output_saver_stale.py  transcript_output.py  truth.py
+
+docs/development/benchmarks/compare/
+  compare.py  corpus.txt  fixtures.py  setup.sh
 
 docs/features/
   audit-docs.md  configuration.md  diff.md  doctor.md  formats.md  
@@ -43,7 +55,7 @@ docs/roadmap/
   TASK_TODO.md
 
 docs/roadmap/completed/
-  2603.md  2604.md  2605.md  README.md
+  2603.md  2604.md  2605.md  2608.md  README.md
 
 docs/support/
   agents.md  commands.md  install.md  other-token-savers.md  safety.md
@@ -74,26 +86,39 @@ npm/platforms/win32-x64/
   README.md  package.json
 
 scripts/
-  docker-smoke.sh  sync-codebase-digest.sh  sync-version.sh
+  docker-smoke.sh  post-release-clean.sh  sync-codebase-digest.sh  
+  sync-version.sh
 
 src/
-  ai_tool.rs  ai_tool_tests.rs  audit_docs.rs  audit_docs_detect.rs  
-  audit_docs_report.rs  audit_docs_symbols.rs  benchmark.rs  
-  classifier.rs  classifier_args.rs  classifier_exec.rs  
+  ai_tool.rs  ai_tool_tests.rs  anchor_guard.rs  audit_docs.rs  
+  audit_docs_detect.rs  audit_docs_report.rs  audit_docs_symbols.rs  
+  audit_docs_volatile.rs  benchmark.rs  classifier.rs  
+  classifier_args.rs  classifier_args_tests.rs  classifier_exec.rs  
   classifier_tests.rs  classifier_transfer.rs  cli.rs  codex.rs  
   command_registry.rs  command_registry_tests.rs  commands.rs  
-  commands_parse.rs  config.rs  debug_info.rs  diff.rs  discover.rs  
-  doctor.rs  doctor_checks.rs  doctor_tests.rs  exec.rs  fast_find.rs  
-  help.rs  help_tests.rs  help_text.rs  help_text_more.rs  init.rs  
-  init_collision.rs  init_collision_tests.rs  init_install.rs  
-  init_install_plugins.rs  init_install_tests.rs  init_show.rs  
-  init_templates.rs  init_templates_plugins.rs  main.rs  main_tests.rs  
-  main_tests_precedence.rs  output_saver.rs  output_saver_core.rs  
-  output_saver_core_tests.rs  parse_out.rs  path_display.rs  
-  process.rs  process_helpers.rs  process_tests.rs  read_intercept.rs  
-  rewrite.rs  rewrite_decide.rs  rewrite_decide_tests.rs  
-  rewrite_tests.rs  text_util.rs  tracker.rs  tracker_tests.rs  
-  uninstall.rs  upgrade.rs
+  commands_parse.rs  commands_parse_with_file.rs  config.rs  
+  debug_info.rs  diff.rs  discover.rs  doctor.rs  doctor_checks.rs  
+  doctor_hooks.rs  doctor_tests.rs  exec.rs  fast_find.rs  
+  fs_atomic.rs  help.rs  help_tests.rs  help_text.rs  
+  help_text_more.rs  init.rs  init_collision.rs  
+  init_collision_tests.rs  init_install.rs  init_install_plugins.rs  
+  init_install_rules.rs  init_install_rules_tests.rs  
+  init_install_tests.rs  init_show.rs  init_templates.rs  
+  init_templates_plugins.rs  init_vibe.rs  main.rs  main_args.rs  
+  main_ingest.rs  main_tests.rs  main_tests_precedence.rs  
+  output_saver.rs  output_saver_core.rs  output_saver_core_tests.rs  
+  output_saver_write.rs  parse_out.rs  passthrough_cut.rs  
+  path_display.rs  pointer_recall.rs  process.rs  process_helpers.rs  
+  process_tests.rs  report.rs  report_tests.rs  rerun_rate.rs  
+  rewrite.rs  rewrite_decide.rs  rewrite_decide_capture_tests.rs  
+  rewrite_decide_tests.rs  rewrite_gate.rs  rewrite_perm_codex.rs  
+  rewrite_perm_cursor.rs  rewrite_perm_devin.rs  rewrite_perm_droid.rs  
+  rewrite_perm_droid_match.rs  rewrite_perm_droid_rules.rs  
+  rewrite_perm_gemini.rs  rewrite_perm_gemini_policy.rs  
+  rewrite_permissions.rs  rewrite_pipe_status.rs  rewrite_rules.rs  
+  rewrite_tests.rs  safe_folds.rs  safe_folds_tests.rs  sentinel.rs  
+  text_util.rs  tracker.rs  tracker_tests.rs  uninstall.rs  
+  uninstall_scrub.rs  upgrade.rs
 
 src/formatter/: Formatter system for trs (Token-Reducing Shell)
   agent.rs  compact.rs  compact_schema_git.rs  
@@ -103,9 +128,9 @@ src/formatter/: Formatter system for trs (Token-Reducing Shell)
 src/ingest/: Project digest generator for LLM consumption
   collect.rs  collect_compress.rs  collect_index.rs  
   collect_manifests.rs  deps.rs  deps_extract.rs  dupes.rs  format.rs  
-  format_html.rs  format_html_util.rs  format_tree.rs  meta.rs  mod.rs  
-  mod_html.rs  ollama.rs  purpose.rs  remote.rs  resolve.rs  store.rs  
-  tests.rs
+  format_html.rs  format_html_util.rs  format_tree.rs  format_util.rs  
+  meta.rs  mod.rs  mod_html.rs  ollama.rs  purpose.rs  remote.rs  
+  resolve.rs  signatures.rs  store.rs  tests.rs
 
 src/reducer/: Reducer system for trs (Token-Reducing Shell)
   mod.rs  output.rs  registry.rs  truncation.rs
@@ -114,23 +139,25 @@ src/router/: Command routing system for trs (Token-Reducing Shell)
   mod.rs
 
 src/router/handlers/
-  ansi.rs  clean.rs  common.rs  err.rs  html2md.rs  isclean.rs  
-  json.rs  json_query.rs  json_tests.rs  mod.rs  read.rs  
+  ansi.rs  clean.rs  common.rs  common_markers.rs  err.rs  html2md.rs  
+  isclean.rs  json.rs  json_query.rs  json_tests.rs  mod.rs  read.rs  
   read_filters.rs  read_tests.rs  replace.rs  run.rs  search.rs  
   stats.rs  stats_coverage.rs  stats_efficiency.rs  stats_render.rs  
   stats_render_tests.rs  tail.rs  trim.rs
 
 src/router/handlers/parse/
   aws.rs  aws_tests.rs  brew.rs  bun_format.rs  bun_parse.rs  
-  extra_cargo_test.rs  extra_db.rs  extra_download.rs  extra_env.rs  
-  extra_network.rs  extra_system.rs  find.rs  fmt.rs  gh_api.rs  
-  gh_api_tests.rs  gh_pr.rs  gh_run.rs  git_branch.rs  git_commit.rs  
-  git_diff.rs  git_diff_format.rs  git_log.rs  git_pull.rs  
-  git_status.rs  git_status_format.rs  go_test.rs  grep.rs  
-  grep_format.rs  jest_format.rs  jest_parse.rs  lint.rs  
-  lint_tests.rs  logs.rs  logs_format.rs  logs_helpers.rs  
-  logs_json.rs  logs_json_tests.rs  ls.rs  mod.rs  npm_format.rs  
-  npm_parse.rs  pnpm_format.rs  pnpm_parse.rs  ps.rs  pytest_format.rs  
+  bun_summary.rs  extra_build.rs  extra_cargo_test.rs  extra_db.rs  
+  extra_download.rs  extra_env.rs  extra_network.rs  extra_system.rs  
+  find.rs  fmt.rs  gh_api.rs  gh_api_tests.rs  gh_pr.rs  gh_run.rs  
+  git_branch.rs  git_commit.rs  git_diff.rs  git_diff_format.rs  
+  git_log.rs  git_pull.rs  git_status.rs  git_status_format.rs  
+  go_test.rs  gradle.rs  gradle_tests.rs  grep.rs  grep_format.rs  
+  jest_format.rs  jest_parse.rs  lint.rs  lint_tests.rs  logs.rs  
+  logs_format.rs  logs_helpers.rs  logs_json.rs  logs_json_tests.rs  
+  ls.rs  ls_format.rs  maven.rs  maven_tests.rs  mod.rs  npm_format.rs  
+  npm_parse.rs  ollama.rs  ollama_tests.rs  pnpm_format.rs  
+  pnpm_parse.rs  pnpm_summary.rs  ps.rs  pytest_format.rs  
   pytest_parse.rs  python_traceback.rs  sysinfo.rs  sysinfo_tests.rs  
   test.rs  vitest_format.rs  vitest_parse.rs
 
@@ -148,20 +175,20 @@ src/schema/: Stable JSON schemas for trs (Token-Reducing Shell) reducers
 
 ## Key Dependencies
 
-  parse_out.rs ← src/classifier_exec.rs, src/main.rs, parse/aws.rs, brew.rs (+26)
-  tests.rs ← ai_tool.rs, classifier.rs, command_registry.rs, doctor.rs (+22)
-  common.rs ← clean.rs, err.rs, html2md.rs, isclean.rs (+11)
-  formatter/mod.rs ← agent.rs, compact.rs, csv.rs, formatter/json.rs (+8)
-  src/tracker.rs ← src/classifier_exec.rs, debug_info.rs, doctor_checks.rs, fast_find.rs (+8)
+  parse_out.rs ← src/classifier_exec.rs, src/main.rs, parse/aws.rs, brew.rs (+32)
+  tests.rs ← ai_tool.rs, classifier.rs, classifier_args.rs, command_registry.rs (+29)
+  init.rs ← src/doctor_checks.rs, src/doctor_hooks.rs, doctor_tests.rs, src/init_collision.rs (+15)
+  src/tracker.rs ← src/classifier_exec.rs, config.rs, debug_info.rs, src/doctor_checks.rs (+13)
+  formatter/mod.rs ← agent.rs, compact.rs, csv.rs, formatter/json.rs (+11)
 
 ## Architecture (module roles)
 
 From the import graph (fan-in↓ / fan-out↑), no AST:
 
-- **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/49↑)
-- **core**: high fan-in, everything routes through → `ingest` (20↓/5↑)
-- **leaf**: used by many, import nothing (utils, types) → `path_display` (7↓/0↑), `config` (5↓/0↑)
-- **internal**: mid-graph plumbing → `router/handlers` (5↓/12↑), `init` (8↓/7↑), `router/handlers/parse` (3↓/9↑), `classifier_exec` (2↓/8↑), `init_install` (3↓/7↑), `router` (7↓/3↑), `tracker` (9↓/1↑), `classifier` (5↓/4↑) +12 more
+- **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/73↑)
+- **core**: high fan-in, everything routes through → `ingest` (25↓/5↑), `init` (19↓/10↑), `tracker` (13↓/2↑)
+- **leaf**: used by many, import nothing (utils, types) → `text_util` (11↓/0↑), `fs_atomic` (8↓/0↑)
+- **internal**: mid-graph plumbing → `router/handlers` (5↓/16↑), `rewrite_gate` (10↓/6↑), `classifier_exec` (1↓/14↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/11↑), `classifier` (7↓/5↑), `init_templates` (10↓/2↑), `output_saver` (10↓/2↑) +10 more
 
 ## README.md
 
@@ -194,8 +221,8 @@ unstaged (3):
 # 1.4 KB → 336 B (76% reduction)
 
 $ trs cargo test
-cargo test: 2186 passed (71 suites, 4.9s)
-# 55 KB → 58 B (99% reduction)
+cargo test: ok (2548 passed, 3 ignored, 98 suites, 13.83s)
+# 164 KB → 127 B (99% reduction)
 
 $ trs cargo clippy
 lint: 102 issues in 39 files
@@ -205,7 +232,7 @@ src/main.rs (3):
   W dead_code 112:8
 # 55 KB → 5.5 KB (90% reduction)
 
-... (236 lines, hidden sections: Install · macOS / Linux · npm (all platforms) · cargo (builds from source) · Windows (PowerShell) · Quick start · 1. Wire hooks into every detected AI agent (the main path) · 2. See your savings)
+... (243 lines, hidden sections: Install · macOS / Linux · npm (all platforms) · cargo (builds from source) · Windows (PowerShell) · Quick start · 1. Wire hooks into every detected AI agent (the main path) · 2. See your savings)
 
 **.gitignore**
 # Build artifacts
@@ -216,7 +243,7 @@ src/main.rs (3):
 # Cargo lock file for binary projects (keep for libraries)
 # Uncomment if this becomes a library:
 # Cargo.lock
-... (74 lines)
+... (77 lines)
 
 ## AGENTS.md
 
@@ -225,7 +252,7 @@ src/main.rs (3):
 ## What is trs
 
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
-Cuts the tokens AI agents and automation pipelines spend on terminal output (~70% on real agent commands).
+Cuts up to 60% of the tokens AI agents spend on terminal output, measured on real sessions (see docs/development/benchmarks/).
 
 ## Pre-generated codebase digest
 
@@ -255,12 +282,12 @@ falls back to `./target/release/trs` if one isn't installed.
 - `trs output-saver`: install a short output-reduction rules block
   into each agent's global config (AGENTS.md / CLAUDE.md / Cursor rules).
   Closes the symmetric gap: trs compresses what agents SEE via
-  `trs rewrite`; output-saver compresses what they EMIT via
-  anti-preamble / anti-narration / structured-output directives.
+  `trs rewrite`; output-saver asks for concise replies, no invented paths or
+  APIs, and short code comments. Tests found reply rules save little:
+  `docs/development/output-cost-findings.md`.
   Check-first by default (`--install` to commit, `--remove` to undo).
 - `trs ingest`: project digest for LLM consumption. Use symbol index,
-  compression levels, or `owner/repo` URL shorthand.
-... (117 lines, hidden sections: Architecture · Key Design Decisions · Development · Testing)
+... (118 lines, hidden sections: Architecture · Key Design Decisions · Development · Testing)
 
 ## CHANGELOG.md
 
@@ -270,41 +297,41 @@ All notable changes to trs are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.5] - 2026-08-13
+## [0.9.1] - 2026-11-05
 
 ### Features
 
-- aws: Compress recursive s3 output from receipts to counts (#131)
-- find, stats: Tier find output by size, add `stats --gaps` (#132)
-- stats: Show recent efficiency next to the lifetime mean (#139)
-- stats: Add --days, and window the gaps view by default (#140)
-
-### Refactor
-
-- stats: Fold --gaps into --coverage, document the windows (#141)
-
-### CI / Build
-
-- Split CI into a Tenki quick tier and a GitHub full gate (#130)
-- Move the quick tier back to GitHub runners, cancel superseded runs (#135)
-- Adopt tenki-standard-small-2c-4g as the quick-tier default (#138)
-
-### Dependencies
-
-- deps: Bump the cargo-minor group across 1 directory with 4 updates (#134)
-
-## [0.7.4] - 2026-07-29
+- classify: Route runners to the parser of what they run (#226)
 
 ### Bug Fixes
 
-- rewrite: Stop doing text surgery on commands we can't parse (#127)
+- git: Never call a diff empty when it has output (#221)
+- parse: Never answer "clean" or "empty" for output a parser could not read (#222)
+- git: Run git in English so its parsers can read it (#223)
+- diff: Keep what a compact diff was losing (#224)
+- build: Stop reducing output to "build: ok" (#225)
 
-### Dependencies
+## [0.9.0] - 2026-11-05
 
-- deps: Bump the cargo-minor group across 1 directory with 7 updates (#123)
+### Features
 
-## [0.7.3] - 2026-07-28
-... (542 lines, hidden sections: [0.7.2] - 2026-07-28 · [0.7.1] - 2026-07-18 · [0.7.0] - 2026-07-18 · [0.6.17] - 2026-07-07 · [0.6.16] - 2026-06-09 · [0.6.15] - 2026-06-05 · [0.6.14] - 2026-06-04 · [0.6.13] - 2026-06-04)
+- Rest of P2 (AgentPolicy table, legacy hook identity, one-spawn plugins, doctor plugin checks, stats recall) (#210)
+- P3 measure before claiming (block size, A/B with control, rerun rate, unique-id needles, stamps) (#211)
+- output-saver: Shrink the block after pre-registered A/B tests (#212)
+- rewrite: Opt-in real exit status for piped build and test checks (#213)
+- output-saver: Targets for Grok Build, Kiro and OpenClaw (#214)
+- init: Hooks for Trae and Mistral Vibe (#216)
+
+### Bug Fixes
+
+- P1 from the learn-repos sweep (plugin pipes, permissions, help, worktrees, comments) (#208)
+- P2 small and cheap (passthrough tail, anchor guard, stats totals, atomic writes, ratchet, Droid/Cursor rules) (#209)
+- rewrite: Keep every tool input field when rewriting a command (#215)
+- rewrite: Never rewrite for Grok running Claude's hook (#218)
+
+### Documentation
+
+... (714 lines, hidden sections: [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07 · [0.8.5] - 2026-09-26 · [0.8.4] - 2026-09-26 · [0.8.3] - 2026-09-25)
 
 ## CLAUDE.md
 
@@ -348,10 +375,7 @@ ship-config gate, and delegating would run clippy twice.
 ## Release
 
 Tagging `vX.Y.Z` triggers `.github/workflows/release.yml` (5 binaries + npm
-publish + GitHub Release). Bump `Cargo.toml`, regenerate `CHANGELOG.md` with
-`git cliff -o CHANGELOG.md --tag vX.Y.Z`, merge, then tag. A tagged run uses
-the workflow at the tag's commit, so fixing a failed release means re-tagging,
-not re-running.
+... (56 lines)
 
 ## CODE_OF_CONDUCT.md
 
@@ -419,14 +443,14 @@ git config core.hooksPath .githooks
 - Prefer simple code over clever code. Three similar lines > premature abstraction.
 - Don't add doc comments to every function, only where the logic isn't obvious.
 
-... (214 lines, hidden sections: Adding a new parser · Proposing new commands · Project structure · Commit messages · Releasing · Questions?)
+... (226 lines, hidden sections: Adding a new parser · Proposing new commands · Project structure · Commit messages · Releasing · Questions?)
 
 **Cargo.toml**
 [package]
 name = "trs-cli"
-version = "0.7.5"
+version = "0.9.1"
 edition = "2021"
-description = "Token-reducing shell for AI agents: compact terminal output, ~70% fewer tokens on real agent commands"
+description = "Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands"
 license = "MIT"
 repository = "https://github.com/dPeluChe/trs"
 homepage = "https://usetrs.dev"
@@ -493,7 +517,7 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 
 Prefija cualquier comando con `trs` (o deja que `trs init` lo conecte a tu herramienta de IA). El binario ejecuta tu comando, parsea la salida, y emite una versión compacta pensada para humanos y LLMs.
 
-... (238 lines, hidden sections: 1.4 KB → 336 B (76% reducción) · 55 KB → 58 B (99% reducción) · 55 KB → 5.5 KB (90% reducción) · Instalación · macOS / Linux · npm (todas las plataformas) · cargo (compila desde fuente) · Windows (PowerShell))
+... (245 lines, hidden sections: 1.4 KB → 336 B (76% reducción) · 164 KB → 127 B (99% reducción) · 55 KB → 5.5 KB (90% reducción) · Instalación · macOS / Linux · npm (todas las plataformas) · cargo (compila desde fuente) · Windows (PowerShell))
 
 ## SECURITY.md
 
@@ -539,6 +563,39 @@ remotes:
     refetch_frequency: 24h
     configs:
       - hooks/lefthook-base.yml
+
+## .cargo/
+
+**config.toml**
+# Tests run the real trs binary; point its data dir (history, tee, config)
+# at target/ so a test run never writes the developer's ~/.trs.
+[env]
+TRS_HOME = { value = "target/test-trs-home", relative = true }
+
+## .devin/rules/
+
+**trs.md**
+---
+trigger: always_on
+---
+
+# trs (Token-Reducing Shell): terminal output optimization
+
+Devin Local does not expose a pre-execution hook, so this rule is the way to
+opt into trs. When running shell commands, prefix them with `trs` to get
+compact, structured output.
+
+# Instead of:
+git status
+cargo test
+pnpm test
+
+# Use:
+trs git status
+trs cargo test
+trs pnpm test
+
+... (79 lines, hidden sections: Output saver: keep replies cheap · Code authoring · Keeping this file lean)
 
 ## .githooks/
 
@@ -677,7 +734,7 @@ C_RED='\033[0;31m'
 C_CYAN='\033[0;36m'
 ... (20 lines)
 
-**llms.txt**: (30 lines)
+**llms.txt**: (29 lines)
 **robots.txt**
 User-agent: *
 Allow: /
@@ -759,7 +816,7 @@ matrix below. Six distinct target paths across three mechanisms:
 | Gemini CLI | standalone file + `@import` | `~/.gemini/trs-output-saver.md` + line in `~/.gemini/GEMINI.md` |
 | Cursor | local plugin, always-apply rule | `~/.cursor/plugins/local/trs/` |
 | Codex | inline with sentinels | `~/.codex/AGENTS.md` |
-... (439 lines, hidden sections: Integration types · Wire-format dispatch (hook agents) · Agent attribution (`TRS_AGENT`) · Per-agent reference · Test prompts · Debugging a broken integration · 1. Create a logging wrapper · 2. Point the agent's hook at the wrapper (back up first))
+... (559 lines, hidden sections: Integration types · Wire-format dispatch (hook agents) · Agent attribution (`TRS_AGENT`) · Per-agent reference · Permissions per agent · Test prompts · Debugging a broken integration · 1. Create a logging wrapper)
 
 **antigravity-hooks-research.md**
 # Antigravity hooks: research notes
@@ -784,6 +841,29 @@ trs v0.6.4 wrongly aliased both Antigravity variants to the Gemini CLI
 hook harness (`BeforeTool` entry in `~/.gemini/settings.json`). agy
 ... (165 lines, hidden sections: Investigation summary · What unblocks re-enabling the integration · What still works in v0.6.6 · Why we didn't just leave v0.6.5 installed · Reproducing · Plant a side-channel probe in agy's hooks.json · Restart agy fresh, ask it to "ejecuta ls en bash y muéstrame la salida" · Then check:)
 
+**output-cost-findings.md**
+# What actually moves agent cost: findings from the output-saver tests
+
+Measured 2026-11-04 on Claude Code with sonnet. Read this before changing the
+output-saver block or claiming an output-side saving. Per-test numbers and the
+public claims live in [the output-saver doc](../features/output-saver.md#measuring-impact).
+
+## The short version
+
+- Reply rules don't pay. No rule block beat the one line "Answer concisely."
+  on tokens, cost, turns or correct answers.
+- Asking for brevity at all does work: about half the output tokens of no
+  instruction on chat-style prompts.
+- Output is a small part of the bill. Turns and context size are the lever.
+- The model already reads the code. Telling it to verify changed nothing we
+  could measure.
+- So the block is now 698 bytes: the one line, "never invent", the comment rule.
+
+## Where the money goes
+
+From local transcripts, 105,592 model calls, at price ratios of 1 (input), 1.25
+... (117 lines, hidden sections: The tests · What we don't know · How to run the next test · Where to go next)
+
 ## docs/development/benchmarks/
 
 **README.md**
@@ -801,13 +881,23 @@ comparisons here and let the numbers guide the decisions we make in trs.
 The goal is internal knowledge: "what do we actually do better, and where
 should we improve?", not to publish a leaderboard.
 
+## What we learned
+
+[`output-cost-findings.md`](../output-cost-findings.md) records where agent cost actually goes, what the output-saver tests showed and how to run the next one.
+
 ## What's in here
 
-| Script | Purpose |
-|--------|---------|
-| [`benchmark.sh`](./benchmark.sh) | Comparative runs against rtk and token-saver on a curated set of real-world commands |
-| [`benchmark-real.sh`](./benchmark-real.sh) | Longer, more varied workload (slower, more representative) |
 ... (41 lines)
+
+**bench_stats.py**
+
+  def boot_diff(before, after, fn=statistics.fmean, resamples=2000, seed=11):
+      rng = random.Random(seed)
+      diffs = sorted(
+          fn(rng.choices(after, k=len(after))) - fn(rng.choices(before, k=len(before)))
+          for _ in range(resamples)
+      )
+      return diffs[int(0.025 * resamples)], diffs[int(0.975 * resamples) - 1]
 
 **benchmark-real.sh**
 BLUE='\033[0;34m'
@@ -842,6 +932,108 @@ NC='\033[0m'
 TRS_BIN="$REPO_ROOT/target/release/trs"
 ... (11 lines)
 
+**output_saver_ab.py**
+  def trs_block()
+  def markers(text)
+  def run_real(prompt, arm_text, model, budget)
+  def run_dry(prompt, arm_text, *_)
+  def main()
+
+**output_saver_agentic.py**
+  def sh(cwd, *cmd)
+  def tests_pass(cwd)
+  def v_fix(cwd, reply)
+  def v_find(cwd, reply)
+  def v_flag(cwd, reply)
+  def v_rename(cwd, reply)
+  def run_one(prompt, arm_text, check, model, effort, budget, repo=REPO, allowed=ALLOWED)
+  def summarize(rows, arms)
+  def main()
+  def work(job)
+
+**output_saver_stale.py**: def _check(true_re) | def surfaced(task, reply)
+**transcript_output.py**
+  def default_since()
+  def messages(projects_dir)
+  def report(name, before, after, resamples)
+  def main()
+
+**truth.py**
+  def find_trs()
+  def tokenizer()
+  def sh(cmd, stderr=False)
+  def hook(trs, cmd)
+  def anchors(text)
+  def buried(raw)
+  def kept(found, text)
+  def has(kind, a)
+  def naive_tail(raw, budget)
+  def main()
+
+## docs/development/benchmarks/compare/
+
+**compare.py**
+  def payload(cmd, **extra)
+  def updated(out)
+  def ts_python()
+  def decide(tool, cmd)
+  def run(cmd, env, cwd)
+  def claw(text)
+  def corpus()
+  def score(raw, out, found)
+  def main()
+  def report(rows, pipes, tools)
+  def agg(t)
+
+**corpus.txt**
+# cwd::command. Shapes drawn from 14 days of real agent sessions (grep, git,
+# ls, find, gh, docker, ps, test runners). {repo} is this repo; {fixtures} is
+# what setup.sh builds. Git rows move with the repo: compare runs at one commit.
+# [docker] rows run only when the daemon answers.
+{repo}::grep -n "fn " src/report.rs
+{repo}::grep -rn "emit_compressed" src
+{repo}::grep -rn "fn main" src
+{repo}::grep -rn -A3 "pub(crate) fn" src/report.rs
+... (42 lines)
+
+**fixtures.py**
+  part of the corpus without depending on any real project's state."""
+
+  root = sys.argv[1]
+  for d in ("cargofail/src", "buntest", "pyfail"):
+      os.makedirs(os.path.join(root, d), exist_ok=True)
+
+  open(f"{root}/cargofail/Cargo.toml", "w").write(
+      '[package]\nname = "cargofail"\nversion = "0.1.0"\nedition = "2021"\n')
+  rs = ["fn add(a: i32, b: i32) -> i32 { a + b }", "fn main() { println!(\"{}\", add(1, 2)); }",
+        "#[cfg(test)] mod tests { use super::*;"]
+  rs += [f"  #[test] fn passes_{i}() {{ assert_eq!(add({i}, 1), {i + 1}); }}" for i in range(60)]
+  rs += ['  #[test] fn fails_on_overflow_boundary() { assert_eq!(add(2, 2), 5, "addition drifted"); }',
+         '  #[test] fn fails_parsing_config() { "abc".parse::<i32>().unwrap(); }', "}"]
+  open(f"{root}/cargofail/src/main.rs", "w").write("\n".join(rs) + "\n")
+
+  ts = ["import { test, expect } from 'bun:test';"]
+  ts += [f"test('adds case {i}', () => {{ expect({i}+1).toBe({i + 1}); }});" for i in range(80)]
+  ts += ["test('formats currency for MXN locale', () => { expect((1234.5).toFixed(1)).toBe('1,234.50'); });",
+         "test('rejects expired token', () => { expect({ ok: true, reason: 'valid' }).toEqual({ ok: false, reason: 'expired' }); });"]
+  open(f"{root}/buntest/math.test.ts", "w").write("\n".join(ts) + "\n")
+
+  py = [f"def test_ok_{i}():\n    assert {i} + 1 == {i + 1}\n" for i in range(70)]
+  py += ["def test_invoice_total_rounding():\n    total = round(0.1 + 0.2, 2)\n    assert total == 0.31, f'expected 0.31, got {total}'\n",
+         "def test_user_lookup_missing():\n    users = {'ana': 1}\n    assert users['beto'] == 2\n"]
+  open(f"{root}/pyfail/test_app.py", "w").write("\n".join(py))
+
+**setup.sh**
+#!/usr/bin/env bash
+set -euo pipefail
+R=${TRS_BENCH_REPOS:-$(spark config 2>/dev/null | awk '/repos_root/{print $3}')/github.com}
+C=${TRS_BENCH_DIR:-$HOME/.cache/trs-bench}
+mkdir -p "$C"
+echo "clones: $R"; echo "cache:  $C"
+
+command -v rtk >/dev/null || echo "rtk not on PATH: brew install rtk (skipped otherwise)"
+... (26 lines)
+
 ## docs/features/
 
 **audit-docs.md**
@@ -865,7 +1057,7 @@ every interaction.
   or don't exist yet (so you can extract them into new files).
 
 ## Quick reference
-... (127 lines, hidden sections: What it scans · Duplicate detection (SimHash) · Dead `@imports` · Embedded bloat · Language support for symbol extraction · Integration with `trs doctor` · Philosophy · Output format example)
+... (137 lines, hidden sections: What it scans · Duplicate detection (SimHash) · Dead `@imports` · Update stamps · Embedded bloat · Language support for symbol extraction · Integration with `trs doctor` · Philosophy)
 
 **configuration.md**
 # Configuration
@@ -884,11 +1076,11 @@ Two lookup paths, merged (project overrides home):
 Later keys win. Unrecognized keys are ignored with a warning on
 `trs doctor`.
 
-## Tunable limits
+### Data directory
 
-[limits]
-grep_max_results = 200           # max rows surfaced by trs grep / search
-... (121 lines, hidden sections: Hook-time wrappers · Bypassing trs for a single command · Inspecting the active config · When to skip the config file · See also)
+History, saved raw outputs (`tee/`), ingest digests and the per-user
+`config.toml` live in `~/.trs`. Set `TRS_HOME` to use another directory.
+... (160 lines, hidden sections: Tunable limits · Real exit status for piped checks · Hook-time wrappers · Bypassing trs for a single command · Inspecting the active config · When to skip the config file · See also)
 
 **diff.md**
 # `trs diff`: audit what compression drops
@@ -934,7 +1126,7 @@ trs doctor --json   # machine-readable; exits non-zero on any Fail
 | `trs binary` | Reports version + binary path (never fails, always informational). |
 | `trs in PATH` | `which -a trs` / `where trs`. Warns if multiple binaries exist so a shadowed install doesn't silently win. |
 | `git available` | `git --version`. Required, several parsers assume git is present. |
-... (100 lines, hidden sections: Reading the report · JSON mode · Typical fixes · See also)
+... (120 lines, hidden sections: Reading the report · JSON mode · Typical fixes · See also)
 
 **formats.md**
 # Output formats
@@ -952,12 +1144,12 @@ json/csv/tsv, pipelines sometimes want raw passthrough.
 | `--agent` | agent-optimized markdown | LLMs specifically, same compact form with marker syntax for section parsing |
 | `--raw` | raw passthrough | unchanged, no compression, still tracked in stats |
 
-Flags work anywhere in the invocation: `trs --json git status` and
-`trs git status --json` are equivalent.
-
-## Examples
-
-... (126 lines, hidden sections: When to use what · Built-in tools vs wrapped commands · See also)
+Before the command a flag is always trs's: `trs --json git status`.
+After the command it is trs's only when trs has a formatter for that
+command and the command does not take the flag itself, so
+`trs git status --json` and `trs --json git status` are equivalent.
+Otherwise the flag belongs to the command and is passed on untouched:
+... (140 lines, hidden sections: Structured output is never rewritten · Examples · When to use what · Built-in tools vs wrapped commands · See also)
 
 **ingest.md**
 # `trs ingest`: project digest for AI agents
@@ -986,13 +1178,13 @@ trs ingest --list               # list saved digests + HEAD sha + stale markers
 # `trs init`: install hooks for AI agents
 
 `trs init` wires your AI coding agent's shell-execution pipeline through
-`trs rewrite` so every command gets compressed automatically. Sixteen
+`trs rewrite` so every command gets compressed automatically. Eighteen
 agents are supported end-to-end. See [`docs/development/agent-integrations.md`](../development/agent-integrations.md)
 for the full per-agent reference.
 
 ## Quick reference
 
-trs init --show                      # status of all 16 agents
+trs init --show                      # status of all 18 agents
 trs init --all --global              # install for every detected agent
 trs init <agent>                     # install for one: claude, gemini, cursor, …
 trs init --all --global --dry-run    # preview every file that would change
@@ -1003,18 +1195,19 @@ trs init <agent> --replace           # migrate cleanly from another compressor
 
 | Agent | Type | Target |
 |---|---|---|
-... (240 lines, hidden sections: Preview with `--dry-run` · Collision handling · Refreshing hooks · `--global` vs project-local · Bypassing the hook for one command · Agent attribution (`TRS_AGENT`) · Uninstalling · See also)
+... (243 lines, hidden sections: Preview with `--dry-run` · Collision handling · Refreshing hooks · `--global` vs project-local · Bypassing the hook for one command · Agent attribution (`TRS_AGENT`) · Uninstalling · See also)
 
 **output-saver.md**
 # `trs output-saver`: reduce tokens on the agent's replies
 
 `trs rewrite` (wired up by [`trs init`](init.md)) compresses what
-agents see, the output of the shell commands they run. Agents
-still emit verbose replies: preambles ("Sure!"), narration
-("Now I will…"), speculative suggestions, hallucinated file paths.
+agents see, the output of the shell commands they run.
 
 `trs output-saver` installs a short rules block into each supported
-agent's global config so those replies come back tighter.
+agent's global config: answer concisely, never invent paths or API
+fields, keep code comments short. It is deliberately small: in
+pre-registered tests no longer block beat the line "Answer concisely."
+([findings](../development/output-cost-findings.md)).
 
 ## Quick reference
 
@@ -1025,8 +1218,7 @@ trs output-saver --verify        # per-agent: block matches current canonical?
 trs output-saver --refresh       # re-write the block where it's already present
 trs output-saver --remove        # clean uninstall
 trs output-saver --print         # dump the block to stdout (pipe-friendly)
-
-... (260 lines, hidden sections: What the block says · Why these rules: research backing · Coverage matrix · How the install is idempotent · Output saver: keep replies cheap · Check-first semantics · `--refresh`: pick up template changes without adding new installs · `--remove` behavior)
+... (272 lines, hidden sections: What the block says · Why it is this short · Coverage matrix · How the install is idempotent · Output saver: keep replies cheap · Check-first semantics · `--refresh`: pick up template changes without adding new installs · `--remove` behavior)
 
 **stats.md**
 # `trs stats`: token savings dashboard
@@ -1049,7 +1241,7 @@ the most recent run). Same ordering in `--json` mode.
 trs stats              # summary dashboard (top 15 commands)
 trs stats --history    # per-command log (most recent 20)
 trs stats -n 30        # override row cap (top 30 in summary, last 30 in --history)
-... (285 lines, hidden sections: Time windows · Summary (default) · History view · `--by-agent`: attribution breakdown · `--by-command`: command family breakdown · `--coverage`: parser-gap analysis · JSON mode · What gets tracked)
+... (345 lines, hidden sections: Time windows · Summary (default) · History view · `--by-agent`: attribution breakdown · `--by-command`: command family breakdown · `--coverage`: parser-gap analysis · JSON mode · What gets tracked)
 
 **uninstall.md**
 # `trs uninstall`: remove trs from agent configs
@@ -1120,7 +1312,7 @@ Binary: `trs` | Language: Rust | Status: Active development
 
 ---
 
-... (502 lines, hidden sections: Phase 2: New Parsers · Phase 2.5: Ideas from competitor analysis · Phase 3: Agent integration follow-ups · Documentation drift (carry-over from v0.5.9) · Phase 2.6: Internal architecture (May 2026 feedback) · Phase 3.5: Codex integration (stale, needs rework) · Phase 2.5b: Competitive landscape (May 2026) · Phase 2.7: Ingest upgrade: codebase intelligence (2026-07))
+... (656 lines, hidden sections: Phase 2: New Parsers · Phase 2.5: Ideas from competitor analysis · Phase 2.9: Sweep of the learn repos, 2026-11-03 · Exegol (our agent desktop app, github.com/dPeluChe/exegol) · Phase 3: Agent integration follow-ups · Documentation drift (carry-over from v0.5.9) · Phase 2.6: Internal architecture (May 2026 feedback) · Phase 3.5: Codex integration (mostly shipped, re-checked 2026-08-29))
 
 ## docs/roadmap/completed/
 
@@ -1193,6 +1385,29 @@ This session removed bypass mentions from prompt-level surfaces
 whether the strategy is working.
 ... (222 lines, hidden sections: Completed · Decisions · Files Changed · Out of scope (deferred) · 2026-05-01 — Defensive-line iteration after field test (v0.5.16) · Context · Completed · Decisions)
 
+**2608.md**
+# Agosto 2026: trs development log
+
+---
+
+# 2026-08-26: reglas de escritura, barrido de comandos y auditoria de docs
+
+## Context
+
+Un ciclo largo con tres hilos que resultaron ser el mismo problema visto
+desde angulos distintos: lo que trs declara no siempre coincidia con lo
+que trs hace. La regla de escritura que inyectaba en cada agente la
+incumplia el propio repo; el reporte de cobertura decia 45% donde la
+compresion real era 0%; y la bandera `known` afirmaba parsers inexistentes en
+un sentido y ocultaba parsers reales en el otro.
+
+## Completed
+
+### Reglas de escritura (#143, #144, #145)
+
+- Se agregaron dos reglas al bloque que `output-saver` instala en cada
+... (346 lines, hidden sections: Decisions · Files Changed · 2026-08-28: pase de calidad previo al release · Context · Completed · Decisions · 2026-08-28: cerrar los hallazgos que habian quedado diferidos · Context)
+
 **README.md**
 # TASK_COMPLETED: changelog de trabajo
 
@@ -1221,7 +1436,7 @@ Por que se hizo este trabajo. Contexto del problema o requerimiento.
 **agents.md**
 # Supported AI agents
 
-Sixteen AI coding agents are supported end-to-end. Each row lists the
+Eighteen AI coding agents are supported end-to-end. Each row lists the
 install method, which sides of the loop trs touches (input / output),
 how `trs stats --by-agent` labels runs from that agent, and the
 install scope.
@@ -1230,7 +1445,7 @@ install scope.
 |---|---|---|---|---|---|
 | Claude Code | programmatic hook | ✓ | ✓ (`@import`) | `claude` | global + project |
 | Gemini CLI | programmatic hook | ✓ | ✓ (`@import`) | `gemini` | global + project |
-| Cursor | programmatic hook | ✓ | ✓ (`.mdc`) | `cursor` | global + project |
+| Cursor | programmatic hook | ✓ | ✓ (local plugin) | `cursor` | global + project |
 | OpenCode | plugin template | ✓ | ✓ (inline block) | `opencode` | global |
 | Kilo Code | plugin template | ✓ | ✓ (inline block) | `kilo` | global |
 | Pi Coding Agent | programmatic hook (extension) | ✓ | — | `pi` | global + project |
@@ -1247,22 +1462,22 @@ install scope.
 Every command supported by trs falls into one of four levels.
 
 1. Dedicated parser. trs spawns the tool, parses its native output,
-   and emits a structured compact form. Typical reduction depends on the command (see docs/development/benchmarks).
+   and emits a structured compact form. See the measured numbers per command in [the benchmarks](../development/benchmarks/README.md).
 2. Dispatched alias. A different binary with the same semantics
    (e.g. `rg` for `grep`, `eza` for `ls`) gets routed to the same
    parser. No configuration, the dispatcher recognizes the binary
    name.
 3. Generic compression. Commands without a parser still get ANSI
-   stripping, whitespace collapse, and repeated-line deduplication.
-   Typical reduction 30–40% "free."
-4. Passthrough. Commands where trs detects a flag that already
-   produces structured output (`--json`, `--porcelain`) are passed
-   through untouched, the agent gets the raw structured form.
-
-## Commands with dedicated parsers
-
-### VCS: git
-... (283 lines, hidden sections: Built-in trs tools (not wrappers) · Dispatch mechanisms · Generic compression (the fallback))
+   stripping and whitespace collapse. Consecutive repeats fold to
+   `line (x3)`, or `(last 2 lines x3)` for a repeated block; each fold is
+   undone and compared before it is used, and non-consecutive repeats are
+   left alone because their order is information. Log lines equal but
+   for their timestamps keep the first line plus `(x3, until 19:56:31)`;
+   spacing, symbols and numbers still have to match, because in code they
+   are content. A 300+ char line with
+   almost no spaces (minified code, base64, a data URI) keeps its head
+   and tail around `…[minified, 4184 chars]…`, and the full output is
+... (319 lines, hidden sections: Commands with dedicated parsers · Built-in trs tools (not wrappers) · Dispatch mechanisms · Generic compression (the fallback))
 
 **install.md**
 # Installing trs
@@ -1304,11 +1519,11 @@ update it as new tools appear.
   shell compression. TOML filter pipeline, SQLite usage tracking,
   dedicated `rtk gain` analytics. Overlaps significantly with trs on
   the core rewrite surface.
-- token-optimizer: Node-based compressor, installs as a global
-  npm package. Hook integration focused on Claude Code.
+- token-optimizer: Python hook script (`bash_hook.py`) shipped as a
+  Claude Code plugin, not a global package. Hook integration focused on
+  Claude Code.
 - token-saver: early-stage shell wrapper, smaller scope than
-  rtk / trs.
-... (60 lines, hidden sections: How trs positions itself · Installing alongside another tool)
+... (61 lines, hidden sections: How trs positions itself · Installing alongside another tool)
 
 **safety.md**
 # Safety guarantees
@@ -1331,7 +1546,7 @@ that from happening.
   trs exits 1. Scripts and CI relying on exit codes keep working.
 - Never silently change semantics. No rewrites that would change
   what the tool does, only how its output is presented.
-... (73 lines, hidden sections: Parser safety · Failure recovery · Install-time safety · See also)
+... (81 lines, hidden sections: Parser safety · Failure recovery · Permissions · Install-time safety · See also)
 
 ## memory/
 
@@ -1397,7 +1612,7 @@ Do NOT do the switch before v0.5.10 ships — the hook would pin to the older in
 Transform noisy terminal output into compact, structured signal.
 A CLI toolkit for developers, automation pipelines, and AI agents.
 
-~70% fewer tokens on real agent commands.
+Up to 60% fewer tokens on real agent commands. What it leaves out, it says where to find.
 
 ## Install
 
@@ -1482,6 +1697,13 @@ PASS=0
 FAIL=0
 ... (13 lines)
 
+**post-release-clean.sh**
+POLL="${POST_RELEASE_POLL_SECONDS:-15}"
+WAIT_MAX="${POST_RELEASE_WAIT_SECONDS:-1800}"
+fail()
+DRY=--dry-run
+BENCH_DIR="${TRS_BENCH_DIR:-$HOME/.cache/trs-bench}"
+
 **sync-codebase-digest.sh**
 #!/usr/bin/env bash
 
@@ -1502,7 +1724,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 if [ -n "$1" ]; then
   VERSION="$1"
-... (32 lines)
+... (37 lines)
 
 ## src/
 
@@ -1532,6 +1754,16 @@ if [ -n "$1" ]; then
   fn devin_cli_is_a_hook_not_rules_only()
   fn output_saver_agents_match_registry()
 
+**anchor_guard.rs**
+  pub fn looks_like_hash(h: &str) -> bool
+  pub fn anchors_lost(raw: &str, summary: &str) -> bool
+  mod tests
+  fn raw_listing() -> String
+  fn a_summary_that_drops_the_paths_is_flagged()
+  fn a_summary_that_keeps_the_paths_is_not()
+  fn small_or_anchorless_output_is_never_flagged()
+  fn a_short_hash_prefix_counts_as_kept()
+
 **audit_docs.rs**
   pub struct DocFile
   pub struct Block
@@ -1547,8 +1779,8 @@ if [ -n "$1" ]; then
   pub fn estimate_tokens(text: &str) -> usize
   fn find_inline_bloat(docs: &[DocFile]) -> Vec<InlineBloat>
   fn collect_code_fences(file_idx: usize, content: &str, out: &mut Vec<InlineBloat>)
-  fn fence_open_lang(line: &str) -> Option<String>
-  fn is_fence_close(line: &str) -> bool
+  pub fn fence_open_lang(line: &str) -> Option<String>
+  pub fn is_fence_close(line: &str) -> bool
   fn collect_large_tables(file_idx: usize, content: &str, out: &mut Vec<InlineBloat>)
   fn is_table_row(line: &str) -> bool
   fn is_table_separator(line: &str) -> bool
@@ -1578,19 +1810,25 @@ if [ -n "$1" ]; then
   fn contains_symbol_definition(content: &str, sym: &str, ext: &str) -> bool
   pub fn last_commit_days_ago(path: &Path, root: &Path) -> Option<u64>
 
+**audit_docs_volatile.rs**
+  pub struct VolatileLine
+  pub fn find_volatile(docs: &[DocFile]) -> Vec<VolatileLine>
+  pub fn print_volatile(found: &[VolatileLine])
+  mod tests
+  fn doc(content: &str) -> DocFile
+  fn stamps_are_found_outside_code_fences_only()
+
 **benchmark.rs**
   struct IterResult
   struct BenchReport
   pub fn run_benchmark(command: &str, args: &[String], repeat: usize, json: bool)
   fn run_once(cmd: &str, args: &[String]) -> Option<IterResult>
-  fn run_through_trs(cmd: &str, args: &[String], raw_bytes: usize) -> usize
-  fn estimate_compressed_size(cmd: &str, args: &[String], raw_bytes: usize) -> usize
+  fn run_through_trs(cmd: &str, args: &[String]) -> Option<usize>
   fn print_json(r: &BenchReport)
   fn print_table(r: &BenchReport)
   fn format_number(n: u64) -> String
   mod tests
   fn test_format_number()
-  fn test_estimate_compressed_size()
   fn test_bytes_per_token_constant()
   fn test_reduction_pct_zero_input()
 
@@ -1607,18 +1845,42 @@ if [ -n "$1" ]; then
   pub fn is_after_tail_subcommand(args: &[String], pos: usize) -> bool
   pub fn strip_git_global_opts(args: &[String]) -> Vec<String>
   pub fn unwrap_shell_c(args: &[String]) -> Option<Vec<String>>
+  fn after_runner_opts(args: &[String]) -> Option<&[String]>
+  pub fn unwrap_runner<'a>(cmd: &str, args: &'a [String]) -> Option<&'a [String]>
+  pub fn stderr_owner<'a>(name: &'a str, args: &'a [String]) -> (&'a str, String)
   pub fn unwrap_timeout(args: &[String]) -> Option<Vec<String>>
+  pub fn is_help_request<S: AsRef<str>>(cmd: &str, args: &[S]) -> bool
   pub fn has_structured_output_flag(args: &[String]) -> bool
+  pub fn subcommand(cmd: &str, args: &[String]) -> String
+
+  enum Flag
+  fn trs_flag(arg: &str) -> Option<Flag>
+  pub fn child_owns_format_flag(cmd: &str, args: &[String], flag: &str) -> bool
+  pub fn split_format_flags(
+  mod tests
+
+**classifier_args_tests.rs**
+  fn argv(args: &[&str]) -> Vec<String>
+  fn split(args: &[&str]) -> (Vec<String>, Option<OutputFormat>, bool)
+  fn kept(args: &[&str]) -> Vec<String>
+  fn a_flag_the_program_defines_goes_to_the_program()
+  fn git_raw_is_gits_for_diff_and_log_even_after_global_options()
+  fn a_flag_trs_formats_for_is_still_trs()
+  fn commands_trs_has_no_formatter_for_keep_every_flag()
+  fn nothing_after_a_double_dash_is_trs()
+  fn args_without_our_flags_are_untouched()
+  fn structured_output_requests_are_recognized()
+  fn the_subcommand_skips_git_global_options()
 
 **classifier_exec.rs**
   pub fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext)
+  fn track(
+  fn point_to_raw(
   fn failure_is_visible(parsed: &str) -> bool
   fn emit_failure_footer(
   fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String>
   fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()>
-  fn is_verbatim_invocation(cmd: &str, args: &[String]) -> bool
   fn generic_compress(input: &str) -> String
-  pub fn collapse_repeated_lines(input: &str) -> String
   fn collapse_whitespace(s: &str) -> String
 
 **classifier_tests.rs**
@@ -1629,6 +1891,10 @@ if [ -n "$1" ]; then
   fn bash_c_simple_command_unwraps()
   fn absolute_path_routes_by_basename()
   fn bare_python_linters_and_formatters_route()
+  fn runners_reach_the_parser_of_what_they_run()
+  fn prettier_is_routed_however_it_is_launched()
+  fn a_runner_takes_the_stderr_policy_of_what_it_runs()
+  fn a_runner_with_nothing_to_route_stays_out()
   fn timeout_unwraps_inner_command()
   fn bash_c_compound_or_quoted_stays_generic()
   fn git_show_blob_form_is_not_a_diff()
@@ -1683,7 +1949,10 @@ if [ -n "$1" ]; then
   pub fn keep_ratio(cmd: &str, subcmd: &str) -> f64
   pub fn combine_stderr(cmd: &str, subcmd: &str) -> bool
   pub fn is_verbatim_command(cmd: &str) -> bool
-  pub fn is_rewrite_command(cmd: &str) -> bool
+  fn caller_selected_fields(cmd: &str, rest: &str) -> bool
+  fn git_show_blob(cmd: &str, rest: &str) -> bool
+  fn tail_of_a_file(cmd: &str, rest: &str) -> bool
+  pub fn is_verbatim_invocation(cmd: &str, rest: &str) -> bool
   pub fn is_known_binary(cmd: &str) -> bool
   mod tests
 
@@ -1700,11 +1969,17 @@ if [ -n "$1" ]; then
   fn combine_stderr_subcommand_scoped()
   fn combine_stderr_never_commands()
   fn is_known_binary_matches_golden_set_exactly()
-  fn rewrite_eligibility_matches_legacy_prefixes()
   fn no_duplicate_command_names()
-  fn verbatim_commands_are_known_and_never_rewritten()
+  fn verbatim_commands_are_counted_as_known()
+  fn a_caller_selected_field_list_is_left_alone()
+  fn verbatim_gate_sees_through_a_shell_wrapper()
   fn compressible_commands_stay_out_of_the_verbatim_class()
   fn bunx_dispatches_like_npx()
+  fn git_show_of_a_file_is_verbatim()
+  fn tail_is_verbatim_unless_it_reads_a_log()
+  fn git_log_with_a_chosen_layout_is_verbatim()
+  fn a_command_run_by_path_gets_its_own_policy()
+  fn git_diff_and_show_with_a_chosen_layout_are_verbatim()
 
 **commands.rs**
   mod commands_parse
@@ -1712,13 +1987,10 @@ if [ -n "$1" ]; then
   pub enum Commands
   pub enum ReadLevel
   pub enum TestRunner
+  pub enum ReportKind
 
-**commands_parse.rs**
-  pub enum ParseCommands
-
-  impl ParseCommands
-  pub fn with_file(path: PathBuf) -> Self
-
+**commands_parse.rs**: pub enum ParseCommands | mod with_file
+**commands_parse_with_file.rs**: impl ParseCommands | pub fn with_file(path: PathBuf) -> Self
 **config.rs**
   pub fn config() -> &'static Config
   pub struct Config
@@ -1741,7 +2013,7 @@ if [ -n "$1" ]; then
 
 **debug_info.rs**
   pub fn run(output: Option<&str>)
-  fn build_report() -> String
+  pub fn build_report() -> String
   fn section(out: &mut String, title: &str, body: String)
   fn version_section() -> String
   fn platform_section() -> String
@@ -1804,6 +2076,7 @@ if [ -n "$1" ]; then
   pub fn check_codex_hooks_orphan() -> Check
   pub fn check_devin_cli_hook() -> Check
   pub fn check_output_saver_installed() -> Check
+  pub fn check_rules_blocks() -> Check
   pub fn check_agent_docs_health() -> Check
   fn human_k(n: usize) -> String
   pub fn check_version() -> Check
@@ -1812,7 +2085,20 @@ if [ -n "$1" ]; then
   pub fn check_config_dir() -> Check
   pub fn check_history_writable() -> Check
   pub fn check_stdin_pipeline() -> Check
+
+**doctor_hooks.rs**
   pub fn check_hooks_installed() -> Check
+  pub fn check_script_plugins() -> Vec<Check>
+  fn script_plugin_check(name: &'static str, content: &str, default_export: bool) -> Check
+  pub fn check_host_plugins() -> Vec<Check>
+  fn host_plugin_check(name: &'static str, content: &str, enabled: Option<bool>) -> Check
+  fn openclaw_enabled(dir: &std::path::Path) -> Option<bool>
+  fn hermes_enabled(dir: &std::path::Path) -> Option<bool>
+  pub fn hook_has_fired(trs_dir: &std::path::Path) -> bool
+  mod tests
+  fn an_outdated_script_plugin_is_flagged()
+  fn host_plugins_are_checked_for_staleness_and_for_being_enabled()
+  fn only_a_labelled_run_counts_as_a_hook_firing()
 
 **doctor_tests.rs**
   fn test_check_version_passes()
@@ -1830,15 +2116,11 @@ if [ -n "$1" ]; then
   fn test_check_builders()
 
 **exec.rs**
-pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command {
-    use std::process::Command;
-    #[cfg(windows)]
-    {
-        if cmd.to_ascii_lowercase().ends_with(".ps1") {
-            let mut c = Command::new("powershell");
-            c.args(["-NoProfile", "-File", cmd]);
-            c.args(args);
-... (67 lines)
+  pub fn build_command(cmd: &str, args: &[String]) -> std::process::Command
+  fn platform_command(cmd: &str, args: &[String]) -> std::process::Command
+  mod build_command_tests
+  fn posix_spawns_directly()
+  fn windows_routes_cmd_and_powershell()
 
 **fast_find.rs**
   pub fn run(args: &[&str], ctx: &CommandContext)
@@ -1849,6 +2131,14 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn glob_match_inner(p: &[char], n: &[char]) -> bool
   mod tests
   fn test_glob_match()
+
+**fs_atomic.rs**
+  pub fn write_atomic(path: &Path, content: &str) -> io::Result<()>
+  pub fn write_if_unchanged(path: &Path, base: &str, content: &str) -> io::Result<()>
+  mod tests
+  fn replaces_content_and_leaves_no_temp_file()
+  fn refuses_when_the_file_changed_since_it_was_read()
+  fn a_symlink_is_written_through_and_stays_a_symlink()
 
 **help.rs**
   pub use crate::help_text::*
@@ -1880,8 +2170,10 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   pub fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> bool
   fn install_trs_md_for(tool: &AiTool, quiet: bool)
   pub fn install_all(opts: InstallOpts)
+  pub fn install_finished(opts: InstallOpts)
   fn is_trs_in_path() -> bool
   pub fn check_tool(tool: &AiTool) -> bool
+  pub fn check_tool_in_scope(tool: &AiTool, global: bool) -> bool
   pub fn has_trs_marker(content: &str) -> bool
   pub fn file_has_any_trs_marker(content: &str) -> bool
   fn has_any_trs_marker_at(path_str: &str) -> bool
@@ -1920,21 +2212,19 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
 
 **init_install.rs**
   pub fn install_from_spec(spec: &HookSpec, opts: InstallOpts) -> Result<String>
-  pub fn install_codex_agents(opts: InstallOpts) -> Result<String>
-  fn write_agents_md_block(path: &Path, opts: InstallOpts) -> Result<String>
-  pub fn install_zed_agents(opts: InstallOpts) -> Result<String>
-  pub fn install_antigravity_rules(opts: InstallOpts) -> Result<String>
-  fn remove_hookspec_at(path: &Path, dry_run: bool) -> Result<()>
-  pub fn install_rules(
-  fn ensure_parent(path: &Path) -> Result<()>
+  pub fn remove_hookspec_at(path: &Path, dry_run: bool) -> Result<()>
+  pub fn ensure_parent(path: &Path) -> Result<()>
   fn write_hook(dir: &Path, path: &Path, content: &str, opts: InstallOpts) -> Result<String>
-  fn merge_json_hook(
+  pub fn merge_json_hook(
   pub fn contains_trs_rewrite(val: &serde_json::Value) -> bool
   pub fn scrub_legacy_codex_hook(
   mod tests
 
 **init_install_plugins.rs**
   pub fn hermes_home() -> Result<PathBuf>
+  pub fn openclaw_home() -> Result<PathBuf>
+  pub fn openclaw_plugin_dir(openclaw_home: &Path) -> PathBuf
+  pub fn hermes_plugin_dir(hermes_home: &Path) -> PathBuf
   pub fn install_openclaw_plugin(opts: InstallOpts) -> Result<String>
   pub fn install_hermes_plugin(opts: InstallOpts) -> Result<String>
   fn write_plugin_file(path: &Path, content: &str, opts: InstallOpts) -> Result<bool>
@@ -1957,6 +2247,28 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn hermes_patch_appends_block_when_plugins_key_absent()
   fn hermes_patch_exotic_layouts_fall_back_to_manual()
 
+**init_install_rules.rs**
+  pub fn install_codex_agents(opts: InstallOpts) -> Result<String>
+  pub fn refresh_sentinel_block(
+  fn write_agents_md_block(path: &Path, opts: InstallOpts) -> Result<String>
+  pub fn install_zed_agents(opts: InstallOpts) -> Result<String>
+  pub fn install_antigravity_rules(opts: InstallOpts) -> Result<String>
+  pub fn install_rules(
+  mod tests
+  pub enum RulesBlock
+  fn block_status(path: &Path, start: &str, end: &str, section: &str) -> RulesBlock
+  pub fn global_rules_blocks() -> Vec<(&'static str, PathBuf, RulesBlock)>
+
+**init_install_rules_tests.rs**
+  fn refresh_sentinel_block_leaves_everything_outside_untouched()
+  fn refresh_sentinel_block_refuses_to_pair_markers_from_different_blocks()
+  fn refresh_sentinel_block_declines_two_well_formed_blocks()
+  fn refresh_sentinel_block_declines_without_a_pair()
+  fn sentinel_markers_keep_their_exact_wire_form()
+  fn the_trs_marker_catches_the_backticked_spelling()
+  fn block_status_tells_the_four_states_apart()
+  fn block_status_reports_a_missing_file_as_absent()
+
 **init_install_tests.rs**
   fn scrub_legacy_codex_hook_removes_trs_only_event()
   fn scrub_legacy_codex_hook_preserves_user_entries_in_same_event()
@@ -1966,16 +2278,30 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
 **init_show.rs**: pub fn show_status() | pub fn show_status_and_usage()
 **init_templates.rs**
   pub use crate::init_templates_plugins::*
+  type = "pre_tool"
   mod tests
   fn opencode_kilo_plugins_are_windows_safe_and_idempotent()
+  fn opencode_plugin_loads_on_both_major_versions()
 
-**init_templates_plugins.rs**: (154 lines)
+**init_templates_plugins.rs**: (308 lines)
+**init_vibe.rs**
+  pub fn install_vibe_hook(opts: InstallOpts) -> Result<String>
+  fn install_at(path: &Path, opts: InstallOpts) -> Result<String>
+  mod tests
+  fn opts() -> InstallOpts
+  fn the_hook_is_valid_toml_with_the_fields_vibe_reads()
+  fn install_keeps_user_hooks_and_remove_restores_them()
+  fn a_stale_block_is_refreshed_in_place()
+  fn dry_run_writes_nothing()
+
 **main.rs**
   mod ai_tool
+  mod anchor_guard
   mod audit_docs
   mod audit_docs_detect
   mod audit_docs_report
   mod audit_docs_symbols
+  mod audit_docs_volatile
   mod benchmark
   mod classifier
   mod classifier_args
@@ -1991,44 +2317,73 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   mod discover
   mod doctor
   mod doctor_checks
+  mod doctor_hooks
   mod exec
   mod formatter
   mod help
   mod help_text
   mod help_text_more
   mod ingest
+  mod main_args
   mod init
   mod init_collision
   mod init_install
   mod init_install_plugins
+  mod init_install_rules
   mod init_show
   mod init_templates
   mod init_templates_plugins
+  mod init_vibe
+  mod main_ingest
   mod output_saver
   mod output_saver_core
+  mod output_saver_write
   mod parse_out
+  mod passthrough_cut
   mod path_display
+  mod pointer_recall
   mod process
   mod reducer
+  mod report
+  mod rerun_rate
   mod rewrite
   mod rewrite_decide
+  mod rewrite_gate
+  mod rewrite_perm_codex
+  mod rewrite_perm_cursor
+  mod rewrite_perm_devin
+  mod rewrite_perm_droid
+  mod rewrite_perm_gemini
+  mod rewrite_permissions
+  mod rewrite_pipe_status
+  mod rewrite_rules
   mod router
+  mod safe_folds
   mod schema
+  mod sentinel
   mod text_util
   pub mod tracker
   mod uninstall
+  mod uninstall_scrub
   mod upgrade
   pub use cli::format_precedence
   pub use cli::{Cli, OutputFormat
   pub use commands::{Commands, ParseCommands, TestRunner
   mod fast_find
-  mod read_intercept
+  mod fs_atomic
   fn main()
+  fn run_unparsed() -> !
   fn run()
-  fn is_external_fast_path(args: &[String]) -> bool
-  fn parse_token_budget(s: &str) -> usize
   mod tests
 
+**main_args.rs**
+  pub fn is_external_fast_path(args: &[String]) -> bool
+  pub fn is_closed_pipe_panic(msg: &str) -> bool
+  pub fn parse_token_budget(s: &str) -> usize
+  mod tests
+  fn only_a_closed_output_pipe_is_quiet()
+
+**main_ingest.rs**: pub fn run(cmd: &Commands, ctx: &CommandContext)
 **main_tests.rs**
   fn test_output_format_default()
   fn test_output_format_json_precedence()
@@ -2105,21 +2460,21 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn run_remove(targets: &[&str])
 
 **output_saver_core.rs**
-  enum Target
+  pub enum Target
   pub struct Agent
-  fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::Path>) -> Target
+  pub fn plugin_files(dir: &std::path::Path) -> [(PathBuf, String); 2]
+  pub fn is_trs_file(path: &std::path::Path) -> bool
+  pub fn rules_dir_content(header: &str) -> String
+  pub fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::Path>) -> Target
   pub enum Status
   pub enum VerifyStatus
   pub fn verify_agent(agent_id: &str) -> VerifyStatus
   fn verify_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> VerifyStatus
   pub fn scan_agent(agent_id: &str) -> Status
   fn scan_agent_with_home(agent_id: &str, home: Option<&std::path::Path>) -> Status
-  pub fn install_agent(agent_id: &str) -> Result<String>
-  fn install_agent_with_home(
-  pub fn remove_agent(agent_id: &str) -> Result<String>
-  fn remove_agent_with_home(
   pub fn replace_between(content: &str, start: &str, end: &str, new_block: &str) -> String
   mod tests
+  pub use crate::output_saver_write::{install_agent, remove_agent
 
 **output_saver_core_tests.rs**
   fn replace_between_swaps_segment()
@@ -2131,11 +2486,38 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn install_migrates_legacy_file()
   fn install_inline_file_is_idempotent()
   fn verify_agent_reports_loaded_drifted_and_not_installed()
+  fn standalone_file_explains_cuts_without_advertising_pipes_as_bypass()
+  fn copilot_gets_its_own_instructions_file_with_apply_to()
+  fn a_rules_dir_file_is_current_only_if_the_whole_file_matches()
+  fn cursor_plugin(home: &std::path::Path) -> std::path::PathBuf
+  fn cursor_gets_a_local_plugin_with_an_always_apply_rule()
+  fn a_changed_or_missing_plugin_file_is_drift()
+  fn installing_moves_trs_old_cursor_file_but_never_a_users()
+  fn removing_the_plugin_keeps_what_a_user_added_next_to_it()
+  fn the_old_cursor_file_counts_as_installed_so_refresh_migrates_it()
+  fn kiro_steering_loads_on_every_chat_and_survives_a_refresh_check()
+  fn grok_and_openclaw_keep_the_users_own_rules()
+  fn the_block_stays_inside_the_size_the_doc_quotes()
+
+**output_saver_write.rs**
+  pub fn install_agent(agent_id: &str) -> Result<String>
+  pub fn install_agent_with_home(
+  pub fn remove_agent(agent_id: &str) -> Result<String>
+  pub fn remove_agent_with_home(
 
 **parse_out.rs**
 
   thread_local! {
       static SINK: RefCell<Option<String>> = const { RefCell::new(None) };
+      static DROPPED: Cell<bool> = const { Cell::new(false) };
+  }
+
+  pub(crate) fn mark_dropped() {
+      DROPPED.with(|d| d.set(true));
+  }
+
+  pub(crate) fn take_dropped() -> bool {
+      DROPPED.with(|d| d.replace(false))
   }
 
   pub(crate) fn emit(s: &str) {
@@ -2152,6 +2534,7 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
 
   pub(crate) fn capture<F: FnOnce()>(f: F) -> String {
       SINK.with(|sink| *sink.borrow_mut() = Some(String::new()));
+      DROPPED.with(|d| d.set(false));
       f();
       SINK.with(|sink| sink.borrow_mut().take().unwrap_or_default())
   }
@@ -2176,6 +2559,20 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
       }
   }
 
+**passthrough_cut.rs**
+  fn needles(line: &str) -> impl Iterator<Item = &str>
+  pub fn cut(text: &str, max: usize) -> Option<String>
+  fn fit<'a>(lines: impl Iterator<Item = &'a str>, budget: usize) -> usize
+  fn cut_bytes(text: &str, max: usize) -> String
+  mod tests
+  fn long(n: usize) -> String
+  fn short_text_is_untouched()
+  fn the_tail_survives()
+  fn an_error_in_the_middle_is_kept()
+  fn a_unique_id_in_the_middle_is_kept_and_a_repeated_one_is_not()
+  fn an_id_dense_log_still_shrinks_to_the_budget()
+  fn multibyte_text_does_not_panic()
+
 **path_display.rs**
 
   pub(crate) fn display_path(path: &Path) -> String {
@@ -2194,6 +2591,20 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
           }
           _ => s,
       }
+  }
+
+  pub(crate) fn cwd_prefix() -> String {
+      std::env::current_dir()
+          .map(|d| dir_prefix(&d))
+          .unwrap_or_default()
+  }
+
+  pub(crate) fn dir_prefix(dir: &Path) -> String {
+      let s = dir.to_string_lossy();
+      if s.is_empty() {
+          return String::new();
+      }
+      format!("{s}{}", std::path::MAIN_SEPARATOR)
   }
 
   pub(crate) fn normalize(s: &str) -> String {
@@ -2234,6 +2645,53 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
               }
           }
           assert_eq!(tilde("/etc/hosts"), "/etc/hosts");
+      }
+  }
+
+**pointer_recall.rs**
+
+  static PRINTED: AtomicBool = AtomicBool::new(false);
+
+  pub(crate) fn note_pointer() {
+      PRINTED.store(true, Ordering::Relaxed);
+  }
+
+  pub(crate) fn printed() -> bool {
+      PRINTED.load(Ordering::Relaxed)
+  }
+
+  pub(crate) fn recall(entries: &[HistoryEntry]) -> (usize, usize) {
+      let pointers = entries.iter().filter(|e| e.ptr == Some(true)).count();
+      let reads = entries
+          .iter()
+          .filter(|e| e.bypass.is_none() && e.cmd.contains("/tee/") && e.cmd.contains(".log"))
+          .count();
+      (pointers, reads)
+  }
+
+  #[cfg(test)]
+  mod tests {
+      use super::*;
+
+      fn entry(cmd: &str, ptr: Option<bool>, bypass: Option<bool>) -> HistoryEntry {
+          HistoryEntry {
+              cmd: cmd.into(),
+              bypass,
+              ptr,
+              ..Default::default()
+          }
+      }
+
+      #[test]
+      fn counts_pointers_and_shell_reads_of_saved_files() {
+          let entries = [
+              entry("git show --stat", Some(true), None),
+              entry("cargo test", Some(true), None),
+              entry("git status", None, None),
+              entry("cat /home/u/.trs/tee/17_git_show.log", None, None),
+              entry("cat /home/u/.trs/tee/18_x.log", None, Some(true)),
+          ];
+          assert_eq!(recall(&entries), (2, 1));
       }
   }
 
@@ -2322,30 +2780,97 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn test_process_builder_env_clear()
   fn test_process_output_has_output()
 
-**read_intercept.rs**
-  pub fn try_cat(args: &[String], _ctx: &CommandContext) -> bool
-  pub fn try_head(args: &[String], _ctx: &CommandContext) -> bool
-  pub fn try_sed(args: &[String], _ctx: &CommandContext) -> bool
-  fn parse_head_args(args: &[String]) -> Option<(usize, String)>
-  fn parse_sed_range(args: &[String]) -> Option<(u32, u32, String)>
-  fn filtered_or_raw(filtered: String, raw: String, lang: Language) -> String
-  fn parse_range_expr(s: &str) -> Option<(u32, u32)>
+**report.rs**
+  pub fn scrub(text: &str) -> String
+  fn confirm(prompt: &str) -> bool
+  fn gh_available() -> bool
+  fn write_payload(body: &str, output: Option<&str>, default_name: &str) -> Option<PathBuf>
+  fn finish(title: &str, path: Option<PathBuf>, submit: bool)
+  pub fn run_coverage(days: Option<u64>, output: Option<&str>, submit: bool)
+  pub fn run_bug(summary: Option<&str>, output: Option<&str>, submit: bool)
   mod tests
-  fn parse_range_basic()
-  fn parse_range_invalid()
-  fn parse_sed_standard()
-  fn parse_sed_combined_flag()
-  fn parse_sed_no_n_flag()
-  fn parse_sed_inplace_edit()
-  fn parse_sed_substitution()
-  fn parse_head_long_form()
-  fn parse_head_short_form()
-  fn parse_head_default()
+  pub fn print_hint()
+
+**report_tests.rs**
+
+  #[test]
+  fn scrub_rewrites_the_home_directory() {
+      let home = std::env::var("HOME").unwrap_or_default();
+      if home.is_empty() {
+          return;
+      }
+      let line = format!("ls {}/projects/client-work", home);
+      let out = scrub(&line);
+      assert!(out.starts_with("ls ~/"), "home not rewritten: {out}");
+      assert!(!out.contains(&home), "home still present: {out}");
+  }
+
+  #[test]
+  fn scrub_cannot_detect_an_internal_hostname_and_does_not_pretend_to() {
+      let line = "ssh prod-db-01 sudo cat /etc/nftables.conf";
+      assert_eq!(scrub(line), line);
+  }
+
+  #[test]
+  fn scrub_leaves_ordinary_command_lines_alone() {
+      for line in ["cargo test --no-fail-fast", "git status --porcelain"] {
+          assert_eq!(scrub(line), line);
+      }
+  }
+
+  #[test]
+  fn every_command_the_install_hint_advertises_exists() {
+      use clap::CommandFactory;
+
+      let advertised: Vec<&str> = crate::report::HINT
+          .lines()
+          .filter_map(|l| l.trim().strip_prefix("trs "))
+          .filter_map(|rest| rest.split("  ").next())
+          .collect();
+      assert!(
+          !advertised.is_empty(),
+          "hint advertises no commands, the parse stopped matching:\n{}",
+          crate::report::HINT
+      );
+
+      for path in &advertised {
+          let mut node = crate::cli::Cli::command();
+          for (depth, name) in path.split_whitespace().enumerate() {
+              let Some(sub) = node.find_subcommand(name).cloned() else {
+                  panic!(
+                      "the install hint advertises `trs {path}`, but `{name}` is not a subcommand \
+                       of `trs {}`. Either fix the hint in src/report.rs or add the command.",
+                      path.split_whitespace()
+                          .take(depth)
+                          .collect::<Vec<_>>()
+                          .join(" ")
+                  )
+              };
+              node = sub;
+          }
+      }
+  }
+
+**rerun_rate.rs**
+  pub struct Rate
+
+  impl Rate
+  pub fn pct(&self) -> f64
+  pub struct Reruns
+  fn bucket<'a>(out: &'a mut Reruns, prev: &HistoryEntry) -> Option<&'a mut Rate>
+  pub fn analyze(entries: &[HistoryEntry]) -> Reruns
+  pub fn print(r: &Reruns)
+  mod tests
+  fn run(ts: u64, cwd: &str, cmd: &str, saved_pct: u8, ok: bool) -> HistoryEntry
+  fn a_repeat_right_after_a_heavy_cut_is_counted_apart_from_a_light_one()
+  fn directories_do_not_mix_and_failures_are_not_a_rerun_of_a_cut()
+  fn bypass_entries_are_ignored()
 
 **rewrite.rs**
-  pub fn run_rewrite(agent_flag: Option<&str>)
+  pub fn run_rewrite(agent_flag: Option<&str>, segments: bool, json_out: bool)
   fn handle_json_protocol(json: &serde_json::Value, agent_flag: Option<&str>)
-  fn known_agent_label(s: &str) -> Option<&'static str>
+  fn copilot_cli_or(label: &'static str) -> &'static str
+  fn label_for_host(label: &'static str, copilot_cli: Option<&str>) -> &'static str
 
   enum HookEvent
   impl HookEvent
@@ -2354,6 +2879,8 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn agent_label_from(&self, has_antigravity_env: bool, trs_agent: Option<&str>) -> &'static str
   fn agent_label_for(&self, has_antigravity_env: bool) -> &'static str
   fn build_hook_response(
+  fn input_with_command(json: &serde_json::Value, command: String) -> serde_json::Value
+  fn git_in_claude_worktree(cwd: Option<&str>, cmd: &str) -> bool
   fn cmd_bypasses_trs(cmd: &str) -> bool
   fn tag_with_agent(cmd: &str, agent: &str) -> String
   fn tag_with_agent_for(cmd: &str, agent: &str, is_windows: bool) -> String
@@ -2363,16 +2890,65 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   pub fn maybe_rewrite(cmd: &str) -> Option<String>
   pub(super) fn split_env_prefix(cmd: &str) -> Option<(String, &str)>
   pub fn looks_like_env_assignment(token: &str) -> bool
-  fn strip_transparent_prefix(cmd: &str) -> Option<(&str, &str)>
+  pub fn strip_transparent_prefix(cmd: &str) -> Option<(&str, &str)>
   pub(super) fn strip_word_prefix<'a>(cmd: &'a str, prefix: &str) -> Option<&'a str>
   fn is_simple_command(cmd: &str) -> bool
   fn contains_unquoted(cmd: &str, needle: char) -> bool
   fn find_unquoted(cmd: &str, needle: char) -> Option<usize>
+  fn comment_start(cmd: &str) -> Option<usize>
   fn split_and_chain(cmd: &str) -> Vec<&str>
+  pub fn unquoted_indices(cmd: &str) -> impl Iterator<Item = usize> + '_
   fn find_unquoted_str(cmd: &str, needle: &str) -> Option<usize>
+  fn pipes_output(cmd: &str) -> bool
   pub(super) fn captures_output(cmd: &str) -> bool
-  fn split_at_shell_op(s: &str) -> Option<(&str, &str)>
   mod tests
+  mod capture_tests
+
+**rewrite_decide_capture_tests.rs**
+
+  #[test]
+  fn test_piped_output_is_left_raw() {
+      for cmd in [
+          "git log | grep fix",
+          "find . -name '*.rs' | xargs wc",
+          "find src -name '*.rs' | wc -l",
+          "git diff HEAD~3 | grep -c '^+'",
+          "git diff --stat | tail -1",
+          "ps aux | grep zellij",
+          "gh pr view 1 --json title | python3 -c 'import json,sys; json.load(sys.stdin)'",
+          "cargo test 2>&1 | grep 'test result'",
+          "git status | head -3",
+          "git log | head -5 | tail -1",
+          "cargo test 2>&1 | tail -30",
+          "git status |& head",
+          "cd /tmp && git log | head",
+      ] {
+          assert_eq!(maybe_rewrite(cmd), None, "must not rewrite: {}", cmd);
+      }
+  }
+
+  #[test]
+  fn test_pipe_characters_that_are_not_pipes_still_rewrite() {
+      assert_eq!(
+          maybe_rewrite("grep -n \"a|b\" src/main.rs"),
+          Some("trs grep -n \"a|b\" src/main.rs".into())
+      );
+      assert_eq!(
+          maybe_rewrite("git log --grep='x|y'"),
+          Some("trs git log --grep='x|y'".into())
+      );
+      assert_eq!(
+          maybe_rewrite("cargo test || echo failed"),
+          Some("trs cargo test || echo failed".into())
+      );
+  }
+
+  #[test]
+  fn ssh_is_left_alone() {
+      assert_eq!(maybe_rewrite("ssh prod 'docker ps'"), None);
+      assert_eq!(maybe_rewrite("ssh -o BatchMode=yes host uptime"), None);
+      assert!(maybe_rewrite("sshfs host:/ /mnt").is_some());
+  }
 
 **rewrite_decide_tests.rs**
   fn test_rewrite_git()
@@ -2396,10 +2972,8 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn test_flag_looks_like_assignment_not_matched()
   fn test_split_env_prefix_empty_when_none()
   fn test_stderr_redirects_survive_rewrite()
-  fn test_rewrite_pipe_first_segment()
-  fn test_rewrite_multi_pipe_first_segment_only()
   fn test_captured_output_is_left_raw()
-  fn test_pipes_and_discards_still_rewrite()
+  fn test_discards_still_rewrite()
   fn test_skip_pipe_when_first_segment_is_skipped()
   fn test_skip_subshells()
   fn test_skip_assignments()
@@ -2423,6 +2997,226 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn test_legitimate_env_prefix_still_wraps()
   fn verbatim_commands_are_left_unwrapped()
   fn verbatim_gate_does_not_swallow_compressible_commands()
+  fn local_programs_are_wrapped_only_when_trs_parses_them()
+  fn an_option_after_a_wrapper_stays_with_the_wrapper()
+
+**rewrite_gate.rs**
+  pub enum Gate
+  type GateFn = fn(cmd: &str, cwd: Option<&str>, mode: Option<&str>) -> Gate
+  pub struct AgentPolicy
+  fn defer(_: &str, _: Option<&str>, _: Option<&str>) -> Gate
+  fn never(_: &str, _: Option<&str>, _: Option<&str>) -> Gate
+
+  impl AgentPolicy
+  pub fn policy(label: &str) -> Option<&'static AgentPolicy>
+  pub fn by_tool(name: &str) -> Option<&'static AgentPolicy>
+  pub fn gate_for(label: &str, cmd: &str, json: &Value) -> Gate
+  mod tests
+  fn labels_and_tool_names_are_unique()
+
+**rewrite_perm_codex.rs**
+  type Pattern = Vec<Vec<String>>
+  pub fn gate(cmd: &str, cwd: Option<&str>) -> Gate
+  fn gate_with(patterns: &[Pattern], cmd: &str) -> Gate
+  fn matches_prefix(pattern: &Pattern, tokens: &[String]) -> bool
+  fn tokenize(seg: &str) -> Vec<String>
+  fn codex_home() -> Option<PathBuf>
+  fn load(home: Option<&Path>, cwd: Option<&Path>) -> Option<Vec<Pattern>>
+  fn trusted_projects(config: &Path) -> Option<Vec<PathBuf>>
+  fn parse_rules(text: &str) -> Option<Vec<Pattern>>
+  fn find_close(s: &str) -> Option<usize>
+  fn skip_string(b: &[u8], i: usize) -> Option<usize>
+  fn split_top(s: &str) -> Option<Vec<&str>>
+  fn parse_call(args: &str) -> Option<Pattern>
+  fn parse_pattern(s: &str) -> Option<Pattern>
+  fn parse_string(s: &str) -> Option<String>
+  mod tests
+  fn pats(text: &str) -> Vec<Pattern>
+  fn parses_decisions_alternatives_and_comments()
+  fn unknown_or_broken_forms_fail_closed()
+  fn a_matching_rule_of_any_decision_skips()
+  fn matching_is_a_token_prefix_per_segment_after_env()
+  fn single_token_and_alternative_patterns()
+  fn write(dir: &Path, rel: &str, text: &str)
+  fn user_rules_load_and_a_bad_file_fails_closed()
+  fn project_rules_need_a_trusted_project()
+  fn unreadable_config_fails_closed()
+  fn tokenizer_handles_quotes_and_escapes()
+
+**rewrite_perm_cursor.rs**
+  pub fn gate(cmd: &str, cwd: Option<&str>) -> Gate
+  fn gate_with(deny: &[String], cmd: &str) -> Gate
+  fn shell_rule_matches(rule: &str, seg: &str) -> bool
+  fn config_dir() -> Option<PathBuf>
+  fn deny_rules(config: Option<&Path>, cwd: Option<&str>) -> Option<Vec<String>>
+  mod tests
+  fn a_deny_rule_on_the_original_stops_the_rewrite()
+  fn project_cli_json_adds_deny_rules_and_a_bad_one_fails_closed()
+
+**rewrite_perm_devin.rs**
+  pub fn gate(cmd: &str, cwd: Option<&str>) -> Gate
+  fn gate_with(rules: &Rules, cmd: &str) -> Gate
+  fn config_files(dir: Option<&Path>) -> Vec<(PathBuf, bool)>
+  fn load_rules(files: &[(PathBuf, bool)]) -> Option<Rules>
+  fn rule_matches(rule: &str, cmd: &str) -> bool
+  mod tests
+  fn rules(allow: &[&str], ask: &[&str], deny: &[&str]) -> Rules
+  fn exec_prefix_matches_whole_words_only()
+  fn deny_or_ask_on_any_segment_stops_the_rewrite()
+  fn only_commands_fully_covered_by_allow_are_approved()
+  fn write(dir: &Path, rel: &str, text: &str)
+  fn project_files_add_deny_and_ask_but_not_allow()
+  fn unreadable_config_fails_closed()
+  fn no_config_defers()
+
+**rewrite_perm_droid.rs**
+  mod matcher
+
+  struct Roots
+  struct Lists
+  pub fn gate(cmd: &str, cwd: Option<&str>, permission_mode: Option<&str>) -> Gate
+  fn roots() -> Roots
+  fn gate_in(roots: &Roots, cmd: &str, cwd: Option<&str>, mode: Option<&str>) -> Gate
+  fn load(roots: &Roots, cwd: Option<&str>) -> Option<Lists>
+  fn read(path: &Path) -> Option<serde_json::Value>
+  fn merge(lists: &mut Lists, json: &serde_json::Value, project: bool) -> Option<()>
+  mod tests
+  fn write(dir: &Path, rel: &str, text: &str)
+  fn run(home: &Path, cwd: &Path, cmd: &str, mode: Option<&str>) -> Gate
+  fn deny_hits_skip_and_allowed_commands_are_approved()
+  fn unlisted_commands_defer_only_in_auto_high()
+  fn a_project_allow_counts_even_in_an_untrusted_folder()
+  fn org_lists_cached_from_the_api_count()
+  fn unusable_settings_fail_closed()
+  fn permission_rules_decide_like_droid()
+  fn a_projects_rule_allow_is_ignored_but_its_ask_counts()
+
+**rewrite_perm_droid_match.rs**
+  mod rules
+  pub(super) use rules::{parse as parse_rules, restricts, Rule
+  fn words(seg: &str) -> Vec<&str>
+  fn wrapper_takes_value(wrapper: &str, opt: &str) -> bool
+  fn program_index(w: &[&str]) -> Option<usize>
+  fn unquote(s: &str) -> &str
+  pub(super) fn normalize(seg: &str) -> Option<String>
+  pub(super) fn keys(text: &str) -> Vec<String>
+  fn has_file_redirect(seg: &str) -> bool
+  pub(super) fn all_allowed(cmd: &str, allow: &HashSet<String>, rules: &[Rule]) -> bool
+  fn pattern_regex(pat: &str, anchored: bool) -> Option<Regex>
+  fn substitutions(text: &str) -> (String, Vec<String>)
+  fn candidates(text: &str, depth: usize, out: &mut Vec<String>)
+  fn first_match<'a>(cmd: &str, patterns: &'a [String]) -> Option<&'a str>
+  pub(super) fn blocked(cmd: &str, block: &[String]) -> bool
+  pub(super) fn denied(cmd: &str, deny: &[String]) -> bool
+  mod tests
+  fn set(items: &[&str]) -> HashSet<String>
+  fn pats(items: &[&str]) -> Vec<String>
+  fn normalizes_like_droid()
+  fn deny_patterns_see_the_original_but_not_the_rewrite()
+  fn allow_needs_every_part_listed()
+
+**rewrite_perm_droid_rules.rs**
+  pub(in crate::rewrite_perm_droid) struct Rule
+  pub(in crate::rewrite_perm_droid) fn parse(container: &Value, project: bool) -> Option<Vec<Rule>>
+  fn matches(rule: &Rule, tokens: &[&str]) -> bool
+  fn tokens(text: &str) -> Vec<&str>
+  pub(in crate::rewrite_perm_droid) fn restricts(cmd: &str, rules: &[Rule]) -> bool
+  pub(super) fn allows(seg: &str, rules: &[Rule]) -> bool
+  mod tests
+  fn rules(list: Value, project: bool) -> Option<Vec<Rule>>
+  fn rule(decision: &str, prefix: Value) -> Value
+  fn ask_and_block_match_by_ordered_tokens_and_alternatives()
+  fn allow_is_strict_and_a_projects_allow_is_dropped()
+  fn malformed_rules_are_unreadable()
+
+**rewrite_perm_gemini.rs**
+  mod policy
+  pub fn gate(cmd: &str, cwd: Option<&str>) -> Gate
+
+  struct TrustEnv
+  fn gate_with(rules: &Rules, cmd: &str) -> Gate
+  fn load(gem_dir: &Path, cwd: Option<&Path>, env: &TrustEnv) -> Option<Rules>
+  fn system_dir() -> PathBuf
+  fn read_settings(path: &Path) -> Option<policy::Settings>
+  fn trusted(cwd: &Path, enabled: bool, env: &TrustEnv, gem_dir: &Path) -> bool
+  mod tests
+  fn gem(settings: Option<&str>, policies: &[(&str, &str)]) -> tempfile::TempDir
+  fn run(d: &tempfile::TempDir, cwd: Option<&Path>, env: &TrustEnv, cmd: &str) -> Gate
+  fn toml_deny_and_ask_stop_the_rewrite_even_behind_env_or_chains()
+  fn command_regex_and_opaque_rules()
+  fn blanket_deny_skips_and_other_tools_are_ignored()
+  fn narrow_allow_skips_unless_it_covers_the_rewrite_or_is_blanket()
+  fn blanket_allow_does_not_override_a_deny()
+  fn read_only_commands_are_left_alone_unless_allowed_wholesale()
+  fn unreadable_files_fail_closed()
+  fn project_allow_counts_only_in_a_trusted_folder_and_replaces_the_user_list()
+  fn trust_file_kinds()
+
+**rewrite_perm_gemini_policy.rs**
+  pub enum Pat
+
+  impl Pat
+  pub fn matches(&self, text: &str) -> bool
+  pub struct Rules
+  pub struct Settings
+  pub fn parse_settings(text: &str) -> Option<Settings>
+  fn strip_comments(s: &str) -> String
+  pub fn add_allowed(rules: &mut Rules, entries: &[String])
+  pub fn add_toml(rules: &mut Rules, text: &str) -> Option<()>
+  fn names(v: Option<&toml::Value>) -> Vec<String>
+
+**rewrite_permissions.rs**
+  pub fn gate(cmd: &str, cwd: Option<&str>) -> Gate
+  fn gate_with(rules: &Rules, cmd: &str) -> Gate
+  fn load_rules(cwd: Option<&str>) -> Option<Rules>
+  fn trusted_dirs() -> Vec<PathBuf>
+  fn settings_files(cwd: Option<&str>) -> Vec<(PathBuf, Option<&Path>)>
+  pub fn rule_matches(rule: &str, cmd: &str) -> bool
+  pub fn glob(pat: &[u8], s: &[u8]) -> bool
+  pub fn strip_env(seg: &str) -> &str
+  fn skip_runner_opts<'a>(wrapper: &str, mut body: &'a str) -> &'a str
+  pub fn strip_wrappers(seg: &str) -> &str
+  pub fn read_only(seg: &str) -> bool
+  pub fn split_segments(cmd: &str) -> Vec<&str>
+  mod tests
+  fn rules(allow: &[&str], ask: &[&str], deny: &[&str]) -> Rules
+  fn rule_forms_match_like_claude_code()
+  fn splits_chains_but_not_quotes_or_redirects()
+  fn a_deny_or_ask_rule_on_the_original_command_stops_the_rewrite()
+  fn glob_handles_stars_without_blowing_up()
+  fn only_explicit_allow_or_read_only_commands_are_approved()
+  fn unreadable_settings_fail_closed()
+  fn a_rule_sees_the_command_behind_runner_options()
+
+**rewrite_pipe_status.rs**
+  pub(super) fn wrap(cmd: &str) -> Option<String>
+  fn single_pipe(seg: &str) -> Option<(&str, &str)>
+  fn is_status_tool(producer: &str) -> bool
+  fn sink_reads_everything(sink: &str) -> bool
+  mod tests
+  fn wrapped(pipeline: &str) -> String
+  fn a_check_piped_to_a_full_reader_gets_the_real_status()
+  fn earlier_chain_segments_stay_outside()
+  fn only_the_last_statement_changes()
+  fn multi_line_text_is_never_mistaken_for_the_last_statement()
+  fn a_status_something_else_reads_is_left_alone()
+  fn a_sink_that_stops_early_would_report_a_false_failure()
+  fn tools_whose_status_is_not_a_verdict_are_left_alone()
+  fn anything_that_is_not_one_flat_pipe_is_left_alone()
+
+**rewrite_rules.rs**
+  pub struct Rules
+
+  impl Rules
+  pub fn decide<'a>(
+  pub fn extend_from(&mut self, json: &Value, allow_counts: bool)
+  pub fn read_json(path: &Path) -> Option<Option<Value>>
+  pub fn string_list(json: &Value, pointer: &str) -> Vec<String>
+  pub fn is_missing(e: &std::io::Error) -> bool
+  pub fn word_prefix(cmd: &str, prefix: &str) -> bool
+  pub fn is_trusted(dir: &Path, trusted: &[PathBuf]) -> bool
+  pub const fn reads_host_config() -> bool
+  pub fn project_dirs(cwd: &Path, skip: Option<&Path>) -> Vec<PathBuf>
 
 **rewrite_tests.rs**
   fn test_cmd_bypasses_trs_detection()
@@ -2442,6 +3236,53 @@ pub(crate) fn build_command(cmd: &str, args: &[String]) -> std::process::Command
   fn test_hook_response_missing_command_returns_none()
   fn test_hook_response_chain_preserved_across_formats()
   fn tag_with_agent_skips_posix_prefix_on_windows()
+  fn copilot_cli_is_told_apart_from_vscode_by_its_env_marker()
+  fn a_trailing_comment_is_text_not_commands()
+  fn git_inside_a_claude_worktree_is_left_unwrapped()
+  fn a_rewrite_keeps_every_other_input_field()
+  fn a_cursor_rewrite_keeps_the_working_directory()
+  fn grok_running_claudes_hook_gets_no_rewrite()
+  fn trae_keeps_its_other_input_fields_and_gets_no_decision()
+  fn vibe_is_answered_in_its_own_shape_whatever_its_event_is_called()
+
+**safe_folds.rs**
+  fn has_marker(line: &str) -> bool
+  pub fn fold_repeats(text: &str) -> String
+  fn unfold(folded: &str) -> String
+  fn timestamp_re() -> &'static regex::Regex
+  pub fn fold_timestamped(text: &str) -> (String, bool)
+  pub fn is_json(text: &str) -> bool
+  fn dense_kind(line: &str) -> Option<String>
+  pub fn elide_dense(text: &str) -> (String, bool)
+  mod tests
+
+**safe_folds_tests.rs**
+  fn consecutive_repeats_fold_to_a_count()
+  fn a_repeated_block_is_kept_once()
+  fn order_is_kept_so_non_consecutive_repeats_stay()
+  fn every_fold_undoes_to_the_exact_input()
+  fn input_that_already_looks_folded_is_left_alone()
+  fn folding_never_makes_output_larger()
+  fn dense_lines_keep_head_tail_and_say_what_was_cut()
+  fn ordinary_long_lines_and_tables_are_not_dense()
+  fn eliding_is_safe_on_multibyte_text()
+  fn log_lines_equal_but_for_the_time_keep_first_line_count_and_last_time()
+  fn iso_timestamps_fold_too()
+  fn only_times_may_differ_not_spacing_numbers_or_symbols()
+  fn identical_timestamped_lines_are_left_to_the_lossless_fold()
+  fn json_is_data_not_a_dense_line()
+  fn is_json_wants_one_complete_document()
+
+**sentinel.rs**
+macro_rules! trs_sentinels {
+    ($start:ident, $end:ident, $name:literal) => {
+        pub(crate) const $start: &str = concat!("<!-- trs:", $name, ":start v1 -->");
+        pub(crate) const $end: &str = concat!("<!-- trs:", $name, ":end -->");
+    };
+    ($start:ident, $end:ident, $section:ident, $name:literal, $body:literal) => {
+        trs_sentinels!($start, $end, $name);
+        pub(crate) const $section: &str = concat!(
+... (20 lines)
 
 **text_util.rs**
 pub(crate) fn first_ident(s: &str) -> Option<String> {
@@ -2452,12 +3293,16 @@ pub(crate) fn first_ident(s: &str) -> Option<String> {
         if c.is_ascii_alphanumeric() || c == '_' {
             end = start + i + c.len_utf8();
         } else {
-... (31 lines)
+... (35 lines)
 
 **tracker.rs**
   pub struct HistoryEntry
+
+  impl HistoryEntry
+  pub fn counts_toward_totals(&self) -> bool
   fn history_path() -> Option<PathBuf>
   fn dirs_path() -> Option<PathBuf>
+  pub fn trs_dir() -> Option<PathBuf>
   pub fn home_dir() -> Option<PathBuf>
   fn append_history_entry(entry: &HistoryEntry)
   fn maybe_rotate_active(path: &Path, now_ts: u64)
@@ -2465,6 +3310,7 @@ pub(crate) fn first_ident(s: &str) -> Option<String> {
   fn month_key_from_ts(ts: u64) -> String
   fn open_user_only(path: &Path) -> std::io::Result<fs::File>
   pub fn log_execution(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: u64)
+  pub fn log_run(cmd: &str, in_bytes: usize, out_bytes: usize, duration_ms: u64, ok: bool)
   pub fn redact_secrets(cmd: &str) -> String
   pub fn log_bypass(cmd: &str, agent: Option<&str>)
   pub fn read_history() -> Vec<HistoryEntry>
@@ -2502,18 +3348,20 @@ pub(crate) fn first_ident(s: &str) -> Option<String> {
   fn run_interactive(opts: UninstallOpts)
   fn uninstall_one(tool: &AiTool, opts: UninstallOpts)
   fn candidate_paths(tool: &AiTool) -> Vec<PathBuf>
-  fn scrub_trs_from_json(path: &Path, dry_run: bool) -> Result<Option<String>>
-  fn remove_between_sentinels(
-  fn delete_plugin_file(path: &Path, dry_run: bool) -> Result<Option<String>>
-  fn delete_rules_file(path: &Path, dry_run: bool) -> Result<Option<String>>
-  fn remove_output_saver(agent_id: &str, dry_run: bool) -> Result<String>
-  fn has_output_saver_installed(agent_id: &str) -> bool
-  fn run_output_saver_removal(tool_name: &str, agent_id: &str, dry_run: bool)
   fn has_trs_artifacts(tool: &AiTool) -> bool
-  fn output_saver_agent_id(tool: &AiTool) -> Option<&'static str>
-  fn is_trs_plugin_dir_file(path: &Path) -> bool
-  fn is_json(path: &Path) -> bool
-  fn confirm(prompt: &str) -> bool
+
+**uninstall_scrub.rs**
+  pub fn scrub_trs_from_json(path: &Path, dry_run: bool) -> Result<Option<String>>
+  pub fn remove_between_sentinels(
+  pub fn delete_plugin_file(path: &Path, dry_run: bool) -> Result<Option<String>>
+  pub fn delete_rules_file(path: &Path, dry_run: bool) -> Result<Option<String>>
+  pub fn remove_output_saver(agent_id: &str, dry_run: bool) -> Result<String>
+  pub fn has_output_saver_installed(agent_id: &str) -> bool
+  pub fn run_output_saver_removal(tool_name: &str, agent_id: &str, dry_run: bool)
+  pub fn output_saver_agent_id(tool: &AiTool) -> Option<&'static str>
+  pub fn is_trs_plugin_dir_file(path: &Path) -> bool
+  pub fn is_json(path: &Path) -> bool
+  pub fn confirm(prompt: &str) -> bool
 
 **upgrade.rs**
   pub enum InstallMethod
@@ -2865,14 +3713,7 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile>
 pub(super) fn get_changed_files(root: &Path, since: Option<&str>) -> Option<Vec<String>>
 pub(super) fn apply_budget(
 
-**collect_compress.rs**
-  pub(super) struct CompressResult
-  pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<CompressResult>
-  fn has_multiline_python_sig(content: &str) -> bool
-  fn join_python_multiline_sigs(content: &str) -> String
-  fn extract_signatures(content: &str, ext: &str) -> String
-  fn clean_signature(line: &str) -> String
-
+**collect_compress.rs**: pub(super) struct CompressResult | pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<CompressResult>
 **collect_index.rs**
   pub(super) fn is_module_anchor(lower_name: &str) -> bool
   pub(super) fn extract_module_doc(content: &str, ext: &str) -> Option<String>
@@ -2960,12 +3801,7 @@ pub(super) fn compress_package_json(content: &str) -> String
   pub fn detect_primary_language(files: &[DigestFile]) -> String
   fn format_file_entry(out: &mut String, name: &str, content: &str)
   pub use super::format_tree::{build_symbol_index, build_tree
-  pub fn strip_html_from_markdown(content: &str) -> String
-  pub fn format_bytes(n: usize) -> String
-  pub(super) fn extract_section(digest: &str, filename: &str) -> Option<String>
-  pub(super) fn days_to_date(days: u64) -> (u64, u64, u64)
-  pub fn format_tokens(n: usize) -> String
-  pub(super) fn format_modified(entry: &std::fs::DirEntry) -> String
+  pub use super::format_util::*
 
 **format_html.rs**: pub(super) fn format_html(
 **format_html_util.rs**
@@ -2981,6 +3817,14 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn build_tree(files: &[DigestFile]) -> String
   pub fn build_symbol_index(files: &[DigestFile]) -> String
   fn collect_dir_annotations(files: &[DigestFile]) -> BTreeMap<String, String>
+
+**format_util.rs**
+  pub fn strip_html_from_markdown(content: &str) -> String
+  pub fn format_bytes(n: usize) -> String
+  pub(super) fn extract_section(digest: &str, filename: &str) -> Option<String>
+  pub(super) fn days_to_date(days: u64) -> (u64, u64, u64)
+  pub fn format_tokens(n: usize) -> String
+  pub(super) fn format_modified(entry: &std::fs::DirEntry) -> String
 
 **meta.rs**
 
@@ -3060,12 +3904,14 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   mod format_html
   mod format_html_util
   mod format_tree
+  mod format_util
   mod meta
   mod mod_html
   mod ollama
   mod purpose
   mod remote
   mod resolve
+  mod signatures
   mod store
   pub use remote::{is_remote_ref, resolve_remote, TmpMode
   pub use resolve::resolve_project_root
@@ -3130,6 +3976,12 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn extracts_owner_repo()
 
 **resolve.rs**: pub fn resolve_project_root(path: &Path) -> Result<PathBuf> | pub(super) fn suggest_budget(n: usize) -> &'static str
+**signatures.rs**
+  pub(super) fn extract_signatures(content: &str, ext: &str) -> String
+  fn clean_signature(line: &str) -> String
+  fn has_multiline_python_sig(content: &str) -> bool
+  fn join_python_multiline_sigs(content: &str) -> String
+
 **store.rs**
   struct ListEntry
   pub fn list_ingests()
@@ -3351,6 +4203,9 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn token_reduction_percent(&self) -> f64
   pub fn print(&self)
   pub fn format_output_mode(mode: OutputFormat) -> &'static str
+  pub use super::common_markers::*
+
+**common_markers.rs**
   pub fn is_error_line(line: &str) -> bool
   fn has_coded_diagnostic(lower: &str, word: &str) -> bool
   pub fn is_warning_line(line: &str) -> bool
@@ -3462,6 +4317,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub mod ansi;
   pub mod clean;
   pub mod common;
+  pub(crate) mod common_markers;
   pub mod err;
   pub mod html2md;
   pub mod isclean;
@@ -3587,6 +4443,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn local_offset() -> time::UtcOffset
   pub fn today_date_label(offset: time::UtcOffset) -> String
   pub fn format_date(ts: u64) -> String
+  pub fn period_line(entries: &[crate::tracker::HistoryEntry]) -> String
   pub fn format_timestamp(ts: u64, offset: time::UtcOffset) -> String
   pub struct StatsInput
   pub fn handle_stats(input: &StatsInput)
@@ -3597,6 +4454,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   impl Agg
   fn avg_in(&self) -> f64
   fn low_pct(&self) -> f64
+  pub fn coverage_json_for(
   pub fn print_coverage(entries: &[HistoryEntry], limit: usize, json: bool, days: u64)
   fn parse_cmd(cmd: &str) -> Option<(String, String)>
   fn looks_like_env_token(tok: &str) -> bool
@@ -3613,6 +4471,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn fmt_date(ts: u64) -> String
   fn days_to_ymd(mut days: u64) -> (i32, u32, u32)
   fn is_leap(y: i32) -> bool
+  fn coverage_json(
   fn print_json(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, limit: usize)
   mod tests
   fn parse_cmd_basic()
@@ -3698,53 +4557,11 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   mod tests
 
 **stats_render_tests.rs**
-
-  #[test]
-  fn format_bypass_cell_zero_is_plain() {
-      assert_eq!(format_bypass_cell(0, 100), "0");
-      assert_eq!(format_bypass_cell(0, 0), "0");
-  }
-
-  #[test]
-  fn format_bypass_cell_includes_rate_when_nonzero() {
-      assert_eq!(format_bypass_cell(3, 142), "3 (2.1%)");
-      assert_eq!(format_bypass_cell(50, 100), "50 (50.0%)");
-  }
-
-  #[test]
-  fn format_bypass_cell_zero_total_omits_rate() {
-      assert_eq!(format_bypass_cell(2, 0), "2");
-  }
-
-  #[test]
-  fn recent_efficiency_ignores_an_old_outlier() {
-      const DAY: u64 = 86_400;
-      let now = 100 * DAY;
-      let e = |days_ago: u64, inb: usize, outb: usize| HistoryEntry {
-          ts: now - days_ago * DAY,
-          cmd: "x".into(),
-          in_bytes: inb,
-          out_bytes: outb,
-          saved_pct: 0,
-          ms: 0,
-          cwd: String::new(),
-          agent: None,
-          bypass: None,
-      };
-      let entries = vec![
-          e(21, 380_000_000, 370_000_000), // the aws-shaped week: ~3% saved
-          e(3, 1_000_000, 150_000),        // recent work: 85% saved
-          e(1, 1_000_000, 150_000),
-      ];
-
-      use super::super::stats_efficiency::efficiency_since;
-      let d7 = efficiency_since(&entries, now, 7).unwrap();
-      let d30 = efficiency_since(&entries, now, 30).unwrap();
-      assert!(d7 > 80.0, "last 7d should reflect recent work, got {d7}");
-      assert!(d30 < 10.0, "30d still contains the outlier, got {d30}");
-
-      assert!(efficiency_since(&entries, now, 0).is_none());
-  }
+  fn format_bypass_cell_zero_is_plain()
+  fn format_bypass_cell_includes_rate_when_nonzero()
+  fn format_bypass_cell_zero_total_omits_rate()
+  fn recent_efficiency_ignores_an_old_outlier()
+  fn failed_and_oversized_runs_stay_out_of_the_totals()
 
 **tail.rs**
   pub struct TailHandler
@@ -3851,13 +4668,24 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
 **bun_parse.rs**
   impl ParseHandler
   pub fn parse_bun_test(input: &str) -> CommandResult<BunTestOutput>
+  fn failure_signal(block: &[&str]) -> String
   pub fn parse_bun_test_line(line: &str, ancestors: &[String]) -> Option<BunTest>
   pub fn parse_bun_duration(s: &str) -> Option<f64>
   pub fn split_bun_test_name_and_duration(s: &str) -> (String, Option<f64>)
+
+**bun_summary.rs**
+  impl ParseHandler
   pub fn is_bun_summary_line(line: &str) -> bool
   pub fn parse_bun_summary_line(line: &str, summary: &mut BunTestSummary)
   pub fn parse_bun_ran_line(line: &str, summary: &mut BunTestSummary)
   pub fn update_bun_summary_from_tests(output: &mut BunTestOutput)
+
+**extra_build.rs**
+  impl ParseHandler
+  pub fn handle_build(
+
+  enum Prev
+  pub fn handle_wc(
 
 **extra_cargo_test.rs**: impl ParseHandler | pub fn handle_cargo_test(
 **extra_db.rs**
@@ -3913,10 +4741,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn handle_docker_logs(
   pub fn handle_deps(
   pub fn handle_install(
-  pub fn handle_build(
-
-  enum Prev
-  pub fn handle_wc(
+  fn compact_ports(cell: &str) -> String
 
 **find.rs**
   impl ParseHandler
@@ -3951,13 +4776,65 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn test_fmt_json()
 
 **gh_api.rs**
-  fn drops(key: &str, parent: &str) -> bool
-  fn prune(value: &mut Value, parent: &str)
-  pub(super) fn compress_gh_api(input: &str) -> Option<String>
 
-  impl ParseHandler
-  pub fn handle_gh_api(
-  mod tests
+  const DROP_ANYWHERE: &[&str] = &["node_id", "gravatar_id", "_links", "url"];
+  const KEEP: &str = "html_url";
+  const DROP_IN_VERIFICATION: &[&str] = &["payload", "signature"];
+
+  fn drops(key: &str, parent: &str) -> bool {
+      if key == KEEP {
+          return false;
+      }
+      key.ends_with("_url")
+          || DROP_ANYWHERE.contains(&key)
+          || (parent == "verification" && DROP_IN_VERIFICATION.contains(&key))
+  }
+
+  fn prune(value: &mut Value, parent: &str) {
+      match value {
+          Value::Object(map) => {
+              map.retain(|k, _| !drops(k, parent));
+              for (k, v) in map.iter_mut() {
+                  prune(v, k);
+              }
+          }
+          Value::Array(items) => {
+              for v in items.iter_mut() {
+                  prune(v, parent);
+              }
+          }
+          _ => {}
+      }
+  }
+
+  pub(super) fn compress_gh_api(input: &str) -> Option<String> {
+      let trimmed = input.trim();
+      if trimmed.is_empty() {
+          return None;
+      }
+      let mut value: Value = serde_json::from_str(trimmed).ok()?;
+      prune(&mut value, "");
+      let mut out = serde_json::to_string(&value).ok()?;
+      if out.len() >= trimmed.len() {
+          return None;
+      }
+      out.push('\n');
+      Some(out)
+  }
+
+  impl ParseHandler {
+      pub(crate) fn handle_gh_api(
+          file: &Option<std::path::PathBuf>,
+          ctx: &CommandContext,
+      ) -> CommandResult {
+          let input = Self::read_input(file)?;
+          Self::emit_compressed(&input, compress_gh_api(&input), "gh-api", ctx)
+      }
+  }
+
+  #[cfg(test)]
+  #[path = "gh_api_tests.rs"]
+  mod tests;
 
 **gh_api_tests.rs**
   fn parsed(s: &str) -> Value
@@ -3969,6 +4846,11 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn output_is_a_single_line_of_valid_json()
 
 **gh_pr.rs**
+  fn str_of<'a>(v: &'a serde_json::Value, key: &str) -> &'a str
+  fn shared_state<'a>(states: &[&'a str]) -> Option<&'a str>
+  fn shared_suffix(state: Option<&str>) -> String
+  fn state_tag(shared: Option<&str>, state: &str) -> String
+
   impl ParseHandler
   pub fn handle_gh_pr(
   pub fn handle_gh_issue(
@@ -3976,6 +4858,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn handle_gh_pr_checks(
 
   struct Check
+  fn strip_html_comments(text: &str) -> String
 
 **gh_run.rs**
   impl ParseHandler
@@ -4006,23 +4889,29 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn test_git_commit_json()
 
 **git_diff.rs**
+  fn diff_header_paths(line: &str) -> (String, Option<String>)
+
   impl ParseHandler
   pub fn handle_git_diff(
   pub fn parse_git_diff(input: &str) -> CommandResult<GitDiff>
   fn parse_git_diff_stat(input: &str) -> CommandResult<GitDiff>
   pub fn truncate_diff(diff: &mut GitDiff, max_files: usize)
+  fn commit_header(input: &str) -> Option<String>
 
 **git_diff_format.rs**
   impl ParseHandler
   pub fn format_git_diff(diff: &GitDiff, format: OutputFormat) -> String
   pub fn format_git_diff_json(diff: &GitDiff) -> String
   fn format_hunk_compressed(hunk: &GitDiffHunk) -> Vec<String>
+  fn file_label(file: &GitDiffEntry) -> String
   fn build_file_summary(diff: &GitDiff) -> String
   pub fn format_git_diff_compact(diff: &GitDiff) -> String
   pub fn format_git_diff_raw(diff: &GitDiff) -> String
 
 **git_log.rs**
   fn apply_truncate(subject: &str, max: Option<usize>) -> String
+  fn with_time(block: &str, time: &str) -> String
+  fn condense_body(msg: &[String], hash: &str) -> Vec<String>
 
   impl ParseHandler
   pub fn handle_git_log(
@@ -4031,6 +4920,8 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
 
 **git_pull.rs**: impl ParseHandler | pub fn handle_git_pull(
 **git_status.rs**
+  fn reports_clean(input: &str) -> bool
+
   impl ParseHandler
   pub fn handle_git_status(
   pub fn format_git_status_count(count: usize, format: OutputFormat) -> String
@@ -4075,6 +4966,29 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn test_go_test_empty()
   fn test_go_test_compact_format()
   fn test_go_test_json_format()
+
+**gradle.rs**
+  struct Gradle
+  type Reports = HashMap<(String, String), Option<String>>
+
+  impl ParseHandler
+  pub fn handle_gradle(
+  fn task_line(t: &str) -> Option<(&str, &str)>
+  fn failed_test(t: &str) -> Option<(&str, &str)>
+  fn report_message(
+  fn read_report(root: &Path, task: &str, class: &str) -> Option<String>
+  fn failure_message(xml: &str, method: &str) -> Option<String>
+  fn xml_escape(s: &str) -> String
+  fn xml_unescape(s: &str) -> String
+  fn parse_gradle(input: &str, cwd: &Path) -> Gradle
+  fn format_gradle_compact(g: &Gradle) -> String
+  mod tests
+
+**gradle_tests.rs**
+  fn gradle_and_the_wrapper_route_here()
+  fn reads_task_and_test_lines()
+  fn the_report_is_looked_up_in_the_failed_tasks_project()
+  fn a_passing_test_in_the_report_adds_nothing()
 
 **grep.rs**
   impl ParseHandler
@@ -4201,16 +5115,51 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn detect_entry_type_from_perms(perms: &str) -> LsEntryType
   pub fn detect_entry_type_from_name(name: &str) -> LsEntryType
   pub fn has_file_extension(name: &str) -> bool
+
+**ls_format.rs**
+  impl ParseHandler
   pub fn format_ls(ls_output: &LsOutput, format: OutputFormat) -> String
   pub fn format_ls_json(ls_output: &LsOutput) -> String
   pub fn format_ls_compact(ls_output: &LsOutput) -> String
   pub fn format_ls_raw(ls_output: &LsOutput) -> String
+
+**maven.rs**
+  struct Maven
+  impl ParseHandler
+  pub fn handle_maven(
+
+  enum Level
+  fn split_level(line: &str) -> (Level, &str)
+  fn test_counts(body: &str) -> Option<[usize; 4]>
+  fn failed_test(body: &str) -> Option<(String, &'static str)>
+  fn quiet_log_re() -> &'static regex::Regex
+  pub fn is_jvm_notice(t: &str) -> bool
+  fn is_test_chatter(t: &str) -> bool
+  fn short_class(fqcn: &str) -> &str
+  fn reactor_row(body: &str) -> Option<(String, String)>
+  fn parse_maven(input: &str, cwd: &str) -> Maven
+  fn format_maven_compact(m: &Maven) -> String
+  fn format_maven_json(m: &Maven) -> String
+  mod tests
+
+**maven_tests.rs**
+  fn parse(input: &str) -> String
+  fn mvn_and_the_wrapper_route_here()
+  fn surefire_2_failure_headers_are_read_too()
+  fn counts_sum_across_modules_and_skip_per_class_lines()
+  fn paths_are_shown_relative_to_the_project()
+  fn unknown_lines_are_kept()
+  fn test_logs_keep_warnings_and_errors()
+  fn logs_outside_tests_are_kept()
+  fn jvm_notices_are_hidden_anywhere_but_app_warnings_are_not()
 
 **mod.rs**
   pub mod aws
   pub mod brew
   pub mod bun_format
   pub mod bun_parse
+  pub mod bun_summary
+  pub mod extra_build
   pub mod extra_cargo_test
   pub mod extra_db
   pub mod extra_download
@@ -4231,6 +5180,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub mod git_status
   pub mod git_status_format
   pub mod go_test
+  pub mod gradle
   pub mod grep
   pub mod grep_format
   pub mod jest_format
@@ -4241,10 +5191,14 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub mod logs_helpers
   pub mod logs_json
   pub mod ls
+  pub mod ls_format
+  pub mod maven
   pub mod npm_format
   pub mod npm_parse
+  pub mod ollama
   pub mod pnpm_format
   pub mod pnpm_parse
+  pub mod pnpm_summary
   pub mod ps
   pub mod pytest_format
   pub mod pytest_parse
@@ -4260,6 +5214,11 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn read_input_raw(file: &Option<std::path::PathBuf>) -> CommandResult<String>
   pub fn json_to_string(value: serde_json::Value) -> String
   pub fn truncate_str(s: &str, max_len: usize) -> String
+  pub fn emit_compressed(
+  pub fn unread(found_nothing: bool, input: &str) -> bool
+  pub fn emit_unparsed(input: &str, name: &str, ctx: &CommandContext) -> CommandResult
+  fn finish(input: &str, out: &str, reducer: String, ctx: &CommandContext) -> CommandResult
+  pub fn emit_restructured(
   pub fn format_human_size(bytes: u64) -> String
 
   impl CommandHandler for ParseHandler
@@ -4289,6 +5248,23 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn parse_npm_counts_with_todo(
   pub fn update_npm_summary_from_tests(output: &mut NpmTestOutput)
 
+**ollama.rs**
+  fn columns(header: &str) -> Vec<(String, usize)>
+  fn compress_table(input: &str) -> Option<String>
+  fn compress_pull(input: &str) -> Option<String>
+
+  impl ParseHandler
+  pub fn handle_ollama(
+  mod tests
+
+**ollama_tests.rs**
+  fn table_drops_the_id_column_and_the_padding()
+  fn table_keeps_a_dash_size_rather_than_dropping_the_row()
+  fn table_declines_a_header_with_no_rows()
+  fn pull_folds_progress_into_layers_and_a_verdict()
+  fn pull_reports_an_unfinished_download_as_such()
+  fn pull_declines_output_that_is_not_a_pull()
+
 **pnpm_format.rs**
   impl ParseHandler
   pub fn format_pnpm_test(output: &PnpmTestOutput, format: OutputFormat) -> String
@@ -4303,6 +5279,9 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn parse_pnpm_test_line(line: &str, ancestors: &[String]) -> Option<PnpmTest>
   pub fn parse_pnpm_duration(s: &str) -> Option<f64>
   pub fn split_pnpm_test_name_and_duration(s: &str) -> (String, Option<f64>)
+
+**pnpm_summary.rs**
+  impl ParseHandler
   pub fn extract_pnpm_suite_duration(line: &str) -> Option<f64>
   pub fn parse_pnpm_test_summary_tests(line: &str, summary: &mut PnpmTestSummary)
   pub fn parse_pnpm_test_summary_files(line: &str, summary: &mut PnpmTestSummary)
@@ -4335,10 +5314,12 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn format_pytest_compact(output: &PytestOutput) -> String
   pub fn format_pytest_raw(output: &PytestOutput) -> String
   pub fn format_pytest_agent(output: &PytestOutput) -> String
+  fn failure_signal(msg: &str) -> Vec<&str>
 
 **pytest_parse.rs**
   impl ParseHandler
   pub fn parse_pytest(input: &str) -> CommandResult<PytestOutput>
+  fn attach_failure(tests: &mut [TestResult], name: String, message: &str)
   fn parse_pytest_quiet_progress(line: &str) -> Vec<TestResult>
   pub fn parse_pytest_test_line(line: &str) -> Option<TestResult>
   pub fn is_pytest_summary_line(line: &str) -> bool
@@ -4363,9 +5344,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
 
 **sysinfo.rs**
   fn size_bytes(cell: &str) -> Option<f64>
-  fn human(bytes: f64) -> String
   fn short_cmd(cmd: &str) -> String
-  fn emit(
   fn compress_du(input: &str) -> Option<String>
   fn compress_lsof(input: &str) -> Option<String>
   fn compress_pgrep(input: &str) -> Option<String>
@@ -4387,6 +5366,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn pgrep_declines_bare_pid_output()
   fn short_cmd_drops_the_argv0_path_but_keeps_the_arguments()
   fn size_bytes_reads_both_human_and_block_forms()
+  fn restructuring_output_may_be_longer_than_its_input()
 
 **test.rs**: impl ParseHandler | pub fn handle_test(
 **vitest_format.rs**
@@ -4480,7 +5460,7 @@ pub(crate) enum GitStatusSection {
     Untracked,
     Unmerged,
 }
-... (59 lines)
+... (61 lines)
 
 **grep_types.rs**
 #[derive(Debug, Clone, Default)]
@@ -4491,7 +5471,7 @@ pub(crate) struct GrepMatch {
     pub(crate) is_context: bool,
     pub(crate) excerpt: Option<String>,
 }
-... (28 lines)
+... (29 lines)
 
 **logs.rs**
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -4798,4 +5778,4 @@ pub(crate) enum LogLevel {
   fn test_test_output_round_trip()
 
 ---
-*trs ingest v0.7.5 | 581ms | 164.1KB*
+*trs ingest v0.9.0 | 93ms | 201.7KB*
