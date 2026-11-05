@@ -401,3 +401,29 @@ fn test_process_output_has_output() {
     assert!(!empty_output.has_stdout());
     assert!(!empty_output.has_stderr());
 }
+
+#[test]
+fn test_run_output_larger_than_the_pipe_buffer_does_not_hang() {
+    let script = "head -c 300000 /dev/zero | tr '\\0' o; head -c 300000 /dev/zero | tr '\\0' e >&2";
+    let output = ProcessBuilder::new("sh")
+        .arg("-c")
+        .arg(script)
+        .timeout(Duration::from_secs(30))
+        .run()
+        .expect("a child filling both pipes must finish");
+
+    assert_eq!(output.stdout.len(), 300_000);
+    assert_eq!(output.stderr.len(), 300_000);
+}
+
+#[test]
+fn test_run_keeps_output_around_invalid_utf8() {
+    let output = ProcessBuilder::new("sh")
+        .arg("-c")
+        .arg("printf 'before\\377after'")
+        .run()
+        .unwrap();
+
+    assert!(output.stdout.starts_with("before"));
+    assert!(output.stdout.ends_with("after"));
+}

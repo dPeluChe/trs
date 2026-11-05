@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 #[path = "process_helpers.rs"]
 mod helpers;
-use helpers::{capture_output, capture_partial_output, classify_spawn_error, ChildExt};
+use helpers::{classify_spawn_error, ChildExt, OutputReaders};
 
 /// Result of a process execution.
 #[derive(Debug, Clone)]
@@ -287,73 +287,48 @@ impl ProcessBuilder {
             }
         };
 
-        // Handle timeout if specified
-        let result = if let Some(timeout) = self.timeout {
-            match child.wait_timeout(timeout) {
-                Ok(Some(status)) => {
-                    // Process completed within timeout
-                    let output = capture_output(
-                        &mut child,
-                        status,
-                        self.capture_stdout,
-                        self.capture_stderr,
-                    );
-                    Ok(output)
-                }
-                Ok(None) => {
-                    // Process timed out
-                    let _ = child.kill();
-                    let _ = child.wait();
+        let readers = OutputReaders::start(&mut child);
 
-                    // Try to capture any partial output
-                    let (stdout, stderr) = capture_partial_output(&mut child);
+        let waited = match self.timeout {
+            Some(timeout) => child.wait_timeout(timeout),
+            None => child.wait().map(Some),
+        };
 
-                    Err(ProcessError::Timeout {
-                        command: self.command.clone(),
-                        args: self.args.clone(),
-                        duration: start.elapsed(),
-                        partial_stdout: stdout,
-                        partial_stderr: stderr,
-                    })
-                }
-                Err(e) => Err(ProcessError::IoError {
+        let status = match waited {
+            Ok(Some(status)) => status,
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let (partial_stdout, partial_stderr) = readers.finish();
+                return Err(ProcessError::Timeout {
                     command: self.command.clone(),
-                    message: e.to_string(),
-                }),
+                    args: self.args.clone(),
+                    duration: start.elapsed(),
+                    partial_stdout,
+                    partial_stderr,
+                });
             }
-        } else {
-            // No timeout, wait indefinitely
-            match child.wait() {
-                Ok(status) => {
-                    let output = capture_output(
-                        &mut child,
-                        status,
-                        self.capture_stdout,
-                        self.capture_stderr,
-                    );
-                    Ok(output)
-                }
-                Err(e) => Err(ProcessError::IoError {
+            Err(e) => {
+                return Err(ProcessError::IoError {
                     command: self.command.clone(),
                     message: e.to_string(),
-                }),
+                });
             }
         };
 
-        // Add command, args, and duration to successful output
-        let duration = start.elapsed();
-        let command = self.command.clone();
-        let args = self.args.clone();
-        let capture_duration = self.capture_duration;
-        result.map(|mut output| {
-            output.command = command;
-            output.args = args;
-            output.duration = if capture_duration {
-                duration
+        let (stdout, stderr) = readers.finish();
+        Ok(ProcessOutput {
+            command: self.command.clone(),
+            args: self.args.clone(),
+            stdout,
+            stderr,
+            exit_code: status.code(),
+            duration: if self.capture_duration {
+                start.elapsed()
             } else {
                 Duration::ZERO
-            };
-            output
+            },
+            timed_out: false,
         })
     }
 
