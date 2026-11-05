@@ -144,6 +144,13 @@ pub(crate) fn merge_json_hook(
         return Err(format!("{} root is not a JSON object", path.display()));
     };
 
+    // Keys a new file needs besides `hooks` (Trae's `version`).
+    if let Some(tmpl) = template_value.as_object() {
+        for (key, value) in tmpl.iter().filter(|(k, _)| *k != "hooks") {
+            root_obj.entry(key.clone()).or_insert_with(|| value.clone());
+        }
+    }
+
     let existing_hooks = root_obj
         .entry("hooks".to_string())
         .or_insert_with(|| serde_json::json!({}));

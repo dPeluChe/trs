@@ -92,6 +92,8 @@ enum HookEvent {
     GeminiBeforeTool,
     /// Cursor — `hook_event_name: "preToolUse"` (lowercase first letter).
     CursorPreToolUse,
+    /// Mistral Vibe, known by its `--caller`: `hook_specific_output`.
+    VibePreTool,
     /// An explicit `hook_event_name` we don't recognize — a client with
     /// its own envelope. Fail open: no rewrite, original command runs.
     Unknown,
@@ -147,6 +149,7 @@ impl HookEvent {
             Self::CursorPreToolUse => "cursor",
             Self::ClaudePreToolUse if has_antigravity_env => "antigravity",
             Self::ClaudePreToolUse => "claude",
+            Self::VibePreTool => "vibe",
             Self::Unknown => "unknown",
         }
     }
@@ -176,7 +179,10 @@ fn build_hook_response(
         .get("hook_event_name")
         .and_then(|v| v.as_str())
         .unwrap_or("");
-    let event = HookEvent::parse(event_name);
+    let event = match flag_label {
+        Some("vibe") => HookEvent::VibePreTool,
+        _ => HookEvent::parse(event_name),
+    };
 
     // Unrecognized client envelope: fail open instead of guessing Claude's
     // response shape — a client that doesn't understand it can hard-fail the
@@ -243,6 +249,12 @@ fn build_hook_response(
         HookEvent::CursorPreToolUse => serde_json::json!({
             "updated_input": input_with_command(json, rewritten)
         }),
+        HookEvent::VibePreTool => serde_json::json!({
+            "system_message": "trs auto-rewrite",
+            "hook_specific_output": {
+                "tool_input": { "command": rewritten }
+            }
+        }),
         HookEvent::ClaudePreToolUse => {
             let mut out = serde_json::json!({
                 "hookSpecificOutput": {
@@ -250,6 +262,12 @@ fn build_hook_response(
                     "updatedInput": input_with_command(json, rewritten)
                 }
             });
+            // Trae replaces the input, so `description` and `timeout` must go back.
+            if let (Some(input), true) = (json.get("tool_input"), label == "trae") {
+                let mut input = input.clone();
+                input["command"] = rewritten.as_str().into();
+                out["hookSpecificOutput"]["updatedInput"] = input;
+            }
             if gate == Gate::Allow {
                 out["hookSpecificOutput"]["permissionDecision"] = "allow".into();
                 out["hookSpecificOutput"]["permissionDecisionReason"] = "trs auto-rewrite".into();

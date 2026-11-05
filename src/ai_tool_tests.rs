@@ -87,7 +87,7 @@ fn all_names_is_the_cli_name_list() {
     // Pins the exact public string `trs uninstall` prints on bad input.
     assert_eq!(
         AiTool::all_names(),
-        "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, zed, devin-cli"
+        "claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, trae, vibe, zed, devin-cli"
     );
 }
 

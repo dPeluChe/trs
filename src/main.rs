@@ -60,6 +60,7 @@ mod init_install_rules;
 mod init_show;
 mod init_templates;
 mod init_templates_plugins;
+mod init_vibe;
 mod main_ingest;
 mod output_saver;
 mod output_saver_core;

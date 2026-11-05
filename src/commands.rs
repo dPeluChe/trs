@@ -68,9 +68,9 @@ pub enum Commands {
         since: usize,
     },
 
-    /// Install hooks for AI coding tools (claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, zed, devin-cli)
+    /// Install hooks for AI coding tools (claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, trae, vibe, zed, devin-cli)
     Init {
-        /// Tool to configure (claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, zed, devin-cli)
+        /// Tool to configure (claude, gemini, cursor, codex, opencode, kilo, antigravity, agy, droid, devin, pi, vscode, openclaw, hermes, trae, vibe, zed, devin-cli)
         tool: Option<String>,
 
         /// Install globally (user-level) instead of project-level

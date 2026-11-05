@@ -109,6 +109,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
         AiTool::Antigravity | AiTool::AntigravityCLI => install_antigravity_rules(opts),
         AiTool::OpenClaw => install_openclaw_plugin(opts),
         AiTool::Hermes => install_hermes_plugin(opts),
+        AiTool::Vibe => crate::init_vibe::install_vibe_hook(opts),
         AiTool::Devin => {
             // Forward target for Devin Desktop; legacy `.windsurfrules` for
             // pre-rebrand Windsurf. Devin reads both — write only one to
@@ -334,6 +335,11 @@ pub(crate) fn check_tool(tool: &AiTool) -> bool {
         AiTool::OpenClaw => {
             return home_dir()
                 .map(|h| h.join(".openclaw/plugins/trs/index.js").exists())
+                .unwrap_or(false);
+        }
+        AiTool::Vibe => {
+            return home_dir()
+                .map(|h| has_any_trs_marker_at_path(&h.join(".vibe/hooks.toml")))
                 .unwrap_or(false);
         }
         AiTool::Hermes => {
