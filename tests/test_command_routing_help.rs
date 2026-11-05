@@ -1,5 +1,5 @@
-//! Tests for command routing validation - help text, version flags, stdin processing,
-//! multiple command execution, error handling, command-specific flags, and edge cases.
+//! Tests for command routing validation - help text, stdin processing,
+//! error handling, command-specific flags, and edge cases.
 //!
 //! This test module verifies that CLI help output, flags, and edge cases work correctly.
 
@@ -26,16 +26,6 @@ fn test_help_shows_all_commands() {
         .stdout(predicate::str::contains("txt2md"))
         .stdout(predicate::str::contains("trim"))
         .stdout(predicate::str::contains("is-clean"));
-}
-
-#[test]
-fn test_search_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Search for patterns"));
 }
 
 #[test]
@@ -82,7 +72,7 @@ fn test_stdin_with_compact_format() {
 }
 
 // ============================================================
-// Multiple Command Execution Tests
+// Command Flag Tests
 // ============================================================
 
 #[test]

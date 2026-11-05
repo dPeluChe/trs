@@ -354,5 +354,3 @@ fn test_context_combined_flags_routing() {
         .stderr(predicate::str::contains("Stats:"))
         .stderr(predicate::str::contains("Items processed:"));
 }
-
-// ============================================================

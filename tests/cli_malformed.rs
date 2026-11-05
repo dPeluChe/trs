@@ -382,5 +382,3 @@ fn test_stdin_very_large_input() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.write_stdin(large_content.as_bytes()).assert().success();
 }
-
-// ============================================================

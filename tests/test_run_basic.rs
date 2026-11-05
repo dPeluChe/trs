@@ -24,7 +24,7 @@ fn test_run_echo_multiple_args() {
 }
 
 // ============================================================
-// Exit Code Propagation Tests
+// Command Not Found Tests
 // ============================================================
 
 #[test]

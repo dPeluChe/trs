@@ -26,7 +26,7 @@ pub use test_runners::*;
 use std::path::PathBuf;
 
 /// Returns the path to the fixtures directory.
-pub fn fixtures_dir() -> PathBuf {
+fn fixtures_dir() -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("tests/fixture_data");
     path

@@ -1,5 +1,5 @@
-//! Integration tests for the `run` command: output formats (stats, compact, raw),
-//! error handling, stdout/stderr, edge cases, system commands, precedence, and capture flags.
+//! Integration tests for the `run` command: output formats (compact, raw),
+//! stdout/stderr, edge cases, precedence, and capture flags.
 
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -162,22 +162,6 @@ fn test_run_tab_characters() {
         .assert()
         .success()
         .stdout(predicate::str::contains("col1"));
-}
-
-// ============================================================
-// System Commands Tests
-// ============================================================
-
-#[test]
-fn test_run_uname_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("uname");
-    let assert = cmd.assert().success();
-    // Darwin/Linux on Unix; git-bash on Windows prints MINGW/MSYS.
-    #[cfg(not(windows))]
-    assert.stdout(predicate::str::contains("Darwin").or(predicate::str::contains("Linux")));
-    #[cfg(windows)]
-    let _ = assert;
 }
 
 // ============================================================

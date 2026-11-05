@@ -222,5 +222,3 @@ fn test_run_json_parsable() {
     // Verify it's valid JSON
     assert!(serde_json::from_str::<serde_json::Value>(&stdout).is_ok());
 }
-
-// ============================================================

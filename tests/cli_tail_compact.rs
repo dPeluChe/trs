@@ -364,5 +364,3 @@ fn test_parse_ls() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse").arg("ls").assert().success();
 }
-
-// ============================================================
