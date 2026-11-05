@@ -69,7 +69,7 @@ locations:
 |---|---|---|
 | `**/node_modules/@dpeluche/trs/**` | npm | `npm install -g @dpeluche/trs@latest` |
 | `$HOME/.local/bin/trs`, `$HOME/.trs/bin/trs`, `$HOME/bin/trs` | curl\|sh | `curl -fsSL https://usetrs.dev/install.sh \| sh` |
-| `$CARGO_HOME/bin/trs` or `$HOME/.cargo/bin/trs` | cargo | **not auto-upgradable yet**, run `cargo install trs-cli --force` |
+| `$CARGO_HOME/bin/trs` or `$HOME/.cargo/bin/trs` | cargo | built from source, rebuild with `cargo install --path . --force` from a clone |
 | `/opt/homebrew/**`, `/usr/local/Cellar/**` | Homebrew | **not auto-upgradable yet**, tap not published |
 | anything else | unknown | prints all manual options |
 
@@ -108,15 +108,10 @@ Proceed? [y/N]
 Pass `-y` / `--yes` to skip the prompt. Pass `--check` to see what
 would run without executing.
 
-## Roadmap for unsupported channels
+## Roadmap
 
-- **crates.io publish**: currently trs ships to npm and GitHub
-  Releases only. Once `cargo install trs-cli` installs from the
-  registry, upgrade will support cargo.
-- **Homebrew tap**: low priority (npm + curl covers most users),
-  tracked in [`docs/roadmap/TASK_TODO.md`](../roadmap/TASK_TODO.md).
-
-Both are listed in the roadmap under Phase 1: Release & Distribution.
+Homebrew tap: low priority (npm + curl covers most users), tracked in
+[`docs/roadmap/TASK_TODO.md`](../roadmap/TASK_TODO.md) under Phase 1.
 
 ## What happens after a successful upgrade
 

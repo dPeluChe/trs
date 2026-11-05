@@ -59,7 +59,7 @@ detect_platform() {
     case "$os" in
         Darwin) os_tag=darwin ;;
         Linux)  os_tag=linux ;;
-        *) error "unsupported OS: $os (install via: cargo install trs-cli)" ;;
+        *) error "unsupported OS: $os (build from source: https://github.com/${REPO})" ;;
     esac
 
     case "$arch" in

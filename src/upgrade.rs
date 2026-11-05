@@ -2,7 +2,7 @@
 //! path to pick up the latest release.
 //!
 //! Two install channels supported today: the `curl|sh` script and npm.
-//! Cargo and Homebrew installs are detected but surfaced as
+//! Source builds and Homebrew installs are detected but surfaced as
 //! unsupported with an explicit manual command — better than silently
 //! doing nothing or running the wrong thing.
 //!
@@ -33,9 +33,8 @@ pub(crate) enum InstallMethod {
     /// Installed via `npm install -g @dpeluche/trs` — lives under
     /// some node prefix's `lib/node_modules/@dpeluche/trs/bin/`.
     Npm,
-    /// Installed via `cargo install trs-cli` — lives under
-    /// `$HOME/.cargo/bin/`. Not auto-upgradable yet (needs crates.io
-    /// publish first).
+    /// Built with `cargo install --path .` — lives under `$HOME/.cargo/bin/`.
+    /// trs is not on crates.io, so there is nothing to upgrade from.
     Cargo,
     /// Installed via Homebrew formula — lives under `/opt/homebrew/`
     /// or `/usr/local/Cellar/`. Not auto-upgradable yet (needs tap
@@ -114,11 +113,12 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: boo
             }
         }
         InstallMethod::Cargo => {
-            println!("trs upgrade does not support cargo installs yet");
-            println!("(requires publishing to crates.io, tracked on the roadmap).");
+            println!("This trs was built from source, so trs upgrade cannot update it.");
             println!();
-            println!("Run manually:");
-            println!("  cargo install trs-cli --force");
+            println!("Rebuild from your clone:");
+            println!("  cargo install --path . --force");
+            println!("Or switch to the release binary:");
+            println!("  curl -fsSL {} | sh", INSTALL_SCRIPT_URL);
         }
         InstallMethod::Brew => {
             println!("trs upgrade does not support Homebrew yet");
@@ -133,7 +133,6 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: boo
             println!("Manual options:");
             println!("  curl -fsSL {} | sh", INSTALL_SCRIPT_URL);
             println!("  npm install -g {}@latest", NPM_PACKAGE);
-            println!("  cargo install trs-cli --force");
             println!();
             println!("More: {}", DOCS_INSTALL_URL);
         }

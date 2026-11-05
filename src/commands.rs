@@ -158,7 +158,7 @@ pub enum Commands {
 
     /// Detect how trs was installed and re-run the matching install path
     /// to pick up the latest release. Supports npm and the curl|sh script;
-    /// flags the cargo / Homebrew channels as manual-only for now. After
+    /// flags source builds and Homebrew as manual-only. After
     /// a successful binary upgrade, also refreshes hook templates and any
     /// already-installed output-saver blocks. Pass --binary-only to
     /// skip that step.

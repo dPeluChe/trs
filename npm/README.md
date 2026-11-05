@@ -11,12 +11,6 @@ A CLI toolkit for developers, automation pipelines, and AI agents.
 npm install -g @dpeluche/trs
 ```
 
-Or with other package managers:
-
-```bash
-cargo install trs-cli    # from source (Rust required)
-```
-
 ## Usage
 
 ```bash

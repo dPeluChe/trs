@@ -8,7 +8,7 @@
 
   <!-- Primary -->
   <title>trs (Token-Reducing Shell): Terminal compression for AI agents</title>
-  <meta name="description" content="Rust CLI that cuts up to 60% of the tokens AI agents spend on terminal output, measured on real sessions. ~4 ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
+  <meta name="description" content="Rust CLI that cuts up to 60% of the tokens AI agents spend on terminal output, measured on real sessions. ~4 ms startup, zero Node overhead, install via curl/npm. Built-in project digest (trs ingest).">
   <meta name="keywords" content="trs, token-reducing shell, terminal, CLI, token reduction, AI agents, Claude Code, Gemini, LLM, compression, ingest, digest, Rust">
   <meta name="author" content="Iteris">
   <link rel="canonical" href="https://usetrs.dev/">
@@ -747,9 +747,6 @@
         <button class="install-tab" onclick="switchInstallTab(event, 'npm')">
           <span>&#x1F4E6;</span><span>npm</span>
         </button>
-        <button class="install-tab" onclick="switchInstallTab(event, 'cargo')">
-          <span>&#x1F980;</span><span>Cargo</span>
-        </button>
         <button class="install-tab" onclick="switchInstallTab(event, 'binary')">
           <span>&#x1F4BE;</span><span>Binary</span>
         </button>
@@ -778,13 +775,6 @@
           <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
         </div>
         <p class="install-note">Cross-platform. optionalDependencies installs only the matching platform binary. Shell launcher at runtime &mdash; no Node overhead.</p>
-      </div>
-      <div class="install-pane" data-pane="cargo">
-        <div class="install-row">
-          <code>cargo install trs-cli</code>
-          <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
-        </div>
-        <p class="install-note">From source via crates.io. Good if you already have the Rust toolchain.</p>
       </div>
       <div class="install-pane" data-pane="binary">
         <div class="install-row">
@@ -1424,9 +1414,6 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
       <button class="install-tab" onclick="switchInstallTab(event, 'npm')">
         <span>&#x1F4E6;</span><span>npm</span>
       </button>
-      <button class="install-tab" onclick="switchInstallTab(event, 'cargo')">
-        <span>&#x1F980;</span><span>Cargo</span>
-      </button>
       <button class="install-tab" onclick="switchInstallTab(event, 'binary')">
         <span>&#x1F4BE;</span><span>Binary</span>
       </button>
@@ -1466,17 +1453,6 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
         Uses <code class="inline">optionalDependencies</code> &mdash; npm only
         downloads the binary for your platform. A shell launcher execs the
         binary directly (no Node at runtime).
-      </p>
-    </div>
-
-    <div class="install-pane" data-pane="cargo">
-      <div class="install-row">
-        <code>cargo install trs-cli</code>
-        <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
-      </div>
-      <p class="install-note">
-        Builds from source. Good if you have the Rust toolchain and want the
-        absolute latest commit (via <code class="inline">--git</code>).
       </p>
     </div>
 

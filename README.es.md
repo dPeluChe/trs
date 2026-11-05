@@ -68,9 +68,6 @@ curl -fsSL https://usetrs.dev/install.sh | sh
 # npm (todas las plataformas)
 npm install -g @dpeluche/trs
 
-# cargo (compila desde fuente)
-cargo install trs-cli
-
 # Windows (PowerShell)
 irm https://usetrs.dev/install.ps1 | iex
 ```
