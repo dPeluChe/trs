@@ -466,3 +466,24 @@ fn a_command_run_by_path_gets_its_own_policy() {
     assert!(combine_stderr("/opt/homebrew/bin/mvn", "test"));
     assert_eq!(keep_ratio("./mvnw", "test"), keep_ratio("mvnw", "test"));
 }
+
+#[test]
+fn git_diff_and_show_with_a_chosen_layout_are_verbatim() {
+    for rest in [
+        "diff --name-status",
+        "diff HEAD~1 --numstat",
+        "diff --shortstat",
+        "diff --raw",
+        "diff --summary",
+        "diff --word-diff=color",
+        "diff --color-words",
+        "diff --patch",
+        "show HEAD --name-only",
+        "show --format=%H -s",
+    ] {
+        assert!(is_verbatim_invocation("git", rest), "{rest}");
+    }
+    for rest in ["diff", "diff HEAD~1", "diff --stat", "show HEAD"] {
+        assert!(!is_verbatim_invocation("git", rest), "{rest}");
+    }
+}

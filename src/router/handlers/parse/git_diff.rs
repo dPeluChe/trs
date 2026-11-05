@@ -14,6 +14,20 @@ impl ParseHandler {
         // Parse the git diff output
         let diff = Self::parse_git_diff(&input)?;
 
+        // No hunks in non-empty input is a layout this parser can't read, never
+        // an empty diff: `git -C x diff --numstat` gets past the flag table.
+        if diff.files.is_empty() && !input.trim().is_empty() {
+            crate::parse_out::emit(&input);
+            if ctx.stats {
+                CommandStats::new()
+                    .with_reducer("git-diff-passthrough")
+                    .with_input_bytes(input.len())
+                    .with_output_bytes(input.len())
+                    .print();
+            }
+            return Ok(());
+        }
+
         // Format output based on the requested format. `git show` opens
         // with the commit itself, which the diff grammar has no place for.
         let mut output = Self::format_git_diff(&diff, ctx.format);
@@ -53,23 +67,26 @@ impl ParseHandler {
 
         // Detect --stat format: lines like " path/file.rs | 10 +++---"
         // Must NOT match diff content lines (which start with +/- and may contain " | ")
-        let is_stat = input.lines().any(|l| {
-            let trimmed = l.trim();
-            // Stat lines: " file.rs | 10 +++---" or " file.rs | Bin 0 -> 123"
-            // They don't start with diff/---/+++/@@/+/- (diff content markers)
-            trimmed.contains(" | ")
-                && !trimmed.starts_with("diff ")
-                && !trimmed.starts_with("---")
-                && !trimmed.starts_with("+++")
-                && !trimmed.starts_with("@@")
-                && !trimmed.starts_with('+')
-                && !trimmed.starts_with('-')
-                && (trimmed.ends_with('+')
-                    || trimmed.ends_with('-')
-                    || trimmed.contains("Bin ")
-                    || trimmed.contains("insertions")
-                    || trimmed.contains("deletions"))
-        });
+        // A patch is never a stat table, even if a context line looks like one.
+        let is_patch = input.lines().any(|l| l.starts_with("diff --git "));
+        let is_stat = !is_patch
+            && input.lines().any(|l| {
+                let trimmed = l.trim();
+                // Stat lines: " file.rs | 10 +++---" or " file.rs | Bin 0 -> 123"
+                // They don't start with diff/---/+++/@@/+/- (diff content markers)
+                trimmed.contains(" | ")
+                    && !trimmed.starts_with("diff ")
+                    && !trimmed.starts_with("---")
+                    && !trimmed.starts_with("+++")
+                    && !trimmed.starts_with("@@")
+                    && !trimmed.starts_with('+')
+                    && !trimmed.starts_with('-')
+                    && (trimmed.ends_with('+')
+                        || trimmed.ends_with('-')
+                        || trimmed.contains("Bin ")
+                        || trimmed.contains("insertions")
+                        || trimmed.contains("deletions"))
+            });
         if is_stat {
             return Self::parse_git_diff_stat(input);
         }
