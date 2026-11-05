@@ -91,11 +91,26 @@ pub(crate) const AGENTS: &[Agent] = &[
         id: "copilot",
         display: "VS Code Copilot / Copilot CLI",
     },
+    Agent {
+        id: "grok",
+        display: "Grok Build",
+    },
+    Agent {
+        id: "kiro",
+        display: "Kiro",
+    },
+    Agent {
+        id: "openclaw",
+        display: "OpenClaw",
+    },
 ];
 
 /// VS Code applies an `.instructions.md` file automatically only when its
 /// `applyTo` matches; without it the file is manual-only.
 pub(crate) const COPILOT_HEADER: &str = "---\napplyTo: \"**\"\n---\n\n";
+
+/// Kiro loads a steering file on every chat only with `inclusion: always`.
+pub(crate) const KIRO_HEADER: &str = "---\ninclusion: always\n---\n\n";
 
 /// Cursor applies a rule on every chat only with `alwaysApply: true`; a rule
 /// with no frontmatter is not guaranteed to load (docs: cursor.com/docs/rules).
@@ -129,6 +144,10 @@ pub(crate) fn rules_dir_content(header: &str) -> String {
     format!("{}{}", header, standalone_file())
 }
 
+const HOME_NOT_SET: Target = Target::NotSupported {
+    reason: "HOME not set",
+};
+
 /// Resolve the install target for `agent_id`. `home` is injectable so
 /// parallel tests don't race on `std::env::set_var("HOME", …)`;
 /// production wrappers pass `env("HOME")` directly.
@@ -141,30 +160,22 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
                 dir,
                 root_file: "CLAUDE.md".into(),
             })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         "gemini" => push_home(".gemini")
             .map(|dir| Target::Imported {
                 dir,
                 root_file: "GEMINI.md".into(),
             })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         "cursor" => push_home(".cursor/plugins/local/trs")
             .map(|dir| Target::Plugin {
                 dir,
                 legacy_rule: push_home(".cursor/rules/trs-output-saver.mdc"),
             })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         "codex" => push_home(".codex/AGENTS.md")
             .map(|path| Target::InlineFile { path })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         // Devin Desktop (ex-Windsurf): the legacy `~/.codeium` global memory
         // is still read by Devin, so it remains the global output-saver target.
         // Checked 2026-08-28 on a machine running both apps: `~/.codeium` had
@@ -174,18 +185,14 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
         // and output-saver installs globally, which is why they differ.
         "devin" => push_home(".codeium/windsurf/memories/global_rules.md")
             .map(|path| Target::InlineFile { path })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         // OpenCode's plugin API exposes tool-level hooks only (no
         // prompt-mutation hook) — but it auto-loads
         // `~/.config/opencode/AGENTS.md` globally per the rules docs, so
         // we reach the LLM through that path instead.
         "opencode" => push_home(".config/opencode/AGENTS.md")
             .map(|path| Target::InlineFile { path })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         // Kilo Code is a fork of OpenCode sharing the same loader — it
         // auto-loads `~/.config/kilo/AGENTS.md` (confirmed in its
         // session/instruction.ts). Kilo does expose an
@@ -194,9 +201,7 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
         // isn't marked experimental so we prefer it.
         "kilo" => push_home(".config/kilo/AGENTS.md")
             .map(|path| Target::InlineFile { path })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         // Factory Droid is an official AGENTS.md adopter — the CLI
         // auto-loads `~/.factory/AGENTS.md` as the global fallback
         // (project AGENTS.md files override it). Same pattern as
@@ -204,9 +209,7 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
         //   https://docs.factory.ai/cli/configuration/agents-md
         "droid" => push_home(".factory/AGENTS.md")
             .map(|path| Target::InlineFile { path })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         // Antigravity 2.0 IDE + CLI both honor `@imports` from
         // `~/.gemini/GEMINI.md` (shared with Gemini CLI). install_agent
         // is idempotent — if Gemini already installed, the import line
@@ -216,9 +219,7 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
                 dir,
                 root_file: "GEMINI.md".into(),
             })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
         // Copilot CLI moves its whole home with COPILOT_HOME; VS Code reads
         // `~/.copilot/instructions` either way.
         "copilot" => std::env::var_os("COPILOT_HOME")
@@ -228,9 +229,25 @@ pub(crate) fn resolve_target_with_home(agent_id: &str, home: Option<&std::path::
                 path: dir.join("instructions/trs.instructions.md"),
                 header: COPILOT_HEADER,
             })
-            .unwrap_or(Target::NotSupported {
-                reason: "HOME not set",
-            }),
+            .unwrap_or(HOME_NOT_SET),
+        // Paths below follow each agent's docs; no real binary has confirmed
+        // they load (docs/development/agent-integrations.md).
+        "grok" => std::env::var_os("GROK_HOME")
+            .map(PathBuf::from)
+            .or_else(|| push_home(".grok"))
+            .map(|dir| Target::InlineFile {
+                path: dir.join("AGENTS.md"),
+            })
+            .unwrap_or(HOME_NOT_SET),
+        "kiro" => push_home(".kiro/steering/trs.md")
+            .map(|path| Target::RulesDir {
+                path,
+                header: KIRO_HEADER,
+            })
+            .unwrap_or(HOME_NOT_SET),
+        "openclaw" => push_home(".openclaw/workspace/SOUL.md")
+            .map(|path| Target::InlineFile { path })
+            .unwrap_or(HOME_NOT_SET),
         _ => Target::NotSupported {
             reason: "unknown agent",
         },
