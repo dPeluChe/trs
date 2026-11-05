@@ -81,7 +81,7 @@ impl ParseHandler {
         // Extract total tests
         if let Some(start) = line.find("Ran ") {
             let after_ran = &line[start + 4..];
-            if let Some(end) = after_ran.find(" tests") {
+            if let Some(end) = after_ran.find(" test") {
                 if let Ok(count) = after_ran[..end].trim().parse::<usize>() {
                     summary.tests_total = count;
                 }
@@ -91,7 +91,7 @@ impl ParseHandler {
         // Extract files count
         if let Some(start) = line.find("across ") {
             let after_across = &line[start + 7..];
-            if let Some(end) = after_across.find(" files") {
+            if let Some(end) = after_across.find(" file") {
                 if let Ok(count) = after_across[..end].trim().parse::<usize>() {
                     summary.suites_total = count;
                 }
@@ -112,18 +112,14 @@ impl ParseHandler {
 
     /// Update summary counts from parsed tests.
     pub(crate) fn update_bun_summary_from_tests(output: &mut BunTestOutput) {
-        // Always update suite counts since they may not be in the "Ran" line
-        // (the "across X files" part is optional)
+        // "across X files" is optional, and bun lists only failing files, so
+        // the rest of the total passed.
         if output.summary.suites_total == 0 {
-            for suite in &output.test_suites {
-                output.summary.suites_total += 1;
-                if suite.passed {
-                    output.summary.suites_passed += 1;
-                } else {
-                    output.summary.suites_failed += 1;
-                }
-            }
+            output.summary.suites_total = output.test_suites.len();
         }
+        let failed = output.test_suites.iter().filter(|s| !s.passed).count();
+        output.summary.suites_failed = failed;
+        output.summary.suites_passed = output.summary.suites_total.saturating_sub(failed);
 
         // Only update test counts if summary wasn't already populated from output
         if output.summary.tests_total == 0 {

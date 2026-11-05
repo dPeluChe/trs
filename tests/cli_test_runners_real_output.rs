@@ -76,3 +76,24 @@ fn cargo_test_duration_is_the_sum_of_the_suites() {
     let out = String::from_utf8_lossy(&out.stdout);
     assert!(out.contains("1.75s"), "{out}");
 }
+
+#[test]
+fn bun_counts_failing_files_and_a_lone_file() {
+    let mixed = "b.test.js:\n(fail) bad [0.41ms]\n\n 2 pass\n 1 fail\n 3 expect() calls\nRan 3 tests across 2 files. [20.00ms]\n";
+    let lone = "\n 1 pass\n 0 fail\n 1 expect() calls\nRan 1 test across 1 file. [3.00ms]\n";
+
+    for (input, total, passed, failed) in [(mixed, 2, 1, 1), (lone, 1, 1, 0)] {
+        let mut cmd = Command::cargo_bin("trs").unwrap();
+        let output = cmd
+            .args(["--json", "parse", "test", "-t", "bun"])
+            .write_stdin(input)
+            .assert()
+            .get_output()
+            .stdout
+            .clone();
+        let json: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        assert_eq!(json["summary"]["suites_total"], total);
+        assert_eq!(json["summary"]["suites_passed"], passed);
+        assert_eq!(json["summary"]["suites_failed"], failed);
+    }
+}
