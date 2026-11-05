@@ -388,3 +388,40 @@ fn a_cursor_rewrite_keeps_the_working_directory() {
         agent_cmd("cursor", "trs git status")
     );
 }
+
+#[test]
+fn trae_keeps_its_other_input_fields_and_gets_no_decision() {
+    let input = serde_json::json!({
+        "hook_event_name": "PreToolUse",
+        "tool_name": "RunCommand",
+        "tool_input": { "command": "git status", "description": "check", "timeout": 5 }
+    });
+    let out = build_hook_response(&input, Some("trae")).unwrap();
+    let hook = &out["hookSpecificOutput"];
+    assert_eq!(
+        hook["updatedInput"]["command"],
+        agent_cmd("trae", "trs git status")
+    );
+    assert_eq!(hook["updatedInput"]["description"], "check");
+    assert_eq!(hook["updatedInput"]["timeout"], 5);
+    assert!(hook.get("permissionDecision").is_none());
+}
+
+#[test]
+fn vibe_is_answered_in_its_own_shape_whatever_its_event_is_called() {
+    for event in ["pre_tool", "PreToolUse", ""] {
+        let input = serde_json::json!({
+            "hook_event_name": event,
+            "tool_name": "bash",
+            "tool_input": { "command": "git status", "timeout": 5 }
+        });
+        let out = build_hook_response(&input, Some("vibe")).unwrap();
+        assert_eq!(out["hook_specific_output"]["tool_input"]["timeout"], 5);
+        assert_eq!(
+            out["hook_specific_output"]["tool_input"]["command"],
+            agent_cmd("vibe", "trs git status")
+        );
+        assert!(out.get("hookSpecificOutput").is_none());
+        assert!(out.get("decision").is_none());
+    }
+}

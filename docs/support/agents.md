@@ -22,6 +22,8 @@ install scope.
 | VS Code Copilot / Copilot CLI | programmatic hook | ✓ | ✓ | `vscode` / `copilot-cli` | global + project |
 | OpenClaw | plugin template | ✓ | — | `openclaw` | global |
 | Hermes | plugin template | ✓ | — | `hermes` | global |
+| Trae | programmatic hook (unverified) | ✓ | — | `trae` | global + project |
+| Mistral Vibe | programmatic hook (unverified) | ✓ | — | `vibe` | global |
 | Zed (Agent Panel) | rules file only (AGENTS.md) | — | — | `(untagged)`; ACP external agents show their own label | project |
 
 ## Column legend
@@ -295,6 +297,16 @@ install scope.
     --log-level debug --log-dir /tmp/cplog
   grep -i hook /tmp/cplog/*.log   # look for "trs auto-rewrite"
   ```
+
+### Trae and Mistral Vibe
+
+Both follow each agent's published hook contract and are tested against its
+payload shape, but not on real binaries, so treat them as unverified.
+
+- **Trae:** `PreToolUse` on `RunCommand` in `.trae/hooks.json`. The hook rewrites
+  the command, keeps `description` and `timeout`, and never sends a decision.
+- **Mistral Vibe:** a `pre_tool` entry in `~/.vibe/hooks.toml`, global only.
+  `strict = false`, so a trs failure can't stop the bash tool.
 
 ### OpenClaw
 

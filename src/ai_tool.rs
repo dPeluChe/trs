@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::init_templates::{
     CLAUDE_HOOKS, CURSOR_HOOKS, DEVIN_CLI_HOOKS, DROID_HOOKS, GEMINI_HOOKS, KILO_PLUGIN,
-    OPENCODE_PLUGIN, PI_EXTENSION, VSCODE_HOOKS,
+    OPENCODE_PLUGIN, PI_EXTENSION, TRAE_HOOKS, VSCODE_HOOKS,
 };
 
 /// Supported AI tools for hook installation.
@@ -57,6 +57,10 @@ pub(crate) enum AiTool {
     /// ACP (Claude Code, Codex, Gemini CLI, OpenCode) are the real CLIs —
     /// their own trs hooks apply transitively.
     Zed,
+    /// Trae. `PreToolUse` on its `RunCommand` tool; trs never sends a decision.
+    Trae,
+    /// Mistral Vibe. `pre_tool` entry in `~/.vibe/hooks.toml`, global only.
+    Vibe,
     /// Devin CLI ("Devin for Terminal", binary `devin`) — a real hook
     /// integration, distinct from the rules-only `Devin` (Desktop /
     /// ex-Windsurf). Speaks Claude's PreToolUse envelope; shell tool is
@@ -220,6 +224,20 @@ pub(crate) const TOOLS: &[AiToolSpec] = &[
         target_label: "plugin → ~/.hermes/plugins/trs-rewrite/ (+ config enable)",
     },
     AiToolSpec {
+        variant: AiTool::Trae,
+        cli_name: "trae",
+        aliases: &["trae"],
+        display: "Trae",
+        target_label: "hooks → .trae/hooks.json",
+    },
+    AiToolSpec {
+        variant: AiTool::Vibe,
+        cli_name: "vibe",
+        aliases: &["vibe", "mistral-vibe"],
+        display: "Mistral Vibe",
+        target_label: "hooks → ~/.vibe/hooks.toml",
+    },
+    AiToolSpec {
         variant: AiTool::Zed,
         cli_name: "zed",
         aliases: &["zed", "zed-ide"],
@@ -349,6 +367,8 @@ impl AiTool {
             }
             Self::OpenClaw => in_path("openclaw") || home_has(".openclaw"),
             Self::Hermes => in_path("hermes") || home_has(".hermes"),
+            Self::Trae => in_path("trae") || app_exists("Trae") || home_has(".trae"),
+            Self::Vibe => in_path("vibe") || home_has(".vibe"),
             Self::Zed => in_path("zed") || app_exists("Zed") || home_has(".config/zed"),
             // Devin CLI writes `~/.config/devin/` (config.json + cli/). The
             // `devin` binary is shared with Devin Desktop, so both variants
@@ -407,6 +427,12 @@ impl AiTool {
                 filename: "trs.ts",
                 content: PI_EXTENSION,
             }),
+            Self::Trae => Some(HookSpec {
+                local_dir: ".trae",
+                global_dir: Some(".trae"),
+                filename: "hooks.json",
+                content: TRAE_HOOKS,
+            }),
             Self::Droid => Some(HookSpec {
                 local_dir: ".factory",
                 global_dir: Some(".factory"),
@@ -450,6 +476,7 @@ impl AiTool {
             | Self::Devin
             | Self::OpenClaw
             | Self::Hermes
+            | Self::Vibe
             | Self::Zed => None,
         }
     }

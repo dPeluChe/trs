@@ -84,7 +84,12 @@ pub(crate) fn install_codex_agents(opts: InstallOpts) -> Result<String, String> 
 /// instructions together into one wall of prose.
 ///
 /// Returns None when there is no sentinel pair to replace.
-fn refresh_sentinel_block(content: &str, start: &str, end: &str, block: &str) -> Option<String> {
+pub(crate) fn refresh_sentinel_block(
+    content: &str,
+    start: &str,
+    end: &str,
+    block: &str,
+) -> Option<String> {
     // Exactly one of each, or refuse. `find` would otherwise pair the FIRST
     // start with the FIRST end after it without checking they belong to the
     // same block, and replace everything between. A user who documents trs in

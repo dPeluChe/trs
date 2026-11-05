@@ -76,6 +76,8 @@ static AGENTS: &[AgentPolicy] = &[
     row("pi", false, defer),
     row("openclaw", false, defer),
     row("hermes", false, defer),
+    row("trae", true, defer).tool("RunCommand"),
+    row("vibe", true, defer),
     row("devin-cli", false, |c, d, _| {
         crate::rewrite_perm_devin::gate(c, d)
     })

@@ -81,6 +81,42 @@ pub(crate) const DROID_HOOKS: &str = r#"{
   }
 }"#;
 
+// Trae: Claude's envelope, but `version` is required in a new file and the
+// shell tool is `RunCommand`.
+pub(crate) const TRAE_HOOKS: &str = r#"{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "RunCommand",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "trs rewrite --caller trae"
+          }
+        ]
+      }
+    ]
+  }
+}"#;
+
+pub(crate) const VIBE_HOOKS_FILE: &str = ".vibe/hooks.toml";
+pub(crate) const VIBE_SENTINEL_START: &str = "# trs:vibe-hook:start";
+pub(crate) const VIBE_SENTINEL_END: &str = "# trs:vibe-hook:end";
+
+/// `strict = false`: a trs failure must never stop Vibe's bash tool.
+pub(crate) const VIBE_HOOK: &str = r#"# trs:vibe-hook:start
+[[hooks]]
+name = "trs-rewrite"
+type = "pre_tool"
+match = "bash"
+command = "trs rewrite --caller vibe"
+timeout = 10.0
+strict = false
+description = "Route commands through trs for token-optimized output"
+# trs:vibe-hook:end
+"#;
+
 pub(crate) const GEMINI_HOOKS: &str = r#"{
   "hooks": {
     "BeforeTool": [

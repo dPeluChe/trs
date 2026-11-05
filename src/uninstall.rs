@@ -170,6 +170,13 @@ fn uninstall_one(tool: &AiTool, opts: UninstallOpts) {
                 CODEX_AGENTS_SENTINEL_END,
                 opts.dry_run,
             )
+        } else if path.ends_with("hooks.toml") {
+            remove_between_sentinels(
+                &path,
+                crate::init_templates::VIBE_SENTINEL_START,
+                crate::init_templates::VIBE_SENTINEL_END,
+                opts.dry_run,
+            )
         } else if path.ends_with("GEMINI.md") {
             // v0.6.6+ Antigravity rules block. The sentinels keep it from
             // being mistaken for the Gemini CLI output-saver `@trs.md`
@@ -327,6 +334,11 @@ fn candidate_paths(tool: &AiTool) -> Vec<PathBuf> {
         }
         // Same project AGENTS.md as Codex — sentinel scrub is shared.
         AiTool::Zed => v.push(PathBuf::from("AGENTS.md")),
+        AiTool::Trae => {
+            push_home(".trae/hooks.json");
+            v.push(PathBuf::from(".trae/hooks.json"));
+        }
+        AiTool::Vibe => push_home(crate::init_templates::VIBE_HOOKS_FILE),
         AiTool::DevinCLI => {
             // JSON merge target — scrub_trs_from_json drops the `trs rewrite`
             // entry and preserves the user's model/org_id/theme config.
