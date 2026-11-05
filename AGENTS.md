@@ -3,7 +3,7 @@
 ## What is trs
 
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
-Cuts ~50% of the tokens AI agents spend on terminal output, measured on real sessions (see docs/development/benchmarks/).
+Cuts up to 60% of the tokens AI agents spend on terminal output, measured on real sessions (see docs/development/benchmarks/).
 
 ## Pre-generated codebase digest
 

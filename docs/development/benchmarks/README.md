@@ -232,7 +232,7 @@ Read by eye before trusting a cell:
 | median command | 29% | |
 | commands cut by half or more | 11 of 38 | |
 
-### The ~50% on usetrs.dev
+### The "up to 60%" on usetrs.dev
 
 The site said ~70% until v0.8.10. That came from 2026-10-21 data, before `trs
 stats` left failed runs and outputs over 30 KB out of its totals. Measured
@@ -246,8 +246,9 @@ again on 2026-11-04, from the author's history:
 | 7 days | 1,370 | 35% |
 
 The windows swing with the work: a month of low-output commands saves little.
-~50% is the round figure for the history; quote the table above for a given
-command. With oversized outputs counted back in, 30 days is 58%, but a few
+"Up to 60%" is a ceiling from the history, on the output trs handles, not on
+the bill: see [`output-cost-findings.md`](../output-cost-findings.md). Quote the
+table above for a given command. With oversized outputs counted back in, 30 days is 58%, but a few
 huge outputs carry that number.
 
 ## trs alone on v0.8.9

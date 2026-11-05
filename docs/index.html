@@ -8,7 +8,7 @@
 
   <!-- Primary -->
   <title>trs (Token-Reducing Shell): Terminal compression for AI agents</title>
-  <meta name="description" content="Rust CLI that cuts ~50% of the tokens AI agents spend on terminal output, measured on real sessions. ~4 ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
+  <meta name="description" content="Rust CLI that cuts up to 60% of the tokens AI agents spend on terminal output, measured on real sessions. ~4 ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
   <meta name="keywords" content="trs, token-reducing shell, terminal, CLI, token reduction, AI agents, Claude Code, Gemini, LLM, compression, ingest, digest, Rust">
   <meta name="author" content="Iteris">
   <link rel="canonical" href="https://usetrs.dev/">
@@ -20,7 +20,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="trs (Token-Reducing Shell)">
   <meta property="og:title" content="trs: Terminal compression for AI agents">
-  <meta property="og:description" content="Rust CLI that cuts ~50% of the tokens AI agents spend on terminal output. Single 7-10 MB binary, ~4 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Pi, Droid, Codex, VS Code Copilot, Copilot CLI, Devin CLI, OpenClaw, Hermes, Zed, Devin Desktop (ex-Windsurf), Antigravity (IDE + CLI / agy).">
+  <meta property="og:description" content="Rust CLI that cuts up to 60% of the tokens AI agents spend on terminal output. Single 7-10 MB binary, ~4 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Pi, Droid, Codex, VS Code Copilot, Copilot CLI, Devin CLI, OpenClaw, Hermes, Zed, Devin Desktop (ex-Windsurf), Antigravity (IDE + CLI / agy).">
   <meta property="og:url" content="https://usetrs.dev/">
   <meta property="og:image" content="https://usetrs.dev/og-image.png">
   <meta property="og:image:alt" content="trs: Terminal compression for AI agents">
@@ -34,7 +34,7 @@
   <meta name="twitter:site" content="@dPeluChe">
   <meta name="twitter:creator" content="@dPeluChe">
   <meta name="twitter:title" content="trs: Terminal compression for AI agents">
-  <meta name="twitter:description" content="Rust CLI that cuts ~50% of the tokens AI agents spend on terminal output. Single 7-10 MB binary, ~4 ms startup.">
+  <meta name="twitter:description" content="Rust CLI that cuts up to 60% of the tokens AI agents spend on terminal output. Single 7-10 MB binary, ~4 ms startup.">
   <meta name="twitter:image" content="https://usetrs.dev/og-image.png">
   <meta name="twitter:image:alt" content="trs: Terminal compression for AI agents">
 
@@ -53,7 +53,7 @@
     "@type": "SoftwareApplication",
     "name": "trs (Token-Reducing Shell)",
     "alternateName": "trs",
-    "description": "Rust CLI that cuts ~50% of the tokens AI agents spend on terminal output, measured on real sessions. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
+    "description": "Rust CLI that cuts up to 60% of the tokens AI agents spend on terminal output, measured on real sessions. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
     "url": "https://usetrs.dev/",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "macOS, Linux, Windows",
@@ -704,7 +704,7 @@
 
     <div class="hero-tagline">
       Terminal compression for AI agents.
-      <span class="muted">~50% fewer tokens on real agent commands. What it leaves out, it says where to find.</span>
+      <span class="muted">Up to 60% fewer tokens on real agent commands. What it leaves out, it says where to find.</span>
     </div>
 
     <div class="hero-cta">
@@ -1262,8 +1262,9 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
   <div class="container">
     <h2>Compression reference</h2>
     <p class="section-intro">
-      The ~50% comes from real use: 58% over 84,325 commands since April, and
-      24% to 48% in recent windows, so it varies with what you run. The table
+      The 60% is a ceiling from real use: 58% over 84,325 commands since April,
+      24% to 48% in recent windows. It counts the output trs handles, not your
+      whole bill, and it varies with what you run. The table
       is a fixed benchmark of 38 command shapes taken
       from real agent sessions (trs v0.9.0, tokens counted with
       <code class="inline">o200k_base</code>).
@@ -1305,7 +1306,7 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
         <div class="label">Node overhead (shell launcher)</div>
       </div>
       <div class="bench-card">
-        <div class="num">~50%</div>
+        <div class="num">&le;60%</div>
         <div class="label">fewer tokens on real agent commands</div>
       </div>
       <div class="bench-card">
