@@ -271,6 +271,36 @@ This has no control: a transcript does not say whether trs cut that output, and
 agents narrow a diff or pipe `git status` out of habit too. It ranks families; it
 does not price a cut. The calls span many trs versions.
 
+## A large diff shares a budget
+
+2026-11-05, same run as above after the change. Past 500 change lines, `git diff`
+used to print a file list and nothing else. It now keeps 400 lines spread fairly:
+lockfiles and bundles get none, a small file keeps everything, and each hunk of a
+large one gets its share, with `[+N lines cut]` and the saved raw output after it.
+
+| `git diff HEAD~5` | tokens cut | facts kept |
+|---|---:|---:|
+| trs before | 99% | 94 of 367 |
+| trs now | 86% | 155 of 386 |
+| rtk 1.1.0 | 85% | 158 of 386 |
+
+| | before | now | rtk 1.1.0 |
+|---|---:|---:|---:|
+| tokens cut, whole corpus | 87% | 83% | 82% |
+| facts kept, pooled | 57% | 62% | 47% |
+| facts kept, mean per command | 91% | 92% | 78% |
+| RISK rows | 2 | 1 | 1 |
+
+The whole-corpus cut fell because that one diff now spends tokens on code. BLIND
+stays on that row: 400 lines cannot carry the middle of a 2,500-line diff.
+
+`truth.py` adds SILENT: under 70% of facts kept with no way back named. No row has
+it. Zero context lines in small diffs stays as measured above: nothing is noted
+there, because the file itself is the way back.
+
+`git branch -a` drops nothing to gain ground. The tool that cuts more here prints
+`... +20 more` and hides real branches, so trs only nests repeated prefixes.
+
 ## trs alone on v0.9.1
 
 2026-11-04, same corpus and command as below. This is what usetrs.dev shows.

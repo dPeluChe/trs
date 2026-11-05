@@ -81,3 +81,55 @@ fn a_missing_final_newline_stays_visible() {
     );
     assert_eq!(out.matches("No newline at end of file").count(), 2, "{out}");
 }
+
+fn file_diff(path: &str, hunks: usize, lines: usize) -> String {
+    let mut out =
+        format!("diff --git a/{path} b/{path}\nindex 1..2 100644\n--- a/{path}\n+++ b/{path}\n");
+    for h in 0..hunks {
+        out.push_str(&format!("@@ -{h},1 +{h},{lines} @@ fn hunk_{h}\n"));
+        for l in 0..lines {
+            out.push_str(&format!("+line {l} of hunk {h}\n"));
+        }
+    }
+    out
+}
+
+#[test]
+fn a_large_diff_keeps_code_from_every_file_and_says_what_it_cut() {
+    let diff = [
+        file_diff("Cargo.lock", 1, 900),
+        file_diff("src/huge.rs", 6, 200),
+        file_diff("src/small.rs", 1, 3),
+    ]
+    .concat();
+    let out = compact(&diff);
+    assert!(out.contains("+line 2 of hunk 0"), "{out}");
+    assert!(out.contains("M src/small.rs (+3/-0)"), "{out}");
+    let small = out.split("M src/small.rs").nth(1).unwrap();
+    assert!(small.contains("+line 2 of hunk 0"), "{out}");
+    assert!(!small.contains("cut]"), "{out}");
+    let huge = out.split("M src/huge.rs").nth(1).unwrap();
+    assert!(huge.contains("fn hunk_5"), "every hunk gets a share: {out}");
+    assert!(huge.contains("lines cut]"), "{out}");
+    let lock = out
+        .split("M Cargo.lock")
+        .nth(1)
+        .unwrap()
+        .split("M src/huge.rs")
+        .next()
+        .unwrap();
+    assert!(
+        lock.contains("[+901 lines cut]") && !lock.contains("@@"),
+        "{out}"
+    );
+    assert!(out.lines().count() < 450, "{}", out.lines().count());
+}
+
+#[test]
+fn a_large_stat_with_no_hunks_stays_a_file_list() {
+    let out = compact(" src/a.rs | 400 ++++\n src/b.rs | 300 ----\n 2 files changed, 400 insertions(+), 300 deletions(-)\n");
+    assert!(
+        out.contains("src/a.rs") && out.contains("src/b.rs"),
+        "{out}"
+    );
+}

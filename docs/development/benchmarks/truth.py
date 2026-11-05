@@ -72,6 +72,7 @@ ANCHORS = {
 ERROR_LINE = re.compile(r"error|fail|panick|warning|FAIL", re.I)
 DIAGNOSTIC = re.compile(r"^\s*(?:error|warning)\b|\bFAIL(?:ED)?\b|panicked at|\b\d+ failed\b|^\s*\(fail\)|^E\s")
 WORD = re.compile(r"[A-Za-z_][\w:.-]{3,}\w|\d+")
+RECOVERY_NOTES = ("[trs] full output", "lines: git show")
 RISK_CUT, RISK_KEEP = 90.0, 70.0
 BLIND_CUT, BLIND_KEEP, BLIND_MIN = 50.0, 50.0, 3
 
@@ -233,7 +234,7 @@ def main():
     print("Anchors: what survives, and whether plain tail would keep more")
     head = f"  {'command':30}{'raw tok':>8}{'trs tok':>8}{'cut':>6}{'anchors':>9}{'kept':>6}{'facts':>6}{'tail':>6}{'buried':>8}  flag"
     print(head)
-    risks = blind = 0
+    risks = blind = silent = 0
     for c in COMMANDS:
         raw = sh(c, stderr=True)
         out = sh(f"{trs} {c}", stderr=True)
@@ -261,8 +262,12 @@ def main():
             risks += 1
         if t > f:
             flags.append("tail-wins")
+        if f < RISK_KEEP and not any(m in out for m in RECOVERY_NOTES):
+            flags.append("SILENT")
+            silent += 1
         print(f"  {c[:30]:30}{rt:8}{ot:8}{cut:5.0f}%{n:9}{k:5.0f}%{f:5.0f}%{t:5.0f}%{b:7.0f}%  {' '.join(flags)}")
     print(f"\n  RISK = cut >= {RISK_CUT:.0f}% with under {RISK_KEEP:.0f}% of facts kept ({risks} rows)")
+    print(f"  SILENT = under {RISK_KEEP:.0f}% of facts kept and no way back named ({silent} rows)")
     print(f"  BLIND = cut >= {BLIND_CUT:.0f}% with under {BLIND_KEEP:.0f}% of the middle-only facts kept ({blind} rows)")
     sys.exit(1 if bad else 0)
 

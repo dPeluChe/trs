@@ -1,4 +1,4 @@
-//! Runtime twin of the anchor check in `docs/development/benchmarks/truth.py`:
+//! Runtime twin of the literal anchor score in `docs/development/benchmarks/truth.py`:
 //! when a summary cuts 90% or more and keeps under 70% of the raw output's
 //! anchors (paths, `file:line` refs, commit hashes), the caller points at the
 //! saved raw output instead of leaving the loss silent.

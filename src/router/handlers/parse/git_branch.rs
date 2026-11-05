@@ -71,12 +71,12 @@ impl ParseHandler {
 fn render_compact(current: &str, local: &[String], remote: &[String]) -> String {
     let mut out = String::new();
 
-    // Drop remote branches whose tail name matches any local branch — the
-    // local ref is already tracked, showing both is pure noise.
+    // Past the remote's name, the rest is the branch: `origin/fix/x` shadows
+    // `fix/x`, and says nothing about a local `x`.
     let remote_unique: Vec<&String> = remote
         .iter()
         .filter(|r| {
-            let short = r.split('/').next_back().unwrap_or(r);
+            let short = r.split_once('/').map_or(r.as_str(), |(_, rest)| rest);
             !local.iter().any(|l| l == short)
         })
         .collect();
@@ -89,6 +89,26 @@ fn render_compact(current: &str, local: &[String], remote: &[String]) -> String 
     }
     if !remote_unique.is_empty() {
         render_group(&mut out, &remote_unique, "");
+    }
+    out
+}
+
+/// `chore/a, chore/b, chore/c` as `chore/{a, b, c}`: same names, one prefix.
+fn nest_tails(tails: &[&&str]) -> Vec<String> {
+    let mut groups: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    let mut out: Vec<String> = Vec::new();
+    for tail in tails {
+        match tail.split_once('/') {
+            Some((head, rest)) => groups.entry(head).or_default().push(rest),
+            None => out.push(tail.to_string()),
+        }
+    }
+    for (head, rests) in groups {
+        if rests.len() < COLLAPSE_THRESHOLD {
+            out.extend(rests.iter().map(|r| format!("{head}/{r}")));
+        } else {
+            out.push(format!("{head}/{{{}}}", rests.join(", ")));
+        }
     }
     out
 }
@@ -123,13 +143,51 @@ fn render_group(out: &mut String, branches: &[&String], indent: &str) {
         if hidden > 0 {
             crate::parse_out::mark_dropped();
         }
-        let tail_list: Vec<String> = shown.iter().map(|s| s.to_string()).collect();
+        let more = if hidden > 0 {
+            format!(" (+{} more)", hidden)
+        } else {
+            String::new()
+        };
         out.push_str(&format!(
-            "{}  {}/{{{}}} (+{} more)\n",
+            "{}  {}/{{{}}}{}\n",
             indent,
             prefix,
-            tail_list.join(", "),
-            hidden,
+            nest_tails(&shown).join(", "),
+            more,
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn names(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn a_remote_is_a_shadow_only_of_the_same_branch() {
+        let out = render_compact(
+            "fix/x",
+            &names(&["fix/x", "y"]),
+            &names(&["origin/fix/x", "origin/fix/y"]),
+        );
+        assert!(!out.contains("origin/fix/x"), "{out}");
+        assert!(out.contains("origin/fix/y"), "{out}");
+    }
+
+    #[test]
+    fn shared_prefixes_nest_with_every_name_kept() {
+        let remote = names(&[
+            "origin/chore/a",
+            "origin/chore/b",
+            "origin/chore/c",
+            "origin/docs/d",
+            "origin/e",
+        ]);
+        let out = render_compact("main", &names(&["main"]), &remote);
+        assert!(out.contains("origin/{e, chore/{a, b, c}, docs/d}"), "{out}");
+        assert!(!out.contains("more"), "{out}");
     }
 }
