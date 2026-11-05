@@ -476,3 +476,21 @@ fn local_programs_are_wrapped_only_when_trs_parses_them() {
         Some("trs .venv/bin/pytest -q".into())
     );
 }
+
+#[test]
+fn an_option_after_a_wrapper_stays_with_the_wrapper() {
+    assert_eq!(
+        maybe_rewrite("uv run --with y pytest").as_deref(),
+        Some("trs uv run --with y pytest")
+    );
+    assert_eq!(maybe_rewrite("time -p cargo test"), None);
+    assert_eq!(maybe_rewrite("command -v git"), None);
+    assert_eq!(
+        maybe_rewrite("uv run pytest").as_deref(),
+        Some("uv run trs pytest")
+    );
+    assert_eq!(
+        maybe_rewrite("pipenv run pytest").as_deref(),
+        Some("pipenv run trs pytest")
+    );
+}

@@ -23,8 +23,8 @@ pub(crate) use crate::exec::build_command;
 
 pub(crate) use crate::classifier_args::preprocess_tail_args;
 use crate::classifier_args::{
-    has_structured_output_flag, is_help_request, strip_git_global_opts, unwrap_shell_c,
-    unwrap_timeout,
+    has_structured_output_flag, is_help_request, strip_git_global_opts, unwrap_runner,
+    unwrap_shell_c, unwrap_timeout,
 };
 
 /// Classify an external command into the parser to pipe through, or None
@@ -40,6 +40,12 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
     // parser as the bare name. Field data: `gh` invoked by absolute path
     // averaged 40 KB/cmd uncompressed before this.
     let cmd = crate::text_util::cmd_basename(cmd);
+
+    if let Some((inner, inner_args)) = unwrap_runner(cmd, args).and_then(<[String]>::split_first) {
+        if let Some(route) = classify_command(inner, inner_args) {
+            return Some(route);
+        }
+    }
 
     // For git commands, strip global options before detecting subcommand
     let effective_args;
@@ -188,25 +194,6 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                     _ => None,
                 }
             }
-            // pnpm dlx <tool> — runs a one-off package. Route the
-            // inner tool to its parser just like `npx <tool>` does.
-            "dlx" | "exec" => {
-                let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
-                match inner {
-                    "tsc" | "eslint" | "biome" | "prettier" => {
-                        Some(ParseCommands::Lint { file: None })
-                    }
-                    "jest" => Some(ParseCommands::Test {
-                        runner: Some(TestRunner::Jest),
-                        file: None,
-                    }),
-                    "vitest" => Some(ParseCommands::Test {
-                        runner: Some(TestRunner::Vitest),
-                        file: None,
-                    }),
-                    _ => None,
-                }
-            }
             _ => None,
         },
         "bun" => match subcmd {
@@ -262,38 +249,12 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             }
             "sync" | "add" | "remove" | "lock" => Some(ParseCommands::Install { file: None }),
             "tree" => Some(ParseCommands::Deps { file: None }),
-            // `uv run <tool>` — same dispatch pattern as `npx <tool>`.
-            "run" => {
-                let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
-                match inner {
-                    "pytest" => Some(ParseCommands::Test {
-                        runner: Some(TestRunner::Pytest),
-                        file: None,
-                    }),
-                    "ruff" | "mypy" | "pylint" => Some(ParseCommands::Lint { file: None }),
-                    _ => None,
-                }
-            }
             _ => None,
         },
-        // poetry — Python dependency manager. `poetry run <tool>` dispatches
-        // the same way as `uv run <tool>` and `python3 -m <module>`.
+        // poetry — Python dependency manager.
         "poetry" => match subcmd {
             "install" | "add" | "update" | "remove" | "lock" => {
                 Some(ParseCommands::Install { file: None })
-            }
-            "run" => {
-                let inner = args_ref.get(1).map(|s| s.as_str()).unwrap_or("");
-                match inner {
-                    "pytest" => Some(ParseCommands::Test {
-                        runner: Some(TestRunner::Pytest),
-                        file: None,
-                    }),
-                    "ruff" | "mypy" | "pylint" | "flake8" | "black" | "isort" => {
-                        Some(ParseCommands::Lint { file: None })
-                    }
-                    _ => None,
-                }
             }
             _ => None,
         },
@@ -456,21 +417,6 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             classify_command(&inner[0], &inner[1..])
         }
 
-        "npx" | "bunx" => match subcmd {
-            "jest" => Some(ParseCommands::Test {
-                runner: Some(TestRunner::Jest),
-                file: None,
-            }),
-            "vitest" => Some(ParseCommands::Test {
-                runner: Some(TestRunner::Vitest),
-                file: None,
-            }),
-            "tsc" | "eslint" | "biome" | "@biomejs/biome" | "prettier" => {
-                Some(ParseCommands::Lint { file: None })
-            }
-            _ => None,
-        },
-
         // Formatters run directly — same "reformatted N files" shape the
         // Fmt parser already handles for `cargo fmt`. Field data: black
         // 23×, isort present, both uncovered before this.
@@ -480,9 +426,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
 
         // Linters run directly. flake8/mypy field data: 24× / present,
         // previously only routed via `python -m` / `poetry run`.
-        "eslint" | "biome" | "ruff" | "pylint" | "golangci-lint" | "flake8" | "mypy" => {
-            Some(ParseCommands::Lint { file: None })
-        }
+        "eslint" | "biome" | "@biomejs/biome" | "prettier" | "ruff" | "pylint"
+        | "golangci-lint" | "flake8" | "mypy" => Some(ParseCommands::Lint { file: None }),
 
         _ => None,
     }
