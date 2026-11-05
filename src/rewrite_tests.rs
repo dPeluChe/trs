@@ -351,3 +351,40 @@ fn git_inside_a_claude_worktree_is_left_unwrapped() {
     assert!(!git_in_claude_worktree(Some("/repo/src"), "git status"));
     assert!(!git_in_claude_worktree(None, "git status"));
 }
+
+/// Checked on real Claude Code: with `command` alone, a `run_in_background`
+/// call ran in the foreground.
+#[test]
+fn a_rewrite_keeps_every_other_input_field() {
+    let input = serde_json::json!({
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "git status",
+            "description": "check",
+            "timeout": 5000,
+            "run_in_background": true
+        }
+    });
+    let out = build_hook_response(&input, Some("claude")).unwrap();
+    let updated = &out["hookSpecificOutput"]["updatedInput"];
+    assert_eq!(updated["command"], agent_cmd("claude", "trs git status"));
+    assert_eq!(updated["description"], "check");
+    assert_eq!(updated["timeout"], 5000);
+    assert_eq!(updated["run_in_background"], true);
+}
+
+#[test]
+fn a_cursor_rewrite_keeps_the_working_directory() {
+    let input = serde_json::json!({
+        "hook_event_name": "preToolUse",
+        "tool_name": "Shell",
+        "tool_input": { "command": "git status", "working_directory": "/repo" }
+    });
+    let out = build_hook_response(&input, Some("cursor")).unwrap();
+    assert_eq!(out["updated_input"]["working_directory"], "/repo");
+    assert_eq!(
+        out["updated_input"]["command"],
+        agent_cmd("cursor", "trs git status")
+    );
+}
