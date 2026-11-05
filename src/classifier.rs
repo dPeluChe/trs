@@ -309,7 +309,8 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             "fmt" => Some(ParseCommands::Fmt { file: None }),
             _ => None,
         },
-        "make" | "cmake" => Some(ParseCommands::Build { file: None }),
+        // Not `make`: a target prints anything, and Build keeps only diagnostics.
+        "cmake" => Some(ParseCommands::Build { file: None }),
         "tsc" => Some(ParseCommands::Lint { file: None }),
         "gcc" | "g++" | "clang" | "javac" => Some(ParseCommands::Build { file: None }),
         "mvn" | "mvnw" | "mvnw.cmd" => Some(ParseCommands::Maven { file: None }),
@@ -320,7 +321,7 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
             _ => None,
         },
         "swift" => match subcmd {
-            "build" | "test" | "run" => Some(ParseCommands::Build { file: None }),
+            "build" => Some(ParseCommands::Build { file: None }),
             _ => None,
         },
         // xcodebuild output is among the chattiest — compile command echoes,

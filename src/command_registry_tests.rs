@@ -38,7 +38,7 @@ fn keep_ratio_flat_commands() {
     assert_eq!(r("ag", ""), 0.40);
     assert_eq!(r("env", ""), 0.32);
     assert_eq!(r("printenv", ""), 0.32);
-    assert_eq!(r("make", ""), 0.15);
+    assert_eq!(r("make", ""), 0.50);
     assert_eq!(r("gcc", ""), 0.15);
     assert_eq!(r("g++", ""), 0.15);
     assert_eq!(r("tsc", ""), 0.15);
