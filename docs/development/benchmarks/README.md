@@ -22,6 +22,7 @@ should we improve?", not to publish a leaderboard.
 |--------|---------|
 | [`benchmark.sh`](./benchmark.sh) | Comparative runs against rtk and token-saver on a curated set of real-world commands |
 | [`benchmark-real.sh`](./benchmark-real.sh) | Longer, more varied workload (slower, more representative) |
+| [`recovery.py`](./recovery.py) | How often a compact output sends the agent back for what it cut, from your own Claude Code transcripts |
 | [`transcript_output.py`](./transcript_output.py) | Output tokens per assistant message before vs after the output-saver block, from your own Claude Code transcripts, per model, with a bootstrap 95% CI. Observational and labelled estimated |
 | [`output_saver_ab.py`](./output_saver_ab.py) | A/B for the output-saver block with a control: no block, "Answer concisely.", the trs block; isolated `claude -p` runs, style markers, fidelity cases (negation, number, destructive warning), bootstrap CI. Spends usage, refuses without `--yes`; `--dry-run` tests the harness for free |
 | [`output_saver_agentic.py`](./output_saver_agentic.py) | Agentic A/B for the output-saver block: tools on, small repo tasks with a test as success check, compares arms (`--arm NAME=FILE`) on `total_cost_usd`, turns, output tokens and success with a bootstrap CI. Parallel (`--jobs`), spend caps (`--total-cap-usd`), no `bypassPermissions` (scoped Bash allowlist). Spends usage, refuses without `--yes` |
@@ -217,6 +218,55 @@ Read by eye before trusting a cell:
 - **Zero-anchor rows are not always a loss.** For `ps aux`, the anchors are
   PIDs in a list the agent rarely reads whole, and the full list is one path
   away.
+
+## Facts, not literal text
+
+2026-11-05, v0.9.1 against the latest release of the closest similar tool, same
+corpus, `compare.py --only trs,rtk --reps 3`. The anchor score counted a reworded
+line as lost: `tests::x: src/main.rs:65:60: ...` scored as missing the `test x ...
+FAILED` it replaces. `truth.facts` reads anchors for meaning, for every tool alike:
+
+- a diagnostic counts when most of its words survive;
+- code in a diff and commit prose stop counting as error lines;
+- `index` blob hashes stop counting as anchors;
+- a Docker row can be reached by either of its two names.
+
+`anchors kept` stays in the tables, so nothing measured earlier changes meaning.
+
+| | trs 0.9.1 | rtk 1.1.0 |
+|---|---:|---:|
+| tokens cut, whole corpus | 89% | 85% |
+| tokens cut, no command over 25% of the corpus | 45% | 43% |
+| median command | 25% | 39% |
+| facts kept, whole corpus | 59% | 60% |
+| facts kept, mean per command | 92% | 82% |
+| commands with no fact left | 0 | 3 |
+| RISK rows | 2 | 1 |
+| pipelines | 9/9 | 8/9 |
+| hook ms | 4.4 | 15.2 |
+
+`ps aux` and `git diff HEAD~5` hold 84% of the corpus tokens, so they decide both
+whole-corpus rows. The real loss is `git diff HEAD~5`: 99% cut, 96 of 362 facts.
+
+## Do agents go back for what was cut?
+
+2026-11-05, `recovery.py --since 2026-06-01`, 2,588 transcripts, next 5 calls.
+A cut that forces a second call can cost more than it saved. Of 34,365 calls,
+2.4% went back for the same output and 1.8% drilled in with a narrower command.
+
+| family | calls | went back | tee | bypass | repeat | drill |
+|---|---:|---:|---:|---:|---:|---:|
+| git show | 172 | 27.3% | 0 | 2 | 4 | 41 |
+| git diff | 2673 | 22.7% | 10 | 30 | 33 | 535 |
+| git status | 1928 | 13.0% | 1 | 161 | 89 | 0 |
+| git log | 5564 | 3.7% | 11 | 12 | 140 | 43 |
+| git branch | 1117 | 3.0% | 1 | 5 | 27 | 0 |
+| ls | 6283 | 2.8% | 4 | 27 | 142 | 0 |
+| grep | 12612 | 0.9% | 8 | 15 | 93 | 0 |
+| gh pr | 2786 | 0.6% | 3 | 15 | 0 | 0 |
+
+Drill is a ceiling, since an agent also narrows on purpose. These calls span
+many trs versions, and a chain counts each of its steps.
 
 ## trs alone on v0.9.1
 
