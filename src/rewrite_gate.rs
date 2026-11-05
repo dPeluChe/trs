@@ -34,6 +34,12 @@ fn defer(_: &str, _: Option<&str>, _: Option<&str>) -> Gate {
     Gate::Defer
 }
 
+/// Grok matches its deny rules against the rewritten command and blocks the
+/// rewrite in auto mode, and it runs Claude's hooks by default. Checked on 1.0.70.
+fn never(_: &str, _: Option<&str>, _: Option<&str>) -> Gate {
+    Gate::Skip
+}
+
 const fn row(label: &'static str, from_env: bool, gate: GateFn) -> AgentPolicy {
     AgentPolicy {
         label,
@@ -78,6 +84,7 @@ static AGENTS: &[AgentPolicy] = &[
     row("hermes", false, defer),
     row("trae", true, defer).tool("RunCommand"),
     row("vibe", true, defer),
+    row("grok", false, never).tool("run_terminal_command"),
     row("devin-cli", false, |c, d, _| {
         crate::rewrite_perm_devin::gate(c, d)
     })
