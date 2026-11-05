@@ -67,7 +67,7 @@
   "git_diff_binary.txt": {
     "handler": "git-diff",
     "in": 141,
-    "out": 44
+    "out": 45
   },
   "git_diff_copied.txt": {
     "handler": "git-diff",
@@ -92,12 +92,12 @@
   "git_diff_long_paths.txt": {
     "handler": "git-diff",
     "in": 795,
-    "out": 260
+    "out": 292
   },
   "git_diff_mixed.txt": {
     "handler": "git-diff",
     "in": 1097,
-    "out": 610
+    "out": 611
   },
   "git_diff_modified.txt": {
     "handler": "git-diff",
