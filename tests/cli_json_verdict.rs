@@ -1,5 +1,5 @@
-//! With a child to ask, `--json` output carries its real verdict and stays a
-//! single parseable document, whatever the parser made of the output.
+//! When a parser emits a JSON object, `--json` output carries the child's real
+//! verdict and stays a single parseable document.
 #![cfg(unix)]
 
 use assert_cmd::Command;

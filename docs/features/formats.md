@@ -30,6 +30,14 @@ that is one JSON document, whatever command produced it (`curl`, `gh api`,
 `kubectl -o json`). trs does not collapse spaces, fold repeats or cut long
 lines in it.
 
+## Failures under `--json`
+
+When a command's output becomes a JSON object, a failure stays inside that
+object, so stdout is still one document: `success` is `false`, `exit_code`
+holds the real status and `full_output` is the path to the raw output. A
+cut output also gets `full_output`. Those objects are re-serialized, so
+their keys come out sorted. The exit status of `trs` matches in every case.
+
 ## Examples
 
 ### Compact (default)

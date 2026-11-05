@@ -3,32 +3,40 @@
 
 use serde_json::Value;
 
-/// `parsed` with `success` set by the child's status, plus `exit_code` on
-/// failure and `full_output` when `raw` is given. These live in the object
-/// because a text footer after it would make the output unparseable. None
-/// when `parsed` is not a JSON object.
-pub(crate) fn reconcile_json(parsed: &str, code: i32, raw: Option<&str>) -> Option<String> {
-    let mut value: Value = serde_json::from_str(parsed.trim()).ok()?;
-    let object = value.as_object_mut()?;
-    let mut changed = false;
-    let succeeded = code == 0;
-    if object.get("success").and_then(Value::as_bool) == Some(!succeeded) {
-        object.insert("success".to_string(), Value::Bool(succeeded));
-        changed = true;
+/// `parsed` with the child's verdict, plus `full_output` when `raw` yields a
+/// path. These live in the object because a text footer after it would break
+/// the document. On success `success` only flips when the parser read nothing:
+/// any other object may be the child's own data. Unchanged objects are
+/// returned as written, since re-serializing sorts keys. None when `parsed`
+/// is not a JSON object.
+pub(crate) fn reconcile_json(
+    parsed: &str,
+    code: i32,
+    raw: impl FnOnce() -> Option<String>,
+) -> Option<String> {
+    let parsed = parsed.trim();
+    if !parsed.starts_with('{') {
+        return None;
     }
-    if !succeeded {
+    let mut value: Value = serde_json::from_str(parsed).ok()?;
+    let object = value.as_object_mut()?;
+    let failed = code != 0;
+    let flag = |key: &str| object.get(key).and_then(Value::as_bool);
+    let misread_pass = !failed && flag("success") == Some(false) && flag("is_empty") == Some(true);
+    let raw = raw();
+    if !failed && !misread_pass && raw.is_none() {
+        return Some(parsed.to_string());
+    }
+    if failed {
         object.insert("exit_code".to_string(), Value::from(code));
-        changed = true;
+    }
+    if failed || misread_pass {
+        object.insert("success".to_string(), Value::Bool(!failed));
     }
     if let Some(path) = raw {
         object.insert("full_output".to_string(), Value::from(path));
-        changed = true;
     }
-    if changed {
-        Some(value.to_string())
-    } else {
-        Some(parsed.trim().to_string())
-    }
+    Some(value.to_string())
 }
 
 /// Does this compressed output actually show that something went wrong?
@@ -66,31 +74,44 @@ mod tests {
 
     #[test]
     fn exit_status_overrides_either_wrong_verdict() {
-        let failed = reconcile_json(r#"{"success":true}"#, 3, Some("/t.log")).unwrap();
+        let failed = reconcile_json(r#"{"success":true}"#, 3, || Some("/t.log".into())).unwrap();
         assert_eq!(
             failed,
             r#"{"exit_code":3,"full_output":"/t.log","success":false}"#
         );
-        let passed = reconcile_json(r#"{"success":false}"#, 0, None).unwrap();
-        assert_eq!(passed, r#"{"success":true}"#);
+        let misread = r#"{"is_empty":true,"success":false}"#;
+        let passed = reconcile_json(misread, 0, || None).unwrap();
+        assert_eq!(passed, r#"{"is_empty":true,"success":true}"#);
+    }
+
+    #[test]
+    fn a_failure_always_says_so() {
+        let out = reconcile_json("{\"name\":\"x\"}", 2, || None).unwrap();
+        assert_eq!(out, r#"{"exit_code":2,"name":"x","success":false}"#);
+    }
+
+    #[test]
+    fn the_childs_own_data_survives_a_clean_exit() {
+        let data = r#"{"success":false,"id":7}"#;
+        assert_eq!(reconcile_json(data, 0, || None).unwrap(), data);
     }
 
     #[test]
     fn a_matching_verdict_keeps_the_parser_text() {
         let parsed = "{\"z\":1,\"success\":true}\n";
-        let kept = reconcile_json(parsed, 0, None).unwrap();
+        let kept = reconcile_json(parsed, 0, || None).unwrap();
         assert_eq!(kept, parsed.trim());
     }
 
     #[test]
     fn a_success_that_is_not_a_bool_is_left_alone() {
-        let out = reconcile_json(r#"{"success":"yes"}"#, 0, None).unwrap();
+        let out = reconcile_json(r#"{"success":"yes"}"#, 0, || None).unwrap();
         assert_eq!(out, r#"{"success":"yes"}"#);
     }
 
     #[test]
     fn only_a_json_object_is_reconciled() {
-        assert_eq!(reconcile_json("[1,2]", 1, None), None);
-        assert_eq!(reconcile_json("plain text", 1, None), None);
+        assert_eq!(reconcile_json("[1,2]", 1, || None), None);
+        assert_eq!(reconcile_json("plain text", 1, || None), None);
     }
 }

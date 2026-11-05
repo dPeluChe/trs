@@ -44,8 +44,9 @@ that from happening.
 
 - **`~/.trs/tee/` log dir.** When trs cuts an output, or a command
   fails, the full stdout + stderr is stored here, keyed by timestamp,
-  and the path is printed (`[trs] full output: <path>`). Output trs
-  leaves whole is not copied.
+  and the path is printed (`[trs] full output: <path>`, or the
+  `full_output` field in `--json` objects). Output trs leaves whole is
+  not copied.
 - **`trs debug-info` bundles.** When reporting a bug or asking for
   help, `trs debug-info -o /tmp/trs.txt` packages version, platform,
   doctor checks, recent history, and the three most recent tee logs
