@@ -368,8 +368,23 @@ fn a_rewrite_keeps_every_other_input_field() {
     });
     let out = build_hook_response(&input, Some("claude")).unwrap();
     let updated = &out["hookSpecificOutput"]["updatedInput"];
-    assert_eq!(updated["command"], "TRS_AGENT=claude trs git status");
+    assert_eq!(updated["command"], agent_cmd("claude", "trs git status"));
     assert_eq!(updated["description"], "check");
     assert_eq!(updated["timeout"], 5000);
     assert_eq!(updated["run_in_background"], true);
+}
+
+#[test]
+fn a_cursor_rewrite_keeps_the_working_directory() {
+    let input = serde_json::json!({
+        "hook_event_name": "preToolUse",
+        "tool_name": "Shell",
+        "tool_input": { "command": "git status", "working_directory": "/repo" }
+    });
+    let out = build_hook_response(&input, Some("cursor")).unwrap();
+    assert_eq!(out["updated_input"]["working_directory"], "/repo");
+    assert_eq!(
+        out["updated_input"]["command"],
+        agent_cmd("cursor", "trs git status")
+    );
 }

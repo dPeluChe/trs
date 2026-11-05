@@ -241,17 +241,13 @@ fn build_hook_response(
             }
         }),
         HookEvent::CursorPreToolUse => serde_json::json!({
-            "updated_input": { "command": rewritten }
+            "updated_input": input_with_command(json, rewritten)
         }),
         HookEvent::ClaudePreToolUse => {
-            // `updatedInput` replaces the whole input: sending `command` alone
-            // made Claude Code drop `run_in_background` and `timeout`.
-            let mut input = json["tool_input"].clone();
-            input["command"] = rewritten.into();
             let mut out = serde_json::json!({
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
-                    "updatedInput": input
+                    "updatedInput": input_with_command(json, rewritten)
                 }
             });
             if gate == Gate::Allow {
@@ -262,6 +258,14 @@ fn build_hook_response(
         }
     };
     Some(response)
+}
+
+/// The updated input replaces the whole original: sending `command` alone made
+/// Claude Code drop `run_in_background` and `timeout`.
+fn input_with_command(json: &serde_json::Value, command: String) -> serde_json::Value {
+    let mut input = json["tool_input"].clone();
+    input["command"] = command.into();
+    input
 }
 
 /// Claude's worktree guard refuses `trs git …` inside `.claude/worktrees/*`
