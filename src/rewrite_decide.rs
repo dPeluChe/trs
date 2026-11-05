@@ -72,7 +72,10 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
     // env-prefix split because `OUT=$(cmd)` otherwise splits mid-substitution
     // and produces a mangled command.
     if captures_output(trimmed) {
-        return None;
+        let opted_in = !cfg!(windows) && crate::config::config().hooks.pipe_status;
+        return opted_in
+            .then(|| crate::rewrite_pipe_status::wrap(trimmed))
+            .flatten();
     }
 
     // Text-level rewriting is only sound on a flat single command; anything
@@ -345,7 +348,7 @@ fn split_and_chain(cmd: &str) -> Vec<&str> {
 }
 
 /// Byte offsets of characters outside any quote and not escaped.
-fn unquoted_indices(cmd: &str) -> impl Iterator<Item = usize> + '_ {
+pub(crate) fn unquoted_indices(cmd: &str) -> impl Iterator<Item = usize> + '_ {
     let (mut single, mut double, mut escaped) = (false, false, false);
     cmd.char_indices().filter_map(move |(i, c)| {
         if escaped {

@@ -65,6 +65,37 @@ every line has its own id still shrinks.
 pretty-printing. Default 10. Deeper nesting is truncated with an
 ellipsis marker so the agent sees "shape" without the full depth.
 
+## Real exit status for piped checks
+
+`cargo test 2>&1 | tail -8` exits 0 when the tests fail, because a pipeline
+reports its last command. With this option the hook turns on `pipefail` for that
+pipeline, so a failing check returns its real status. Off by default.
+
+```toml
+[hooks]
+pipe_status = true
+```
+
+Output doesn't change, only the exit status. `cargo test | tail -8` becomes:
+
+```sh
+([ -n "$BASH_VERSION$ZSH_VERSION" ] && set -o pipefail; cargo test | tail -8)
+```
+
+It applies only when all of this is true, and otherwise the command runs as
+written:
+
+- It is the last statement, the only status the shell reports. Earlier lines and
+  `&&` segments stay as they are, and a following `;`, `&&` or `||` turns it off.
+- The left side is a build, test or lint tool (`cargo test`, `npm run build`,
+  `pytest`, `make`, `tsc`...). Commands like `grep` and `find` are left out: a
+  non-zero status from them doesn't mean something failed.
+- There is one plain pipe into `tail` or `grep`. `head`, `tail -f` and `grep
+  -q/-m/-l` stop reading early, which pipefail would report as a false failure
+  (141).
+
+Shells without pipefail keep today's behavior, and it does nothing on Windows.
+
 ## Hook-time wrappers
 
 Some workflows put a wrapper in front of every command: `direnv exec

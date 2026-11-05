@@ -83,6 +83,7 @@ mod rewrite_perm_devin;
 mod rewrite_perm_droid;
 mod rewrite_perm_gemini;
 mod rewrite_permissions;
+mod rewrite_pipe_status;
 mod rewrite_rules;
 mod router;
 mod safe_folds;
