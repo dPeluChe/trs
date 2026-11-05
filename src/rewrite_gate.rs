@@ -8,7 +8,8 @@ use serde_json::Value;
 /// What the hook does with a command, given the user's rules.
 #[derive(Debug, PartialEq)]
 pub(crate) enum Gate {
-    /// A deny/ask rule matches or the rules cannot be read: leave the command alone.
+    /// A deny/ask rule matches, the rules cannot be read, or the agent is never
+    /// rewritten for: leave the command alone.
     Skip,
     /// Every part is allowed: rewrite and approve.
     Allow,

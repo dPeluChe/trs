@@ -358,7 +358,7 @@ adoption only (like Codex's fallback on older builds).
 
 | | |
 |---|---|
-| Type | Output-saver only; the hook passes Grok through on purpose |
+| Type | Output-saver only; the hook never rewrites for Grok, on purpose |
 | Config | `$GROK_HOME/AGENTS.md` (default `~/.grok/AGENTS.md`) |
 
 Grok has a Claude-shaped `PreToolUse` hook in `~/.grok/hooks/*.json`, and a
