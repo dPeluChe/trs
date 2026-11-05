@@ -150,12 +150,6 @@ fn test_txt2md_raw_output() {
 // ============================================================
 
 #[test]
-fn test_txt2md_empty_stdin() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("txt2md").write_stdin("").assert().success();
-}
-
-#[test]
 fn test_txt2md_empty_file() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("txt2md")

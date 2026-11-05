@@ -57,7 +57,7 @@ fn sentinel_wrapped_is_idempotent_on_replace() {
 #[test]
 fn scan_unknown_agent_returns_unsupported() {
     let s = scan_agent("bogus");
-    matches!(s, Status::Unsupported { .. });
+    assert!(matches!(s, Status::Unsupported { .. }));
 }
 
 #[test]

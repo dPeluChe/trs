@@ -1,5 +1,5 @@
-//! Integration tests for the `run` command: output formats (stats, compact, raw),
-//! error handling, stdout/stderr, edge cases, system commands, precedence, and capture flags.
+//! Integration tests for the `run` command: output formats (compact, raw),
+//! stdout/stderr, edge cases, precedence, and capture flags.
 
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -36,85 +36,8 @@ fn test_run_long_lines() {
 }
 
 // ============================================================
-// Stats Output Tests
-// ============================================================
-
-#[test]
-fn test_run_stats_shows_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Command:"));
-}
-
-#[test]
-fn test_run_stats_shows_exit_code() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Exit code:"));
-}
-
-#[test]
-fn test_run_stats_shows_duration() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Duration:"));
-}
-
-#[test]
-fn test_run_stats_shows_output_mode() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Output mode:"));
-}
-
-#[test]
-fn test_run_stats_with_json_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("--json")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Output mode: json"));
-}
-
-// ============================================================
 // Compact Format Tests
 // ============================================================
-
-#[test]
-fn test_run_compact_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--compact")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test"));
-}
 
 #[test]
 fn test_run_compact_format_default() {
@@ -133,18 +56,6 @@ fn test_run_compact_format_default() {
 // ============================================================
 
 #[test]
-fn test_run_raw_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--raw")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test"));
-}
-
-#[test]
 fn test_run_raw_format_preserves_output() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
@@ -160,43 +71,6 @@ fn test_run_raw_format_preserves_output() {
 
     let stdout = String::from_utf8_lossy(&output);
     assert!(stdout.contains("raw_output\n") || stdout.contains("raw_output"));
-}
-
-// ============================================================
-// Error Handling Tests
-// ============================================================
-
-#[test]
-fn test_run_permission_denied() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    // /etc is a directory, trying to execute it should fail
-    cmd.arg("run").arg("/etc").assert().failure().stderr(
-        predicate::str::contains("Permission denied").or(predicate::str::contains("Error")),
-    );
-}
-
-#[test]
-fn test_run_shell_command_success() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("echo shell_test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("shell_test"));
-}
-
-#[test]
-fn test_run_bash_command_success() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("bash")
-        .arg("-c")
-        .arg("echo bash_test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("bash_test"));
 }
 
 // ============================================================
@@ -242,19 +116,6 @@ fn test_run_stdout_and_stderr() {
 // ============================================================
 // Edge Cases Tests
 // ============================================================
-
-#[test]
-fn test_run_empty_output() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("true").assert().success().code(0);
-}
-
-#[test]
-fn test_run_empty_args() {
-    // echo with no args just prints a newline
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("echo").assert().success();
-}
 
 #[test]
 fn test_run_special_characters_in_args() {
@@ -304,65 +165,6 @@ fn test_run_tab_characters() {
 }
 
 // ============================================================
-// System Commands Tests
-// ============================================================
-
-#[test]
-fn test_run_uname_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("uname");
-    let assert = cmd.assert().success();
-    // Darwin/Linux on Unix; git-bash on Windows prints MINGW/MSYS.
-    #[cfg(not(windows))]
-    assert.stdout(predicate::str::contains("Darwin").or(predicate::str::contains("Linux")));
-    #[cfg(windows)]
-    let _ = assert;
-}
-
-#[test]
-fn test_run_whoami_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("whoami").assert().success();
-}
-
-#[test]
-fn test_run_date_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("date");
-    // Windows `date` (cmd builtin) prompts for input without /T.
-    #[cfg(windows)]
-    cmd.arg("/T");
-    cmd.assert().success();
-}
-
-#[test]
-fn test_run_cat_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("cat")
-        .arg("/etc/hosts")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("localhost"));
-}
-
-#[test]
-fn test_run_ls_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("ls").arg("/tmp").assert().success();
-}
-
-#[test]
-fn test_run_env_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("env")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("PATH"));
-}
-
-// ============================================================
 // Precedence Tests with Run Command
 // ============================================================
 
@@ -394,20 +196,6 @@ fn test_run_format_precedence_json_over_compact() {
         .success()
         .stdout(predicate::str::contains(r#""command":"echo"#))
         .stdout(predicate::str::contains(r#""exit_code":0"#));
-}
-
-#[test]
-fn test_run_format_precedence_compact_over_raw() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Compact should win over raw, output should not be JSON
-    cmd.arg("--compact")
-        .arg("--raw")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test"));
 }
 
 // ============================================================

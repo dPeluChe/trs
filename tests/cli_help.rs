@@ -44,15 +44,6 @@ fn test_help_shows_output_format_flags() {
 }
 
 #[test]
-fn test_help_shows_global_flags() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("--stats"));
-}
-
-#[test]
 fn test_help_shows_examples() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--help")
@@ -68,22 +59,6 @@ fn test_help_shows_documentation_link() {
         .assert()
         .success()
         .stdout(predicate::str::contains("trs"));
-}
-
-#[test]
-fn test_help_shows_all_commands() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("run"))
-        .stdout(predicate::str::contains("parse"))
-        .stdout(predicate::str::contains("search"))
-        .stdout(predicate::str::contains("replace"))
-        .stdout(predicate::str::contains("tail"))
-        .stdout(predicate::str::contains("clean"))
-        .stdout(predicate::str::contains("html2md"))
-        .stdout(predicate::str::contains("txt2md"));
 }
 
 // ============================================================

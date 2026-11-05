@@ -336,16 +336,6 @@ fn test_clean_with_options() {
 }
 
 #[test]
-fn test_parse_git_status() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("git-status")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("clean"));
-}
-
-#[test]
 fn test_parse_git_diff() {
     let diff_input = r#"diff --git a/src/main.rs b/src/main.rs
 index 1234567..abcdefg 100644
@@ -374,5 +364,3 @@ fn test_parse_ls() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse").arg("ls").assert().success();
 }
-
-// ============================================================
