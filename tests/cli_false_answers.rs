@@ -161,3 +161,19 @@ fn docker_ps_without_a_header_keeps_the_names() {
         .assert()
         .stdout("web\ndb\n");
 }
+
+#[cfg(unix)]
+#[test]
+fn git_runs_in_english_so_its_parsers_can_read_it() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let git = dir.path().join("git");
+    std::fs::write(&git, "#!/bin/sh\necho \"language=$LANGUAGE\"\n").unwrap();
+    std::fs::set_permissions(&git, std::fs::Permissions::from_mode(0o755)).unwrap();
+    trs()
+        .env("PATH", dir.path())
+        .env("LANGUAGE", "de")
+        .args(["git", "version"])
+        .assert()
+        .stdout(predicate::str::contains("language=C"));
+}

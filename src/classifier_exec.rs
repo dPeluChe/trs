@@ -18,7 +18,12 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     // stdin must be inherited: `Command::output()` defaults it to null, which
     // silently starves anything reading stdin — a heredoc (`python3 - <<EOF`)
     // would see EOF, run nothing, and still exit 0.
-    let output = match build_command(cmd, args)
+    let mut command = build_command(cmd, args);
+    if cmd == "git" {
+        // Parsers read git's English; LANGUAGE leaves encoding and sort order alone.
+        command.env("LANGUAGE", "C");
+    }
+    let output = match command
         .stdin(Stdio::inherit())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
