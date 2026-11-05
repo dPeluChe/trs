@@ -322,3 +322,28 @@ fn test_parse_bun_test_with_ancestors() {
     assert_eq!(result.ancestors, vec!["describe block"]);
     assert_eq!(result.name, "describe block > nested test");
 }
+
+#[test]
+fn test_parse_bun_failure_without_a_file_header_is_not_a_passing_file() {
+    let input = " 2 pass\n 1 fail\nRan 3 tests across 2 files. [20.00ms]\n";
+    let summary = ParseHandler::parse_bun_test(input).unwrap().summary;
+    assert_eq!(summary.suites_failed, 1);
+    assert_eq!(summary.suites_passed, 1);
+}
+
+#[test]
+fn test_parse_bun_counts_a_file_listed_twice_once() {
+    let input = "a.test.js:\n✗ bad\n\n 1 fail\nRan 1 tests across 1 files. [2ms]\n\n FAIL  a.test.js\n  ✗ bad\n";
+    let summary = ParseHandler::parse_bun_test(input).unwrap().summary;
+    assert_eq!(summary.suites_failed, 1);
+    assert_eq!(summary.suites_passed, 0);
+}
+
+#[test]
+fn test_parse_bun_prose_starting_with_ran_is_not_the_summary() {
+    let input =
+        "Ran out of memory in test setup\n 1 pass\n 0 fail\nRan 1 test across 1 file. [2ms]\n";
+    let summary = ParseHandler::parse_bun_test(input).unwrap().summary;
+    assert_eq!(summary.tests_total, 1);
+    assert_eq!(summary.suites_total, 1);
+}

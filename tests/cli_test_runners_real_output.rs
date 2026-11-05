@@ -76,3 +76,18 @@ fn cargo_test_duration_is_the_sum_of_the_suites() {
     let out = String::from_utf8_lossy(&out.stdout);
     assert!(out.contains("1.75s"), "{out}");
 }
+
+#[test]
+fn bun_counts_failing_files_and_a_lone_file() {
+    for (fixture, total, passed, failed) in [
+        ("bun_test_real_mixed_files.txt", 2, 1, 1),
+        ("bun_test_real_one_file.txt", 1, 1, 0),
+        ("bun_test_real_two_failing_files.txt", 3, 1, 2),
+    ] {
+        let out = parse(&["test", "-t", "bun", "--json"], fixture);
+        let json: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(json["summary"]["suites_total"], total);
+        assert_eq!(json["summary"]["suites_passed"], passed);
+        assert_eq!(json["summary"]["suites_failed"], failed);
+    }
+}

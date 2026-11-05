@@ -1,5 +1,7 @@
 //! The summary half of the bun test parser: recognizing and reading the trailing counts block, apart from the per-line parsing in bun_parse.rs.
 
+use std::collections::HashSet;
+
 use super::super::types::*;
 use super::ParseHandler;
 
@@ -73,29 +75,16 @@ impl ParseHandler {
         }
     }
 
-    /// Parse "Ran X tests in Yms" or "Ran X tests across Y files. [Zms]"
+    /// Parse "Ran X test(s) in Yms" or "Ran X test(s) across Y file(s). [Zms]"
     pub(crate) fn parse_bun_ran_line(line: &str, summary: &mut BunTestSummary) {
-        // Format: "Ran X tests in Yms" or "Ran X tests across Y files. [Zms]"
         let line = line.trim();
+        let first_count = |s: &str| s.split_whitespace().next()?.parse::<usize>().ok();
 
-        // Extract total tests
-        if let Some(start) = line.find("Ran ") {
-            let after_ran = &line[start + 4..];
-            if let Some(end) = after_ran.find(" tests") {
-                if let Ok(count) = after_ran[..end].trim().parse::<usize>() {
-                    summary.tests_total = count;
-                }
-            }
+        if let Some(count) = line.strip_prefix("Ran ").and_then(first_count) {
+            summary.tests_total = count;
         }
-
-        // Extract files count
-        if let Some(start) = line.find("across ") {
-            let after_across = &line[start + 7..];
-            if let Some(end) = after_across.find(" files") {
-                if let Ok(count) = after_across[..end].trim().parse::<usize>() {
-                    summary.suites_total = count;
-                }
-            }
+        if let Some(count) = line.split_once("across ").and_then(|(_, r)| first_count(r)) {
+            summary.suites_total = count;
         }
 
         // Extract duration - format: "in 1.44ms" or "[1.44ms]"
@@ -112,18 +101,23 @@ impl ParseHandler {
 
     /// Update summary counts from parsed tests.
     pub(crate) fn update_bun_summary_from_tests(output: &mut BunTestOutput) {
-        // Always update suite counts since they may not be in the "Ran" line
-        // (the "across X files" part is optional)
+        // "across X files" is optional.
         if output.summary.suites_total == 0 {
-            for suite in &output.test_suites {
-                output.summary.suites_total += 1;
-                if suite.passed {
-                    output.summary.suites_passed += 1;
-                } else {
-                    output.summary.suites_failed += 1;
-                }
-            }
+            output.summary.suites_total = output.test_suites.len();
         }
+        // bun may omit passing files, so count failures and derive the rest.
+        // A failed test with no file header still means some file failed.
+        let failed_files: HashSet<&str> = output
+            .test_suites
+            .iter()
+            .filter(|s| !s.passed)
+            .map(|s| s.file.as_str())
+            .collect();
+        let failed = failed_files
+            .len()
+            .max(usize::from(output.summary.tests_failed > 0));
+        output.summary.suites_failed = failed;
+        output.summary.suites_passed = output.summary.suites_total.saturating_sub(failed);
 
         // Only update test counts if summary wasn't already populated from output
         if output.summary.tests_total == 0 {
