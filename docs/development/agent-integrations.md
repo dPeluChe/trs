@@ -358,7 +358,7 @@ adoption only (like Codex's fallback on older builds).
 
 | | |
 |---|---|
-| Type | Output-saver only, no hook on purpose |
+| Type | Output-saver only; the hook never rewrites for Grok, on purpose |
 | Config | `$GROK_HOME/AGENTS.md` (default `~/.grok/AGENTS.md`) |
 
 Grok has a Claude-shaped `PreToolUse` hook in `~/.grok/hooks/*.json`, and a
@@ -371,9 +371,13 @@ rewrite does apply, but on grok 1.0.70 trs must not install one:
   was blocked as "unknown `trs` prefix", with the output-saver block installed.
   Without the hook the same command runs, because it is on the read-only list.
 
-Unchecked: `[compat.claude] hooks` defaults to true, so Grok may also run a trs
-hook installed for Claude Code from `~/.claude/settings.json`. The machine tested
-had it off.
+`[compat.claude] hooks` defaults to true, so Grok also runs the trs hook installed
+for Claude Code. Before #215 that hook omitted `description`, Grok's schema refused
+the rewrite, and every rewritable command failed. After #215 the rewrite applied
+and deny rules stopped firing. So `rewrite_gate.rs` has a `grok` row that tells it
+apart by `tool_name` (`run_terminal_command`) and never rewrites; with it the deny
+rule fires again. Unchecked: a Cursor hook reaching Grok through `[compat.cursor]`,
+since an explicit `--caller` skips the tool-name lookup.
 
 ## Permissions per agent
 

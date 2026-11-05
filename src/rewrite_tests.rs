@@ -390,6 +390,16 @@ fn a_cursor_rewrite_keeps_the_working_directory() {
 }
 
 #[test]
+fn grok_running_claudes_hook_gets_no_rewrite() {
+    let input = serde_json::json!({
+        "hook_event_name": "PreToolUse",
+        "tool_name": "run_terminal_command",
+        "tool_input": { "command": "git status", "description": "check" }
+    });
+    assert!(build_hook_response(&input, None).is_none());
+}
+
+#[test]
 fn trae_keeps_its_other_input_fields_and_gets_no_decision() {
     let input = serde_json::json!({
         "hook_event_name": "PreToolUse",

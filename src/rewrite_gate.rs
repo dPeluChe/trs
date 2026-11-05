@@ -8,7 +8,8 @@ use serde_json::Value;
 /// What the hook does with a command, given the user's rules.
 #[derive(Debug, PartialEq)]
 pub(crate) enum Gate {
-    /// A deny/ask rule matches or the rules cannot be read: leave the command alone.
+    /// A deny/ask rule matches, the rules cannot be read, or the agent is never
+    /// rewritten for: leave the command alone.
     Skip,
     /// Every part is allowed: rewrite and approve.
     Allow,
@@ -32,6 +33,12 @@ pub(crate) struct AgentPolicy {
 /// yet: rewrite, but never send an approval of our own.
 fn defer(_: &str, _: Option<&str>, _: Option<&str>) -> Gate {
     Gate::Defer
+}
+
+/// Grok matches its deny rules against the rewritten command and blocks the
+/// rewrite in auto mode, and it runs Claude's hooks by default. Checked on 1.0.70.
+fn never(_: &str, _: Option<&str>, _: Option<&str>) -> Gate {
+    Gate::Skip
 }
 
 const fn row(label: &'static str, from_env: bool, gate: GateFn) -> AgentPolicy {
@@ -78,6 +85,7 @@ static AGENTS: &[AgentPolicy] = &[
     row("hermes", false, defer),
     row("trae", true, defer).tool("RunCommand"),
     row("vibe", true, defer),
+    row("grok", false, never).tool("run_terminal_command"),
     row("devin-cli", false, |c, d, _| {
         crate::rewrite_perm_devin::gate(c, d)
     })
