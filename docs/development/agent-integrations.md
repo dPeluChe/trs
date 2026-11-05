@@ -28,8 +28,9 @@ matrix below. Six distinct target paths across three mechanisms:
 | Kiro | steering file with `inclusion: always` | `~/.kiro/steering/trs.md` |
 | OpenClaw | inline with sentinels | `~/.openclaw/workspace/SOUL.md` |
 
-Grok Build, Kiro and OpenClaw follow each agent's docs. No real binary has
-confirmed they load, so treat them as unverified until one does.
+Grok Build was confirmed on grok 1.0.70: a needle in `~/.grok/AGENTS.md`
+reached a headless session. Kiro and OpenClaw follow each agent's docs. No real
+binary has confirmed they load, so treat them as unverified until one does.
 
 Inline installs use the sentinels
 `<!-- trs:output-saver:start v1 -->` / `<!-- trs:output-saver:end -->`
@@ -352,6 +353,27 @@ for the exact checklist.
 
 Windsurf Cascade has no pre-execution hook: rules-based voluntary
 adoption only (like Codex's fallback on older builds).
+
+### Grok Build
+
+| | |
+|---|---|
+| Type | Output-saver only, no hook on purpose |
+| Config | `$GROK_HOME/AGENTS.md` (default `~/.grok/AGENTS.md`) |
+
+Grok has a Claude-shaped `PreToolUse` hook in `~/.grok/hooks/*.json`, and a
+rewrite does apply, but on grok 1.0.70 trs must not install one:
+
+- Permission rules match the rewritten command. With `--deny 'Bash(git status:*)'`
+  and the real hook, `git status` ran through trs. A rule on the original never
+  fired, and `--deny` flags are invisible to a hook, so a gate cannot cover them.
+- Auto mode runs a classifier on the rewritten command. A plain `git status`
+  was blocked as "unknown `trs` prefix", with the output-saver block installed.
+  Without the hook the same command runs, because it is on the read-only list.
+
+Unchecked: `[compat.claude] hooks` defaults to true, so Grok may also run a trs
+hook installed for Claude Code from `~/.claude/settings.json`. The machine tested
+had it off.
 
 ## Permissions per agent
 
