@@ -56,7 +56,13 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] **Fail-open on errors**: shipped in v0.5.7
 - [x] **10% ratio gate**: shipped in v0.5.10
 - [x] **Lint rule grouping**: shipped in v0.5.8+, extended with `tsc` in v0.5.10
-- [ ] **Read caching**: if the agent reads the same file twice in a session, return the first-read cache. Saves real tokens on multi-turn sessions. Opt-in flag to start (`trs --cache-reads`).
+- [-] **Read caching**: not building it. Same command with same output is 0.04% of tool output, and sed ranges already seen 0.15% at most (40 days, deduplicated by tool-use id; see benchmarks/README.md). A cache would also lie after compaction.
+- [-] **New parsers for Flutter, Terraform, kubectl, dotnet**: not building them: the author does not run these tools, so nothing here can be measured or verified. Reopen with a real user.
+- [ ] **Diff indent**: drop the two spaces trs adds before each change line (3.7% of compact diff output; all the rest of the output is the change itself).
+- [ ] **stderr policy through `timeout` and `bash -c`**: `timeout 300 cargo build` does not merge stderr; `stderr_owner` covers runners only.
+- [ ] **Deny rules through non-prefix wrappers**: `nix develop -c rm` and `timeout 5 rm` hide the inner program from `strip_wrappers`.
+- [ ] **`grep` on one file with `key:value` lines**: still grouped as files. Needs a decision from argv.
+- [ ] **`--json` on unread test output**: test runners keep the empty parsed shape on purpose; decide whether that contract changes.
 - [ ] **Docs auditor extensions**: recommend section-level split points; detect CLAUDE.md content duplicating README.md; SQL detection in language-less fences.
 - [ ] **SQLite metrics** (consider): replace JSONL tracker with SQLite WAL for trending queries.
 
