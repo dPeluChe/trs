@@ -73,29 +73,16 @@ impl ParseHandler {
         }
     }
 
-    /// Parse "Ran X tests in Yms" or "Ran X tests across Y files. [Zms]"
+    /// Parse "Ran X test(s) in Yms" or "Ran X test(s) across Y file(s). [Zms]"
     pub(crate) fn parse_bun_ran_line(line: &str, summary: &mut BunTestSummary) {
-        // Format: "Ran X tests in Yms" or "Ran X tests across Y files. [Zms]"
         let line = line.trim();
+        let first_count = |s: &str| s.split_whitespace().next()?.parse::<usize>().ok();
 
-        // Extract total tests
-        if let Some(start) = line.find("Ran ") {
-            let after_ran = &line[start + 4..];
-            if let Some(end) = after_ran.find(" test") {
-                if let Ok(count) = after_ran[..end].trim().parse::<usize>() {
-                    summary.tests_total = count;
-                }
-            }
+        if let Some(count) = line.strip_prefix("Ran ").and_then(first_count) {
+            summary.tests_total = count;
         }
-
-        // Extract files count
-        if let Some(start) = line.find("across ") {
-            let after_across = &line[start + 7..];
-            if let Some(end) = after_across.find(" file") {
-                if let Ok(count) = after_across[..end].trim().parse::<usize>() {
-                    summary.suites_total = count;
-                }
-            }
+        if let Some(count) = line.split_once("across ").and_then(|(_, r)| first_count(r)) {
+            summary.suites_total = count;
         }
 
         // Extract duration - format: "in 1.44ms" or "[1.44ms]"
@@ -112,11 +99,11 @@ impl ParseHandler {
 
     /// Update summary counts from parsed tests.
     pub(crate) fn update_bun_summary_from_tests(output: &mut BunTestOutput) {
-        // "across X files" is optional, and bun lists only failing files, so
-        // the rest of the total passed.
+        // "across X files" is optional.
         if output.summary.suites_total == 0 {
             output.summary.suites_total = output.test_suites.len();
         }
+        // bun may omit passing files, so count failures and derive the rest.
         let failed = output.test_suites.iter().filter(|s| !s.passed).count();
         output.summary.suites_failed = failed;
         output.summary.suites_passed = output.summary.suites_total.saturating_sub(failed);

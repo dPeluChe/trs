@@ -39,6 +39,16 @@
     "in": 1603,
     "out": 604
   },
+  "bun_test_real_mixed_files.txt": {
+    "handler": "test --runner bun",
+    "in": 198,
+    "out": 201
+  },
+  "bun_test_real_one_file.txt": {
+    "handler": "test --runner bun",
+    "in": 98,
+    "out": 31
+  },
   "bun_test_single_failed.txt": {
     "handler": "test --runner bun",
     "in": 209,
