@@ -4,31 +4,31 @@ use super::ParseHandler;
 use crate::OutputFormat;
 
 /// Both paths of `diff --git a/path b/path`. A path may hold spaces, so the
-/// split is the ` b/` where both sides agree; a rename falls back to the last one.
+/// split is the ` b/` where both sides agree; a rename takes the last one. Git
+/// quotes non-ASCII paths, and the quotes are not part of the name.
 fn diff_header_paths(line: &str) -> (String, Option<String>) {
-    let rest = line.strip_prefix("diff --git ").unwrap_or(line);
-    let side = |s: &'static str, p: &str| p.strip_prefix(s).unwrap_or(p).to_string();
-    let splits: Vec<usize> = rest.match_indices(" b/").map(|(i, _)| i).collect();
-    let cut = |i: usize| (side("a/", &rest[..i]), side("b/", &rest[i + 1..]));
-    if let Some(same) = splits.iter().map(|&i| cut(i)).find(|(a, b)| a == b) {
-        return (same.1, None);
-    }
-    match splits.last() {
-        Some(&i) => {
-            let (old, new) = cut(i);
-            (new, Some(old))
-        }
-        None => {
+    let rest = line
+        .strip_prefix("diff --git ")
+        .unwrap_or(line)
+        .replace('"', "");
+    let sides = |i: usize| {
+        let (a, b) = (&rest[..i], &rest[i + 1..]);
+        (
+            a.strip_prefix("a/").unwrap_or(a),
+            b.strip_prefix("b/").unwrap_or(b),
+        )
+    };
+    let same = rest
+        .match_indices(" b/")
+        .map(|(i, _)| sides(i))
+        .find(|(a, b)| a == b);
+    let (old, new) = same
+        .or_else(|| rest.rfind(" b/").map(sides))
+        .unwrap_or_else(|| {
             let mut parts = rest.split_whitespace();
-            let old = parts.next().unwrap_or("");
-            let new = parts.next().unwrap_or("");
-            if old == new {
-                (new.to_string(), None)
-            } else {
-                (new.to_string(), Some(old.to_string()))
-            }
-        }
-    }
+            (parts.next().unwrap_or(""), parts.next().unwrap_or(""))
+        });
+    (new.to_string(), (old != new).then(|| old.to_string()))
 }
 
 impl ParseHandler {
@@ -235,8 +235,11 @@ impl ParseHandler {
                         file.deletions += 1;
                     }
                 }
-                if let Some(ref mut hunk) = current_hunk {
-                    hunk.lines.push(line.to_string());
+                // Context never reaches the output.
+                if !line.starts_with(' ') {
+                    if let Some(ref mut hunk) = current_hunk {
+                        hunk.lines.push(line.to_string());
+                    }
                 }
                 continue;
             }
@@ -322,7 +325,6 @@ impl ParseHandler {
                     new_path: None,
                     change_type: String::new(),
                     is_binary,
-                    mode: None,
                     stat_total: if is_binary { None } else { total },
                     ..Default::default()
                 });

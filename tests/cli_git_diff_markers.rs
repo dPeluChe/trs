@@ -56,6 +56,15 @@ fn a_path_with_spaces_is_not_a_rename() {
 }
 
 #[test]
+fn a_quoted_path_is_not_a_rename() {
+    let out = compact(
+        "diff --git \"a/caf\\303\\251 x.txt\" \"b/caf\\303\\251 x.txt\"\nindex 1..2 100644\n\
+         @@ -1 +1 @@\n-a\n+b\n",
+    );
+    assert!(out.contains("M caf\\303\\251 x.txt (+1/-1)"), "{out}");
+}
+
+#[test]
 fn a_rename_with_spaces_keeps_both_names() {
     let out = compact(
         "diff --git a/old name.txt b/new name.txt\nsimilarity index 90%\n\
