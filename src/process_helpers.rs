@@ -5,7 +5,7 @@ use std::process::ExitStatus;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use super::{ProcessError, ProcessOutput};
+use super::ProcessError;
 
 /// Classify a spawn error into a more specific ProcessError.
 pub(super) fn classify_spawn_error(command: &str, error: io::Error) -> ProcessError {
@@ -47,26 +47,13 @@ fn drain(mut pipe: impl Read + Send + 'static) -> JoinHandle<String> {
     std::thread::spawn(move || {
         let mut buf = Vec::new();
         let _ = pipe.read_to_end(&mut buf);
-        String::from_utf8_lossy(&buf).into_owned()
+        String::from_utf8(buf)
+            .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
     })
 }
 
 fn collect(reader: Option<JoinHandle<String>>) -> String {
     reader.and_then(|r| r.join().ok()).unwrap_or_default()
-}
-
-/// Build the output of a completed child process.
-pub(super) fn completed_output(status: ExitStatus, readers: OutputReaders) -> ProcessOutput {
-    let (stdout, stderr) = readers.finish();
-    ProcessOutput {
-        command: String::new(),
-        args: Vec::new(),
-        stdout,
-        stderr,
-        exit_code: status.code(),
-        duration: Duration::ZERO,
-        timed_out: false,
-    }
 }
 
 /// Extension trait for Child to support timeout.

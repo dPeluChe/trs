@@ -486,5 +486,5 @@ fn test_run_output_larger_than_the_pipe_buffer_does_not_hang() {
         .stdout
         .clone();
 
-    assert!(output.iter().filter(|b| **b == b'x').count() == 300_000);
+    assert_eq!(output.iter().filter(|b| **b == b'x').count(), 300_000);
 }
