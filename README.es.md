@@ -108,7 +108,7 @@ trs uninstall --all --yes          # scriptable
 
 ## Agentes de IA soportados
 
-Dieciséis agentes cubiertos de extremo a extremo. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot, Devin CLI y Codex CLI (≥ 0.134, con fallback de reglas); plantilla de plugin para OpenClaw y Hermes. Solo archivo de reglas para Antigravity IDE, Antigravity CLI, Devin Desktop (ex-Windsurf) y Zed (Agent Panel).
+Dieciocho agentes cubiertos de extremo a extremo. Hook programático para Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot, Devin CLI y Codex CLI (≥ 0.134, con fallback de reglas) y, sin verificar en binarios reales, Trae y Mistral Vibe; plantilla de plugin para OpenClaw y Hermes. Solo archivo de reglas para Antigravity IDE, Antigravity CLI, Devin Desktop (ex-Windsurf) y Zed (Agent Panel).
 
 | Agente | Método de instalación | Hook de entrada | Output-saver | Etiqueta en stats |
 |---|---|---|---|---|
@@ -203,7 +203,7 @@ trs ingest --list              # digests guardados + HEAD sha + si están stale
 
 ## Output saver
 
-`trs` comprime lo que los agentes **ven** (via `trs rewrite`). `trs output-saver` cierra el otro lado del bucle: instala un bloque de reglas compacto en la configuración global de cada agente para comprimir lo que los agentes **emiten**: sin preámbulos, sin narración, resultado primero, output estructurado cuando aplica, y sin paths inventados.
+`trs` comprime lo que los agentes **ven** (via `trs rewrite`). `trs output-saver` cierra el otro lado del bucle: instala un bloque de reglas compacto en la configuración global de cada agente para lo que los agentes **emiten**: responder conciso, no inventar paths ni campos de API, comentarios de código cortos. Es pequeño a propósito: [ningún bloque más largo superó a una sola línea](docs/development/output-cost-findings.md) en pruebas pre-registradas.
 
 ```bash
 trs output-saver               # escaneo de solo lectura
@@ -211,7 +211,7 @@ trs output-saver --install     # instala en los agentes detectados
 trs uninstall --output-saver   # quita el bloque de todos los agentes
 ```
 
-Los diez agentes soportados (Antigravity IDE + CLI comparten el `~/.gemini/GEMINI.md` de Gemini). [Referencia completa de `trs output-saver` →](docs/features/output-saver.md)
+Catorce agentes soportados, incluidos Grok Build, Kiro y OpenClaw (Antigravity IDE + CLI comparten el `~/.gemini/GEMINI.md` de Gemini). [Referencia completa de `trs output-saver` →](docs/features/output-saver.md)
 
 ## Formatos de salida
 

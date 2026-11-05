@@ -1,14 +1,14 @@
 # `trs init`: install hooks for AI agents
 
 `trs init` wires your AI coding agent's shell-execution pipeline through
-`trs rewrite` so every command gets compressed automatically. Sixteen
+`trs rewrite` so every command gets compressed automatically. Eighteen
 agents are supported end-to-end. See [`docs/development/agent-integrations.md`](../development/agent-integrations.md)
 for the full per-agent reference.
 
 ## Quick reference
 
 ```bash
-trs init --show                      # status of all 16 agents
+trs init --show                      # status of all 18 agents
 trs init --all --global              # install for every detected agent
 trs init <agent>                     # install for one: claude, gemini, cursor, …
 trs init --all --global --dry-run    # preview every file that would change

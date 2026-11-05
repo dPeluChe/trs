@@ -3,7 +3,7 @@
 ## What is trs
 
 A Rust CLI that transforms noisy terminal output into compact, structured signal.
-Cuts ~70% of the tokens AI agents spend on terminal output, measured on real sessions (see docs/development/benchmarks/).
+Cuts ~50% of the tokens AI agents spend on terminal output, measured on real sessions (see docs/development/benchmarks/).
 
 ## Pre-generated codebase digest
 
@@ -33,8 +33,9 @@ falls back to `./target/release/trs` if one isn't installed.
 - `trs output-saver`: install a short output-reduction rules block
   into each agent's global config (AGENTS.md / CLAUDE.md / Cursor rules).
   Closes the symmetric gap: trs compresses what agents SEE via
-  `trs rewrite`; output-saver compresses what they EMIT via
-  anti-preamble / anti-narration / structured-output directives.
+  `trs rewrite`; output-saver asks for concise replies, no invented paths or
+  APIs, and short code comments. Tests found reply rules save little:
+  `docs/development/output-cost-findings.md`.
   Check-first by default (`--install` to commit, `--remove` to undo).
 - `trs ingest`: project digest for LLM consumption. Use symbol index,
   compression levels, or `owner/repo` URL shorthand.
@@ -92,7 +93,7 @@ The load-bearing entry points:
   byte, because the runs of spaces and blank lines that the reducer collapses
   are their payload. See [`docs/support/safety.md`](./docs/support/safety.md).
 - **Config system**: `~/.trs/config.toml` for tunable limits
-- **Agent integrations**: 16 agents supported across 3 integration types
+- **Agent integrations**: 18 agents supported across 3 integration types
   (hook / plugin / rules). Wire-format differs per hook agent
   (Claude/Gemini/Cursor), see [`docs/development/agent-integrations.md`](./docs/development/agent-integrations.md)
   for per-agent mechanism, quirks, and test prompts.

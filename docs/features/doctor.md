@@ -49,7 +49,7 @@ TRS Doctor: Installation Health Check
     size: 586.5K tracked
   ✓ stdin pipeline functional
   ✓ AI tool hooks (9/9 configured)
-  ~ output-saver not installed  → `trs output-saver --install` adds anti-preamble rules to agent configs
+  ~ output-saver not installed  → `trs output-saver --install` adds the rules block to agent configs
   ✓ 2 files, 1.8k tokens loaded per agent session  → run `trs audit-docs` to review duplicates / dead refs / embedded bloat
 
   ───────────────────────────────────

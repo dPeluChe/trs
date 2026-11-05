@@ -8,7 +8,7 @@
 
   <!-- Primary -->
   <title>trs (Token-Reducing Shell): Terminal compression for AI agents</title>
-  <meta name="description" content="Rust CLI that cuts ~70% of the tokens AI agents spend on terminal output, measured on real sessions. ~4 ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
+  <meta name="description" content="Rust CLI that cuts ~50% of the tokens AI agents spend on terminal output, measured on real sessions. ~4 ms startup, zero Node overhead, install via curl/npm/cargo. Built-in project digest (trs ingest).">
   <meta name="keywords" content="trs, token-reducing shell, terminal, CLI, token reduction, AI agents, Claude Code, Gemini, LLM, compression, ingest, digest, Rust">
   <meta name="author" content="Iteris">
   <link rel="canonical" href="https://usetrs.dev/">
@@ -20,7 +20,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="trs (Token-Reducing Shell)">
   <meta property="og:title" content="trs: Terminal compression for AI agents">
-  <meta property="og:description" content="Rust CLI that cuts ~70% of the tokens AI agents spend on terminal output. Single 7-10 MB binary, ~4 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Pi, Droid, Codex, VS Code Copilot, Copilot CLI, Devin CLI, OpenClaw, Hermes, Zed, Devin Desktop (ex-Windsurf), Antigravity (IDE + CLI / agy).">
+  <meta property="og:description" content="Rust CLI that cuts ~50% of the tokens AI agents spend on terminal output. Single 7-10 MB binary, ~4 ms startup, zero Node overhead. Hooks for Claude Code, Gemini, Cursor, OpenCode, Kilo, Pi, Droid, Codex, VS Code Copilot, Copilot CLI, Devin CLI, OpenClaw, Hermes, Zed, Devin Desktop (ex-Windsurf), Antigravity (IDE + CLI / agy).">
   <meta property="og:url" content="https://usetrs.dev/">
   <meta property="og:image" content="https://usetrs.dev/og-image.png">
   <meta property="og:image:alt" content="trs: Terminal compression for AI agents">
@@ -34,7 +34,7 @@
   <meta name="twitter:site" content="@dPeluChe">
   <meta name="twitter:creator" content="@dPeluChe">
   <meta name="twitter:title" content="trs: Terminal compression for AI agents">
-  <meta name="twitter:description" content="Rust CLI that cuts ~70% of the tokens AI agents spend on terminal output. Single 7-10 MB binary, ~4 ms startup.">
+  <meta name="twitter:description" content="Rust CLI that cuts ~50% of the tokens AI agents spend on terminal output. Single 7-10 MB binary, ~4 ms startup.">
   <meta name="twitter:image" content="https://usetrs.dev/og-image.png">
   <meta name="twitter:image:alt" content="trs: Terminal compression for AI agents">
 
@@ -53,7 +53,7 @@
     "@type": "SoftwareApplication",
     "name": "trs (Token-Reducing Shell)",
     "alternateName": "trs",
-    "description": "Rust CLI that cuts ~70% of the tokens AI agents spend on terminal output, measured on real sessions. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
+    "description": "Rust CLI that cuts ~50% of the tokens AI agents spend on terminal output, measured on real sessions. Native binary with parsers for git, cargo, npm, go, docker, gh, pytest, jest and more. Ships project digest via trs ingest.",
     "url": "https://usetrs.dev/",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "macOS, Linux, Windows",
@@ -695,7 +695,7 @@
     <div class="hero-meta">
       <span>Token-Reducing Shell</span>
       <span class="dot">·</span>
-      <span>v0.8.10</span>
+      <span>v0.9.0</span>
       <span class="dot">·</span>
       <span>Rust</span>
       <span class="dot">·</span>
@@ -704,7 +704,7 @@
 
     <div class="hero-tagline">
       Terminal compression for AI agents.
-      <span class="muted">~70% fewer tokens on real agent commands. What it leaves out, it says where to find.</span>
+      <span class="muted">~50% fewer tokens on real agent commands. What it leaves out, it says where to find.</span>
     </div>
 
     <div class="hero-cta">
@@ -866,7 +866,7 @@
 <section id="agents">
   <div class="container">
     <h2>Supported AI agents</h2>
-    <p class="section-intro">Sixteen agents, three install mechanisms. <code class="inline">trs init --all --global</code> wires every detected agent in one shot.</p>
+    <p class="section-intro">Eighteen agents, three install mechanisms. <code class="inline">trs init --all --global</code> wires every detected agent in one shot.</p>
 
     <div style="overflow-x: auto; margin-top: 24px;">
       <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -1260,9 +1260,10 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
   <div class="container">
     <h2>Compression reference</h2>
     <p class="section-intro">
-      The ~70% comes from real agent use over a month, and it varies with
-      what you run. The table is a fixed benchmark of 38 command shapes taken
-      from real agent sessions (trs v0.8.9, tokens counted with
+      The ~50% comes from real use: 58% over 84,325 commands since April, and
+      24% to 48% in recent windows, so it varies with what you run. The table
+      is a fixed benchmark of 38 command shapes taken
+      from real agent sessions (trs v0.9.0, tokens counted with
       <code class="inline">o200k_base</code>).
       &ldquo;Anchors kept&rdquo; is the share of
       paths, <code class="inline">file:line</code> refs, hashes and error lines
@@ -1276,18 +1277,18 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
           <tr><th>Command</th><th>Raw tokens</th><th>trs tokens</th><th>Cut</th><th>Anchors kept</th><th>What stays</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>git log -20</code></td><td>5,360</td><td>1,459</td><td class="winner">73%</td><td>78%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
-          <tr><td><code>git diff HEAD~5</code></td><td>7,747</td><td>5,767</td><td class="winner">26%</td><td>57%</td><td>changed lines and hunk headers; a large diff becomes a file summary with the full diff saved</td></tr>
-          <tr><td><code>find src -name '*.rs'</code></td><td>2,044</td><td>335</td><td class="winner">84%</td><td>47%</td><td>grouped by directory; full list saved</td></tr>
-          <tr><td><code>ls -la src</code></td><td>2,389</td><td>833</td><td class="winner">65%</td><td>100%</td><td></td></tr>
-          <tr><td><code>cargo test</code> (2 failing)<code></code></td><td>829</td><td>195</td><td class="winner">76%</td><td>56%</td><td>each failure: location, message, left/right</td></tr>
-          <tr><td><code>pytest</code> (2 failing)<code></code></td><td>372</td><td>120</td><td class="winner">68%</td><td>58%</td><td>names, <code>E</code> lines, <code>file.py:N</code></td></tr>
-          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>548</td><td>247</td><td class="winner">55%</td><td>70%</td><td>expected vs received, location</td></tr>
-          <tr><td><code>gh run list</code></td><td>517</td><td>364</td><td class="winner">30%</td><td>100%</td><td>run id, title, workflow, branch, duration</td></tr>
+          <tr><td><code>git log -20</code></td><td>7,995</td><td>1,917</td><td class="winner">76%</td><td>74%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
+          <tr><td><code>git diff HEAD~5</code></td><td>9,221</td><td>6,770</td><td class="winner">27%</td><td>57%</td><td>changed lines and hunk headers; a large diff becomes a file summary with the full diff saved</td></tr>
+          <tr><td><code>find src -name '*.rs'</code></td><td>2,184</td><td>339</td><td class="winner">84%</td><td>44%</td><td>grouped by directory; full list saved</td></tr>
+          <tr><td><code>ls -la src</code></td><td>2,991</td><td>1,051</td><td class="winner">65%</td><td>100%</td><td></td></tr>
+          <tr><td><code>cargo test</code> (2 failing)<code></code></td><td>829</td><td>197</td><td class="winner">76%</td><td>56%</td><td>each failure: location, message, left/right</td></tr>
+          <tr><td><code>pytest</code> (2 failing)<code></code></td><td>372</td><td>122</td><td class="winner">67%</td><td>58%</td><td>names, <code>E</code> lines, <code>file.py:N</code></td></tr>
+          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>548</td><td>249</td><td class="winner">55%</td><td>70%</td><td>expected vs received, location</td></tr>
+          <tr><td><code>gh run list</code></td><td>477</td><td>326</td><td class="winner">32%</td><td>100%</td><td>run id, title, workflow, branch, duration</td></tr>
           <tr><td><code>grep -rn -C2</code></td><td>1,798</td><td>1,402</td><td class="winner">22%</td><td>100%</td><td>every match and every context line</td></tr>
           <tr><td><code>gh pr view</code></td><td>922</td><td>881</td><td class="winner">4%</td><td>100%</td><td>the whole PR body</td></tr>
-          <tr><td><code>ps aux</code></td><td>97,702</td><td>933</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
-          <tr><td><code>git show rev:file</code></td><td>1,675</td><td>1,675</td><td class="winner">0%</td><td>100%</td><td>verbatim: it is a file</td></tr>
+          <tr><td><code>ps aux</code></td><td>106,828</td><td>891</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
+          <tr><td><code>git show rev:file</code></td><td>1,692</td><td>1,692</td><td class="winner">0%</td><td>100%</td><td>verbatim: it is a file</td></tr>
         </tbody>
       </table>
     </div>
@@ -1302,7 +1303,7 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
         <div class="label">Node overhead (shell launcher)</div>
       </div>
       <div class="bench-card">
-        <div class="num">~70%</div>
+        <div class="num">~50%</div>
         <div class="label">fewer tokens on real agent commands</div>
       </div>
       <div class="bench-card">
@@ -1321,14 +1322,15 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
       <code class="inline">trs rewrite</code> compresses what agents
       <em>see</em>. <code class="inline">trs output-saver</code> closes
       the other side of the loop by installing a compact rules block
-      that compresses what agents <em>emit</em>: no preambles, no
-      narration, result-first, no hallucinated paths.
+      for what agents <em>emit</em>: answer concisely, never invent paths or
+      API fields, keep code comments short. It is small on purpose: in
+      pre-registered tests no longer block beat one line.
     </p>
 
     <div class="features-grid" style="margin-top: 24px;">
       <div class="feature">
-        <div class="feature-title">Eleven of the sixteen agents covered</div>
-        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, VS Code Copilot / Copilot CLI, Devin Desktop (ex-Windsurf), Antigravity IDE and Antigravity CLI. Pi, Devin CLI, OpenClaw, Hermes and Zed are not wired yet. The Antigravity pair (IDE + <code>agy</code>) is rules-only: Antigravity's <code>agy</code> 1.0.1 does not expose user-configurable PreTool hooks (<a href="https://github.com/dPeluChe/trs/blob/main/docs/development/antigravity-hooks-research.md">research</a>).</div>
+        <div class="feature-title">Fourteen agents covered</div>
+        <div class="feature-desc">Claude Code, Gemini, Cursor, OpenCode, Kilo, Droid, Codex, VS Code Copilot / Copilot CLI, Devin Desktop (ex-Windsurf), Antigravity IDE and Antigravity CLI, Grok Build, Kiro and OpenClaw. Pi, Devin CLI, Hermes and Zed are not wired yet. The Antigravity pair (IDE + <code>agy</code>) is rules-only: Antigravity's <code>agy</code> 1.0.1 does not expose user-configurable PreTool hooks (<a href="https://github.com/dPeluChe/trs/blob/main/docs/development/antigravity-hooks-research.md">research</a>).</div>
       </div>
       <div class="feature">
         <div class="feature-title">Check-first by default</div>
@@ -1436,7 +1438,7 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
         Downloads the right binary for your platform into
         <code class="inline">~/.trs/bin/trs</code>. Zero runtime dependencies,
         no Node overhead, ~4 ms startup. Pin a version with
-        <code class="inline">TRS_VERSION=v0.8.10</code>.
+        <code class="inline">TRS_VERSION=v0.9.0</code>.
       </p>
     </div>
 

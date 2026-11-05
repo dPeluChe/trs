@@ -108,7 +108,7 @@ trs uninstall --all --yes          # scripted
 
 ## Supported AI agents
 
-Sixteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot and Copilot CLI (one shared hook), Devin CLI, and Codex CLI (≥ 0.134, rules fallback below); plugin template for OpenClaw and Hermes. Rules file only for Antigravity IDE, Antigravity CLI, Devin Desktop (ex-Windsurf), and Zed (Agent Panel).
+Eighteen agents supported end-to-end. Programmatic hook for Claude Code, Gemini CLI, Cursor, OpenCode, Kilo Code, Pi Coding Agent, Factory Droid, VS Code Copilot and Copilot CLI (one shared hook), Devin CLI, Codex CLI (≥ 0.134, rules fallback below), and, unverified on real binaries, Trae and Mistral Vibe; plugin template for OpenClaw and Hermes. Rules file only for Antigravity IDE, Antigravity CLI, Devin Desktop (ex-Windsurf), and Zed (Agent Panel).
 
 | Agent | Install method | Input hook | Output-saver | Attribution |
 |---|---|---|---|---|
@@ -203,7 +203,7 @@ trs ingest --list              # saved digests + HEAD sha + stale markers
 
 ## Output saver
 
-trs compresses what agents **see** via `trs rewrite`. `trs output-saver` closes the symmetric gap: installs a compact rules block into each agent's global config to compress what agents **emit**: no preambles, no narration, result-first, structured output where appropriate, no hallucinated paths.
+trs compresses what agents **see** via `trs rewrite`. `trs output-saver` closes the symmetric gap: installs a compact rules block into each agent's global config for what agents **emit**: answer concisely, never invent paths or API fields, keep code comments short. It is small on purpose: [no longer block beat one line](docs/development/output-cost-findings.md) in pre-registered tests.
 
 ```bash
 trs output-saver               # read-only scan
@@ -211,7 +211,7 @@ trs output-saver --install     # install on detected agents
 trs uninstall --output-saver   # remove the block from every agent
 ```
 
-All ten agents supported (Antigravity IDE + CLI share Gemini's `~/.gemini/GEMINI.md` import). [Full `trs output-saver` reference →](docs/features/output-saver.md)
+Fourteen agents supported, including Grok Build, Kiro and OpenClaw (Antigravity IDE + CLI share Gemini's `~/.gemini/GEMINI.md` import). [Full `trs output-saver` reference →](docs/features/output-saver.md)
 
 ## Output formats
 
