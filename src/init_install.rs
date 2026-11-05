@@ -8,6 +8,27 @@ use std::path::{Path, PathBuf};
 use crate::init::{has_trs_marker, home_dir, HookSpec, InstallOpts};
 use crate::init_collision;
 
+/// What one install did. The summary counts these, so a row and the total agree.
+#[derive(PartialEq)]
+pub(crate) enum Outcome {
+    Installed,
+    Refreshed,
+    Unchanged,
+    Failed,
+}
+
+impl Outcome {
+    pub(crate) fn from_row(row: &str) -> Self {
+        if row.contains("(already configured") {
+            Self::Unchanged
+        } else if row.contains("(refreshed)") || row.contains("(would refresh") {
+            Self::Refreshed
+        } else {
+            Self::Installed
+        }
+    }
+}
+
 /// Install via the data-driven `HookSpec`. JSON targets merge; non-JSON
 /// targets create-only (refuse to overwrite foreign content).
 pub(crate) fn install_from_spec(spec: &HookSpec, opts: InstallOpts) -> Result<String, String> {

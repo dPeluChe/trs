@@ -3,8 +3,8 @@
 use assert_cmd::Command;
 use std::path::Path;
 
-fn trs(home: &Path, args: &[&str]) {
-    Command::cargo_bin("trs")
+fn trs(home: &Path, args: &[&str]) -> String {
+    let out = Command::cargo_bin("trs")
         .unwrap()
         .args(args)
         .current_dir(home)
@@ -12,6 +12,7 @@ fn trs(home: &Path, args: &[&str]) {
         .env("USERPROFILE", home)
         .output()
         .unwrap();
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 /// A project hook in `~/.github/hooks/` reported Copilot as configured, so
@@ -58,4 +59,31 @@ fn installing_antigravity_keeps_the_gemini_hook() {
             .contains("trs rewrite"),
         "installing Antigravity removed Gemini's hook"
     );
+}
+
+/// `--force` counted every agent as installed, even a file it left untouched.
+#[test]
+fn the_summary_counts_what_each_row_says() {
+    let home = tempfile::tempdir().unwrap();
+    let h = home.path();
+    std::fs::create_dir_all(h.join(".gemini")).unwrap();
+    std::fs::create_dir_all(h.join(".pi")).unwrap();
+    trs(h, &["init", "--all", "--global"]);
+    let text = trs(h, &["init", "--all", "--global", "--force"]);
+    let rows = text
+        .lines()
+        .filter(|l| l.starts_with("  + ") && l.ends_with("(already configured)"))
+        .count();
+    assert!(rows > 0, "{text}");
+    assert!(
+        text.contains(&format!("0 installed · {rows} already configured")),
+        "{text}"
+    );
+    assert!(!text.contains("re-run with --force"), "{text}");
+
+    let plugin = h.join(".pi/agent/extensions/trs.ts");
+    let stale = std::fs::read_to_string(&plugin).unwrap() + "// older template\n";
+    std::fs::write(&plugin, stale).unwrap();
+    let text = trs(h, &["init", "--all", "--global", "--force"]);
+    assert!(text.contains("0 installed · 1 refreshed · "), "{text}");
 }

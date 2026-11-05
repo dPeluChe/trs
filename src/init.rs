@@ -7,7 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::init_collision;
-use crate::init_install::install_from_spec;
+use crate::init_install::{install_from_spec, Outcome};
 use crate::init_install_plugins::{install_hermes_plugin, install_openclaw_plugin};
 use crate::init_install_rules::{
     install_antigravity_rules, install_codex_agents, install_rules, install_zed_agents,
@@ -41,15 +41,15 @@ fn agent_row(sym: char, name: &str, detail: &str) {
 /// Install hooks for the specified tool. `batch` = true when called from
 /// `install_all`: emits a single aligned row and suppresses the per-agent
 /// "restart" note (printed once at the end) so `trs init --all` stays
-/// readable. Returns whether the hook was installed/refreshed successfully.
-pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> bool {
+/// readable.
+pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> Outcome {
     // Pre-install: detect competing compressor hooks (rtk, token-optimizer).
     // Default is to abort — --replace scrubs known competitors before the
     // install proceeds, --force installs anyway and eats the risk.
     let collisions = init_collision::detect(tool, opts.global);
     if !collisions.is_empty() && !opts.force && !opts.replace {
         eprintln!("{}", init_collision::format_report(tool, &collisions));
-        return false;
+        return Outcome::Failed;
     }
     if !collisions.is_empty() && opts.replace && !init_collision::any_hook_collisions(&collisions) {
         // --replace has no automatic cleanup for text-file rules collisions;
@@ -59,7 +59,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
             "note: --replace only scrubs JSON hook entries automatically.\n\
              The rules-file collisions above need manual edits."
         );
-        return false;
+        return Outcome::Failed;
     }
 
     // With --replace, scrub every distinct JSON location we flagged. Our
@@ -102,7 +102,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
                      not yet verified; installing would be a no-op. Run without --global in \
                      each project."
                 );
-                return false;
+                return Outcome::Failed;
             }
             install_zed_agents(opts)
         }
@@ -131,6 +131,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
 
     match result {
         Ok(path) => {
+            let outcome = Outcome::from_row(&path);
             let shown = crate::path_display::tilde(&path);
             if batch {
                 // One aligned row; the summary line + restart note are printed
@@ -146,17 +147,21 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
                     install_trs_md_for(tool, true);
                 }
             } else {
-                let verb = if opts.dry_run {
+                let verb = if outcome == Outcome::Unchanged {
+                    "present"
+                } else if opts.dry_run {
                     "would install"
                 } else {
                     "installed"
                 };
                 println!("trs hook {} for {} at {}", verb, tool.name(), shown);
                 if !opts.dry_run {
-                    eprintln!(
-                        "note: restart any open {} sessions for the hook to take effect",
-                        tool.name()
-                    );
+                    if outcome != Outcome::Unchanged || opts.force {
+                        eprintln!(
+                            "note: restart any open {} sessions for the hook to take effect",
+                            tool.name()
+                        );
+                    }
                     // Warn if trs is not in PATH
                     if !is_trs_in_path() {
                         eprintln!(
@@ -170,7 +175,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
                     install_trs_md_for(tool, false);
                 }
             }
-            true
+            outcome
         }
         Err(e) => {
             if batch {
@@ -178,7 +183,7 @@ pub(crate) fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> boo
             } else {
                 eprintln!("Failed to install hook for {}: {}", tool.name(), e);
             }
-            false
+            Outcome::Failed
         }
     }
 }
@@ -208,6 +213,7 @@ fn install_trs_md_for(tool: &AiTool, quiet: bool) {
 pub(crate) fn install_all(opts: InstallOpts) {
     let tools = AiTool::all_tools();
     let mut installed = 0;
+    let mut refreshed = 0;
     let mut configured = 0;
     let mut skipped = 0;
 
@@ -237,8 +243,13 @@ pub(crate) fn install_all(opts: InstallOpts) {
             // the verbose per-tool message install_hook would otherwise print.
             agent_row('~', tool.name(), "per-project only (run without --global)");
             skipped += 1;
-        } else if install_hook(tool, opts, true) {
-            installed += 1;
+        } else {
+            match install_hook(tool, opts, true) {
+                Outcome::Installed => installed += 1,
+                Outcome::Refreshed => refreshed += 1,
+                Outcome::Unchanged => configured += 1,
+                Outcome::Failed => {}
+            }
         }
     }
 
@@ -247,15 +258,24 @@ pub(crate) fn install_all(opts: InstallOpts) {
     } else {
         "installed"
     };
+    let refreshed_part = match (refreshed, opts.dry_run) {
+        (0, _) => String::new(),
+        (n, true) => format!("{n} would refresh · "),
+        (n, false) => format!("{n} refreshed · "),
+    };
     println!(
-        "\n  {} {} · {} already configured · {} skipped · {} total",
+        "\n  {} {} · {}{} already configured · {} skipped · {} total",
         installed,
         verb,
+        refreshed_part,
         configured,
         skipped,
         tools.len()
     );
-    if installed > 0 && !opts.dry_run {
+    // One row can stand for several files, so --force may have written behind an
+    // "already configured": a needless restart costs less than a stale hook.
+    let changed = installed + refreshed > 0;
+    if (changed || opts.force) && !opts.dry_run {
         println!("  ↻ restart open agent sessions to load the new hooks");
     }
     if opts.dry_run {
@@ -264,7 +284,7 @@ pub(crate) fn install_all(opts: InstallOpts) {
     // When everything is already wired up, remind the user how to force
     // a refresh — template content can change between releases even
     // when the install marker ("trs rewrite") is already present.
-    if installed == 0 && configured > 0 {
+    if !changed && configured > 0 && !opts.force {
         println!();
         println!("All detected agents are already configured. If a new trs release");
         println!("ships hook template improvements, re-run with --force to overwrite");
