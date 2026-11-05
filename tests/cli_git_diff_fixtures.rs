@@ -300,3 +300,16 @@ fn test_fixture_git_diff_renamed_raw() {
             "R src/old_name.rs -> src/new_name.rs",
         ));
 }
+
+#[test]
+fn a_layout_the_parser_cannot_read_is_never_called_empty() {
+    let input = " 2 files changed, 2 insertions(+)\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("2 files changed"))
+        .stdout(predicate::str::contains("diff: empty").not());
+}

@@ -14,6 +14,13 @@ impl ParseHandler {
         // Parse the git diff output
         let diff = Self::parse_git_diff(&input)?;
 
+        // No hunks in non-empty input is a layout this parser can't read, never
+        // an empty diff: `git -C x diff --numstat` gets past the flag table.
+        if diff.files.is_empty() && !input.trim().is_empty() {
+            crate::parse_out::emit(&input);
+            return Ok(());
+        }
+
         // Format output based on the requested format. `git show` opens
         // with the commit itself, which the diff grammar has no place for.
         let mut output = Self::format_git_diff(&diff, ctx.format);

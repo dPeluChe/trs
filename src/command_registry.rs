@@ -410,6 +410,32 @@ const FIELD_SELECTOR_FLAGS: &[(&str, &str, &[&str])] = &[
             "--graph",
         ],
     ),
+    ("git", "diff", DIFF_LAYOUT_FLAGS),
+    ("git", "show", DIFF_LAYOUT_FLAGS),
+];
+
+/// The diff parser reads patches and `--stat`; any other layout has no hunks,
+/// so it came out as `diff: empty` or `(+0 -0)`.
+const DIFF_LAYOUT_FLAGS: &[&str] = &[
+    "-p",
+    "-u",
+    "--patch",
+    "--binary",
+    "--name-only",
+    "--name-status",
+    "--numstat",
+    "--shortstat",
+    "--raw",
+    "--summary",
+    "--dirstat",
+    "--compact-summary",
+    "--patch-with-stat",
+    "--patch-with-raw",
+    "--word-diff",
+    "--word-diff-regex",
+    "--color-words",
+    "--format",
+    "--pretty",
 ];
 
 /// Whether the caller pre-selected their fields on this command line.
