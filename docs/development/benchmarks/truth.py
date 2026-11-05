@@ -9,13 +9,15 @@ Four checks, each aimed at a way a byte benchmark scores a loss as a win:
    the producer and `find | wc -l` said 14 instead of 241.
 2. Anchors. Paths, `file:line` refs, commit hashes and error lines are pulled
    from the raw output, and each one must appear in trs's output. A row that
-   cuts 90% or more but keeps under 70% of its anchors is flagged.
+   cuts 90% or more but keeps under 70% of its facts is flagged. Facts are
+   anchors read for meaning, see `facts`: a failing test reported as
+   `name: file:line` is still reported.
 3. A naive control. The raw output's last lines, cut to trs's byte count.
-   Where `tail` keeps more anchors in the same space, trs is not earning
+   Where `tail` keeps more facts in the same space, trs is not earning
    the compression.
 
 4. Buried needles. A saving that keeps the head and the tail of an output can
-   still blind the model to an answer in the middle. The anchors (paths,
+   still blind the model to an answer in the middle. The facts (paths,
    `file:line`, hashes) found in the middle half of the raw output are
    scored on their own; a row that cuts 50% or more but keeps under 50% of
    them is flagged BLIND. This is the offline half of a comprehension check
@@ -68,6 +70,8 @@ ANCHORS = {
     "hash": re.compile(r"\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b"),
 }
 ERROR_LINE = re.compile(r"error|fail|panick|warning|FAIL", re.I)
+DIAGNOSTIC = re.compile(r"^\s*(?:error|warning)\b|\bFAIL(?:ED)?\b|panicked at|\b\d+ failed\b|^\s*\(fail\)|^E\s")
+WORD = re.compile(r"[A-Za-z_][\w:.-]{3,}\w|\d+")
 RISK_CUT, RISK_KEEP = 90.0, 70.0
 BLIND_CUT, BLIND_KEEP, BLIND_MIN = 50.0, 50.0, 3
 
@@ -119,37 +123,86 @@ def anchors(text):
     return found
 
 
+def facts(text):
+    """Anchors read for meaning: a diagnostic is the whole line, a Docker row is
+    either of its names, and an `index` blob hash is nothing anyone can act on."""
+    plain = "\n".join(line for line in text.splitlines() if not line.startswith("index "))
+    found = {(kind, m) for kind, rx in ANCHORS.items() for m in rx.findall(plain)}
+    found |= {("error", " ".join(line.split())) for line in text.splitlines() if DIAGNOSTIC.search(line)}
+    for row_id, name in docker_rows(text):
+        found.discard(("hash", row_id))
+        found.add(("either", (row_id, name)))
+    return found
+
+
+def docker_rows(raw):
+    head, *rows = raw.splitlines() or [""]
+    if head.startswith("CONTAINER ID"):
+        return [(r[0], r[-1]) for r in map(str.split, rows) if len(r) > 1]
+    if head.startswith("REPOSITORY"):
+        return [(r[2], f"{r[0]}:{r[1]}") for r in map(str.split, rows) if len(r) > 2]
+    if head.startswith("IMAGE"):
+        return [(r[1], r[0]) for r in map(str.split, rows) if len(r) > 1]
+    return []
+
+
+def facts_lost(found, text):
+    flat = " ".join(text.split())
+    low = text.lower()
+
+    def has(kind, a):
+        if kind == "either":
+            return any(present("hash", n, text, flat) for n in a)
+        if present(kind, a, text, flat):
+            return True
+        if kind != "error":
+            return False
+        words = WORD.findall(a)
+        return sum(w.lower() in low for w in words) * 2 >= len(words) > 0
+
+    return [(k, a) for k, a in found if not has(k, a)]
+
+
+def share(found, text):
+    return (len(found) - len(facts_lost(found, text))) * 100 / len(found) if found else 100.0
+
+
+def risky(cut, keep):
+    return cut >= RISK_CUT and keep < RISK_KEEP
+
+
 def buried(raw):
     """Anchors that appear only in the middle half of the raw output."""
     lines = raw.splitlines()
     n = len(lines)
     middle = "\n".join(lines[n // 4 : n - n // 4])
     edges = "\n".join(lines[: n // 4] + lines[n - n // 4 :])
-    return {a for a in anchors(middle) if a[0] != "error"} - anchors(edges)
+    return {a for a in facts(middle) if a[0] != "error"} - facts(edges)
+
+
+def present(kind, a, text, flat):
+    """Tolerates trs's two regroupings: `grep` under a per-file header, `find`
+    under a per-directory one. Loose on purpose, so a high score is a ceiling
+    and a low one is a real loss."""
+    if a in text or a in flat:
+        return True
+    if kind == "hash":
+        return a[:7] in text
+    if kind == "file:line":
+        path, line = a.rsplit(":", 1)
+        return path in text and re.search(rf"(?m)^\s*{line}[:\s]", text) is not None
+    if kind == "path":
+        parent, _, base = a.rpartition("/")
+        stem = base.rsplit(".", 1)[0]
+        near = parent.rsplit("/", 1)[-1] if parent else ""
+        return re.search(rf"\b{re.escape(stem)}\b", text) is not None and near in text
+    return False
 
 
 def kept(found, text):
-    """Anchors present in `text`, tolerating trs's two regroupings: `grep`
-    under a per-file header, `find` under a per-directory one. Loose on
-    purpose, so a high score is a ceiling and a low one is a real loss."""
+    """The literal score, kept as a column so older runs stay comparable."""
     flat = " ".join(text.split())
-
-    def has(kind, a):
-        if a in text or a in flat:
-            return True
-        if kind == "hash":
-            return a[:7] in text
-        if kind == "file:line":
-            path, line = a.rsplit(":", 1)
-            return path in text and re.search(rf"(?m)^\s*{line}[:\s]", text) is not None
-        if kind == "path":
-            parent, _, base = a.rpartition("/")
-            stem = base.rsplit(".", 1)[0]
-            near = parent.rsplit("/", 1)[-1] if parent else ""
-            return re.search(rf"\b{re.escape(stem)}\b", text) is not None and near in text
-        return False
-
-    return sum(has(k, a) for k, a in found)
+    return sum(present(k, a, text, flat) for k, a in found)
 
 
 def naive_tail(raw, budget):
@@ -178,7 +231,7 @@ def main():
     print(f"  {len(PIPELINES) - bad}/{len(PIPELINES)} match\n")
 
     print("Anchors: what survives, and whether plain tail would keep more")
-    head = f"  {'command':30}{'raw tok':>8}{'trs tok':>8}{'cut':>6}{'anchors':>9}{'kept':>6}{'tail':>6}{'buried':>8}  flag"
+    head = f"  {'command':30}{'raw tok':>8}{'trs tok':>8}{'cut':>6}{'anchors':>9}{'kept':>6}{'facts':>6}{'tail':>6}{'buried':>8}  flag"
     print(head)
     risks = blind = 0
     for c in COMMANDS:
@@ -192,23 +245,25 @@ def main():
         found = anchors(raw)
         n = len(found)
         k = kept(found, out) * 100 / n if n else 100.0
-        t = kept(found, naive_tail(raw, len(out))) * 100 / n if n else 100.0
+        fact = facts(raw)
+        f = share(fact, out)
+        t = share(fact, naive_tail(raw, len(out)))
         deep = buried(raw)
-        b = kept(deep, out) * 100 / len(deep) if deep else 100.0
+        b = share(deep, out)
         flags = []
         if len(deep) >= BLIND_MIN and cut >= BLIND_CUT and b < BLIND_KEEP:
             flags.append("BLIND")
             blind += 1
         if ot > rt:
             flags.append("GREW")
-        if cut >= RISK_CUT and k < RISK_KEEP:
+        if risky(cut, f):
             flags.append("RISK")
             risks += 1
-        if t > k:
+        if t > f:
             flags.append("tail-wins")
-        print(f"  {c[:30]:30}{rt:8}{ot:8}{cut:5.0f}%{n:9}{k:5.0f}%{t:5.0f}%{b:7.0f}%  {' '.join(flags)}")
-    print(f"\n  RISK = cut >= {RISK_CUT:.0f}% with under {RISK_KEEP:.0f}% of anchors kept ({risks} rows)")
-    print(f"  BLIND = cut >= {BLIND_CUT:.0f}% with under {BLIND_KEEP:.0f}% of the middle-only anchors kept ({blind} rows)")
+        print(f"  {c[:30]:30}{rt:8}{ot:8}{cut:5.0f}%{n:9}{k:5.0f}%{f:5.0f}%{t:5.0f}%{b:7.0f}%  {' '.join(flags)}")
+    print(f"\n  RISK = cut >= {RISK_CUT:.0f}% with under {RISK_KEEP:.0f}% of facts kept ({risks} rows)")
+    print(f"  BLIND = cut >= {BLIND_CUT:.0f}% with under {BLIND_KEEP:.0f}% of the middle-only facts kept ({blind} rows)")
     sys.exit(1 if bad else 0)
 
 

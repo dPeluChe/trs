@@ -25,7 +25,7 @@ import os
 import statistics
 import sys
 
-from bench_stats import boot_diff
+from bench_stats import boot_diff, records
 
 
 def default_since():
@@ -42,15 +42,7 @@ def messages(projects_dir):
     """One (timestamp, model, output_tokens, has_text) per assistant message id."""
     seen = {}
     for path in glob.glob(os.path.join(projects_dir, "*", "*.jsonl")):
-        try:
-            lines = open(path, encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        for line in lines:
-            try:
-                d = json.loads(line)
-            except ValueError:
-                continue
+        for d in records(path):
             if d.get("type") != "assistant" or d.get("isSidechain"):
                 continue
             m = d.get("message") or {}

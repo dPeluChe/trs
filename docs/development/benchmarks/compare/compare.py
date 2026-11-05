@@ -111,14 +111,17 @@ def corpus():
         yield cwd, cmd
 
 
-def score(raw, out, found):
+def score(raw, out, found, fact):
     rt, ot = count(raw), count(out)
     n = len(found)
+    lost = truth.facts_lost(fact, out)
     return {
         "tok": ot,
         "cut": round((rt - ot) / rt * 100, 1) if rt else 0.0,
         "kept": round(truth.kept(found, out) * 100 / n) if n else 100,
-        "tail": round(truth.kept(found, truth.naive_tail(raw, len(out))) * 100 / n) if n else 100,
+        "fact_kept": len(fact) - len(lost),
+        "lost": sorted(str(a) for _, a in lost)[:12],
+        "tail": round(truth.share(fact, truth.naive_tail(raw, len(out)))),
     }
 
 
@@ -134,16 +137,17 @@ def main():
         raws = [run(cmd, BASE, cwd) for _ in range(a.reps)]
         raw = raws[-1][0]
         found = truth.anchors(raw)
+        fact = truth.facts(raw)
         row = {"cmd": cmd, "raw_tok": count(raw), "raw_ms": statistics.median(ms for _, ms in raws),
-               "anchors": len(found), "tools": {}}
+               "anchors": len(found), "facts": len(fact), "tools": {}}
         for tool in tools:
             if tool == "claw-compactor":
-                row["tools"][tool] = score(raw, claw(raw), found)
+                row["tools"][tool] = score(raw, claw(raw), found, fact)
                 continue
             new, _, env = decide(tool, cmd)
             hook_ms = statistics.median(decide(tool, cmd)[1] for _ in range(5))
             runs = [run(new or cmd, env, cwd) for _ in range(a.reps)]
-            s = score(raw, runs[-1][0], found)
+            s = score(raw, runs[-1][0], found, fact)
             s.update(rewrote=bool(new), hook_ms=round(hook_ms, 1),
                      exec_ms=round(statistics.median(ms for _, ms in runs), 1))
             row["tools"][tool] = s
@@ -165,20 +169,36 @@ def report(rows, pipes, tools):
         out = sum(r["tools"][t]["tok"] for r in rs)
         an = sum(r["anchors"] for r in rs)
         kept = sum(r["tools"][t]["kept"] * r["anchors"] / 100 for r in rs)
-        risk = sum(r["tools"][t]["cut"] >= 90 and r["tools"][t]["kept"] < 70 for r in rs if r["anchors"])
-        grew = sum(r["tools"][t]["cut"] < 0 for r in rs)
-        return raw, out, an, kept, risk, grew
+        cuts = [r["tools"][t]["cut"] for r in rs]
+        scored = [(r["tools"][t], r["facts"]) for r in rs if r["facts"]]
+        shares = [s["fact_kept"] * 100 / n for s, n in scored]
+        return {
+            "raw": raw, "out": out, "an": an, "kept": kept, "grew": sum(c < 0 for c in cuts),
+            "mean": statistics.mean(cuts), "median": statistics.median(cuts),
+            "facts": sum(s["fact_kept"] for s, _ in scored) * 100 / sum(n for _, n in scored),
+            "facts_mean": statistics.mean(shares),
+            "none": sum(s["fact_kept"] == 0 for s, _ in scored),
+            "risk": sum(truth.risky(s["cut"], p) for (s, _), p in zip(scored, shares)),
+        }
+
+    totals = {t: agg(t) for t in tools}
     print(f"\n{len(rows)} commands, tokens: {TOK_NAME}\n")
     print("| tool | tokens cut | anchors kept | RISK | grew | pipelines | hook ms | exec +ms |")
     print("|---|---:|---:|---:|---:|---:|---:|---:|")
     for t in tools:
-        raw, out, an, kept, risk, grew = agg(t)
+        a = totals[t]
         hooks = [r["tools"][t].get("hook_ms") for r in rows if r["tools"][t].get("hook_ms") is not None]
         over = [r["tools"][t]["exec_ms"] - r["raw_ms"] for r in rows if r["tools"][t].get("rewrote")]
         p = sum(v[t] for v in pipes.values()) if t in next(iter(pipes.values()), {}) else None
-        print(f"| {t} | {(raw - out) / raw * 100:.0f}% | {kept / an * 100:.0f}% | {risk} | {grew} | "
+        print(f"| {t} | {(a['raw'] - a['out']) / a['raw'] * 100:.0f}% | {a['kept'] / a['an'] * 100:.0f}% | {a['risk']} | {a['grew']} | "
               f"{f'{p}/{len(pipes)}' if p is not None else 'n/a'} | "
               f"{statistics.median(hooks) if hooks else 0:.1f} | {statistics.median(over) if over else 0:.1f} |")
+    print("\nPer command, so no single command decides the score, and facts read for meaning (`truth.facts`):\n")
+    print("| tool | mean cut | median cut | facts kept, mean | facts kept, pooled | commands with no fact left |")
+    print("|---|---:|---:|---:|---:|---:|")
+    for t in tools:
+        a = totals[t]
+        print(f"| {t} | {a['mean']:.0f}% | {a['median']:.0f}% | {a['facts_mean']:.0f}% | {a['facts']:.0f}% | {a['none']} |")
     print("\nPer command, `cut / anchors kept`:\n")
     print("| command | raw tok | " + " | ".join(tools) + " |")
     print("|---|---:|" + "---:|" * len(tools))
