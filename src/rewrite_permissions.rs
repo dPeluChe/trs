@@ -334,4 +334,11 @@ mod tests {
         std::fs::write(dir.path().join(".claude/settings.json"), "{ not json").unwrap();
         assert_eq!(gate("git status", dir.path().to_str()), Gate::Skip);
     }
+
+    #[test]
+    fn a_rule_sees_the_command_behind_runner_options() {
+        assert_eq!(strip_wrappers("uv run --with x rm -rf d"), "rm -rf d");
+        assert_eq!(strip_wrappers("poetry run --quiet rm -rf d"), "rm -rf d");
+        assert_eq!(strip_wrappers("time -p rm"), "-p rm");
+    }
 }
