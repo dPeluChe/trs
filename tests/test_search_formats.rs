@@ -77,18 +77,6 @@ fn test_search_compact_format() {
         .stdout(predicate::str::contains("SearchHandler"));
 }
 
-#[test]
-fn test_search_compact_is_default() {
-    // Compact is the default format
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("SearchHandler"));
-}
-
 // ============================================================
 // Raw Format Tests
 // ============================================================
@@ -363,17 +351,6 @@ fn test_search_with_dashes() {
         .arg("long-about")
         .assert()
         .success();
-}
-
-#[test]
-fn test_search_with_underscores() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("SearchHandler"));
 }
 
 #[test]

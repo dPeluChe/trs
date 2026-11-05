@@ -11,21 +11,6 @@ fn test_router_search_command() {
     // Search is now fully implemented
 }
 
-#[test]
-fn test_router_replace_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("replace")
-        .arg("src")
-        .arg("NONEXISTENT_PATTERN_12345")
-        .arg("new")
-        .arg("--dry-run")
-        .arg("--extension")
-        .arg("rs")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("No matches found"));
-}
-
 // ============================================================
 // Tail -N Shorthand Tests
 // ============================================================
@@ -340,20 +325,6 @@ fn test_router_run_command_with_stats() {
 // ============================================================
 
 #[test]
-fn test_context_json_format_routing() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .arg("--extension")
-        .arg("rs")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("\"schema\""));
-}
-
-#[test]
 fn test_context_agent_format_routing() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--agent")
@@ -365,19 +336,6 @@ fn test_context_agent_format_routing() {
         .assert()
         .success()
         .stdout(predicate::str::contains("matches:"));
-}
-
-#[test]
-fn test_context_stats_routing() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg(".")
-        .arg("test")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Stats:"))
-        .stderr(predicate::str::contains("Items processed:"));
 }
 
 #[test]

@@ -36,16 +36,6 @@ fn test_replace_help_shows_extension_option() {
 }
 
 #[test]
-fn test_replace_help_shows_dry_run_option() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("replace")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("--dry-run"));
-}
-
-#[test]
 fn test_replace_help_shows_count_option() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")

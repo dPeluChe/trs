@@ -420,17 +420,6 @@ fn test_clean_no_reduction_simple() {
 // ============================================================
 
 #[test]
-fn test_clean_file_short_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("clean")
-        .arg("-f")
-        .arg(fixture_path("clean_simple.txt"))
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Hello World"));
-}
-
-#[test]
 fn test_clean_file_long_flag() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("clean")

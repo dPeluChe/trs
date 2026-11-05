@@ -4,12 +4,6 @@ use predicates::prelude::*;
 // trs stats --by-command tests
 
 #[test]
-fn test_stats_by_command_runs_without_error() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("stats").arg("--by-command").assert().success();
-}
-
-#[test]
 fn test_stats_by_command_shows_header() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("stats")

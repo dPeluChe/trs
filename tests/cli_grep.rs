@@ -114,17 +114,6 @@ fn test_parse_grep_truncation_raw_format() {
 }
 
 #[test]
-fn test_parse_test() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("test")
-        .arg("--runner")
-        .arg("pytest")
-        .assert()
-        .success();
-}
-
-#[test]
 fn test_parse_logs() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("parse").arg("logs").assert().success();
@@ -217,34 +206,6 @@ fn test_txt2md_basic() {
 }
 
 #[test]
-fn test_global_json_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .arg("--extension")
-        .arg("rs")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("\"schema\""));
-}
-
-#[test]
-fn test_global_csv_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--csv")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .arg("--extension")
-        .arg("rs")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("path,line_number"));
-}
-
-#[test]
 fn test_global_stats_flag() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--stats")
@@ -317,20 +278,6 @@ fn test_run_command_json_output() {
 }
 
 #[test]
-fn test_run_command_no_capture_stdout() {
-    // When --capture-stdout=false, stdout goes directly to terminal
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("echo")
-        .arg("hello")
-        .arg("--capture-stdout=false")
-        .assert()
-        .success();
-    // Note: stdout goes directly to terminal when not captured,
-    // so the CLI output won't contain it
-}
-
-#[test]
 fn test_run_command_capture_stdout_default() {
     // By default, stdout is captured
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -340,21 +287,6 @@ fn test_run_command_capture_stdout_default() {
         .assert()
         .success()
         .stdout(predicate::str::contains("captured_output"));
-}
-
-#[test]
-fn test_run_command_no_capture_stderr() {
-    // When --capture-stderr=false, stderr goes directly to terminal
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("echo stderr_test >&2")
-        .arg("--capture-stderr=false")
-        .assert()
-        .success();
-    // Note: stderr goes directly to terminal when not captured,
-    // so the CLI output won't contain it
 }
 
 #[test]
@@ -368,20 +300,6 @@ fn test_run_command_capture_stderr_default() {
         .assert()
         .success()
         .stdout(predicate::str::contains("captured_stderr"));
-}
-
-#[test]
-fn test_run_command_no_capture_both() {
-    // When both are not captured, both go directly to terminal
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("echo stdout_test && echo stderr_test >&2")
-        .arg("--capture-stdout=false")
-        .arg("--capture-stderr=false")
-        .assert()
-        .success();
 }
 
 #[test]

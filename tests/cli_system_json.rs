@@ -117,35 +117,6 @@ fn test_run_cat_command() {
         .stdout(predicate::str::contains("localhost"));
 }
 
-#[test]
-fn test_run_ls_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("ls").arg("/tmp").assert().success();
-}
-
-#[test]
-fn test_run_env_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("env").assert().success();
-}
-
-#[test]
-fn test_run_true_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("true").assert().success();
-}
-
-#[test]
-fn test_run_exit_code_propagation() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("exit 42")
-        .assert()
-        .code(42); // Exit code 42 is now propagated correctly
-}
-
 // ============================================================
 // JSON Output Tests for Command Execution
 // ============================================================

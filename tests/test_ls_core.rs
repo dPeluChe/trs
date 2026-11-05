@@ -22,16 +22,6 @@ fn test_ls_simple() {
 }
 
 #[test]
-fn test_ls_empty() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("ls")
-        .write_stdin("")
-        .assert()
-        .success();
-}
-
-#[test]
 fn test_ls_long_format() {
     let input = "total 32\ndrwxr-xr-x   3 user group 4096 Jan 15 10:30 src\n-rw-r--r--   1 user group  128 Jan 15 10:32 Cargo.toml\n";
     let mut cmd = Command::cargo_bin("trs").unwrap();

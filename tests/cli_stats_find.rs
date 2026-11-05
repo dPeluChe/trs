@@ -29,18 +29,6 @@ fn test_run_stats_shows_exit_code() {
 }
 
 #[test]
-fn test_run_stats_shows_duration() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Duration:"));
-}
-
-#[test]
 fn test_run_stats_shows_stdout_bytes() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--stats")
@@ -146,12 +134,6 @@ fn test_exit_code_zero_success() {
 }
 
 #[test]
-fn test_exit_code_one_propagated() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("false").assert().code(1);
-}
-
-#[test]
 fn test_exit_code_42_propagated() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("run")
@@ -223,13 +205,12 @@ fn test_exit_code_permission_denied_is_126() {
 }
 
 #[test]
-fn test_exit_code_no_capture_still_propagates() {
-    // Even when exit code is not captured, the CLI should still fail
+fn test_uncaptured_streams_still_propagate_the_exit_code() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("run")
-        .arg("false")
         .arg("--capture-stdout=false")
         .arg("--capture-stderr=false")
+        .arg("false")
         .assert()
         .code(1);
 }

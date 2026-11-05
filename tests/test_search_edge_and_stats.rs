@@ -72,17 +72,6 @@ fn test_search_help_shows_limit_option() {
 // ============================================================
 
 #[test]
-fn test_search_with_current_directory() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg(".")
-        .arg("fn main")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("main.rs"));
-}
-
-#[test]
 fn test_search_with_absolute_path() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // Use the current directory as absolute path

@@ -135,17 +135,6 @@ fn test_parse_git_status_invalid_utf8() {
 }
 
 #[test]
-fn test_parse_ls_empty_input() {
-    // Test empty ls input
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("ls")
-        .write_stdin("")
-        .assert()
-        .success();
-}
-
-#[test]
 fn test_parse_ls_malformed_long_format() {
     // Test ls with malformed long format lines
     let input = "drwxr-xr-x\n-rw-r--r-- 1\n"; // Truncated entries
@@ -165,17 +154,6 @@ fn test_parse_ls_with_binary_filenames() {
     cmd.arg("parse")
         .arg("ls")
         .write_stdin(input)
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_parse_grep_empty_input() {
-    // Test empty grep input
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("grep")
-        .write_stdin("")
         .assert()
         .success();
 }

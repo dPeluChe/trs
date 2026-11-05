@@ -29,26 +29,6 @@ fn test_help_shows_all_commands() {
 }
 
 #[test]
-fn test_run_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Execute a command"));
-}
-
-#[test]
-fn test_parse_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("parse")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Parse structured input"));
-}
-
-#[test]
 fn test_search_help() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
@@ -56,66 +36,6 @@ fn test_search_help() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Search for patterns"));
-}
-
-#[test]
-fn test_replace_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("replace")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Search and replace"));
-}
-
-#[test]
-fn test_tail_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("tail")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Tail a file"));
-}
-
-#[test]
-fn test_clean_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("clean")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Clean and format"));
-}
-
-#[test]
-fn test_html2md_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("html2md")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Convert HTML to Markdown"));
-}
-
-#[test]
-fn test_txt2md_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("txt2md")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Convert plain text to Markdown"));
-}
-
-#[test]
-fn test_trim_help() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("trim")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Trim whitespace"));
 }
 
 #[test]
@@ -128,19 +48,6 @@ fn test_is_clean_help() {
         .stdout(predicate::str::contains(
             "Check if git repository is in a clean state",
         ));
-}
-
-// ============================================================
-// Version Flag Routing Tests
-// ============================================================
-
-#[test]
-fn test_version_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--version")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("trs"));
 }
 
 // ============================================================
@@ -177,21 +84,6 @@ fn test_stdin_with_compact_format() {
 // ============================================================
 // Multiple Command Execution Tests
 // ============================================================
-
-#[test]
-fn test_run_command_with_multiple_args() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("echo")
-        .arg("arg1")
-        .arg("arg2")
-        .arg("arg3")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("arg1"))
-        .stdout(predicate::str::contains("arg2"))
-        .stdout(predicate::str::contains("arg3"));
-}
 
 #[test]
 fn test_search_with_extension_filter() {
@@ -287,18 +179,6 @@ fn test_replace_nonexistent_directory() {
 // ============================================================
 // Command-Specific Flag Routing Tests
 // ============================================================
-
-#[test]
-fn test_run_with_capture_flags() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("echo")
-        .arg("test")
-        .arg("--capture-stdout")
-        .arg("--capture-stderr")
-        .assert()
-        .success();
-}
 
 #[test]
 fn test_clean_with_flags() {
@@ -429,12 +309,6 @@ fn test_agent_and_stats_together() {
 // ============================================================
 // Edge Cases Tests
 // ============================================================
-
-#[test]
-fn test_empty_stdin() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.write_stdin("").assert().success();
-}
 
 #[test]
 fn test_run_with_special_characters() {

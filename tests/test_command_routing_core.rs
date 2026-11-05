@@ -251,18 +251,6 @@ fn test_compact_flag_routes_correctly() {
         .stdout(predicate::str::contains("test"));
 }
 
-#[test]
-fn test_raw_flag_routes_correctly() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--raw")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test"));
-}
-
 // ============================================================
 // Output Format Precedence Tests
 // ============================================================
@@ -309,18 +297,6 @@ fn test_agent_beats_compact_flag() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--agent")
         .arg("--compact")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_compact_beats_raw_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--compact")
-        .arg("--raw")
         .arg("run")
         .arg("echo")
         .arg("test")

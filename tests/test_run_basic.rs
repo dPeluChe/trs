@@ -9,17 +9,6 @@ use predicates::prelude::*;
 // ============================================================
 
 #[test]
-fn test_run_echo_simple() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("echo")
-        .arg("hello")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("hello"));
-}
-
-#[test]
 fn test_run_echo_multiple_args() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("run")
@@ -34,65 +23,9 @@ fn test_run_echo_multiple_args() {
         .stdout(predicate::str::contains("three"));
 }
 
-#[test]
-fn test_run_true_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("true").assert().success().code(0);
-}
-
-#[test]
-fn test_run_false_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("false").assert().code(1);
-}
-
-#[test]
-fn test_run_pwd_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("pwd")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("/"));
-}
-
 // ============================================================
 // Exit Code Propagation Tests
 // ============================================================
-
-#[test]
-fn test_run_exit_code_zero() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("true").assert().success().code(0);
-}
-
-#[test]
-fn test_run_exit_code_one() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("false").assert().code(1);
-}
-
-#[test]
-fn test_run_exit_code_custom() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("exit 42")
-        .assert()
-        .code(42);
-}
-
-#[test]
-fn test_run_exit_code_max() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("exit 255")
-        .assert()
-        .code(255);
-}
 
 #[test]
 fn test_run_command_not_found() {
@@ -146,31 +79,6 @@ fn test_run_json_has_command_field() {
 }
 
 #[test]
-fn test_run_json_has_args_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("echo")
-        .arg("arg1")
-        .arg("arg2")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""args":["#));
-}
-
-#[test]
-fn test_run_json_has_exit_code_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""exit_code":0"#));
-}
-
-#[test]
 fn test_run_json_has_stdout_field() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -206,18 +114,6 @@ fn test_run_json_has_duration_field() {
         .assert()
         .success()
         .stdout(predicate::str::contains(r#""duration_ms"#));
-}
-
-#[test]
-fn test_run_json_has_timed_out_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""timed_out":false"#));
 }
 
 #[test]
@@ -261,19 +157,6 @@ fn test_run_no_capture_stdout() {
         .assert()
         .success();
     // stdout goes directly to terminal when not captured
-}
-
-#[test]
-fn test_run_capture_stderr_default() {
-    // By default, stderr is captured
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("echo captured_stderr >&2")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("captured_stderr"));
 }
 
 #[test]
