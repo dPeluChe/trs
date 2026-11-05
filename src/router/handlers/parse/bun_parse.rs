@@ -80,7 +80,10 @@ impl ParseHandler {
             }
 
             // "Ran X test(s) in Yms" or "Ran X test(s) across Y file(s). [Zms]"
-            if trimmed.starts_with("Ran ") && trimmed.contains(" test") {
+            if trimmed
+                .strip_prefix("Ran ")
+                .is_some_and(|r| r.starts_with(|c: char| c.is_ascii_digit()))
+            {
                 Self::parse_bun_ran_line(trimmed, &mut output.summary);
                 continue;
             }

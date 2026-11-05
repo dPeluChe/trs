@@ -1,5 +1,7 @@
 //! The summary half of the bun test parser: recognizing and reading the trailing counts block, apart from the per-line parsing in bun_parse.rs.
 
+use std::collections::HashSet;
+
 use super::super::types::*;
 use super::ParseHandler;
 
@@ -104,7 +106,16 @@ impl ParseHandler {
             output.summary.suites_total = output.test_suites.len();
         }
         // bun may omit passing files, so count failures and derive the rest.
-        let failed = output.test_suites.iter().filter(|s| !s.passed).count();
+        // A failed test with no file header still means some file failed.
+        let failed_files: HashSet<&str> = output
+            .test_suites
+            .iter()
+            .filter(|s| !s.passed)
+            .map(|s| s.file.as_str())
+            .collect();
+        let failed = failed_files
+            .len()
+            .max(usize::from(output.summary.tests_failed > 0));
         output.summary.suites_failed = failed;
         output.summary.suites_passed = output.summary.suites_total.saturating_sub(failed);
 
