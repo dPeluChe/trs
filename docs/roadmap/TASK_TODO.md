@@ -11,7 +11,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] Rewrite hook: detect `cd X && git Y` chains, done in v0.5.5
 - [x] Pipe/redirect first-segment rewrite, shipped in v0.5.6
 - [ ] Homebrew tap (low priority, npm + curl|sh covers 99% of users)
-- [ ] Publish to crates.io (`cargo install trs-cli`, currently source-only)
+- [-] **Publish to crates.io**: not building it. The installer, npm and release binaries cover every platform, and another channel is more to maintain.
 - [ ] Shell completions (bash, zsh, fish)
 - [x] Copilot hook, see Phase 3 "VSCode ecosystem"
 - [ ] `trs self-update` command, re-download latest binary from GitHub Releases

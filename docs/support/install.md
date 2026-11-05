@@ -1,6 +1,6 @@
 # Installing trs
 
-Five install channels. All of them ship the same native binary
+Four install channels. All of them ship the same native binary
 (~7-10 MB, zero runtime deps, ~4 ms startup). Pick whichever fits your
 existing toolchain.
 
@@ -11,7 +11,6 @@ existing toolchain.
 | curl / sh | `curl -fsSL https://usetrs.dev/install.sh \| sh` |
 | PowerShell | `irm https://usetrs.dev/install.ps1 \| iex` |
 | npm | `npm install -g @dpeluche/trs` |
-| cargo | `cargo install trs-cli` |
 | Prebuilt binary | [GitHub Releases](https://github.com/dPeluChe/trs/releases) |
 
 The `curl|sh` and `irm|iex` scripts are the recommended default: they
@@ -23,11 +22,11 @@ that dir to PATH automatically if it isn't already.
 
 | OS | Arch | How it's shipped |
 |---|---|---|
-| macOS | arm64 (Apple Silicon) | prebuilt binary + npm + cargo |
-| macOS | x64 (Intel) | prebuilt binary + npm + cargo |
-| Linux | x64 | prebuilt binary + npm + cargo |
-| Linux | arm64 | prebuilt binary + npm + cargo |
-| Windows | x64 | prebuilt binary + npm + cargo |
+| macOS | arm64 (Apple Silicon) | prebuilt binary + npm |
+| macOS | x64 (Intel) | prebuilt binary + npm |
+| Linux | x64 | prebuilt binary + npm |
+| Linux | arm64 | prebuilt binary + npm |
+| Windows | x64 | prebuilt binary + npm |
 
 ## Prebuilt binaries: manual install
 
@@ -69,12 +68,6 @@ For npm, use the standard tag syntax:
 npm install -g @dpeluche/trs@0.9.2
 ```
 
-For cargo, use the `--version` flag:
-
-```bash
-cargo install trs-cli --version 0.9.2
-```
-
 ## Custom install directory
 
 The `curl|sh` script picks `~/.local/bin` by default (XDG convention,
@@ -108,7 +101,7 @@ trs upgrade --binary-only   # skip the hooks / output-saver refresh
 (via `current_exe()` path matching) and re-runs the matching install
 command. See [`docs/features/upgrade.md`](../features/upgrade.md) for
 the detection table, pre-refresh guards, and caveats for
-cargo / Homebrew installs (not auto-upgradable yet).
+source builds and Homebrew installs (not auto-upgradable).
 
 ## Shadowed installs (multi-channel)
 
@@ -133,7 +126,7 @@ or similar) or reordering `PATH`.
 | curl / sh | `rm ~/.local/bin/trs` (or whichever `TRS_INSTALL_DIR` you used) |
 | PowerShell | `Remove-Item $env:USERPROFILE\.local\bin\trs.exe` |
 | npm | `npm uninstall -g @dpeluche/trs` |
-| cargo | `cargo uninstall trs-cli` |
+| built from source | `cargo uninstall trs-cli` |
 
 Remove hook integrations before (or after) uninstalling the binary:
 

@@ -19,7 +19,6 @@ fn pinned_versions_in_the_docs_are_the_current_release() {
             "docs/support/install.md",
             format!("@dpeluche/trs@{VERSION}"),
         ),
-        ("docs/support/install.md", format!("--version {VERSION}")),
         ("docs/install.sh", format!("TRS_VERSION={tag} ")),
     ] {
         assert!(
