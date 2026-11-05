@@ -58,15 +58,7 @@ impl ParseHandler {
         // when there's nothing stack-shaped to fold, we stay out of
         // the way.
         if !input.contains("Traceback (most recent call last):") {
-            crate::parse_out::emit(&input);
-            if ctx.stats {
-                CommandStats::new()
-                    .with_reducer("python-passthrough")
-                    .with_input_bytes(input_bytes)
-                    .with_output_bytes(input_bytes)
-                    .print();
-            }
-            return Ok(());
+            return Self::emit_unparsed(&input, "python", ctx);
         }
 
         let parsed = parse_traceback(&input);

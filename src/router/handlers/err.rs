@@ -131,10 +131,13 @@ pub(crate) fn handle_err(command: &str, args: &[String], _ctx: &CommandContext) 
     if matched_lines.is_empty() && output.status.success() {
         println!("clean: no errors or warnings");
     } else if matched_lines.is_empty() {
-        // Failed with nothing the keywords caught: the tail is the best evidence.
-        for line in &all_lines[all_lines.len().saturating_sub(20)..] {
-            println!("{}", line);
-        }
+        // Failed with nothing the keywords caught: never hide that behind "clean".
+        let text = all_lines.join("\n");
+        let max = crate::config::config().limits.passthrough_max_chars;
+        println!(
+            "{}",
+            crate::passthrough_cut::cut(&text, max).unwrap_or(text)
+        );
     } else {
         for line in &matched_lines {
             println!("{}", line);

@@ -150,7 +150,10 @@ fn run_unparsed() -> ! {
     };
     match std::process::Command::new(program).args(args).status() {
         Ok(status) => std::process::exit(status.code().unwrap_or(1)),
-        Err(_) => std::process::exit(127),
+        Err(e) => {
+            eprintln!("trs: {e}");
+            std::process::exit(127)
+        }
     }
 }
 

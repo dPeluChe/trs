@@ -39,6 +39,8 @@ pub(crate) struct GrepOutput {
     pub(crate) match_count: usize,
     /// Whether the output is empty (no matches).
     pub(crate) is_empty: bool,
+    /// A line carried no path: one file without `-H`, or `rg --heading`.
+    pub(crate) has_unread: bool,
     /// Whether the output was truncated.
     pub(crate) is_truncated: bool,
     /// Total number of files available before truncation.

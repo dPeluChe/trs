@@ -85,7 +85,7 @@ impl ParseHandler {
             }
         }
 
-        if runs.is_empty() && !input.trim().is_empty() {
+        if Self::unread(runs.is_empty(), &input) {
             return Self::emit_unparsed(&input, "gh-run", ctx);
         }
 
@@ -242,8 +242,8 @@ impl ParseHandler {
             }
         }
 
-        let nothing_read = conclusion == "unknown" && jobs_ok + jobs_fail == 0 && url.is_empty();
-        if nothing_read && !input.trim().is_empty() {
+        let found_nothing = conclusion == "unknown" && jobs_ok + jobs_fail == 0 && url.is_empty();
+        if Self::unread(found_nothing, &input) {
             return Self::emit_unparsed(&raw_input, "gh-run-view", ctx);
         }
 

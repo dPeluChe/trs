@@ -187,10 +187,10 @@ impl ParseHandler {
             // Only the default three columns are known: a lone count may be
             // bytes (`wc -c`), words or lines, and a name may hold spaces.
             match (counts.as_slice(), parts.len()) {
-                ([lines, words, bytes], 4) => {
-                    entries.push((parts[3].to_string(), *lines, *words, *bytes))
+                ([lines, words, bytes], 3 | 4) => {
+                    let name = parts.get(3).unwrap_or(&"").to_string();
+                    entries.push((name, *lines, *words, *bytes))
                 }
-                ([lines, words, bytes], 3) => entries.push((String::new(), *lines, *words, *bytes)),
                 _ => return Self::emit_unparsed(&input, "wc", ctx),
             }
         }
@@ -204,13 +204,8 @@ impl ParseHandler {
             }
             _ => {
                 let mut out = String::new();
-                let has_full_stats = entries.iter().any(|(_, _, w, b)| *w > 0 || *b > 0);
                 for (name, lines, words, bytes) in &entries {
-                    let stats = if has_full_stats {
-                        format!("{}L {}W {}B", lines, words, bytes)
-                    } else {
-                        format!("{}L", lines)
-                    };
+                    let stats = format!("{}L {}W {}B", lines, words, bytes);
                     if name.is_empty() {
                         out.push_str(&format!("{}\n", stats));
                     } else if name == "total" {

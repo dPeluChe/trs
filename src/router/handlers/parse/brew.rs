@@ -61,11 +61,8 @@ impl ParseHandler {
             }
         }
 
-        if installed.is_empty()
-            && errors.is_empty()
-            && warnings.is_empty()
-            && !input.trim().is_empty()
-        {
+        let found_nothing = installed.is_empty() && errors.is_empty() && warnings.is_empty();
+        if Self::unread(found_nothing, &input) {
             return Self::emit_unparsed(&input, "brew", ctx);
         }
 

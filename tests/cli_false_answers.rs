@@ -25,6 +25,17 @@ fn matches_without_a_path_are_never_no_matches() {
 }
 
 #[test]
+fn lines_with_a_colon_are_not_grouped_as_files() {
+    for lines in ["3:name = \"trs\"\n4:name = \"x\"\n", "let x: u32 = 1;\n"] {
+        trs()
+            .args(["parse", "grep"])
+            .write_stdin(lines)
+            .assert()
+            .stdout(lines);
+    }
+}
+
+#[test]
 fn a_lone_count_is_not_labelled_as_lines() {
     trs()
         .args(["parse", "wc"])

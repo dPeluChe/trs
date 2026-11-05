@@ -128,28 +128,32 @@ impl ParseHandler {
             Some(c) if c.len() < input.len() => (c, name.to_string()),
             _ => (input.to_string(), format!("{name}-passthrough")),
         };
-        crate::parse_out::emit(&out);
-        if ctx.stats {
-            CommandStats::new()
-                .with_reducer(reducer)
-                .with_input_bytes(input.len())
-                .with_output_bytes(out.len())
-                .print();
-        }
-        Ok(())
+        Self::finish(input, &out, reducer, ctx)
+    }
+
+    /// A parser found nothing in output that has something: not an empty answer.
+    pub(crate) fn unread(found_nothing: bool, input: &str) -> bool {
+        found_nothing && !input.trim().is_empty()
     }
 
     /// Hand back output the parser could not read. A summary of nothing would
     /// read as "clean" or "no results", which is an answer the output never gave.
     pub(crate) fn emit_unparsed(input: &str, name: &str, ctx: &CommandContext) -> CommandResult {
-        let out = match ctx.format {
-            OutputFormat::Json => serde_json::json!({ "output": input }).to_string(),
-            _ => input.to_string(),
-        };
-        crate::parse_out::emit(&out);
+        let reducer = format!("{name}-passthrough");
+        match ctx.format {
+            OutputFormat::Json => {
+                let out = serde_json::json!({ "output": input }).to_string();
+                Self::finish(input, &out, reducer, ctx)
+            }
+            _ => Self::finish(input, input, reducer, ctx),
+        }
+    }
+
+    fn finish(input: &str, out: &str, reducer: String, ctx: &CommandContext) -> CommandResult {
+        crate::parse_out::emit(out);
         if ctx.stats {
             CommandStats::new()
-                .with_reducer(format!("{name}-passthrough"))
+                .with_reducer(reducer)
                 .with_input_bytes(input.len())
                 .with_output_bytes(out.len())
                 .print();
@@ -172,15 +176,7 @@ impl ParseHandler {
             Some(c) => (c, name.to_string()),
             None => (input.to_string(), format!("{name}-passthrough")),
         };
-        crate::parse_out::emit(&out);
-        if ctx.stats {
-            CommandStats::new()
-                .with_reducer(reducer)
-                .with_input_bytes(input.len())
-                .with_output_bytes(out.len())
-                .print();
-        }
-        Ok(())
+        Self::finish(input, &out, reducer, ctx)
     }
 
     /// Format a byte size into a human-readable string (e.g. 1.2K, 3.5M).

@@ -31,7 +31,7 @@ impl ParseHandler {
 
         let issues = parse_lint_issues(&input);
         // Output with no recognized issue is not proof of a clean run.
-        if issues.is_empty() && !input.trim().is_empty() {
+        if Self::unread(issues.is_empty(), &input) {
             return Self::emit_unparsed(&input, "lint", ctx);
         }
         let errors = issues

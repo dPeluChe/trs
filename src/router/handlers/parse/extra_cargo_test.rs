@@ -156,7 +156,7 @@ impl ParseHandler {
         let duration = seconds.map(|s| format!("{s:.2}s")).unwrap_or_default();
         let total = passed + failed + ignored;
         let success = failed == 0 && compile_errors.is_empty();
-        if suites == 0 && success && !input.trim().is_empty() {
+        if Self::unread(suites == 0 && success, &input) {
             return Self::emit_unparsed(&input, "cargo-test", ctx);
         }
 

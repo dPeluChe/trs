@@ -186,7 +186,7 @@ impl ParseHandler {
             }
         }
 
-        if all_vars.is_empty() && !input.trim().is_empty() {
+        if Self::unread(all_vars.is_empty(), &input) {
             return Self::emit_unparsed(&input, "env", ctx);
         }
 

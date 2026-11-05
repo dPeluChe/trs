@@ -267,6 +267,7 @@ impl SearchHandler {
             file_count,
             match_count,
             is_empty: file_count == 0,
+            has_unread: false,
             is_truncated,
             total_files,
             total_matches,

@@ -78,7 +78,7 @@ impl ParseHandler {
             }
         }
 
-        if prs.is_empty() && !input.trim().is_empty() {
+        if Self::unread(prs.is_empty(), &input) {
             return Self::emit_unparsed(&input, "gh-pr", ctx);
         }
 
@@ -172,7 +172,7 @@ impl ParseHandler {
             }
         }
 
-        if issues.is_empty() && !input.trim().is_empty() {
+        if Self::unread(issues.is_empty(), &input) {
             return Self::emit_unparsed(&input, "gh-issue", ctx);
         }
 
@@ -286,7 +286,7 @@ impl ParseHandler {
             }
         }
 
-        if fields.is_empty() && !input.trim().is_empty() {
+        if Self::unread(fields.is_empty(), &input) {
             return Self::emit_unparsed(&input, "gh-pr-view", ctx);
         }
 
@@ -426,7 +426,7 @@ impl ParseHandler {
             }
         }
 
-        if checks.is_empty() && !input.trim().is_empty() {
+        if Self::unread(checks.is_empty(), &input) {
             return Self::emit_unparsed(&input, "gh-pr-checks", ctx);
         }
 

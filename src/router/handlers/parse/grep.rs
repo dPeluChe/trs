@@ -2,17 +2,6 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::super::types::*;
 use super::ParseHandler;
 
-/// A line `parse_grep` would drop, so a summary would lose or deny a match.
-fn has_unparsed_match(input: &str) -> bool {
-    input.lines().map(str::trim).any(|line| {
-        !line.is_empty()
-            && line != "--"
-            && !line.starts_with("grep:")
-            && !(line.contains("matched ") && line.ends_with(" files"))
-            && ParseHandler::parse_grep_line(line).is_none()
-    })
-}
-
 impl ParseHandler {
     /// Handle the grep subcommand.
     pub(crate) fn handle_grep(
@@ -26,7 +15,7 @@ impl ParseHandler {
         let mut grep_output = Self::parse_grep(&input)?;
 
         // One file without -n, or rg --heading: lines with no path on them.
-        if has_unparsed_match(&input) {
+        if grep_output.has_unread {
             return Self::emit_unparsed(&input, "grep", ctx);
         }
 
@@ -103,6 +92,8 @@ impl ParseHandler {
                 }
                 // Add match to the file's group
                 matches_by_file.entry(path).or_default().push(grep_match);
+            } else if line != "--" {
+                grep_output.has_unread = true;
             }
         }
 
@@ -249,7 +240,10 @@ impl ParseHandler {
         // Fallback: path:content without line number (grep without -n)
         if let Some(pos) = line.find(':') {
             let path = &line[..pos];
-            if !path.is_empty() {
+            // `grep -n` on one file prints `3:x`, and `let x: u32` has a colon too.
+            let is_path =
+                !path.contains(char::is_whitespace) && !path.bytes().all(|b| b.is_ascii_digit());
+            if !path.is_empty() && is_path {
                 return Some((
                     path.to_string(),
                     GrepMatch {
