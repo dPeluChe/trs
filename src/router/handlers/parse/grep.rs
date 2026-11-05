@@ -14,6 +14,11 @@ impl ParseHandler {
         // Parse the grep output
         let mut grep_output = Self::parse_grep(&input)?;
 
+        // One file without -n, or rg --heading: lines with no path on them.
+        if grep_output.has_unread {
+            return Self::emit_unparsed(&input, "grep", ctx);
+        }
+
         // Apply truncation for large result sets (limits from config)
         let limits = &crate::config::config().limits;
         Self::truncate_grep(
@@ -87,6 +92,8 @@ impl ParseHandler {
                 }
                 // Add match to the file's group
                 matches_by_file.entry(path).or_default().push(grep_match);
+            } else if line != "--" {
+                grep_output.has_unread = true;
             }
         }
 
@@ -233,7 +240,10 @@ impl ParseHandler {
         // Fallback: path:content without line number (grep without -n)
         if let Some(pos) = line.find(':') {
             let path = &line[..pos];
-            if !path.is_empty() {
+            // `grep -n` on one file prints `3:x`, and `let x: u32` has a colon too.
+            let is_path =
+                !path.contains(char::is_whitespace) && !path.bytes().all(|b| b.is_ascii_digit());
+            if !path.is_empty() && is_path {
                 return Some((
                     path.to_string(),
                     GrepMatch {

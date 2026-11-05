@@ -190,6 +190,9 @@ fn test_parse_grep_ripgrep_heading() {
     let stdout = String::from_utf8_lossy(&output);
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
 
-    // Should handle ripgrep heading format
-    assert!(!json["files"].as_array().unwrap().is_empty());
+    // A heading line carries the path, so the parser must not group by line number.
+    assert!(json["output"]
+        .as_str()
+        .unwrap()
+        .contains("src/main.rs\n42:fn main"));
 }

@@ -19,6 +19,13 @@ impl ParseHandler {
         let input_bytes = input.len();
 
         let result = parse_go_test(&input);
+        let found_nothing = result.total == 0
+            && result.packages_ok == 0
+            && result.packages_fail == 0
+            && result.compile_errors.is_empty();
+        if Self::unread(found_nothing, &input) {
+            return Self::emit_unparsed(&input, "go-test", ctx);
+        }
 
         let output = match ctx.format {
             OutputFormat::Json => format_go_test_json(&result),

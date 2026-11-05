@@ -17,15 +17,7 @@ impl ParseHandler {
         // No hunks in non-empty input is a layout this parser can't read, never
         // an empty diff: `git -C x diff --numstat` gets past the flag table.
         if diff.files.is_empty() && !input.trim().is_empty() {
-            crate::parse_out::emit(&input);
-            if ctx.stats {
-                CommandStats::new()
-                    .with_reducer("git-diff-passthrough")
-                    .with_input_bytes(input.len())
-                    .with_output_bytes(input.len())
-                    .print();
-            }
-            return Ok(());
+            return Self::emit_unparsed(&input, "git-diff", ctx);
         }
 
         // Format output based on the requested format. `git show` opens

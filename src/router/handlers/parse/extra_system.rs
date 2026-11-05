@@ -13,9 +13,11 @@ impl ParseHandler {
         let mut files: Vec<String> = Vec::new();
         let mut total_dirs = 0usize;
         let mut total_files = 0usize;
+        let mut has_report = false;
 
         for line in input.lines() {
             if line.contains("director") && line.contains("file") {
+                has_report = true;
                 for part in line.split(',') {
                     let t = part.trim();
                     if t.ends_with("directories") || t.ends_with("directory") {
@@ -50,6 +52,10 @@ impl ParseHandler {
             }
         }
 
+        if Self::unread(!has_report, &input) {
+            return Self::emit_unparsed(&input, "tree", ctx);
+        }
+
         let output = match ctx.format {
             OutputFormat::Json => serde_json::json!({"directories": dirs, "files": files, "total_directories": total_dirs, "total_files": total_files}).to_string(),
             _ => {
@@ -81,6 +87,10 @@ impl ParseHandler {
         // PORTS is a fixed-width column between STATUS and NAMES; its cells
         // contain spaces, so only the header's offsets can cut it out.
         let header = lines.first().copied().unwrap_or("");
+        // `--format` and `-q` print no header, and every line would misparse.
+        if Self::unread(!header.contains("CONTAINER ID"), &input) {
+            return Self::emit_unparsed(&input, "docker-ps", ctx);
+        }
         let ports_col = header.find("PORTS").zip(header.find("NAMES"));
         if lines.len() > 1 {
             for line in &lines[1..] {

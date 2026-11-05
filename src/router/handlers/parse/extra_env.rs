@@ -186,6 +186,10 @@ impl ParseHandler {
             }
         }
 
+        if Self::unread(all_vars.is_empty(), &input) {
+            return Self::emit_unparsed(&input, "env", ctx);
+        }
+
         // JSON output: include everything (unfiltered, just sorted)
         let output = match ctx.format {
             OutputFormat::Json => {

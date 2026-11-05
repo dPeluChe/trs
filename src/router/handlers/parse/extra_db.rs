@@ -377,6 +377,12 @@ impl ParseHandler {
         let input_bytes = input.len();
         let result = Self::parse_db(&input);
 
+        let is_rule = |l: &str| !l.trim().is_empty() && l.chars().all(|c| "-+| ".contains(c));
+        let unruled = input.lines().nth(1).is_some() && !input.lines().any(is_rule);
+        if result.row_count == 0 && unruled {
+            return Self::emit_unparsed(&input, "db", ctx);
+        }
+
         let output = match ctx.format {
             OutputFormat::Json => Self::format_db_json(&result),
             OutputFormat::Csv => Self::format_db_csv(&result),

@@ -130,21 +130,10 @@ Dispatched the same as any other linter (compact by default, `--json` for struct
 | `tree` | — | directory tree compressed |
 | `tail` | `journalctl` | log-tail with error filter |
 
-### File reading intercepts
+### File reading
 
-These commands are intercepted before subprocess spawn: trs reads the
-file directly and applies `filter_minimal` (strip comment-only lines,
-normalize blank lines). Falls back to raw content when filtering would
-return empty output (e.g. an all-comment slice).
-
-| Command | Pattern | Typical reduction |
-|---|---|---|
-| `cat` | `cat FILE [FILE2…]`, no flags | 10–35% on code files |
-| `head` | `head [-n N \| -N] FILE` | 5–20% |
-| `sed` | `sed -n X,Yp FILE` (line-range only) | 10–25% vs 0% passthrough |
-
-Any other `sed` form (substitutions, in-place `-i`, multiple files)
-falls through to the subprocess path unchanged.
+`cat`, `head` and `sed` run verbatim: agents act on what they read, and a
+comment stripped from an edit target breaks the next edit.
 
 ### Containers & GitHub CLI
 

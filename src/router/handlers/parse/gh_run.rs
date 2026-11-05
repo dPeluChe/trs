@@ -85,6 +85,10 @@ impl ParseHandler {
             }
         }
 
+        if Self::unread(runs.is_empty(), &input) {
+            return Self::emit_unparsed(&input, "gh-run", ctx);
+        }
+
         let output = match ctx.format {
             OutputFormat::Json => {
                 serde_json::json!({"runs": runs, "count": runs.len()}).to_string()
@@ -236,6 +240,11 @@ impl ParseHandler {
                     "unknown"
                 };
             }
+        }
+
+        let found_nothing = conclusion == "unknown" && jobs_ok + jobs_fail == 0 && url.is_empty();
+        if Self::unread(found_nothing, &input) {
+            return Self::emit_unparsed(&raw_input, "gh-run-view", ctx);
         }
 
         let output = match ctx.format {
