@@ -5,6 +5,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.10.2] - 2026-11-06
+
+### Bug Fixes
+
+- **json:** Report every trs failure as one document on stdout (#256)
+- **json:** Keep the child's stderr inside the document (#257)
+- **err:** Print a table under --csv and --tsv (#258)
+- **exec:** Start every user program through build_command (#262)
+- **json:** Report usage errors and ingest failures as a document (#263)
+- **tsv:** Keep every row on one line with its columns (#264)
+
+### Testing
+
+- **json:** Run the output contract on Windows too (#259)
+- **search:** Run the search tests against a fixed tree (#260)
+- Finish the search fixture and tighten the output contract (#261)
+
 ## [0.10.1] - 2026-11-06
 
 ### Bug Fixes
