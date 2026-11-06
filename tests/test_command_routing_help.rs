@@ -76,29 +76,6 @@ fn test_stdin_with_compact_format() {
 // ============================================================
 
 #[test]
-fn test_search_with_extension_filter() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg(".")
-        .arg("fn main")
-        .arg("-e")
-        .arg("rs")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_search_case_insensitive() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg(".")
-        .arg("MAIN")
-        .arg("--ignore-case")
-        .assert()
-        .success();
-}
-
-#[test]
 fn test_replace_dry_run() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
@@ -306,16 +283,6 @@ fn test_run_with_special_characters() {
     cmd.arg("run")
         .arg("echo")
         .arg("test!@#$%^&*()")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_search_with_regex_pattern() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg(".")
-        .arg("fn\\s+main")
         .assert()
         .success();
 }

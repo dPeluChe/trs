@@ -21,7 +21,10 @@ fn test_version() {
     cmd.arg("--version")
         .assert()
         .success()
-        .stdout(predicate::str::contains("trs"));
+        .stdout(predicate::str::starts_with(format!(
+            "trs {}\n",
+            env!("CARGO_PKG_VERSION")
+        )));
 }
 
 // ============================================================

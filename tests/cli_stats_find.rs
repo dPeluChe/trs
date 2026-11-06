@@ -1,6 +1,8 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+mod support;
+
 // Stats Output Tests for Command Execution
 // ============================================================
 
@@ -336,17 +338,15 @@ fn test_is_clean_in_git_repo() {
 
 #[test]
 fn test_is_clean_json_format() {
-    // Test JSON output format includes is_clean field
+    let dir = tempfile::tempdir().unwrap();
+    support::git(dir.path(), &["init", "-q"]);
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
+    cmd.current_dir(dir.path())
+        .arg("--json")
         .arg("is-clean")
         .assert()
-        // JSON should contain is_clean field (true or false)
-        .stdout(
-            predicate::str::contains("\"is_clean\":true")
-                .or(predicate::str::contains("\"is_clean\":false")),
-        )
-        // JSON should contain is_git_repo field
+        .code(0)
+        .stdout(predicate::str::contains("\"is_clean\":true"))
         .stdout(predicate::str::contains("\"is_git_repo\":true"));
 }
 

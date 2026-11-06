@@ -92,6 +92,7 @@ mod trs_templates {
 #[cfg(unix)]
 fn run_node(plugin_text: &str, driver: &str) -> Option<serde_json::Value> {
     let Ok(node) = which_node() else {
+        assert!(std::env::var_os("CI").is_none(), "CI must run these");
         eprintln!("skipped: node not found");
         return None;
     };

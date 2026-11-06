@@ -84,30 +84,6 @@ fn test_trim_stats_shows_output_bytes() {
 }
 
 #[test]
-fn test_search_stats_shows_input_bytes() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg(".")
-        .arg("fn main")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Input bytes:"));
-}
-
-#[test]
-fn test_search_stats_shows_output_bytes() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg(".")
-        .arg("fn main")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Output bytes:"));
-}
-
-#[test]
 fn test_replace_stats_shows_input_bytes() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--stats")

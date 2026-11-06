@@ -1,14 +1,10 @@
-//! Git status, git diff, and ls test fixtures module.
-//!
-//! This module provides access to various git status, git diff, and ls output fixtures
-//! for testing the parsers.
+//! Loaders for the output fixtures the parser tests read.
 
 mod git_diff;
 mod git_status;
 mod grep;
 mod logs;
 mod ls;
-mod test_runners;
 
 #[allow(unused_imports)]
 pub use git_diff::*;
@@ -20,8 +16,6 @@ pub use grep::*;
 pub use logs::*;
 #[allow(unused_imports)]
 pub use ls::*;
-#[allow(unused_imports)]
-pub use test_runners::*;
 
 use std::path::PathBuf;
 

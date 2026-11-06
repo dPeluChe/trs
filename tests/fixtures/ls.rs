@@ -43,11 +43,6 @@ pub fn ls_long_format_with_symlinks() -> String {
     load_fixture("ls_long_format_with_symlinks.txt")
 }
 
-/// Returns ls -l output with broken symlinks.
-pub fn ls_broken_symlink() -> String {
-    load_fixture("ls_broken_symlink.txt")
-}
-
 // ============================================================
 // Ls - Error Fixtures
 // ============================================================
@@ -78,9 +73,4 @@ pub fn ls_generated_dirs() -> String {
 /// Returns ls output with special characters in filenames.
 pub fn ls_special_chars() -> String {
     load_fixture("ls_special_chars.txt")
-}
-
-/// Returns ls output with long file paths.
-pub fn ls_long_paths() -> String {
-    load_fixture("ls_long_paths.txt")
 }

@@ -228,7 +228,7 @@ fn test_replace_count_no_matches() {
         .arg("--count")
         .assert()
         .success()
-        .stdout(predicate::str::contains("0"));
+        .stdout("0\n");
 }
 
 #[test]

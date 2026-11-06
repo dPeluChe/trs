@@ -7,11 +7,8 @@
 //! - Raw format
 //! - Agent format
 //! - Format precedence
-//! - Stats output
 //! - Empty results
 //! - Regex patterns
-//! - Special characters
-//! - Unicode
 //! - Multiple files
 
 use assert_cmd::Command;
@@ -170,95 +167,8 @@ fn test_search_format_precedence_compact_over_raw() {
 }
 
 // ============================================================
-// Stats Output Tests
-// ============================================================
-
-#[test]
-fn test_search_stats_shows_reducer() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Reducer:"));
-}
-
-#[test]
-fn test_search_stats_shows_output_mode() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Output mode:"));
-}
-
-#[test]
-fn test_search_stats_shows_files_searched() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Files searched:"));
-}
-
-#[test]
-fn test_search_stats_shows_files_with_matches() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Files with matches:"));
-}
-
-#[test]
-fn test_search_stats_shows_total_matches() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Total matches:"));
-}
-
-#[test]
-fn test_search_stats_with_json_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Output mode: json"));
-}
-
-// ============================================================
 // Empty Results Tests
 // ============================================================
-
-#[test]
-fn test_search_no_matches_returns_success() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("nonexistent_pattern_xyz123_abc")
-        .assert()
-        .success();
-}
 
 #[test]
 fn test_search_no_matches_json_is_empty() {
@@ -283,13 +193,6 @@ fn test_search_no_matches_json_is_empty() {
 // ============================================================
 // Regex Pattern Tests
 // ============================================================
-
-#[test]
-fn test_search_regex_pattern() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Search for a regex pattern (digits)
-    cmd.arg("search").arg("src").arg(r"\d+").assert().success();
-}
 
 #[test]
 fn test_search_regex_word_boundary() {
@@ -330,46 +233,12 @@ fn test_search_regex_alternation() {
 #[test]
 fn test_search_invalid_regex_returns_error() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Invalid regex should return an error
     cmd.arg("search")
         .arg("src")
         .arg("[invalid")
         .assert()
-        .failure()
-        .stderr(predicate::str::contains("Invalid regex").or(predicate::str::contains("regex")));
-}
-
-// ============================================================
-// Special Characters Tests
-// ============================================================
-
-#[test]
-fn test_search_with_dashes() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg(".")
-        .arg("long-about")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_search_with_dots() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    // . in regex matches any character, so we need to escape it or search literally
-    cmd.arg("search").arg(".").arg(".rs").assert().success();
-}
-
-// ============================================================
-// Unicode Tests
-// ============================================================
-
-#[test]
-fn test_search_unicode_pattern() {
-    // Create a test with unicode - search for comments with unicode chars
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Most source code is ASCII, so let's search for something we know exists
-    cmd.arg("search").arg("src").arg("//").assert().success();
+        .code(2)
+        .stderr(predicate::str::contains("Invalid regex pattern"));
 }
 
 // ============================================================

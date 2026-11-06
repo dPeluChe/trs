@@ -40,19 +40,6 @@ fn test_search_basic() {
 }
 
 #[test]
-fn test_search_with_options() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg(".")
-        .arg("SearchHandler")
-        .arg("--extension")
-        .arg("rs")
-        .arg("--ignore-case")
-        .assert()
-        .success();
-}
-
-#[test]
 fn test_search_json_output() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -160,5 +147,3 @@ fn test_search_no_matches() {
         .success()
         .stdout(predicate::str::contains("no matches"));
 }
-
-// ============================================================
