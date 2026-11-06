@@ -33,6 +33,21 @@ impl GrepFile {
     pub(crate) fn match_count(&self) -> usize {
         self.matches.iter().filter(|m| !m.is_context).count()
     }
+
+    /// Cap by matches: with -C2 each match brings four lines, so a cap on
+    /// lines would keep a fifth of what it promises.
+    pub(crate) fn keep_matches(&mut self, keep: usize) {
+        let cut = self
+            .matches
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| !m.is_context)
+            .nth(keep)
+            .map(|(i, _)| i);
+        if let Some(i) = cut {
+            self.matches.truncate(i);
+        }
+    }
 }
 
 /// Parsed grep output.
