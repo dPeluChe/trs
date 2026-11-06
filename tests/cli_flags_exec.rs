@@ -147,5 +147,3 @@ fn test_search_no_matches() {
         .success()
         .stdout(predicate::str::contains("no matches"));
 }
-
-// ============================================================
