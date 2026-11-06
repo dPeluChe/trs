@@ -175,20 +175,20 @@ src/schema/: Stable JSON schemas for trs (Token-Reducing Shell) reducers
 
 ## Key Dependencies
 
-  parse_out.rs ← src/classifier_exec.rs, src/main.rs, parse/aws.rs, brew.rs (+33)
+  parse_out.rs ← src/classifier_exec.rs, src/exec_verdict.rs, src/main.rs, parse/aws.rs (+34)
   tests.rs ← ai_tool.rs, classifier.rs, classifier_args.rs, command_registry.rs (+29)
   init.rs ← src/doctor_checks.rs, src/doctor_hooks.rs, doctor_tests.rs, src/init_collision.rs (+15)
   src/tracker.rs ← src/classifier_exec.rs, config.rs, debug_info.rs, src/doctor_checks.rs (+13)
-  formatter/mod.rs ← exec_verdict.rs, agent.rs, compact.rs, csv.rs (+12)
+  formatter/mod.rs ← src/exec_verdict.rs, agent.rs, compact.rs, csv.rs (+12)
 
 ## Architecture (module roles)
 
 From the import graph (fan-in↓ / fan-out↑), no AST:
 
 - **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/74↑)
-- **core**: high fan-in, everything routes through → `ingest` (25↓/5↑), `init` (19↓/10↑), `tracker` (13↓/2↑)
+- **core**: high fan-in, everything routes through → `ingest` (25↓/5↑), `init` (19↓/11↑), `tracker` (13↓/2↑)
 - **leaf**: used by many, import nothing (utils, types) → `text_util` (11↓/0↑)
-- **internal**: mid-graph plumbing → `router/handlers` (5↓/19↑), `classifier_exec` (2↓/16↑), `rewrite_gate` (10↓/6↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/12↑), `classifier` (8↓/5↑), `init_templates` (10↓/2↑), `output_saver` (10↓/2↑) +11 more
+- **internal**: mid-graph plumbing → `router/handlers` (5↓/19↑), `classifier_exec` (2↓/16↑), `classifier` (11↓/5↑), `rewrite_gate` (10↓/6↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/12↑), `exec_verdict` (7↓/6↑), `router` (9↓/4↑) +11 more
 
 ## README.md
 
@@ -297,6 +297,23 @@ All notable changes to trs are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2] - 2026-11-06
+
+### Bug Fixes
+
+- json: Report every trs failure as one document on stdout (#256)
+- json: Keep the child's stderr inside the document (#257)
+- err: Print a table under --csv and --tsv (#258)
+- exec: Start every user program through build_command (#262)
+- json: Report usage errors and ingest failures as a document (#263)
+- tsv: Keep every row on one line with its columns (#264)
+
+### Testing
+
+- json: Run the output contract on Windows too (#259)
+- search: Run the search tests against a fixed tree (#260)
+- Finish the search fixture and tighten the output contract (#261)
+
 ## [0.10.1] - 2026-11-06
 
 ### Bug Fixes
@@ -314,24 +331,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- init: Count what each agent's row reports (#233)
-- run: Always propagate the exit code (#235)
-- run: Read child output while it runs (#236)
-- bun: Count suites from what bun prints (#238)
-- npm: Stop reporting success when node --test failed (#239)
-- json: Let the exit status decide the verdict (#240)
-- search: Fail on a path that does not exist (#242)
-- grep: Stop counting context lines as matches (#243)
-- search: Make --limit cap results, not files (#244)
-- exit: Report a killed child as 128+N (#245)
-- diff,benchmark: Exit as the measured command did (#246)
-- parse: Do not call empty test output a pass (#247)
-- json: Print one document on every path (#248)
-- exit: Keep failure notices where they can be read (#249)
-
-### Documentation
-
-... (769 lines, hidden sections: [0.9.2] - 2026-11-05 · [0.9.1] - 2026-11-05 · [0.9.0] - 2026-11-05 · [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07)
+... (786 lines, hidden sections: [0.9.2] - 2026-11-05 · [0.9.1] - 2026-11-05 · [0.9.0] - 2026-11-05 · [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07)
 
 ## CLAUDE.md
 
@@ -448,7 +448,7 @@ git config core.hooksPath .githooks
 **Cargo.toml**
 [package]
 name = "trs-cli"
-version = "0.10.1"
+version = "0.10.2"
 edition = "2021"
 description = "Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands"
 license = "MIT"
@@ -1186,7 +1186,7 @@ After the command it is trs's only when trs has a formatter for that
 command and the command does not take the flag itself, so
 `trs git status --json` and `trs --json git status` are equivalent.
 Otherwise the flag belongs to the command and is passed on untouched:
-... (157 lines, hidden sections: Structured output is never rewritten · One document under `--json` · Examples · When to use what · Built-in tools vs wrapped commands · See also)
+... (176 lines, hidden sections: Structured output is never rewritten · One document under `--json` · Examples · When to use what · Built-in tools vs wrapped commands · See also)
 
 **ingest.md**
 # `trs ingest`: project digest for AI agents
@@ -1859,8 +1859,8 @@ if [ -n "$1" ]; then
   struct IterResult
   struct BenchReport
   pub fn run_benchmark(command: &str, args: &[String], repeat: usize, json: bool)
-  fn run_once(cmd: &str, args: &[String]) -> Option<IterResult>
-  fn run_through_trs(cmd: &str, args: &[String]) -> Option<usize>
+  fn run_once(cmd: &str, args: &[String], json: bool) -> Result<IterResult>
+  fn run_through_trs(cmd: &str, args: &[String]) -> Result<usize>
   fn print_json(r: &BenchReport)
   fn print_table(r: &BenchReport)
   fn format_number(n: u64) -> String
@@ -1916,7 +1916,7 @@ if [ -n "$1" ]; then
   fn print_raw_path(
   pub fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String>
   fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()>
-  fn generic_compress(input: &str) -> String
+  pub fn generic_compress(input: &str) -> String
   fn collapse_whitespace(s: &str) -> String
 
 **classifier_tests.rs**
@@ -2067,7 +2067,7 @@ if [ -n "$1" ]; then
   fn dropped_lines(raw: &str, compact: &str) -> Vec<String>
   fn tokens(bytes: usize) -> u64
   fn reduction_pct(raw: usize, compact: usize) -> f64
-  fn capture_raw(cmd: &str, args: &[String]) -> (String, i32)
+  fn capture_raw(cmd: &str, args: &[String], json: bool) -> (String, i32)
   fn capture_compact(cmd: &str, args: &[String]) -> Option<String>
   fn print_human(
   fn print_json(
@@ -2152,8 +2152,8 @@ if [ -n "$1" ]; then
   fn test_check_builders()
 
 **exec.rs**
-  pub fn build_command(cmd: &str, args: &[String]) -> std::process::Command
-  fn platform_command(cmd: &str, args: &[String]) -> std::process::Command
+  pub fn build_command(
+  fn platform_command(cmd: &OsStr, args: &[impl AsRef<OsStr>]) -> std::process::Command
   mod build_command_tests
   fn posix_spawns_directly()
   fn windows_routes_cmd_and_powershell()
@@ -2161,11 +2161,15 @@ if [ -n "$1" ]; then
 **exec_verdict.rs**
   pub fn reconcile_json(
   pub fn json_document(text: &str, code: i32, raw: impl Fn() -> Option<String>) -> String
+  fn with_stderr(document: String, stderr: &str) -> String
   pub struct JsonRun<'a>
 
   impl JsonRun<'_>
+  fn trimmed_stderr(&self) -> (String, bool)
   pub fn finish(&self, text: &str, cut: bool) -> !
-  pub fn print_spawn_failure(cmd: &str, error: &std::io::Error)
+  pub fn exit_with_error(format: crate::OutputFormat, message: &str, code: i32) -> !
+  pub fn format_of(json: bool) -> crate::OutputFormat
+  pub fn exit_on_spawn_failure(
   pub fn notice(format: crate::OutputFormat, line: &str)
   pub fn exit_line(code: i32, raw: Option<&str>) -> String
   pub fn emit_failure_footer(
@@ -2178,6 +2182,7 @@ if [ -n "$1" ]; then
   fn the_childs_own_data_survives_a_clean_exit()
   fn a_matching_verdict_keeps_the_parser_text()
   fn a_success_that_is_not_a_bool_is_left_alone()
+  fn the_childs_stderr_joins_a_document_without_replacing_its_data()
   fn only_a_json_object_is_reconciled()
 
 **fast_find.rs**
@@ -2435,6 +2440,7 @@ if [ -n "$1" ]; then
   mod fast_find
   mod fs_atomic
   fn main()
+  fn parse_cli(args: &[String]) -> Cli
   fn run_unparsed() -> !
   fn run()
   mod tests
@@ -2760,7 +2766,7 @@ if [ -n "$1" ]; then
 
 **process.rs**
   mod helpers
-  pub use helpers::{exit_code_of, exit_on_spawn_failure, spawn_failure
+  pub use helpers::{exit_code_of, spawn_failure
   pub struct ProcessOutput
 
   impl ProcessOutput
@@ -2803,7 +2809,6 @@ if [ -n "$1" ]; then
 
 **process_helpers.rs**
   pub fn exit_code_of(status: &ExitStatus) -> i32
-  pub fn exit_on_spawn_failure(cmd: &str, error: &io::Error) -> !
   pub fn spawn_failure(cmd: &str, error: &io::Error) -> (i32, String)
   pub(super) fn classify_spawn_error(command: &str, error: io::Error) -> ProcessError
   pub(super) struct OutputReaders
@@ -3993,7 +3998,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn from_str(s: &str) -> Self
   pub struct IngestConfig
   pub struct DigestFile
-  pub fn run_ingest(config: &IngestConfig)
+  pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()>
   mod tests
 
 **mod_html.rs**: (188 lines)
@@ -4060,7 +4065,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn ingest_store_dir() -> Option<PathBuf>
   fn get_repo_identity(root: &Path) -> (String, String)
   fn get_repo_name(root: &Path) -> String
-  pub(super) fn save_to_store(content: &str, config: &IngestConfig) -> Option<String>
+  pub(super) fn save_to_store(content: &str, config: &IngestConfig) -> std::io::Result<String>
   pub(super) fn digest_path_for(root: &Path) -> Option<PathBuf>
   pub(super) fn stored_head_for(root: &Path) -> Option<String>
 
@@ -4201,7 +4206,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn execute_and_print(&self, command: &Commands, ctx: &CommandContext)
   pub fn process_stdin(&self, input: &str, ctx: &CommandContext) -> CommandResult<String>
   fn format_not_implemented(msg: &str, format: OutputFormat) -> String
-  fn format_command_error(error: &CommandError, format: OutputFormat) -> String
 
   impl Default for Router
   fn default() -> Self
@@ -4256,6 +4260,8 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn child_exit_code() -> Option<i32>
   pub fn estimate_tokens(bytes: usize) -> usize
   pub fn escape_csv_field(field: &str) -> String
+  fn escape_tsv_field(field: &str) -> String
+  pub fn tsv_row(fields: &[&str]) -> String
   pub struct CommandStats
 
   impl CommandStats
@@ -4286,6 +4292,10 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
 **err.rs**
   fn is_error_line(line: &str) -> bool
   fn is_error_not_warning(line: &str) -> bool
+  fn indented(kind: &str, line: &str) -> String
+  fn table(shown: &[(&str, String)], header: &str, row: impl Fn(&str, &str) -> String) -> String
+  fn count(shown: &[(&str, String)], kind: &str) -> usize
+  fn format_output(
   pub fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -> CommandResult
 
 **html2md.rs**
@@ -4459,7 +4469,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn format_compact(
   pub fn format_raw(
   pub fn truncate_line(line: &str, max_len: usize) -> String
-  pub fn escape_tsv_field(field: &str) -> String
   pub fn format_count(count: usize, format: OutputFormat) -> String
 
   impl CommandHandler for ReplaceHandler
@@ -4472,7 +4481,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
 
   impl RunHandler
   pub fn format_output(output: &ProcessOutput, format: OutputFormat) -> String
-  pub fn escape_tsv_field(field: &str) -> String
   pub fn format_error(error: &ProcessError, format: OutputFormat) -> String
 
   impl CommandHandler for RunHandler
@@ -4653,7 +4661,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn format_agent(output: &TailOutput) -> String
   pub fn format_compact(output: &TailOutput) -> String
   pub fn format_raw(output: &TailOutput) -> String
-  pub fn escape_tsv_field(field: &str) -> String
 
   impl CommandHandler for TailHandler
   type Input = TailInput
@@ -5873,4 +5880,4 @@ pub(crate) enum LogLevel {
   fn test_test_output_round_trip()
 
 ---
-*trs ingest v0.10.1 | 132ms | 204.6KB*
+*trs ingest v0.10.2 | 171ms | 204.8KB*
