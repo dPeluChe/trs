@@ -27,14 +27,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         .output()
     {
         Ok(o) => o,
-        Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                eprintln!("Command not found: {}", cmd);
-            } else {
-                eprintln!("Failed to execute '{}': {}", cmd, e);
-            }
-            std::process::exit(127);
-        }
+        Err(e) => crate::process::exit_on_spawn_failure(cmd, &e),
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
