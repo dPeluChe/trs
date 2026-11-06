@@ -235,13 +235,9 @@ fn test_replace_escape_csv_field() {
 }
 
 #[test]
-fn test_replace_escape_tsv_field() {
-    assert_eq!(ReplaceHandler::escape_tsv_field("simple"), "simple");
-    assert_eq!(ReplaceHandler::escape_tsv_field("with\ttab"), "with\\ttab");
-    assert_eq!(
-        ReplaceHandler::escape_tsv_field("with\nnewline"),
-        "with\\nnewline"
-    );
+fn test_tsv_row_escapes_every_column() {
+    assert_eq!(tsv_row(&["simple", "b"]), "simple\tb\n");
+    assert_eq!(tsv_row(&["a\tb", "c\nd", "e\rf"]), "a\\tb\tc\\nd\te\\rf\n");
 }
 
 // ============================================================

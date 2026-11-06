@@ -146,6 +146,20 @@ pub(crate) fn escape_csv_field(field: &str) -> String {
     }
 }
 
+fn escape_tsv_field(field: &str) -> String {
+    field
+        .replace('\t', "\\t")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+}
+
+/// One TSV row. Every column is escaped here, so no writer picks which are
+/// safe. For reading, not decoding: a literal `\\n` stays as it was.
+pub(crate) fn tsv_row(fields: &[&str]) -> String {
+    let escaped: Vec<String> = fields.iter().map(|f| escape_tsv_field(f)).collect();
+    escaped.join("\t") + "\n"
+}
+
 /// Statistics about command execution.
 #[derive(Debug, Clone, Default)]
 pub struct CommandStats {

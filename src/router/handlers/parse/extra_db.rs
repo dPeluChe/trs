@@ -1,4 +1,4 @@
-use super::super::common::{CommandContext, CommandResult, CommandStats};
+use super::super::common::{tsv_row, CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
 
@@ -355,16 +355,15 @@ impl ParseHandler {
     /// Format TSV output.
     pub(crate) fn format_db_tsv(result: &DbResult) -> String {
         let mut out = String::new();
-        out.push_str(&result.columns.join("\t"));
-        out.push('\n');
+        let row = |cells: &[String]| tsv_row(&cells.iter().map(String::as_str).collect::<Vec<_>>());
+        out.push_str(&row(&result.columns));
 
         let (sample, omitted) = Self::sample_rows(&result.rows);
-        for (i, row) in sample.iter().enumerate() {
+        for (i, cells) in sample.iter().enumerate() {
             if omitted > 0 && i == HEAD_ROWS {
                 out.push_str(&format!("# [...{} rows omitted]\n", omitted));
             }
-            out.push_str(&row.join("\t"));
-            out.push('\n');
+            out.push_str(&row(cells));
         }
         out
     }

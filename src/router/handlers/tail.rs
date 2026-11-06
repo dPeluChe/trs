@@ -1,4 +1,6 @@
-use super::common::{escape_csv_field, CommandContext, CommandError, CommandResult, CommandStats};
+use super::common::{
+    escape_csv_field, tsv_row, CommandContext, CommandError, CommandResult, CommandStats,
+};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -255,13 +257,11 @@ impl TailHandler {
                 let line_escaped = escape_csv_field(&line.line);
                 format!("{},{},{}\n", line.line_number, line_escaped, line.is_error)
             }
-            OutputFormat::Tsv => {
-                let line_escaped = Self::escape_tsv_field(&line.line);
-                format!(
-                    "{}\t{}\t{}\n",
-                    line.line_number, line_escaped, line.is_error
-                )
-            }
+            OutputFormat::Tsv => tsv_row(&[
+                &line.line_number.to_string(),
+                &line.line,
+                &line.is_error.to_string(),
+            ]),
             OutputFormat::Agent | OutputFormat::Compact => {
                 if line.is_error {
                     format!("ERR {}\n", line.display())
@@ -333,11 +333,11 @@ impl TailHandler {
         result.push_str("line_number\tline\tis_error\n");
 
         for l in &output.lines {
-            let line_escaped = Self::escape_tsv_field(&l.line);
-            result.push_str(&format!(
-                "{}\t{}\t{}\n",
-                l.line_number, line_escaped, l.is_error
-            ));
+            result.push_str(&tsv_row(&[
+                &l.line_number.to_string(),
+                &l.line,
+                &l.is_error.to_string(),
+            ]));
         }
 
         result
@@ -417,14 +417,6 @@ impl TailHandler {
         }
 
         result
-    }
-
-    /// Escape a field for TSV format.
-    pub(crate) fn escape_tsv_field(field: &str) -> String {
-        field
-            .replace('\t', "\\t")
-            .replace('\n', "\\n")
-            .replace('\r', "\\r")
     }
 }
 
