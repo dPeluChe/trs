@@ -13,7 +13,7 @@
 #   2. Copies it into fresh containers for each distro
 #   3. Runs `trs doctor --json` and validates the output
 #
-# This simulates what a real user gets after `npm install -g trs-cli`
+# This simulates what a real user gets after `npm install -g @dpeluche/trs`
 # or downloading a prebuilt binary from GitHub Releases.
 
 set -euo pipefail

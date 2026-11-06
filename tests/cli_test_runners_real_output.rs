@@ -138,3 +138,18 @@ fn node_test_counts_a_cancelled_test_as_a_failure() {
     assert_eq!(json["success"], false);
     assert_eq!(json["summary"]["tests_failed"], 1);
 }
+
+#[test]
+fn output_with_no_tests_is_not_a_pass() {
+    for runner in ["npm", "pnpm", "bun", "pytest", "jest", "vitest"] {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .args(["--json", "parse", "test", "--runner", runner])
+            .write_stdin("")
+            .output()
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(json["is_empty"], true, "{runner}");
+        assert_eq!(json["success"], false, "{runner}");
+    }
+}

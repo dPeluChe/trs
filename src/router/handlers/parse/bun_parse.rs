@@ -238,8 +238,9 @@ impl ParseHandler {
             + output.summary.tests_failed
             + output.summary.tests_skipped;
         output.is_empty = output.test_suites.is_empty() && counted == 0;
-        output.success =
-            output.summary.tests_failed == 0 && output.test_suites.iter().all(|s| s.passed);
+        output.success = !output.is_empty
+            && output.summary.tests_failed == 0
+            && output.test_suites.iter().all(|s| s.passed);
 
         Ok(output)
     }
