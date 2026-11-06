@@ -94,13 +94,35 @@ impl JsonRun<'_> {
     }
 }
 
-/// A command that never started has no output to wrap.
-pub(crate) fn print_spawn_failure(cmd: &str, error: &std::io::Error) {
+/// A failure with no child output to wrap. `--json` promises one document on
+/// stdout, so nothing goes to stderr where `2>&1` would break it.
+pub(crate) fn exit_with_error(format: crate::OutputFormat, message: &str, code: i32) -> ! {
+    if format == crate::OutputFormat::Json {
+        let json = crate::formatter::JsonFormatter::format_error_with_code(message, code);
+        println!("{json}");
+    } else {
+        eprintln!("{message}");
+    }
+    std::process::exit(code);
+}
+
+/// The format of a command that takes its own `--json` flag.
+pub(crate) fn format_of(json: bool) -> crate::OutputFormat {
+    if json {
+        crate::OutputFormat::Json
+    } else {
+        crate::OutputFormat::Compact
+    }
+}
+
+/// Report a command that never started: 127 and 126, as in a shell.
+pub(crate) fn exit_on_spawn_failure(
+    format: crate::OutputFormat,
+    cmd: &str,
+    error: &std::io::Error,
+) -> ! {
     let (code, message) = crate::process::spawn_failure(cmd, error);
-    println!(
-        "{}",
-        crate::formatter::JsonFormatter::format_error_with_code(&message, code)
-    );
+    exit_with_error(format, &message, code)
 }
 
 /// A trs line on stdout, except where it would be a bogus row in a table.

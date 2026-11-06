@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use std::process::{Command, Stdio};
 
 use crate::classifier::full_cmd;
+use crate::exec_verdict::{exit_on_spawn_failure, format_of};
 
 /// Rough GPT/Claude average; matches `benchmark.rs`.
 const BYTES_PER_TOKEN: f64 = 4.0;
@@ -16,7 +17,7 @@ const BYTES_PER_TOKEN: f64 = 4.0;
 const MAX_DROPPED_SHOWN: usize = 40;
 
 pub(crate) fn run_diff(command: &str, args: &[String], json: bool) {
-    let (raw, code) = capture_raw(command, args);
+    let (raw, code) = capture_raw(command, args, json);
     let compact = capture_compact(command, args).unwrap_or_default();
 
     let dropped = dropped_lines(&raw, &compact);
@@ -56,13 +57,13 @@ fn reduction_pct(raw: usize, compact: usize) -> f64 {
 }
 
 /// Run the command directly and return combined stdout+stderr and its status.
-fn capture_raw(cmd: &str, args: &[String]) -> (String, i32) {
+fn capture_raw(cmd: &str, args: &[String], json: bool) -> (String, i32) {
     let output = Command::new(cmd)
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
-        .unwrap_or_else(|e| crate::process::exit_on_spawn_failure(cmd, &e));
+        .unwrap_or_else(|e| exit_on_spawn_failure(format_of(json), cmd, &e));
     let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
     text.push_str(&String::from_utf8_lossy(&output.stderr));
     (text, crate::process::exit_code_of(&output.status))

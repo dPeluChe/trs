@@ -412,10 +412,7 @@ fn run() {
                     crate::tracker::log_execution(&full_cmd, total, total, ms);
                     std::process::exit(crate::process::exit_code_of(&out.status));
                 }
-                Err(e) => {
-                    eprintln!("Failed to execute '{}': {}", cmd, e);
-                    std::process::exit(127);
-                }
+                Err(e) => crate::exec_verdict::exit_on_spawn_failure(ctx.format, cmd, &e),
             }
         }
         Some(

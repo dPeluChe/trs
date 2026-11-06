@@ -36,7 +36,9 @@ Stdout holds one JSON document on every path, with no text footer after it.
 Output that is already a JSON object stays one. A JSON array the program
 printed is left as written. Anything else is wrapped as
 `{"output": "...", "success": true}`, and a command that never started
-prints `{"error": true, "exit_code": 127, "message": "..."}`.
+prints `{"error": true, "success": false, "exit_code": 127, "message": "..."}`.
+A failed `trs` subcommand prints the same document. Only a usage error caught
+while reading the arguments stays plain text on stderr, with exit 2.
 
 On failure `success` is `false`, `exit_code` holds the real status and
 `full_output` is the path to the raw output. A cut output also gets

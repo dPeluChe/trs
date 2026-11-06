@@ -7,6 +7,7 @@ use std::process::{Command, Stdio};
 use std::time::Instant;
 
 use crate::classifier::full_cmd;
+use crate::exec_verdict::{exit_on_spawn_failure, format_of};
 
 /// Estimated bytes per token (rough GPT/Claude average).
 const BYTES_PER_TOKEN: f64 = 4.0;
@@ -38,7 +39,7 @@ pub(crate) fn run_benchmark(command: &str, args: &[String], repeat: usize, json:
     let mut results: Vec<IterResult> = Vec::with_capacity(iterations);
 
     for _ in 0..iterations {
-        match run_once(command, args) {
+        match run_once(command, args, json) {
             Some(r) => results.push(r),
             None => std::process::exit(1),
         }
@@ -85,7 +86,7 @@ pub(crate) fn run_benchmark(command: &str, args: &[String], repeat: usize, json:
 }
 
 /// Run one iteration: execute raw, then execute through trs.
-fn run_once(cmd: &str, args: &[String]) -> Option<IterResult> {
+fn run_once(cmd: &str, args: &[String], json: bool) -> Option<IterResult> {
     let start = Instant::now();
 
     // Step 1: Execute the command raw and capture output
@@ -94,7 +95,7 @@ fn run_once(cmd: &str, args: &[String]) -> Option<IterResult> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
-        .unwrap_or_else(|e| crate::process::exit_on_spawn_failure(cmd, &e));
+        .unwrap_or_else(|e| exit_on_spawn_failure(format_of(json), cmd, &e));
 
     let raw_stdout = String::from_utf8_lossy(&raw_output.stdout);
     let raw_stderr = String::from_utf8_lossy(&raw_output.stderr);

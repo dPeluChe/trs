@@ -5,7 +5,7 @@
 
 use crate::classifier::{build_command, classify_command, full_cmd, keep_ratio};
 use crate::exec_verdict::{
-    emit_failure_footer, failure_is_visible, notice, print_spawn_failure, JsonRun,
+    emit_failure_footer, exit_on_spawn_failure, failure_is_visible, notice, JsonRun,
 };
 use crate::process::exit_code_of;
 use crate::router::{CommandContext, Router};
@@ -29,12 +29,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         .output()
     {
         Ok(o) => o,
-        Err(e) => {
-            if matches!(ctx.format, crate::OutputFormat::Json) {
-                print_spawn_failure(cmd, &e);
-            }
-            crate::process::exit_on_spawn_failure(cmd, &e)
-        }
+        Err(e) => exit_on_spawn_failure(ctx.format, cmd, &e),
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);

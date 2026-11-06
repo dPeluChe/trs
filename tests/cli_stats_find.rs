@@ -173,29 +173,6 @@ fn test_exit_code_command_not_found_is_127() {
 }
 
 #[test]
-fn test_command_not_found_json_output() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("nonexistent_command_xyz123");
-    #[cfg(not(windows))]
-    {
-        let output = cmd.assert().code(127);
-        // Error output goes to stderr when using JSON format.
-        let stderr = String::from_utf8_lossy(&output.get_output().stderr);
-        let json: serde_json::Value = serde_json::from_str(&stderr).unwrap();
-        assert_eq!(json["error"], true);
-        assert_eq!(json["exit_code"], 127);
-        assert!(json["message"]
-            .as_str()
-            .unwrap()
-            .contains("Command not found"));
-    }
-    #[cfg(windows)]
-    cmd.assert().failure();
-}
-
-#[test]
 fn test_exit_code_permission_denied_is_126() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // 126 ("not executable") is a POSIX convention; `/etc/passwd` is Unix-only.

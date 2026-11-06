@@ -81,16 +81,11 @@ pub(crate) fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -
     {
         Ok(o) => o,
         Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                return Err(CommandError::ExecutionError {
-                    message: format!("Command not found: {}", command),
-                    exit_code: Some(127),
-                });
-            }
-            return Err(CommandError::IoError(format!(
-                "Failed to execute '{}': {}",
-                command, e
-            )));
+            let (code, message) = crate::process::spawn_failure(command, &e);
+            return Err(CommandError::ExecutionError {
+                message,
+                exit_code: Some(code),
+            });
         }
     };
 

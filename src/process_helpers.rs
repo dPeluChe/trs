@@ -16,13 +16,7 @@ pub fn exit_code_of(status: &ExitStatus) -> i32 {
     status.code().unwrap_or(1)
 }
 
-/// Report a command that never started: 127 and 126, as in a shell.
-pub fn exit_on_spawn_failure(cmd: &str, error: &io::Error) -> ! {
-    let (code, message) = spawn_failure(cmd, error);
-    eprintln!("{message}");
-    std::process::exit(code);
-}
-
+/// Exit code and message for a command that never started.
 pub fn spawn_failure(cmd: &str, error: &io::Error) -> (i32, String) {
     if error.kind() == io::ErrorKind::NotFound {
         return (127, format!("Command not found: {}", cmd));

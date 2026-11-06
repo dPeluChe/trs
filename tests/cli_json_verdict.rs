@@ -70,15 +70,30 @@ fn a_failed_git_push_stays_one_document() {
 
 #[test]
 fn a_command_that_never_started_is_a_document_too() {
-    let out = Command::cargo_bin("trs")
-        .unwrap()
-        .args(["--json", "zzz_no_such_program"])
-        .output()
-        .unwrap();
-    assert_eq!(out.status.code(), Some(127));
-    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(json["error"], true);
-    assert_eq!(json["exit_code"], 127);
+    let commands: [&[&str]; 5] = [
+        &["--json", "zzz_no_such_program"],
+        &["--json", "run", "zzz_no_such_program"],
+        &["--json", "err", "zzz_no_such_program"],
+        &["diff", "--json", "zzz_no_such_program"],
+        &["benchmark", "--json", "zzz_no_such_program"],
+    ];
+    for args in commands {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .args(args)
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(127), "{args:?}");
+        assert!(out.stderr.is_empty(), "{args:?}: {:?}", out.stderr);
+        let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(json["error"], true);
+        assert_eq!(json["success"], false);
+        assert_eq!(json["exit_code"], 127);
+        assert!(json["message"]
+            .as_str()
+            .unwrap()
+            .contains("Command not found"));
+    }
 }
 
 #[test]
