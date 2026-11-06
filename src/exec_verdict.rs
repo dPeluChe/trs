@@ -12,7 +12,7 @@ use serde_json::Value;
 pub(crate) fn reconcile_json(
     parsed: &str,
     code: i32,
-    raw: impl FnOnce() -> Option<String>,
+    raw: impl Fn() -> Option<String>,
 ) -> Option<String> {
     let parsed = parsed.trim();
     if !parsed.starts_with('{') {
@@ -37,6 +37,70 @@ pub(crate) fn reconcile_json(
         object.insert("full_output".to_string(), Value::from(path));
     }
     Some(value.to_string())
+}
+
+/// `text` as the single document `--json` promises. A JSON array the child
+/// printed is its data and stays as written unless it needs a verdict; any
+/// other text is wrapped.
+pub(crate) fn json_document(text: &str, code: i32, raw: impl Fn() -> Option<String>) -> String {
+    if let Some(object) = reconcile_json(text, code, &raw) {
+        return object;
+    }
+    let path = raw();
+    let is_array = serde_json::from_str::<Value>(text.trim()).is_ok_and(|v| v.is_array());
+    if code == 0 && path.is_none() && is_array {
+        return text.trim().to_string();
+    }
+    let mut document = serde_json::json!({ "output": text, "success": code == 0 });
+    if code != 0 {
+        document["exit_code"] = Value::from(code);
+    }
+    if let Some(path) = path {
+        document["full_output"] = Value::from(path);
+    }
+    document.to_string()
+}
+
+/// What ending a `--json` run needs: stdout holds one document, so the exit
+/// status and the raw path go inside it rather than in a footer after it.
+pub(crate) struct JsonRun<'a> {
+    pub(crate) fcmd: String,
+    pub(crate) stdout: &'a str,
+    pub(crate) stderr: &'a str,
+    pub(crate) code: i32,
+    pub(crate) in_bytes: usize,
+    pub(crate) start: std::time::Instant,
+    pub(crate) status: &'a std::process::ExitStatus,
+}
+
+impl JsonRun<'_> {
+    pub(crate) fn finish(&self, text: &str, cut: bool) -> ! {
+        let wants_raw = self.code != 0 || cut;
+        let raw = || {
+            wants_raw
+                .then(|| {
+                    crate::classifier_exec::save_tee_output(&self.fcmd, self.stdout, self.stderr)
+                })
+                .flatten()
+        };
+        let json = json_document(text, self.code, raw);
+        println!("{json}");
+        crate::classifier_exec::track(
+            &self.fcmd,
+            self.in_bytes,
+            json.len(),
+            self.start,
+            self.status,
+        );
+        std::process::exit(self.code);
+    }
+}
+
+/// A command that never started has no output to wrap.
+pub(crate) fn print_spawn_failure(cmd: &str, error: &std::io::Error) {
+    let (code, message) = crate::process::spawn_failure(cmd, error);
+    let document = serde_json::json!({ "error": true, "exit_code": code, "message": message });
+    println!("{document}");
 }
 
 /// Does this compressed output actually show that something went wrong?
@@ -70,7 +134,27 @@ pub(crate) fn failure_is_visible(parsed: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::reconcile_json;
+    use super::{json_document, reconcile_json};
+
+    #[test]
+    fn text_is_wrapped_with_the_verdict() {
+        let failed: serde_json::Value =
+            serde_json::from_str(&json_document("hi\n", 3, || Some("/t.log".into()))).unwrap();
+        assert_eq!(failed["output"], "hi\n");
+        assert_eq!(failed["success"], false);
+        assert_eq!(failed["exit_code"], 3);
+        assert_eq!(failed["full_output"], "/t.log");
+        assert_eq!(
+            json_document("hi\n", 0, || None),
+            r#"{"output":"hi\n","success":true}"#
+        );
+    }
+
+    #[test]
+    fn a_childs_array_stays_as_written_unless_it_failed() {
+        assert_eq!(json_document("[1, 2]\n", 0, || None), "[1, 2]");
+        assert!(json_document("[1, 2]\n", 2, || None).contains("\"exit_code\":2"));
+    }
 
     #[test]
     fn exit_status_overrides_either_wrong_verdict() {

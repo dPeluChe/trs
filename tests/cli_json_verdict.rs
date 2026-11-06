@@ -40,3 +40,43 @@ fn a_passing_run_is_not_called_failed() {
     assert_eq!(json["success"], true);
     assert!(json.get("exit_code").is_none());
 }
+
+#[test]
+fn every_path_prints_one_document() {
+    let (json, code) = json_run("tool", "echo hi; exit 3");
+    assert_eq!(code, Some(3));
+    assert_eq!(json["output"], "hi\n");
+    assert_eq!(json["success"], false);
+    assert_eq!(json["exit_code"], 3);
+    assert!(json["full_output"].is_string());
+
+    let (json, code) = json_run("tool", "echo hi");
+    assert_eq!(code, Some(0));
+    assert_eq!(json["output"], "hi\n");
+    assert_eq!(json["success"], true);
+
+    let (json, code) = json_run("tool", "echo '[1, 2]'");
+    assert_eq!(code, Some(0));
+    assert_eq!(json, serde_json::json!([1, 2]));
+}
+
+#[test]
+fn a_failed_git_push_stays_one_document() {
+    let (json, code) = json_run("git", "echo 'error: refused' >&2; exit 1");
+    assert_eq!(code, Some(1));
+    assert_eq!(json["success"], false);
+    assert_eq!(json["exit_code"], 1);
+}
+
+#[test]
+fn a_command_that_never_started_is_a_document_too() {
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args(["--json", "zzz_no_such_program"])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(127));
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(json["error"], true);
+    assert_eq!(json["exit_code"], 127);
+}
