@@ -214,7 +214,7 @@ fn run_shell(cmd: &str) -> bool {
         Ok(s) => {
             eprintln!(
                 "\nupgrade command exited with code {}",
-                s.code().unwrap_or(-1)
+                crate::process::exit_code_of(&s)
             );
             false
         }

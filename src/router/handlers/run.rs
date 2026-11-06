@@ -35,7 +35,7 @@ impl RunHandler {
                     args_str,
                     stdout_escaped,
                     stderr_escaped,
-                    output.exit_code.map(|c| c.to_string()).unwrap_or_default(),
+                    output.exit_code,
                     output.duration.as_millis(),
                     output.timed_out
                 ));
@@ -55,7 +55,7 @@ impl RunHandler {
                     args_str,
                     stdout_escaped,
                     stderr_escaped,
-                    output.exit_code.map(|c| c.to_string()).unwrap_or_default(),
+                    output.exit_code,
                     output.duration.as_millis(),
                     output.timed_out
                 ));
@@ -159,7 +159,7 @@ impl CommandHandler for RunHandler {
                 if !output.success() {
                     return Err(CommandError::ExecutionError {
                         message: format!("Command exited with code {}", output.code()),
-                        exit_code: output.exit_code,
+                        exit_code: Some(output.exit_code),
                     });
                 }
 
@@ -196,7 +196,7 @@ impl CommandHandler for RunHandler {
                     },
                     ProcessError::NonZeroExit { output } => CommandError::ExecutionError {
                         message: format!("Command exited with code {}", output.code()),
-                        exit_code: output.exit_code,
+                        exit_code: Some(output.exit_code),
                     },
                     ProcessError::IoError { message, .. } => CommandError::IoError(message.clone()),
                     ProcessError::SpawnFailed { message, .. } => CommandError::ExecutionError {

@@ -7,6 +7,15 @@ use std::time::{Duration, Instant};
 
 use super::ProcessError;
 
+/// A signal leaves no exit code; 128+N is what a shell reports for it.
+pub fn exit_code_of(status: &ExitStatus) -> i32 {
+    #[cfg(unix)]
+    if let Some(signal) = std::os::unix::process::ExitStatusExt::signal(status) {
+        return 128 + signal;
+    }
+    status.code().unwrap_or(1)
+}
+
 /// Classify a spawn error into a more specific ProcessError.
 pub(super) fn classify_spawn_error(command: &str, error: io::Error) -> ProcessError {
     match error.kind() {

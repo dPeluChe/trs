@@ -150,7 +150,7 @@ fn run_unparsed() -> ! {
         std::process::exit(2)
     };
     match std::process::Command::new(program).args(args).status() {
-        Ok(status) => std::process::exit(status.code().unwrap_or(1)),
+        Ok(status) => std::process::exit(crate::process::exit_code_of(&status)),
         Err(e) => {
             eprintln!("trs: {e}");
             std::process::exit(127)
@@ -410,7 +410,7 @@ fn run() {
                     let full_cmd = args.join(" ");
                     let ms = start.elapsed().as_millis() as u64;
                     crate::tracker::log_execution(&full_cmd, total, total, ms);
-                    std::process::exit(out.status.code().unwrap_or(1));
+                    std::process::exit(crate::process::exit_code_of(&out.status));
                 }
                 Err(e) => {
                     eprintln!("Failed to execute '{}': {}", cmd, e);
