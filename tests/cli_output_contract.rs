@@ -28,8 +28,7 @@ fn document(out: &std::process::Output) -> serde_json::Value {
 
 #[test]
 fn a_command_that_never_started_is_a_document_too() {
-    let commands: [&[&str]; 5] = [
-        &["--json", "zzz_no_such_program"],
+    let commands: [&[&str]; 4] = [
         &["--json", "run", "zzz_no_such_program"],
         &["--json", "err", "zzz_no_such_program"],
         &["diff", "--json", "zzz_no_such_program"],
@@ -48,6 +47,18 @@ fn a_command_that_never_started_is_a_document_too() {
             .unwrap()
             .contains("Command not found"));
     }
+}
+
+#[test]
+fn a_missing_program_is_one_failed_document() {
+    let out = trs(&["--json", "zzz_no_such_program"]);
+    assert!(out.stderr.is_empty(), "{:?}", out.stderr);
+    let json = document(&out);
+    assert_eq!(json["success"], false);
+    // Windows starts programs through `cmd`, which fails with exit 1 itself.
+    let expected = if cfg!(windows) { 1 } else { 127 };
+    assert_eq!(out.status.code(), Some(expected));
+    assert_eq!(json["exit_code"], expected);
 }
 
 #[test]
