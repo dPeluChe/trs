@@ -8,8 +8,9 @@
 //! - Combined options
 //! - Stats: raw vs reduced output size comparison
 
-use assert_cmd::Command;
 use predicates::prelude::*;
+
+mod support;
 
 // ============================================================
 // Help and Usage Tests
@@ -17,7 +18,7 @@ use predicates::prelude::*;
 
 #[test]
 fn test_search_help_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("--help")
         .assert()
@@ -29,7 +30,7 @@ fn test_search_help_flag() {
 
 #[test]
 fn test_search_help_shows_extension_option() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("--help")
         .assert()
@@ -39,7 +40,7 @@ fn test_search_help_shows_extension_option() {
 
 #[test]
 fn test_search_help_shows_ignore_case_option() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("--help")
         .assert()
@@ -49,7 +50,7 @@ fn test_search_help_shows_ignore_case_option() {
 
 #[test]
 fn test_search_help_shows_context_option() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("--help")
         .assert()
@@ -59,7 +60,7 @@ fn test_search_help_shows_context_option() {
 
 #[test]
 fn test_search_help_shows_limit_option() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("--help")
         .assert()
@@ -73,11 +74,10 @@ fn test_search_help_shows_limit_option() {
 
 #[test]
 fn test_search_with_absolute_path() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Use the current directory as absolute path
-    let cwd = std::env::current_dir().unwrap();
+    let mut cmd = support::search_cmd();
+    let tree = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/search_tree");
     cmd.arg("search")
-        .arg(cwd.to_str().unwrap())
+        .arg(tree.to_str().unwrap())
         .arg("fn main")
         .assert()
         .success()
@@ -90,7 +90,7 @@ fn test_search_with_absolute_path() {
 
 #[test]
 fn test_search_nonexistent_directory() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("/nonexistent/directory/xyz123")
         .arg("test")
@@ -112,7 +112,7 @@ fn test_search_unreadable_directory() {
     std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
     // root ignores the mode bits, so there is nothing to observe there.
     let enforced = std::fs::read_dir(&locked).is_err();
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let assert = cmd.arg("search").arg(&locked).arg("test").assert();
     std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
     if enforced {
@@ -124,7 +124,7 @@ fn test_search_unreadable_directory() {
 
 #[test]
 fn test_search_file_as_path() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // Searching a specific file should work
     cmd.arg("search")
         .arg("src/main.rs")
@@ -140,7 +140,7 @@ fn test_search_file_as_path() {
 
 #[test]
 fn test_search_combined_extension_and_ignore_case() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("searchhandler")
@@ -154,7 +154,7 @@ fn test_search_combined_extension_and_ignore_case() {
 
 #[test]
 fn test_search_json_with_all_options() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -183,7 +183,7 @@ fn test_search_json_with_all_options() {
 #[test]
 fn test_search_stats_raw_vs_reduced() {
     // Test that raw output shows the raw ripgrep-style output
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--stats")
         .arg("--raw")
@@ -217,7 +217,7 @@ fn test_search_stats_raw_vs_reduced() {
 #[test]
 fn test_search_stats_json_larger() {
     // When using --json format, output_bytes should be larger than input_bytes due to JSON structure
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--stats")
         .arg("--json")
@@ -257,7 +257,7 @@ fn test_search_stats_json_larger() {
 #[test]
 fn test_search_stats_compact_reduction() {
     // When using --compact format, verify proper byte counting and reduction
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--stats")
         .arg("--compact")
@@ -292,7 +292,7 @@ fn test_search_stats_compact_reduction() {
 #[test]
 fn test_search_stats_agent_format() {
     // When using --agent format, verify proper byte counting
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--stats")
         .arg("--agent")
@@ -324,7 +324,7 @@ fn test_search_stats_agent_format() {
 #[test]
 fn test_search_stats_csv_format() {
     // When using --csv format, verify proper byte counting
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--stats")
         .arg("--csv")
@@ -356,7 +356,7 @@ fn test_search_stats_csv_format() {
 #[test]
 fn test_search_stats_tsv_format() {
     // When using --tsv format, verify proper byte counting
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--stats")
         .arg("--tsv")
@@ -388,7 +388,7 @@ fn test_search_stats_tsv_format() {
 #[test]
 fn test_search_stats_empty_results() {
     // Test stats with empty search results
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--stats")
         .arg("search")

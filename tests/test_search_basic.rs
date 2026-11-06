@@ -7,8 +7,9 @@
 //! - Context lines
 //! - JSON output format
 
-use assert_cmd::Command;
 use predicates::prelude::*;
+
+mod support;
 
 // ============================================================
 // Basic Search Tests
@@ -16,7 +17,7 @@ use predicates::prelude::*;
 
 #[test]
 fn test_search_basic_pattern() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg(".")
         .arg("fn main")
@@ -28,18 +29,20 @@ fn test_search_basic_pattern() {
 
 #[test]
 fn test_search_in_specific_path() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("SearchHandler")
         .assert()
         .success()
-        .stdout(predicate::str::contains("router/"));
+        .stdout(predicate::str::contains("router/"))
+        .stdout(predicate::str::contains(":"))
+        .stdout(predicate::str::contains("SearchHandler"));
 }
 
 #[test]
 fn test_search_returns_file_path() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("Router")
@@ -48,25 +51,13 @@ fn test_search_returns_file_path() {
         .stdout(predicate::str::contains(".rs"));
 }
 
-#[test]
-fn test_search_returns_line_number() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Search output should contain line numbers
-    cmd.arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(":").and(predicate::str::contains("SearchHandler")));
-}
-
 // ============================================================
 // Extension Filter Tests
 // ============================================================
 
 #[test]
 fn test_search_with_extension_rs() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg(".")
         .arg("fn ")
@@ -79,7 +70,7 @@ fn test_search_with_extension_rs() {
 
 #[test]
 fn test_search_with_extension_short_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg(".")
         .arg("fn ")
@@ -92,7 +83,7 @@ fn test_search_with_extension_short_flag() {
 
 #[test]
 fn test_search_with_extension_md() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg(".")
         .arg("MIT")
@@ -109,20 +100,8 @@ fn test_search_with_extension_md() {
 // ============================================================
 
 #[test]
-fn test_search_case_sensitive_default() {
-    // By default, search is case-sensitive
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("SearchHandler"));
-}
-
-#[test]
 fn test_search_ignore_case_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("searchhandler")
@@ -134,7 +113,7 @@ fn test_search_ignore_case_flag() {
 
 #[test]
 fn test_search_ignore_case_short_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("searchhandler")
@@ -147,7 +126,7 @@ fn test_search_ignore_case_short_flag() {
 #[test]
 fn test_search_case_sensitive_no_match() {
     // Case-sensitive search with wrong case should not match
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg("src")
@@ -169,7 +148,7 @@ fn test_search_case_sensitive_no_match() {
 
 #[test]
 fn test_search_with_context_lines() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("SearchHandler")
@@ -182,7 +161,7 @@ fn test_search_with_context_lines() {
 
 #[test]
 fn test_search_with_context_short_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("SearchHandler")
@@ -195,7 +174,7 @@ fn test_search_with_context_short_flag() {
 
 #[test]
 fn test_search_with_context_includes_surrounding_lines() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // With context, there should be more output than just the matching line
     let output_with_context = cmd
         .arg("search")
@@ -211,7 +190,7 @@ fn test_search_with_context_includes_surrounding_lines() {
 
     let len_with_context = output_with_context.len();
 
-    let mut cmd2 = Command::cargo_bin("trs").unwrap();
+    let mut cmd2 = support::search_cmd();
     let output_without_context = cmd2
         .arg("search")
         .arg("src")
@@ -233,8 +212,8 @@ fn test_search_with_context_includes_surrounding_lines() {
 // ============================================================
 
 #[test]
-fn test_search_json_is_valid() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+fn test_search_json_has_its_fields() {
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -246,85 +225,17 @@ fn test_search_json_is_valid() {
         .stdout
         .clone();
 
-    let stdout = String::from_utf8_lossy(&output);
-    assert!(serde_json::from_str::<serde_json::Value>(&stdout).is_ok());
-}
-
-#[test]
-fn test_search_json_has_files_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""files""#));
-}
-
-#[test]
-fn test_search_json_has_path_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""path""#));
-}
-
-#[test]
-fn test_search_json_has_matches_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""matches""#));
-}
-
-#[test]
-fn test_search_json_has_line_number_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""line_number""#));
-}
-
-#[test]
-fn test_search_json_has_line_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""line""#));
-}
-
-#[test]
-fn test_search_json_has_counts_field() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""counts""#));
+    let json: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    let file = &json["files"][0];
+    assert!(file["path"].is_string());
+    assert!(file["matches"][0]["line_number"].is_number());
+    assert!(file["matches"][0]["line"].is_string());
+    assert!(json["counts"]["matches"].as_u64().unwrap() > 0);
 }
 
 #[test]
 fn test_search_json_empty_result() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")

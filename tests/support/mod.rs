@@ -5,6 +5,13 @@
 use std::path::Path;
 use std::process::Command;
 
+/// `trs` inside `tests/search_tree`, so search results depend on no real source.
+pub fn search_cmd() -> assert_cmd::Command {
+    let mut cmd = assert_cmd::Command::cargo_bin("trs").unwrap();
+    cmd.current_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/search_tree"));
+    cmd
+}
+
 /// Run `git` in `dir` as a fixed identity, so commits work on a machine with
 /// no git config (CI). Panics if git fails; returns its stdout.
 pub fn git(dir: &Path, args: &[&str]) -> String {
