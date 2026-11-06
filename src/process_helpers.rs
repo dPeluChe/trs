@@ -16,6 +16,16 @@ pub fn exit_code_of(status: &ExitStatus) -> i32 {
     status.code().unwrap_or(1)
 }
 
+/// Report a command that never started: 127 and 126, as in a shell.
+pub fn exit_on_spawn_failure(cmd: &str, error: &io::Error) -> ! {
+    if error.kind() == io::ErrorKind::NotFound {
+        eprintln!("Command not found: {}", cmd);
+        std::process::exit(127);
+    }
+    eprintln!("Failed to execute '{}': {}", cmd, error);
+    std::process::exit(126);
+}
+
 /// Classify a spawn error into a more specific ProcessError.
 pub(super) fn classify_spawn_error(command: &str, error: io::Error) -> ProcessError {
     match error.kind() {

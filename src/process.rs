@@ -10,8 +10,8 @@ use std::time::{Duration, Instant};
 
 #[path = "process_helpers.rs"]
 mod helpers;
-pub use helpers::exit_code_of;
 use helpers::{classify_spawn_error, ChildExt, OutputReaders};
+pub use helpers::{exit_code_of, exit_on_spawn_failure};
 
 /// Result of a process execution.
 #[derive(Debug, Clone)]

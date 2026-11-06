@@ -16,10 +16,7 @@ const BYTES_PER_TOKEN: f64 = 4.0;
 const MAX_DROPPED_SHOWN: usize = 40;
 
 pub(crate) fn run_diff(command: &str, args: &[String], json: bool) {
-    let raw = match capture_raw(command, args) {
-        Some(r) => r,
-        None => return, // error already printed
-    };
+    let (raw, code) = capture_raw(command, args);
     let compact = capture_compact(command, args).unwrap_or_default();
 
     let dropped = dropped_lines(&raw, &compact);
@@ -30,6 +27,9 @@ pub(crate) fn run_diff(command: &str, args: &[String], json: bool) {
         print_json(command, args, raw_bytes, compact_bytes, &dropped);
     } else {
         print_human(command, args, raw_bytes, compact_bytes, &compact, &dropped);
+    }
+    if code != 0 {
+        std::process::exit(code);
     }
 }
 
@@ -55,28 +55,17 @@ fn reduction_pct(raw: usize, compact: usize) -> f64 {
     ((raw as f64 - compact as f64) / raw as f64) * 100.0
 }
 
-/// Run the command directly and return combined stdout+stderr.
-fn capture_raw(cmd: &str, args: &[String]) -> Option<String> {
-    match Command::new(cmd)
+/// Run the command directly and return combined stdout+stderr and its status.
+fn capture_raw(cmd: &str, args: &[String]) -> (String, i32) {
+    let output = Command::new(cmd)
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
-    {
-        Ok(o) => {
-            let mut s = String::from_utf8_lossy(&o.stdout).into_owned();
-            s.push_str(&String::from_utf8_lossy(&o.stderr));
-            Some(s)
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            eprintln!("Command not found: {}", cmd);
-            None
-        }
-        Err(e) => {
-            eprintln!("Failed to execute '{}': {}", cmd, e);
-            None
-        }
-    }
+        .unwrap_or_else(|e| crate::process::exit_on_spawn_failure(cmd, &e));
+    let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
+    text.push_str(&String::from_utf8_lossy(&output.stderr));
+    (text, crate::process::exit_code_of(&output.status))
 }
 
 /// Run `trs <cmd> [args]` (this binary) and return its compacted stdout+stderr.

@@ -16,6 +16,7 @@ struct IterResult {
     raw_bytes: usize,
     compressed_bytes: usize,
     time_ms: u64,
+    exit_code: i32,
 }
 
 /// Aggregated benchmark metrics for reporting.
@@ -39,13 +40,8 @@ pub(crate) fn run_benchmark(command: &str, args: &[String], repeat: usize, json:
     for _ in 0..iterations {
         match run_once(command, args) {
             Some(r) => results.push(r),
-            None => return, // Error already printed
+            None => std::process::exit(1),
         }
-    }
-
-    if results.is_empty() {
-        eprintln!("No successful iterations");
-        return;
     }
 
     // Calculate averages
@@ -83,6 +79,9 @@ pub(crate) fn run_benchmark(command: &str, args: &[String], repeat: usize, json:
     } else {
         print_table(&report);
     }
+    if let Some(code) = results.iter().map(|r| r.exit_code).find(|c| *c != 0) {
+        std::process::exit(code);
+    }
 }
 
 /// Run one iteration: execute raw, then execute through trs.
@@ -90,22 +89,12 @@ fn run_once(cmd: &str, args: &[String]) -> Option<IterResult> {
     let start = Instant::now();
 
     // Step 1: Execute the command raw and capture output
-    let raw_output = match Command::new(cmd)
+    let raw_output = Command::new(cmd)
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
-    {
-        Ok(o) => o,
-        Err(e) => {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                eprintln!("Command not found: {}", cmd);
-            } else {
-                eprintln!("Failed to execute '{}': {}", cmd, e);
-            }
-            return None;
-        }
-    };
+        .unwrap_or_else(|e| crate::process::exit_on_spawn_failure(cmd, &e));
 
     let raw_stdout = String::from_utf8_lossy(&raw_output.stdout);
     let raw_stderr = String::from_utf8_lossy(&raw_output.stderr);
@@ -120,6 +109,7 @@ fn run_once(cmd: &str, args: &[String]) -> Option<IterResult> {
         raw_bytes,
         compressed_bytes,
         time_ms,
+        exit_code: crate::process::exit_code_of(&raw_output.status),
     })
 }
 
