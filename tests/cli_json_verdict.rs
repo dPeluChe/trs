@@ -158,14 +158,18 @@ fn a_long_stderr_is_cut_and_points_to_the_rest() {
         .contains("noise line 1500"));
 }
 
-fn err_table(flag: &str, script: &str) -> (String, Option<i32>) {
+fn table(args: &[&str]) -> (String, Option<i32>) {
     let out = Command::cargo_bin("trs")
         .unwrap()
-        .args([flag, "err", "sh", "-c", script])
+        .args(args)
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     (stdout, out.status.code())
+}
+
+fn err_table(flag: &str, script: &str) -> (String, Option<i32>) {
+    table(&[flag, "err", "sh", "-c", script])
 }
 
 #[test]
@@ -188,4 +192,17 @@ fn err_prints_a_table_with_the_tabular_flags() {
     let (unmatched, code) = err_table("--csv", "echo '  no keywords'; exit 2");
     assert_eq!(code, Some(2));
     assert_eq!(unmatched, "kind,line\noutput,  no keywords\n");
+}
+
+#[test]
+fn tsv_keeps_every_field_on_its_row_and_column() {
+    let (err, _) = err_table("--tsv", "printf 'error:\\tboom\\n'");
+    assert_eq!(err, "kind\tline\nerror\terror:\\tboom\n");
+
+    let (run, _) = table(&["--tsv", "run", "sh", "-c", "printf 'a\nb\tc\r\n'"]);
+    let rows: Vec<Vec<&str>> = run.lines().map(|l| l.split('\t').collect()).collect();
+    assert_eq!(rows.len(), 2, "{run}");
+    assert_eq!(rows[1].len(), rows[0].len(), "{run}");
+    assert_eq!(rows[1][1], "-c printf 'a\\nb\\tc\\r\\n'");
+    assert_eq!(rows[1][2], "a\\nb\\tc\\r\\n");
 }

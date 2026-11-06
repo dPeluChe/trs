@@ -2,8 +2,7 @@
 //!
 //! Contains format_grep and all format-specific variants (JSON, compact, CSV, TSV, raw).
 
-use super::super::common::escape_csv_field;
-use super::super::run::RunHandler;
+use super::super::common::{escape_csv_field, tsv_row};
 use super::super::types::*;
 use super::ParseHandler;
 use crate::OutputFormat;
@@ -93,15 +92,13 @@ impl ParseHandler {
 
         for file in &grep_output.files {
             for m in &file.matches {
-                let line_escaped = RunHandler::escape_tsv_field(&m.line);
-                result.push_str(&format!(
-                    "{}\t{}\t{}\t{}\t{}\n",
-                    file.path,
-                    m.line_number.map(|n| n.to_string()).unwrap_or_default(),
-                    m.column.map(|c| c.to_string()).unwrap_or_default(),
-                    m.is_context,
-                    line_escaped
-                ));
+                result.push_str(&tsv_row(&[
+                    &file.path,
+                    &m.line_number.map(|n| n.to_string()).unwrap_or_default(),
+                    &m.column.map(|c| c.to_string()).unwrap_or_default(),
+                    &m.is_context.to_string(),
+                    &m.line,
+                ]));
             }
         }
 

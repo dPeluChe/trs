@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use crate::router::handlers::clean::{CleanHandler, CleanInput};
 use crate::router::handlers::common::{
-    sanitize_control_chars, strip_ansi_codes, CommandContext, CommandError, CommandResult,
+    sanitize_control_chars, strip_ansi_codes, tsv_row, CommandContext, CommandError, CommandResult,
     CommandStats,
 };
 use crate::router::handlers::html2md::{Html2mdHandler, Html2mdInput};

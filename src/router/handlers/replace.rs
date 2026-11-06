@@ -1,4 +1,6 @@
-use super::common::{escape_csv_field, CommandContext, CommandError, CommandResult, CommandStats};
+use super::common::{
+    escape_csv_field, tsv_row, CommandContext, CommandError, CommandResult, CommandStats,
+};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -276,12 +278,12 @@ impl ReplaceHandler {
 
         for (path, reps) in replacements {
             for rep in reps {
-                let original_escaped = Self::escape_tsv_field(&rep.original);
-                let replaced_escaped = Self::escape_tsv_field(&rep.replaced);
-                result.push_str(&format!(
-                    "{}\t{}\t{}\t{}\n",
-                    path, rep.line_number, original_escaped, replaced_escaped
-                ));
+                result.push_str(&tsv_row(&[
+                    path,
+                    &rep.line_number.to_string(),
+                    &rep.original,
+                    &rep.replaced,
+                ]));
             }
         }
 
@@ -382,14 +384,6 @@ impl ReplaceHandler {
     /// Truncate a line to a maximum length. UTF-8 safe.
     pub(crate) fn truncate_line(line: &str, max_len: usize) -> String {
         crate::formatter::helpers::truncate(line, max_len)
-    }
-
-    /// Escape a field for TSV format.
-    pub(crate) fn escape_tsv_field(field: &str) -> String {
-        field
-            .replace('\t', "\\t")
-            .replace('\n', "\\n")
-            .replace('\r', "\\r")
     }
 
     /// Format replacement count for output (just the number).

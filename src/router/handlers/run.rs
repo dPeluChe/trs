@@ -1,4 +1,6 @@
-use super::common::{escape_csv_field, CommandContext, CommandError, CommandResult, CommandStats};
+use super::common::{
+    escape_csv_field, tsv_row, CommandContext, CommandError, CommandResult, CommandStats,
+};
 use super::types::CommandHandler;
 use crate::process::{ProcessBuilder, ProcessError, ProcessOutput};
 use crate::OutputFormat;
@@ -47,18 +49,15 @@ impl RunHandler {
                 result
                     .push_str("command\targs\tstdout\tstderr\texit_code\tduration_ms\ttimed_out\n");
                 let args_str = output.args.join(" ");
-                let stdout_escaped = Self::escape_tsv_field(&output.stdout);
-                let stderr_escaped = Self::escape_tsv_field(&output.stderr);
-                result.push_str(&format!(
-                    "{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
-                    output.command,
-                    args_str,
-                    stdout_escaped,
-                    stderr_escaped,
-                    output.exit_code,
-                    output.duration.as_millis(),
-                    output.timed_out
-                ));
+                result.push_str(&tsv_row(&[
+                    &output.command,
+                    &args_str,
+                    &output.stdout,
+                    &output.stderr,
+                    &output.exit_code.to_string(),
+                    &output.duration.as_millis().to_string(),
+                    &output.timed_out.to_string(),
+                ]));
                 result
             }
             OutputFormat::Compact | OutputFormat::Agent => {
@@ -84,12 +83,6 @@ impl RunHandler {
                 result
             }
         }
-    }
-
-    /// Escape a field for TSV format.
-    pub(crate) fn escape_tsv_field(field: &str) -> String {
-        // TSV doesn't support tabs in fields; replace with space
-        field.replace('\t', " ").replace('\r', "")
     }
 
     /// Format error message based on format.
