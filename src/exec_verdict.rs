@@ -47,18 +47,16 @@ pub(crate) fn json_document(text: &str, code: i32, raw: impl Fn() -> Option<Stri
         return object;
     }
     let path = raw();
-    let is_array = serde_json::from_str::<Value>(text.trim()).is_ok_and(|v| v.is_array());
-    if code == 0 && path.is_none() && is_array {
-        return text.trim().to_string();
+    let trimmed = text.trim();
+    if code == 0
+        && path.is_none()
+        && trimmed.starts_with('[')
+        && serde_json::from_str::<Value>(trimmed).is_ok()
+    {
+        return trimmed.to_string();
     }
-    let mut document = serde_json::json!({ "output": text, "success": code == 0 });
-    if code != 0 {
-        document["exit_code"] = Value::from(code);
-    }
-    if let Some(path) = path {
-        document["full_output"] = Value::from(path);
-    }
-    document.to_string()
+    let wrapped = serde_json::json!({ "output": text, "success": true }).to_string();
+    reconcile_json(&wrapped, code, || path.clone()).unwrap_or(wrapped)
 }
 
 /// What ending a `--json` run needs: stdout holds one document, so the exit
@@ -99,8 +97,10 @@ impl JsonRun<'_> {
 /// A command that never started has no output to wrap.
 pub(crate) fn print_spawn_failure(cmd: &str, error: &std::io::Error) {
     let (code, message) = crate::process::spawn_failure(cmd, error);
-    let document = serde_json::json!({ "error": true, "exit_code": code, "message": message });
-    println!("{document}");
+    println!(
+        "{}",
+        crate::formatter::JsonFormatter::format_error_with_code(&message, code)
+    );
 }
 
 /// Does this compressed output actually show that something went wrong?
