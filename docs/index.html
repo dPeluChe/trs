@@ -695,7 +695,7 @@
     <div class="hero-meta">
       <span>Token-Reducing Shell</span>
       <span class="dot">·</span>
-      <span>v0.9.2</span>
+      <span>v0.10.0</span>
       <span class="dot">·</span>
       <span>Rust</span>
       <span class="dot">·</span>
@@ -1256,7 +1256,7 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
       24% to 48% in recent windows. It counts the output trs handles, not your
       whole bill, and it varies with what you run. The table
       is a fixed benchmark of 38 command shapes taken
-      from real agent sessions (trs v0.9.2, tokens counted with
+      from real agent sessions (trs v0.10.0, tokens counted with
       <code class="inline">o200k_base</code>).
       &ldquo;Anchors kept&rdquo; is the share of
       paths, <code class="inline">file:line</code> refs, hashes and error lines
@@ -1270,17 +1270,17 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
           <tr><th>Command</th><th>Raw tokens</th><th>trs tokens</th><th>Cut</th><th>Anchors kept</th><th>What stays</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>git log -20</code></td><td>5,813</td><td>1,636</td><td class="winner">72%</td><td>75%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
-          <tr><td><code>git diff HEAD~5</code></td><td>53,587</td><td>7,902</td><td class="winner">85%</td><td>31%</td><td>hunks from every file, code first; cuts are marked and the full diff saved</td></tr>
-          <tr><td><code>find src -name '*.rs'</code></td><td>2,178</td><td>338</td><td class="winner">84%</td><td>44%</td><td>grouped by directory; full list saved</td></tr>
-          <tr><td><code>ls -la src</code></td><td>2,967</td><td>1,040</td><td class="winner">65%</td><td>100%</td><td></td></tr>
+          <tr><td><code>git log -20</code></td><td>5,390</td><td>1,363</td><td class="winner">75%</td><td>63%</td><td>subject, why, squash index; rest via <code>git show</code></td></tr>
+          <tr><td><code>git diff HEAD~5</code></td><td>12,687</td><td>7,928</td><td class="winner">38%</td><td>54%</td><td>hunks from every file, code first; cuts are marked and the full diff saved</td></tr>
+          <tr><td><code>find src -name '*.rs'</code></td><td>2,195</td><td>338</td><td class="winner">85%</td><td>44%</td><td>grouped by directory; full list saved</td></tr>
+          <tr><td><code>ls -la src</code></td><td>3,001</td><td>1,051</td><td class="winner">65%</td><td>100%</td><td></td></tr>
           <tr><td><code>cargo test</code> (2 failing)<code></code></td><td>829</td><td>197</td><td class="winner">76%</td><td>56%</td><td>each failure: location, message, left/right</td></tr>
           <tr><td><code>pytest</code> (2 failing)<code></code></td><td>372</td><td>122</td><td class="winner">67%</td><td>58%</td><td>names, <code>E</code> lines, <code>file.py:N</code></td></tr>
-          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>543</td><td>249</td><td class="winner">54%</td><td>70%</td><td>expected vs received, location</td></tr>
-          <tr><td><code>gh run list</code></td><td>480</td><td>329</td><td class="winner">32%</td><td>100%</td><td>run id, title, workflow, branch, duration</td></tr>
+          <tr><td><code>bun test</code> (2 failing)<code></code></td><td>548</td><td>249</td><td class="winner">55%</td><td>70%</td><td>expected vs received, location</td></tr>
+          <tr><td><code>gh run list</code></td><td>450</td><td>298</td><td class="winner">34%</td><td>0%</td><td>run id, title, workflow, branch, duration</td></tr>
           <tr><td><code>grep -rn -C2</code></td><td>1,945</td><td>1,508</td><td class="winner">22%</td><td>100%</td><td>every match and every context line</td></tr>
           <tr><td><code>gh pr view</code></td><td>922</td><td>881</td><td class="winner">4%</td><td>100%</td><td>the whole PR body</td></tr>
-          <tr><td><code>ps aux</code></td><td>122,585</td><td>900</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
+          <tr><td><code>ps aux</code></td><td>123,367</td><td>886</td><td class="winner">99%</td><td>0%</td><td>top processes; full list saved, path printed</td></tr>
           <tr><td><code>git show rev:file</code></td><td>1,692</td><td>1,692</td><td class="winner">0%</td><td>100%</td><td>verbatim: it is a file</td></tr>
         </tbody>
       </table>
@@ -1428,7 +1428,7 @@ commit 5e4a745d1f2ee6ec3a871dffdade1c2a9aaf69d5
         Downloads the right binary for your platform into
         <code class="inline">~/.trs/bin/trs</code>. Zero runtime dependencies,
         no Node overhead, ~4 ms startup. Pin a version with
-        <code class="inline">TRS_VERSION=v0.9.2</code>.
+        <code class="inline">TRS_VERSION=v0.10.0</code>.
       </p>
     </div>
 

@@ -52,20 +52,20 @@ Set `TRS_VERSION` before running the installer to pin rather than
 taking the latest release:
 
 ```bash
-TRS_VERSION=v0.9.2 curl -fsSL https://usetrs.dev/install.sh | sh
+TRS_VERSION=v0.10.0 curl -fsSL https://usetrs.dev/install.sh | sh
 ```
 
 For Windows:
 
 ```powershell
-$env:TRS_VERSION = 'v0.9.2'
+$env:TRS_VERSION = 'v0.10.0'
 irm https://usetrs.dev/install.ps1 | iex
 ```
 
 For npm, use the standard tag syntax:
 
 ```bash
-npm install -g @dpeluche/trs@0.9.2
+npm install -g @dpeluche/trs@0.10.0
 ```
 
 ## Custom install directory
