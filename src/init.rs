@@ -305,8 +305,7 @@ pub(crate) fn install_finished(opts: InstallOpts) {
 
 /// Check if trs binary is available in PATH.
 fn is_trs_in_path() -> bool {
-    std::process::Command::new("trs")
-        .arg("--version")
+    crate::classifier::build_command("trs", &["--version"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()

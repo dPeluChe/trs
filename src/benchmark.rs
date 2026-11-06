@@ -6,7 +6,7 @@
 use std::process::{Command, Stdio};
 use std::time::Instant;
 
-use crate::classifier::full_cmd;
+use crate::classifier::{build_command, full_cmd};
 use crate::exec_verdict::{exit_on_spawn_failure, format_of};
 
 /// Estimated bytes per token (rough GPT/Claude average).
@@ -90,10 +90,7 @@ fn run_once(cmd: &str, args: &[String], json: bool) -> Option<IterResult> {
     let start = Instant::now();
 
     // Step 1: Execute the command raw and capture output
-    let raw_output = Command::new(cmd)
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+    let raw_output = build_command(cmd, args)
         .output()
         .unwrap_or_else(|e| exit_on_spawn_failure(format_of(json), cmd, &e));
 

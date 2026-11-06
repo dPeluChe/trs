@@ -51,8 +51,7 @@ pub(crate) fn parse_version(s: &str) -> Option<(u32, u32, u32)> {
 /// out to `codex --version`. Returns `None` when codex isn't on `PATH` or
 /// the output can't be parsed.
 pub(crate) fn detect_version() -> Option<(u32, u32, u32)> {
-    let out = std::process::Command::new("codex")
-        .arg("--version")
+    let out = crate::classifier::build_command("codex", &["--version"])
         .output()
         .ok()?;
     if !out.status.success() {

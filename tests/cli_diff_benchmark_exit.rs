@@ -18,6 +18,8 @@ fn the_report_prints_and_the_exit_status_is_the_commands() {
     }
 }
 
+// Windows starts programs through `cmd`, so a missing one is an ordinary run.
+#[cfg(unix)]
 #[test]
 fn a_command_that_never_started_is_127() {
     for tool in ["diff", "benchmark"] {

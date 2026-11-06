@@ -11,6 +11,7 @@
 //! so the running binary's parent directory uniquely identifies the
 //! channel that put it there.
 
+use crate::classifier::build_command;
 use std::path::Path;
 use std::process::Command;
 
@@ -259,7 +260,7 @@ fn refresh_configs() {
     println!("Running post-install checks...");
 
     // 1. Spawn sanity — new binary must execute.
-    let new_version = match Command::new("trs").arg("--version").output() {
+    let new_version = match build_command("trs", &["--version"]).output() {
         Ok(out) if out.status.success() => {
             let stdout = String::from_utf8_lossy(&out.stdout);
             stdout
@@ -313,8 +314,7 @@ fn refresh_configs() {
     println!("  trs output-saver --refresh");
     println!();
 
-    let init_ok = Command::new("trs")
-        .args(["init", "--all", "--global", "--force"])
+    let init_ok = build_command("trs", &["init", "--all", "--global", "--force"])
         .env(CHILD_ENV, "1")
         .status()
         .map(|s| s.success())
@@ -324,8 +324,7 @@ fn refresh_configs() {
     }
 
     println!();
-    let refresh_ok = Command::new("trs")
-        .args(["output-saver", "--refresh"])
+    let refresh_ok = build_command("trs", &["output-saver", "--refresh"])
         .status()
         .map(|s| s.success())
         .unwrap_or(false);
