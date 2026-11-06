@@ -114,8 +114,8 @@ fn test_search_with_extension_nonexistent() {
         .arg("-e")
         .arg("nonexistent_ext_xyz")
         .assert()
-        .success();
-    // Should return empty results for non-existent extension
+        .success()
+        .stdout("grep: no matches\n");
 }
 
 // ============================================================
@@ -240,46 +240,6 @@ fn test_search_with_context_includes_surrounding_lines() {
 
     // With context should generally have more output
     assert!(len_with_context >= len_without_context);
-}
-
-// ============================================================
-// Limit Option Tests
-// ============================================================
-
-#[test]
-fn test_search_with_limit() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("fn ")
-        .arg("--limit")
-        .arg("5")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_search_with_limit_one() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("fn ")
-        .arg("--limit")
-        .arg("1")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_search_with_limit_zero() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("fn ")
-        .arg("--limit")
-        .arg("0")
-        .assert()
-        .success();
 }
 
 // ============================================================

@@ -1,21 +1,30 @@
 use assert_cmd::Command;
-use predicates::prelude::*;
+use std::process::Output;
+
+fn doctor(args: &[&str]) -> Output {
+    let home = tempfile::tempdir().unwrap();
+    Command::cargo_bin("trs")
+        .unwrap()
+        .args(args)
+        .env("HOME", home.path())
+        .env("USERPROFILE", home.path())
+        .env("TRS_HOME", home.path())
+        .output()
+        .unwrap()
+}
 
 #[test]
 fn test_doctor_runs_successfully() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("doctor");
-    cmd.assert()
-        .stdout(predicate::str::contains("TRS Doctor"))
-        .stdout(predicate::str::contains("trs binary"))
-        .stdout(predicate::str::contains("passed"));
+    let output = doctor(&["doctor"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for text in ["TRS Doctor", "trs binary", "passed"] {
+        assert!(stdout.contains(text), "lost {text:?}: {stdout}");
+    }
 }
 
 #[test]
 fn test_doctor_json_output() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.args(["doctor", "--json"]);
-    let output = cmd.output().unwrap();
+    let output = doctor(&["doctor", "--json"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
     let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
     assert!(parsed["checks"].is_array());
@@ -25,23 +34,18 @@ fn test_doctor_json_output() {
 
 #[test]
 fn test_doctor_shows_check_markers() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("doctor");
-    let output = cmd.output().unwrap();
+    let output = doctor(&["doctor"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    // Should contain pass markers (✓)
     assert!(stdout.contains('\u{2713}'), "expected ✓ markers in output");
 }
 
 #[test]
 fn test_doctor_shows_sub_details() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("doctor");
-    let output = cmd.output().unwrap();
+    let output = doctor(&["doctor"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    // Should show version and path as sub-details
-    assert!(stdout.contains("version:"), "expected version sub-detail");
+    let version = format!("version: {}", env!("CARGO_PKG_VERSION"));
+    assert!(stdout.contains(&version), "expected {version}: {stdout}");
     assert!(stdout.contains("path:"), "expected path sub-detail");
 }

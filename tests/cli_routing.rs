@@ -4,13 +4,6 @@ use predicates::prelude::*;
 // Command Routing Tests
 // ============================================================
 
-#[test]
-fn test_router_search_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search").arg(".").arg("pattern").assert().success();
-    // Search is now fully implemented
-}
-
 // ============================================================
 // Tail -N Shorthand Tests
 // ============================================================

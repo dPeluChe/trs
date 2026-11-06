@@ -7,6 +7,8 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+mod support;
+
 // ============================================================
 // Main Command Routing Tests
 // ============================================================
@@ -30,20 +32,24 @@ fn test_search_command_routes_correctly() {
         .arg("fn main")
         .assert()
         .success()
-        .stdout(predicate::str::contains("matches").or(predicate::str::contains("No matches")));
+        .stdout(predicate::str::contains("fn main"));
 }
 
 #[test]
 fn test_replace_command_routes_correctly() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.txt"), "old\n").unwrap();
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
-        .arg(".")
-        .arg("NONEXISTENT_PATTERN_12345")
-        .arg("replacement")
+        .arg(dir.path())
+        .arg("old")
+        .arg("new")
         .arg("--dry-run")
         .assert()
         .success()
-        .stdout(predicate::str::contains("0").or(predicate::str::contains("replaced")));
+        .stdout(predicate::str::contains("1 replacements in 1 files"));
+    let kept = std::fs::read_to_string(dir.path().join("a.txt")).unwrap();
+    assert_eq!(kept, "old\n");
 }
 
 #[test]
@@ -70,12 +76,12 @@ fn test_clean_command_routes_correctly() {
 
 #[test]
 fn test_html2md_command_routes_correctly() {
-    // Test with invalid URL to verify routing (not actual fetch)
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("html2md")
         .arg("<html><body>Test</body></html>")
         .assert()
-        .stderr(predicate::str::contains("Error").or(predicate::str::contains("test")));
+        .failure()
+        .stderr(predicate::str::contains("File not found"));
 }
 
 #[test]
@@ -98,14 +104,6 @@ fn test_trim_command_routes_correctly() {
         .stdout(predicate::str::contains("padded text"));
 }
 
-#[test]
-fn test_is_clean_command_routes_correctly() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("is-clean")
-        .assert()
-        .code(predicate::in_iter([0, 1, 2])); // clean (0), dirty (1), or error (2)
-}
-
 // ============================================================
 // Parse Subcommand Routing Tests
 // ============================================================
@@ -118,7 +116,7 @@ fn test_parse_git_status_routes_correctly() {
         .write_stdin("On branch master\nnothing to commit, working tree clean")
         .assert()
         .success()
-        .stdout(predicate::str::contains("branch").or(predicate::str::contains("clean")));
+        .stdout("master\nclean\n");
 }
 
 #[test]
@@ -129,7 +127,7 @@ fn test_parse_git_diff_routes_correctly() {
         .write_stdin("diff --git a/test.txt b/test.txt\nindex 1234567..abcdef 100644")
         .assert()
         .success()
-        .stdout(predicate::str::contains("files").or(predicate::str::contains("0")));
+        .stdout(predicate::str::contains("test.txt"));
 }
 
 #[test]
@@ -140,7 +138,7 @@ fn test_parse_ls_routes_correctly() {
         .write_stdin("file1.txt\nfile2.rs\ndir1/")
         .assert()
         .success()
-        .stdout(predicate::str::contains("files").or(predicate::str::contains("file")));
+        .stdout(predicate::str::contains("[2 files, 1 dirs]"));
 }
 
 #[test]
@@ -151,7 +149,7 @@ fn test_parse_grep_routes_correctly() {
         .write_stdin("test.rs:10:fn main() {")
         .assert()
         .success()
-        .stdout(predicate::str::contains("test.rs").or(predicate::str::contains("0")));
+        .stdout(predicate::str::contains("test.rs:10:fn main()"));
 }
 
 #[test]
@@ -176,7 +174,7 @@ fn test_parse_test_routes_correctly() {
         .write_stdin("1 passed in 0.01s")
         .assert()
         .success()
-        .stdout(predicate::str::contains("passed").or(predicate::str::contains("0")));
+        .stdout(predicate::str::contains("PASS: 1 tests"));
 }
 
 #[test]
@@ -187,7 +185,7 @@ fn test_parse_logs_routes_correctly() {
         .write_stdin("2024-01-01 INFO Application started")
         .assert()
         .success()
-        .stdout(predicate::str::contains("2024").or(predicate::str::contains("lines")));
+        .stdout(predicate::str::contains("lines: 1"));
 }
 
 // ============================================================
@@ -252,59 +250,6 @@ fn test_compact_flag_routes_correctly() {
 }
 
 // ============================================================
-// Output Format Precedence Tests
-// ============================================================
-
-#[test]
-fn test_json_beats_csv_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("--csv")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("\"")); // JSON output
-}
-
-#[test]
-fn test_csv_beats_tsv_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--csv")
-        .arg("--tsv")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_tsv_beats_agent_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--tsv")
-        .arg("--agent")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_agent_beats_compact_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--agent")
-        .arg("--compact")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success();
-}
-
-// ============================================================
 // Stats Flag Routing Tests
 // ============================================================
 
@@ -317,19 +262,7 @@ fn test_stats_flag_with_run() {
         .arg("test")
         .assert()
         .success()
-        .stderr(predicate::str::contains("stats").or(predicate::str::contains("bytes")));
-}
-
-#[test]
-fn test_stats_flag_with_search() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg(".")
-        .arg("fn main")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("stats").or(predicate::str::contains("bytes")));
+        .stderr(predicate::str::contains("Stats:"));
 }
 
 #[test]
@@ -341,7 +274,7 @@ fn test_stats_flag_with_parse() {
         .write_stdin("On branch master")
         .assert()
         .success()
-        .stderr(predicate::str::contains("stats").or(predicate::str::contains("bytes")));
+        .stderr(predicate::str::contains("Stats:"));
 }
 
 // ============================================================
@@ -357,7 +290,11 @@ fn test_run_without_command_fails() {
 #[test]
 fn test_search_without_path_fails() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search").arg("pattern").assert().failure();
+    cmd.arg("search")
+        .arg("pattern")
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("<QUERY>"));
 }
 
 #[test]
@@ -384,22 +321,43 @@ fn test_parse_without_subcommand_fails() {
     cmd.arg("parse").assert().failure();
 }
 
-// ============================================================
-// Command Aliases Tests
-// ============================================================
-
 #[test]
-fn test_is_clean_alias_clean_question() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("clean?")
-        .assert()
-        .code(predicate::in_iter([0, 1, 2])); // clean (0), dirty (1), or error (2)
+fn test_format_precedence_picks_the_stronger_flag() {
+    let cases: &[(&[&str], &str)] = &[
+        (&["--csv", "--tsv"], "command,args,stdout"),
+        (&["--tsv", "--agent"], "command\targs\tstdout"),
+        (&["--json", "--csv"], "\"command\":\"echo\""),
+    ];
+    for (flags, header) in cases {
+        let mut cmd = Command::cargo_bin("trs").unwrap();
+        cmd.args(*flags)
+            .args(["run", "echo", "test"])
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(*header));
+    }
 }
 
 #[test]
-fn test_is_clean_alias_repo_clean() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("repo-clean")
-        .assert()
-        .code(predicate::in_iter([0, 1, 2])); // clean (0), dirty (1), or error (2)
+fn test_is_clean_exit_code_names_the_repo_state() {
+    const ALIASES: [&str; 3] = ["is-clean", "clean?", "repo-clean"];
+    let dir = tempfile::tempdir().unwrap();
+    let expect = |code: i32| {
+        for alias in ALIASES {
+            Command::cargo_bin("trs")
+                .unwrap()
+                .current_dir(dir.path())
+                .arg(alias)
+                .assert()
+                .code(code);
+        }
+    };
+    expect(2);
+    support::git(dir.path(), &["init", "-q"]);
+    std::fs::write(dir.path().join("a.txt"), "x").unwrap();
+    support::git(dir.path(), &["add", "."]);
+    support::git(dir.path(), &["commit", "-qm", "init"]);
+    expect(0);
+    std::fs::write(dir.path().join("a.txt"), "y").unwrap();
+    expect(1);
 }

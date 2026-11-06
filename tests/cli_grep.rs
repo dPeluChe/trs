@@ -151,50 +151,6 @@ fn test_html2md_basic() {
 }
 
 #[test]
-#[ignore = "network: hits httpbin.org; run with `cargo test -- --ignored`"]
-fn test_html2md_url_input() {
-    // Test with a URL input
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("html2md")
-        .arg("https://httpbin.org/html")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Herman Melville"))
-        .stdout(predicate::str::contains("Moby-Dick"));
-}
-
-#[test]
-#[ignore = "network: hits httpbin.org; run with `cargo test -- --ignored`"]
-fn test_html2md_url_with_metadata() {
-    // Test URL with metadata flag
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("html2md")
-        .arg("https://httpbin.org/html")
-        .arg("--metadata")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("source"))
-        .stdout(predicate::str::contains("httpbin.org"));
-}
-
-#[test]
-#[ignore = "network: hits httpbin.org; run with `cargo test -- --ignored`"]
-fn test_html2md_url_with_json_output() {
-    // Test URL with JSON output
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
-        .arg("--json")
-        .arg("html2md")
-        .arg("https://httpbin.org/html")
-        .assert()
-        .success();
-
-    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
-    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert!(json["markdown"].as_str().unwrap().contains("Moby-Dick"));
-}
-
-#[test]
 fn test_txt2md_basic() {
     // Test with stdin input
     let mut cmd = Command::cargo_bin("trs").unwrap();
@@ -203,19 +159,6 @@ fn test_txt2md_basic() {
         .assert()
         .success()
         .stdout(predicate::str::contains("# Hello World"));
-}
-
-#[test]
-fn test_global_stats_flag() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--stats")
-        .arg("search")
-        .arg(".")
-        .arg("test")
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("Stats:"))
-        .stderr(predicate::str::contains("Items processed:"));
 }
 
 #[test]

@@ -147,30 +147,28 @@ fn test_run_capture_stdout_default() {
 
 #[test]
 fn test_run_no_capture_stdout() {
-    // When --capture-stdout=false, output is not in the processed output
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Capture flag must come before the command name
     cmd.arg("run")
         .arg("--capture-stdout=false")
         .arg("echo")
         .arg("hello")
         .assert()
-        .success();
-    // stdout goes directly to terminal when not captured
+        .success()
+        .stdout("hello\n");
 }
 
 #[test]
 fn test_run_no_capture_stderr() {
-    // When --capture-stderr=false, stderr goes directly to terminal
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Capture flag must come before the command name
     cmd.arg("run")
         .arg("--capture-stderr=false")
         .arg("sh")
         .arg("-c")
         .arg("echo stderr_test >&2")
         .assert()
-        .success();
+        .success()
+        .stdout("")
+        .stderr("stderr_test\n");
 }
 
 #[test]

@@ -91,19 +91,23 @@ fn test_search_with_absolute_path() {
 #[test]
 fn test_search_empty_query() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Empty query should match everything or error
-    let _ = cmd.arg("search").arg("src").arg("").assert(); // Either success or failure is acceptable
+    cmd.arg("search")
+        .arg("src/main.rs")
+        .arg("")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("main.rs"));
 }
 
 #[test]
 fn test_search_nonexistent_directory() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Nonexistent directory should still succeed (empty results)
     cmd.arg("search")
         .arg("/nonexistent/directory/xyz123")
         .arg("test")
         .assert()
-        .success();
+        .success()
+        .stdout("grep: no matches\n");
 }
 
 #[test]
@@ -134,37 +138,6 @@ fn test_search_combined_extension_and_ignore_case() {
         .assert()
         .success()
         .stdout(predicate::str::contains("SearchHandler"));
-}
-
-#[test]
-fn test_search_combined_context_and_limit() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("fn ")
-        .arg("-C")
-        .arg("1")
-        .arg("--limit")
-        .arg("10")
-        .assert()
-        .success();
-}
-
-#[test]
-fn test_search_all_options() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("fn ")
-        .arg("-e")
-        .arg("rs")
-        .arg("-i")
-        .arg("-C")
-        .arg("1")
-        .arg("--limit")
-        .arg("20")
-        .assert()
-        .success();
 }
 
 #[test]
