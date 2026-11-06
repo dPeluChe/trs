@@ -72,6 +72,7 @@ fn is_error_not_warning(line: &str) -> bool {
 pub(crate) fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -> CommandResult {
     use std::process::{Command, Stdio};
 
+    let start = std::time::Instant::now();
     let output = match Command::new(command)
         .args(args)
         .stdout(Stdio::piped())
@@ -143,25 +144,23 @@ pub(crate) fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -
 
     if ctx.format == OutputFormat::Json {
         let report = serde_json::json!({
-            "success": true,
+            "success": !failed,
             "errors": error_count,
             "warnings": warning_count,
             "total_lines": total_lines,
             "lines": shown,
         })
         .to_string();
-        let raw = || {
-            let fcmd = crate::classifier::full_cmd(command, args);
-            failed
-                .then(|| crate::classifier_exec::save_tee_output(&fcmd, &stdout, &stderr))
-                .flatten()
-        };
-        println!("{}", crate::exec_verdict::json_document(&report, code, raw));
-        return if failed {
-            Err(CommandError::Reported { exit_code: code })
-        } else {
-            Ok(())
-        };
+        crate::exec_verdict::JsonRun {
+            fcmd: crate::classifier::full_cmd(command, args),
+            stdout: &stdout,
+            stderr: &stderr,
+            code,
+            in_bytes: output.stdout.len() + output.stderr.len(),
+            start,
+            status: &output.status,
+        }
+        .finish(&report, false);
     }
 
     if shown.is_empty() && !failed {
