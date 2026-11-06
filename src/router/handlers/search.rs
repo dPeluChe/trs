@@ -259,9 +259,6 @@ impl SearchHandler {
             .sum();
 
         // Apply truncation
-        let total_files = files.len();
-        let total_matches = match_count;
-
         match input.limit {
             Some(limit) => Self::keep_first_results(&mut files, limit),
             None => files.truncate(Self::DEFAULT_MAX_FILES),
@@ -269,7 +266,7 @@ impl SearchHandler {
 
         let files_shown = files.len();
         let matches_shown: usize = files.iter().map(GrepFile::match_count).sum();
-        let is_truncated = files_shown < total_files || matches_shown < total_matches;
+        let is_truncated = files_shown < file_count || matches_shown < match_count;
         if is_truncated {
             crate::parse_out::mark_dropped();
         }
@@ -281,8 +278,8 @@ impl SearchHandler {
             is_empty: file_count == 0,
             has_unread: false,
             is_truncated,
-            total_files,
-            total_matches,
+            total_files: file_count,
+            total_matches: match_count,
             files_shown,
             matches_shown,
             input_bytes,
@@ -295,16 +292,7 @@ impl SearchHandler {
             if left == 0 {
                 return false;
             }
-            let cut = file
-                .matches
-                .iter()
-                .enumerate()
-                .filter(|(_, m)| !m.is_context)
-                .nth(left)
-                .map(|(i, _)| i);
-            if let Some(i) = cut {
-                file.matches.truncate(i);
-            }
+            file.keep_matches(left);
             left -= file.match_count();
             true
         });

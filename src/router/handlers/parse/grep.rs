@@ -132,19 +132,8 @@ impl ParseHandler {
         max_matches_per_file: usize,
     ) {
         // First, truncate matches per file
-        // The cap counts matches, not the -A/-B/-C lines around them: with
-        // -C2 each match brings four, so 25 lines meant five matches.
         for file in &mut grep_output.files {
-            let cut = file
-                .matches
-                .iter()
-                .enumerate()
-                .filter(|(_, m)| !m.is_context)
-                .nth(max_matches_per_file)
-                .map(|(i, _)| i);
-            if let Some(i) = cut {
-                file.matches.truncate(i);
-            }
+            file.keep_matches(max_matches_per_file);
         }
 
         // Then, truncate files if needed
