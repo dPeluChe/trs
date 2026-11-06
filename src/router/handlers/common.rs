@@ -58,6 +58,8 @@ pub enum CommandError {
     InvalidArguments(String),
     /// I/O error occurred.
     IoError(String),
+    /// A failure the output already reported: exit with the code, print nothing.
+    Reported { exit_code: i32 },
 }
 
 impl CommandError {
@@ -65,6 +67,7 @@ impl CommandError {
     pub fn exit_code(&self) -> Option<i32> {
         match self {
             CommandError::ExecutionError { exit_code, .. } => *exit_code,
+            CommandError::Reported { exit_code } => Some(*exit_code),
             _ => None,
         }
     }
@@ -79,6 +82,7 @@ impl std::fmt::Display for CommandError {
             }
             CommandError::InvalidArguments(msg) => write!(f, "Invalid arguments: {}", msg),
             CommandError::IoError(msg) => write!(f, "I/O error: {}", msg),
+            CommandError::Reported { exit_code } => write!(f, "exited with code {}", exit_code),
         }
     }
 }
