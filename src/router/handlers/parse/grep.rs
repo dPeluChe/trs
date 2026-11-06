@@ -107,7 +107,7 @@ impl ParseHandler {
         // Calculate totals
         grep_output.file_count = grep_output.files.len();
         for file in &grep_output.files {
-            grep_output.match_count += file.matches.len();
+            grep_output.match_count += file.match_count();
         }
 
         // Set total counts before any truncation
@@ -156,7 +156,7 @@ impl ParseHandler {
             > grep_output
                 .files
                 .iter()
-                .map(|f| f.matches.len())
+                .map(GrepFile::match_count)
                 .sum::<usize>()
         {
             // Some matches were truncated per-file but not files
@@ -165,7 +165,7 @@ impl ParseHandler {
         }
 
         // Calculate final matches shown
-        grep_output.matches_shown = grep_output.files.iter().map(|f| f.matches.len()).sum();
+        grep_output.matches_shown = grep_output.files.iter().map(GrepFile::match_count).sum();
         if grep_output.is_truncated {
             crate::parse_out::mark_dropped();
         }

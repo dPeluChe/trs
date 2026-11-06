@@ -27,11 +27,7 @@ impl ParseHandler {
         };
 
         // Count only non-context matches
-        let match_count: usize = grep_output
-            .files
-            .iter()
-            .map(|f| f.matches.iter().filter(|m| !m.is_context).count())
-            .sum();
+        let match_count: usize = grep_output.files.iter().map(GrepFile::match_count).sum();
 
         let mut schema = GrepOutputSchema::new();
         schema.is_empty = grep_output.is_empty;
@@ -127,11 +123,7 @@ impl ParseHandler {
         }
 
         // Count only non-context matches for the summary
-        let match_count: usize = grep_output
-            .files
-            .iter()
-            .map(|f| f.matches.iter().filter(|m| !m.is_context).count())
-            .sum();
+        let match_count: usize = grep_output.files.iter().map(GrepFile::match_count).sum();
 
         // Show summary header only for multi-file results or truncated output
         if grep_output.is_truncated {
@@ -154,7 +146,7 @@ impl ParseHandler {
         }
 
         for file in &grep_output.files {
-            let non_context_count = file.matches.iter().filter(|m| !m.is_context).count();
+            let non_context_count = file.match_count();
             // Context lines were asked for with -A/-B/-C, so they print; `-`
             // marks them as grep does. Collapsing them to "... (N context
             // lines)" dropped exactly what the caller requested.

@@ -249,7 +249,7 @@ impl SearchHandler {
 
         // Calculate counts
         let file_count = files.len();
-        let match_count: usize = files.iter().map(|f| f.matches.len()).sum();
+        let match_count: usize = files.iter().map(GrepFile::match_count).sum();
 
         // Calculate input_bytes (total bytes of all matched lines)
         let input_bytes: usize = files
@@ -271,7 +271,7 @@ impl SearchHandler {
         }
 
         let files_shown = files.len();
-        let matches_shown: usize = files.iter().map(|f| f.matches.len()).sum();
+        let matches_shown: usize = files.iter().map(GrepFile::match_count).sum();
 
         Ok(GrepOutput {
             files,

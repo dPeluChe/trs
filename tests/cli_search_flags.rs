@@ -81,3 +81,29 @@ fn stats_report_what_was_searched() {
     }
     assert!(stats(&["--json"]).contains("Output mode: json"));
 }
+
+#[test]
+fn context_lines_are_not_counted_as_matches() {
+    let dir = tree();
+    let out = trs(dir.path(), &["--json", "search", ".", "Helper", "-C", "1"]);
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let lines = json["files"][0]["matches"].as_array().unwrap().len();
+    assert_eq!(lines, 3);
+    for field in ["matches", "total_matches", "matches_shown"] {
+        assert_eq!(json["counts"][field], 1, "{field}");
+    }
+}
+
+#[test]
+fn parsed_grep_context_is_not_counted_either() {
+    let input = "a.rs-1-before\na.rs:2:hit\na.rs-3-after\n";
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args(["--json", "parse", "grep"])
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(json["counts"]["total_matches"], 1);
+    assert_eq!(json["counts"]["matches_shown"], 1);
+}
