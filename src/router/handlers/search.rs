@@ -259,19 +259,20 @@ impl SearchHandler {
             .sum();
 
         // Apply truncation
-        let max_files = input.limit.unwrap_or(Self::DEFAULT_MAX_FILES);
-        let is_truncated = files.len() > max_files;
-
         let total_files = files.len();
         let total_matches = match_count;
 
-        // Truncate files if needed
-        if files.len() > max_files {
-            files.truncate(max_files);
+        match input.limit {
+            Some(limit) => Self::keep_first_results(&mut files, limit),
+            None => files.truncate(Self::DEFAULT_MAX_FILES),
         }
 
         let files_shown = files.len();
         let matches_shown: usize = files.iter().map(GrepFile::match_count).sum();
+        let is_truncated = files_shown < total_files || matches_shown < total_matches;
+        if is_truncated {
+            crate::parse_out::mark_dropped();
+        }
 
         Ok(GrepOutput {
             files,
@@ -286,6 +287,27 @@ impl SearchHandler {
             matches_shown,
             input_bytes,
         })
+    }
+
+    fn keep_first_results(files: &mut Vec<GrepFile>, limit: usize) {
+        let mut left = limit;
+        files.retain_mut(|file| {
+            if left == 0 {
+                return false;
+            }
+            let cut = file
+                .matches
+                .iter()
+                .enumerate()
+                .filter(|(_, m)| !m.is_context)
+                .nth(left)
+                .map(|(i, _)| i);
+            if let Some(i) = cut {
+                file.matches.truncate(i);
+            }
+            left -= file.match_count();
+            true
+        });
     }
 
     /// Format search output for display.
