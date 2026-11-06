@@ -53,6 +53,8 @@ on stderr.
 `trs run`, `trs is-clean` and `trs err` report a failure in that document alone,
 with nothing on stderr, so `2>&1` still parses. `trs err` prints
 `{"lines": [...], "errors": 1, "warnings": 0, "total_lines": 2, "success": false}`.
+With `--csv` or `--tsv` it prints a `kind,line` table, where `kind` is `error`,
+`warning`, `context` or `output`, and the header alone when nothing matched.
 
 ## Examples
 

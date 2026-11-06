@@ -200,3 +200,35 @@ fn a_long_stderr_is_cut_and_points_to_the_rest() {
         .unwrap()
         .contains("noise line 1500"));
 }
+
+fn err_table(flag: &str, script: &str) -> (String, Option<i32>) {
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args([flag, "err", "sh", "-c", script])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    (stdout, out.status.code())
+}
+
+#[test]
+fn err_prints_a_table_with_the_tabular_flags() {
+    let script = "echo 'error: a, b'; echo detail; echo 'warning: y'; exit 3";
+    let (csv, code) = err_table("--csv", script);
+    assert_eq!(code, Some(3));
+    assert_eq!(
+        csv,
+        "kind,line\nerror,\"error: a, b\"\ncontext,detail\nwarning,warning: y\n"
+    );
+    let (tsv, _) = err_table("--tsv", script);
+    assert_eq!(
+        tsv,
+        "kind\tline\nerror\terror: a, b\ncontext\tdetail\nwarning\twarning: y\n"
+    );
+    let (clean, code) = err_table("--csv", "echo fine");
+    assert_eq!(code, Some(0));
+    assert_eq!(clean, "kind,line\n");
+    let (unmatched, code) = err_table("--csv", "echo '  no keywords'; exit 2");
+    assert_eq!(code, Some(2));
+    assert_eq!(unmatched, "kind,line\noutput,  no keywords\n");
+}
