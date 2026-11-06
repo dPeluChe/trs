@@ -4,6 +4,7 @@
 //! and saves full output on failure for recovery.
 
 use crate::classifier::{build_command, classify_command, full_cmd, keep_ratio};
+use crate::exec_verdict::{failure_is_visible, reconcile_json};
 use crate::router::{CommandContext, Router};
 use crate::Commands;
 
@@ -161,6 +162,28 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         };
 
         if parse_ok {
+            // A summary that dropped most of a large output must say where the
+            // rest is, or the only way back is re-running the command.
+            let dropped = crate::parse_out::take_dropped();
+            let mostly_cut =
+                stdout_ref.len() >= RECOVERABLE_MIN_BYTES && parsed.len() * 10 <= stdout_ref.len();
+            let cut =
+                dropped || mostly_cut || crate::anchor_guard::anchors_lost(stdout_ref, &parsed);
+            if matches!(ctx.format, crate::OutputFormat::Json) {
+                let code = output.status.code().unwrap_or(1);
+                let fcmd = full_cmd(cmd, args);
+                let wants_raw = code != 0 || cut;
+                let raw = || {
+                    wants_raw
+                        .then(|| save_tee_output(&fcmd, &stdout, &stderr))
+                        .flatten()
+                };
+                if let Some(json) = reconcile_json(&parsed, code, raw) {
+                    println!("{json}");
+                    track(&fcmd, in_bytes, json.len(), start, &output.status);
+                    std::process::exit(code);
+                }
+            }
             // Truth guard: a summary must never stand in for a failed command
             // unless it actually shows the failure. Parsers infer success from
             // text patterns, so an unrecognized error format (e.g. tsc's
@@ -179,17 +202,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             if smaller && !summary_hides_failure && !parsed_nothing {
                 print!("{}", parsed);
                 out_bytes = parsed.len();
-                // A summary that dropped most of a large output must say where
-                // the rest is, or the only way back is re-running the command.
                 // Failures already get this from the footer below.
-                let dropped = crate::parse_out::take_dropped();
-                let mostly_cut = stdout_ref.len() >= RECOVERABLE_MIN_BYTES
-                    && parsed.len() * 10 <= stdout_ref.len();
-                if output.status.success()
-                    && (dropped
-                        || mostly_cut
-                        || crate::anchor_guard::anchors_lost(stdout_ref, &parsed))
-                {
+                if output.status.success() && cut {
                     if let Some(path) = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr) {
                         let line = format!("[trs] full output: {}\n", path);
                         print!("{}", line);
@@ -275,35 +289,6 @@ fn point_to_raw(
 /// path, for parsers that summarize without saying so. Ones that drop content
 /// on purpose call `parse_out::mark_dropped` and get the pointer at any size.
 const RECOVERABLE_MIN_BYTES: usize = 16 * 1024;
-
-/// Does this compressed output actually show that something went wrong?
-/// Backstop for parsers that summarize without consulting the exit status —
-/// when the answer is "no" we fall back to raw, so a miss costs tokens, never
-/// truth.
-///
-/// Counts of zero don't count: "0 errors" contains "error" while asserting the
-/// opposite, and reading it as failure evidence is what lets a clean summary
-/// stand in for a failed command.
-fn failure_is_visible(parsed: &str) -> bool {
-    if parsed.contains('✗') {
-        return true;
-    }
-    let lower = parsed.to_ascii_lowercase();
-    let words: Vec<&str> = lower
-        .split(|c: char| !c.is_ascii_alphanumeric())
-        .filter(|w| !w.is_empty())
-        .collect();
-    const MARKERS: &[&str] = &["fail", "error", "panic", "fatal", "abort", "refus"];
-    words.iter().enumerate().any(|(i, w)| {
-        if !MARKERS.iter().any(|m| w.starts_with(m)) {
-            return false;
-        }
-        !matches!(
-            i.checked_sub(1).and_then(|p| words.get(p)),
-            Some(&"0") | Some(&"no")
-        )
-    })
-}
 
 /// Terminal failure footer, printed on STDOUT and never returning.
 ///

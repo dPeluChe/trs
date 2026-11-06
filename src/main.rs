@@ -45,6 +45,7 @@ mod doctor;
 mod doctor_checks;
 mod doctor_hooks;
 mod exec;
+mod exec_verdict;
 mod formatter;
 mod help;
 mod help_text;
