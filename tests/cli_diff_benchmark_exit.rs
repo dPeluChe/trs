@@ -30,3 +30,19 @@ fn a_command_that_never_started_is_127() {
             .stderr(predicate::str::contains("Command not found"));
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn a_file_that_cannot_run_is_126() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("not-executable");
+    std::fs::write(&file, "text").unwrap();
+    for tool in [&["diff"][..], &["benchmark"], &[]] {
+        Command::cargo_bin("trs")
+            .unwrap()
+            .args(tool)
+            .arg(&file)
+            .assert()
+            .code(126);
+    }
+}
