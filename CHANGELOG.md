@@ -5,6 +5,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.10.0] - 2026-11-06
+
+### Bug Fixes
+
+- **init:** Count what each agent's row reports (#233)
+- **run:** Always propagate the exit code (#235)
+- **run:** Read child output while it runs (#236)
+- **bun:** Count suites from what bun prints (#238)
+- **npm:** Stop reporting success when node --test failed (#239)
+- **json:** Let the exit status decide the verdict (#240)
+- **search:** Fail on a path that does not exist (#242)
+- **grep:** Stop counting context lines as matches (#243)
+- **search:** Make --limit cap results, not files (#244)
+- **exit:** Report a killed child as 128+N (#245)
+- **diff,benchmark:** Exit as the measured command did (#246)
+- **parse:** Do not call empty test output a pass (#247)
+- **json:** Print one document on every path (#248)
+- **exit:** Keep failure notices where they can be read (#249)
+
+### Documentation
+
+- Drop cargo install, trs is not on crates.io (#234)
+
+### Testing
+
+- Remove tests that cannot catch a regression (#237)
+- Assert what commands print instead of that they ran (#241)
+
 ## [0.9.2] - 2026-11-05
 
 ### Features

@@ -1,4 +1,4 @@
-# labs-tarscli (337 files, 51.7k tokens, rust)
+# labs-tarscli (339 files, 52.3k tokens, rust)
 
 > Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands
 
@@ -98,8 +98,8 @@ src/
   command_registry.rs  command_registry_tests.rs  commands.rs  
   commands_parse.rs  commands_parse_with_file.rs  config.rs  
   debug_info.rs  diff.rs  discover.rs  doctor.rs  doctor_checks.rs  
-  doctor_hooks.rs  doctor_tests.rs  exec.rs  fast_find.rs  
-  fs_atomic.rs  help.rs  help_tests.rs  help_text.rs  
+  doctor_hooks.rs  doctor_tests.rs  exec.rs  exec_verdict.rs  
+  fast_find.rs  fs_atomic.rs  help.rs  help_tests.rs  help_text.rs  
   help_text_more.rs  init.rs  init_collision.rs  
   init_collision_tests.rs  init_install.rs  init_install_plugins.rs  
   init_install_rules.rs  init_install_rules_tests.rs  
@@ -155,11 +155,11 @@ src/router/handlers/parse/
   go_test.rs  gradle.rs  gradle_tests.rs  grep.rs  grep_format.rs  
   jest_format.rs  jest_parse.rs  lint.rs  lint_tests.rs  logs.rs  
   logs_format.rs  logs_helpers.rs  logs_json.rs  logs_json_tests.rs  
-  ls.rs  ls_format.rs  maven.rs  maven_tests.rs  mod.rs  npm_format.rs  
-  npm_parse.rs  ollama.rs  ollama_tests.rs  pnpm_format.rs  
-  pnpm_parse.rs  pnpm_summary.rs  ps.rs  pytest_format.rs  
-  pytest_parse.rs  python_traceback.rs  sysinfo.rs  sysinfo_tests.rs  
-  test.rs  vitest_format.rs  vitest_parse.rs
+  ls.rs  ls_format.rs  maven.rs  maven_tests.rs  mod.rs  node_test.rs  
+  npm_format.rs  npm_parse.rs  ollama.rs  ollama_tests.rs  
+  pnpm_format.rs  pnpm_parse.rs  pnpm_summary.rs  ps.rs  
+  pytest_format.rs  pytest_parse.rs  python_traceback.rs  sysinfo.rs  
+  sysinfo_tests.rs  test.rs  vitest_format.rs  vitest_parse.rs
 
 src/router/handlers/txt2md/: Handler for the `txt2md` command - converts plain text to Markdown
   detect_headings.rs  detect_lists.rs  format.rs  mod.rs  parser.rs
@@ -175,20 +175,20 @@ src/schema/: Stable JSON schemas for trs (Token-Reducing Shell) reducers
 
 ## Key Dependencies
 
-  parse_out.rs ← src/classifier_exec.rs, src/main.rs, parse/aws.rs, brew.rs (+32)
+  parse_out.rs ← src/classifier_exec.rs, src/main.rs, parse/aws.rs, brew.rs (+33)
   tests.rs ← ai_tool.rs, classifier.rs, classifier_args.rs, command_registry.rs (+29)
   init.rs ← src/doctor_checks.rs, src/doctor_hooks.rs, doctor_tests.rs, src/init_collision.rs (+15)
   src/tracker.rs ← src/classifier_exec.rs, config.rs, debug_info.rs, src/doctor_checks.rs (+13)
-  formatter/mod.rs ← agent.rs, compact.rs, csv.rs, formatter/json.rs (+11)
+  formatter/mod.rs ← exec_verdict.rs, agent.rs, compact.rs, csv.rs (+12)
 
 ## Architecture (module roles)
 
 From the import graph (fan-in↓ / fan-out↑), no AST:
 
-- **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/73↑)
+- **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/74↑)
 - **core**: high fan-in, everything routes through → `ingest` (25↓/5↑), `init` (19↓/10↑), `tracker` (13↓/2↑)
-- **leaf**: used by many, import nothing (utils, types) → `text_util` (11↓/0↑), `fs_atomic` (8↓/0↑)
-- **internal**: mid-graph plumbing → `router/handlers` (5↓/16↑), `rewrite_gate` (10↓/6↑), `classifier_exec` (1↓/14↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/12↑), `classifier` (7↓/5↑), `init_templates` (10↓/2↑), `output_saver` (10↓/2↑) +10 more
+- **leaf**: used by many, import nothing (utils, types) → `text_util` (11↓/0↑)
+- **internal**: mid-graph plumbing → `router/handlers` (5↓/18↑), `classifier_exec` (2↓/16↑), `rewrite_gate` (10↓/6↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/12↑), `classifier` (7↓/5↑), `init_templates` (10↓/2↑), `output_saver` (10↓/2↑) +11 more
 
 ## README.md
 
@@ -232,7 +232,7 @@ src/main.rs (3):
   W dead_code 112:8
 # 55 KB → 5.5 KB (90% reduction)
 
-... (243 lines, hidden sections: Install · macOS / Linux · npm (all platforms) · cargo (builds from source) · Windows (PowerShell) · Quick start · 1. Wire hooks into every detected AI agent (the main path) · 2. See your savings)
+... (240 lines, hidden sections: Install · macOS / Linux · npm (all platforms) · Windows (PowerShell) · Quick start · 1. Wire hooks into every detected AI agent (the main path) · 2. See your savings · 3. Walk back when you want: symmetric removal)
 
 **.gitignore**
 # Build artifacts
@@ -297,41 +297,41 @@ All notable changes to trs are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-11-06
+
+### Bug Fixes
+
+- init: Count what each agent's row reports (#233)
+- run: Always propagate the exit code (#235)
+- run: Read child output while it runs (#236)
+- bun: Count suites from what bun prints (#238)
+- npm: Stop reporting success when node --test failed (#239)
+- json: Let the exit status decide the verdict (#240)
+- search: Fail on a path that does not exist (#242)
+- grep: Stop counting context lines as matches (#243)
+- search: Make --limit cap results, not files (#244)
+- exit: Report a killed child as 128+N (#245)
+- diff,benchmark: Exit as the measured command did (#246)
+- parse: Do not call empty test output a pass (#247)
+- json: Print one document on every path (#248)
+- exit: Keep failure notices where they can be read (#249)
+
+### Documentation
+
+- Drop cargo install, trs is not on crates.io (#234)
+
+### Testing
+
+- Remove tests that cannot catch a regression (#237)
+- Assert what commands print instead of that they ran (#241)
+
 ## [0.9.2] - 2026-11-05
 
 ### Features
 
 - diff: Share a byte budget across a large diff (#231)
 
-### Bug Fixes
-
-- pages: Keep the codebase digest out of the site build (#228)
-
-### Other
-
-- Score facts and measure what agents go back for (#230)
-
-## [0.9.1] - 2026-11-05
-
-### Features
-
-- classify: Route runners to the parser of what they run (#226)
-
-### Bug Fixes
-
-- git: Never call a diff empty when it has output (#221)
-- parse: Never answer "clean" or "empty" for output a parser could not read (#222)
-- git: Run git in English so its parsers can read it (#223)
-- diff: Keep what a compact diff was losing (#224)
-- build: Stop reducing output to "build: ok" (#225)
-
-## [0.9.0] - 2026-11-05
-
-### Features
-
-- Rest of P2 (AgentPolicy table, legacy hook identity, one-spawn plugins, doctor plugin checks, stats recall) (#210)
-- P3 measure before claiming (block size, A/B with control, rerun rate, unique-id needles, stamps) (#211)
-... (728 lines, hidden sections: [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07 · [0.8.5] - 2026-09-26 · [0.8.4] - 2026-09-26 · [0.8.3] - 2026-09-25)
+... (756 lines, hidden sections: [0.9.1] - 2026-11-05 · [0.9.0] - 2026-11-05 · [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07 · [0.8.5] - 2026-09-26)
 
 ## CLAUDE.md
 
@@ -448,12 +448,13 @@ git config core.hooksPath .githooks
 **Cargo.toml**
 [package]
 name = "trs-cli"
-version = "0.9.2"
+version = "0.10.0"
 edition = "2021"
 description = "Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands"
 license = "MIT"
 repository = "https://github.com/dPeluChe/trs"
 homepage = "https://usetrs.dev"
+publish = false
 keywords = ["cli", "terminal", "ai", "token-reduction", "parser"]
 categories = ["command-line-utilities", "development-tools"]
 
@@ -517,7 +518,7 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 
 Prefija cualquier comando con `trs` (o deja que `trs init` lo conecte a tu herramienta de IA). El binario ejecuta tu comando, parsea la salida, y emite una versión compacta pensada para humanos y LLMs.
 
-... (245 lines, hidden sections: 1.4 KB → 336 B (76% reducción) · 164 KB → 127 B (99% reducción) · 55 KB → 5.5 KB (90% reducción) · Instalación · macOS / Linux · npm (todas las plataformas) · cargo (compila desde fuente) · Windows (PowerShell))
+... (242 lines, hidden sections: 1.4 KB → 336 B (76% reducción) · 164 KB → 127 B (99% reducción) · 55 KB → 5.5 KB (90% reducción) · Instalación · macOS / Linux · npm (todas las plataformas) · Windows (PowerShell) · Inicio rápido)
 
 ## SECURITY.md
 
@@ -1185,7 +1186,7 @@ After the command it is trs's only when trs has a formatter for that
 command and the command does not take the flag itself, so
 `trs git status --json` and `trs --json git status` are equivalent.
 Otherwise the flag belongs to the command and is passed on untouched:
-... (140 lines, hidden sections: Structured output is never rewritten · Examples · When to use what · Built-in tools vs wrapped commands · See also)
+... (153 lines, hidden sections: Structured output is never rewritten · One document under `--json` · Examples · When to use what · Built-in tools vs wrapped commands · See also)
 
 **ingest.md**
 # `trs ingest`: project digest for AI agents
@@ -1323,7 +1324,7 @@ trs upgrade --binary-only  # upgrade only the binary, skip config refresh
 By default `trs upgrade` runs three steps in order:
 
 1. Binary: the shell install command for your detected channel
-... (152 lines, hidden sections: Detection logic · Why detection is path-based · Confirmation prompt · Roadmap for unsupported channels · What happens after a successful upgrade · Interaction with hooks · See also)
+... (147 lines, hidden sections: Detection logic · Why detection is path-based · Confirmation prompt · Roadmap · What happens after a successful upgrade · Interaction with hooks · See also)
 
 ## docs/roadmap/
 
@@ -1341,7 +1342,7 @@ Binary: `trs` | Language: Rust | Status: Active development
 - [x] Rewrite hook: detect `cd X && git Y` chains, done in v0.5.5
 - [x] Pipe/redirect first-segment rewrite, shipped in v0.5.6
 - [ ] Homebrew tap (low priority, npm + curl|sh covers 99% of users)
-- [ ] Publish to crates.io (`cargo install trs-cli`, currently source-only)
+- [-] Publish to crates.io: not building it. The installer, npm and release binaries cover every platform, and another channel is more to maintain.
 - [ ] Shell completions (bash, zsh, fish)
 - [x] Copilot hook, see Phase 3 "VSCode ecosystem"
 - [ ] `trs self-update` command, re-download latest binary from GitHub Releases
@@ -1518,7 +1519,7 @@ Every command supported by trs falls into one of four levels.
 **install.md**
 # Installing trs
 
-Five install channels. All of them ship the same native binary
+Four install channels. All of them ship the same native binary
 (~7-10 MB, zero runtime deps, ~4 ms startup). Pick whichever fits your
 existing toolchain.
 
@@ -1529,14 +1530,14 @@ existing toolchain.
 | curl / sh | `curl -fsSL https://usetrs.dev/install.sh \| sh` |
 | PowerShell | `irm https://usetrs.dev/install.ps1 \| iex` |
 | npm | `npm install -g @dpeluche/trs` |
-| cargo | `cargo install trs-cli` |
 | Prebuilt binary | [GitHub Releases](https://github.com/dPeluChe/trs/releases) |
 
 The `curl|sh` and `irm|iex` scripts are the recommended default: they
 detect arch, download the right prebuilt binary, place it in
 `~/.local/bin/` (or `$USERPROFILE\.local\bin\` on Windows), and add
 that dir to PATH automatically if it isn't already.
-... (143 lines, hidden sections: Platform support · Prebuilt binaries: manual install · Pinning a specific version · Custom install directory · Upgrading · Shadowed installs (multi-channel) · Uninstall · Troubleshooting)
+
+... (138 lines, hidden sections: Platform support · Prebuilt binaries: manual install · Pinning a specific version · Custom install directory · Upgrading · Shadowed installs (multi-channel) · Uninstall · Troubleshooting)
 
 **other-token-savers.md**
 # Other token-saving tools
@@ -1582,7 +1583,7 @@ that from happening.
   trs exits 1. Scripts and CI relying on exit codes keep working.
 - Never silently change semantics. No rewrites that would change
   what the tool does, only how its output is presented.
-... (81 lines, hidden sections: Parser safety · Failure recovery · Permissions · Install-time safety · See also)
+... (82 lines, hidden sections: Parser safety · Failure recovery · Permissions · Install-time safety · See also)
 
 ## memory/
 
@@ -1654,15 +1655,15 @@ Up to 60% fewer tokens on real agent commands. What it leaves out, it says where
 
 npm install -g @dpeluche/trs
 
-Or with other package managers:
-
-cargo install trs-cli    # from source (Rust required)
-
 ## Usage
 
 # Git (compressed output)
 trs git status
 trs git diff
+trs git log --oneline -20
+
+# Test runners
+trs cargo test / go test / pytest / jest / vitest / npm test
 ... (41 lines)
 
 **package.json**: name: @dpeluche/trs | version: 0.6.18
@@ -1677,7 +1678,7 @@ trs git diff
 # into node_modules/@dpeluche/trs-cli-<os>-<arch>/trs.
 
 set -e
-... (72 lines)
+... (71 lines)
 
 **trs.cmd**
 @echo off
@@ -1910,11 +1911,10 @@ if [ -n "$1" ]; then
 
 **classifier_exec.rs**
   pub fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext)
-  fn track(
+  pub fn track(
   fn point_to_raw(
-  fn failure_is_visible(parsed: &str) -> bool
-  fn emit_failure_footer(
-  fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String>
+  fn print_raw_path(
+  pub fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String>
   fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()>
   fn generic_compress(input: &str) -> String
   fn collapse_whitespace(s: &str) -> String
@@ -2067,7 +2067,7 @@ if [ -n "$1" ]; then
   fn dropped_lines(raw: &str, compact: &str) -> Vec<String>
   fn tokens(bytes: usize) -> u64
   fn reduction_pct(raw: usize, compact: usize) -> f64
-  fn capture_raw(cmd: &str, args: &[String]) -> Option<String>
+  fn capture_raw(cmd: &str, args: &[String]) -> (String, i32)
   fn capture_compact(cmd: &str, args: &[String]) -> Option<String>
   fn print_human(
   fn print_json(
@@ -2158,6 +2158,28 @@ if [ -n "$1" ]; then
   fn posix_spawns_directly()
   fn windows_routes_cmd_and_powershell()
 
+**exec_verdict.rs**
+  pub fn reconcile_json(
+  pub fn json_document(text: &str, code: i32, raw: impl Fn() -> Option<String>) -> String
+  pub struct JsonRun<'a>
+
+  impl JsonRun<'_>
+  pub fn finish(&self, text: &str, cut: bool) -> !
+  pub fn print_spawn_failure(cmd: &str, error: &std::io::Error)
+  pub fn notice(format: crate::OutputFormat, line: &str)
+  pub fn exit_line(code: i32, raw: Option<&str>) -> String
+  pub fn emit_failure_footer(
+  pub fn failure_is_visible(parsed: &str) -> bool
+  mod tests
+  fn text_is_wrapped_with_the_verdict()
+  fn a_childs_array_stays_as_written_unless_it_failed()
+  fn exit_status_overrides_either_wrong_verdict()
+  fn a_failure_always_says_so()
+  fn the_childs_own_data_survives_a_clean_exit()
+  fn a_matching_verdict_keeps_the_parser_text()
+  fn a_success_that_is_not_a_bool_is_left_alone()
+  fn only_a_json_object_is_reconciled()
+
 **fast_find.rs**
   pub fn run(args: &[&str], ctx: &CommandContext)
   fn print_compact(files: &[String], dirs: &[String], _root: &str)
@@ -2203,7 +2225,7 @@ if [ -n "$1" ]; then
   pub struct InstallOpts
   pub use crate::ai_tool::{AiTool, HookSpec
   fn agent_row(sym: char, name: &str, detail: &str)
-  pub fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> bool
+  pub fn install_hook(tool: &AiTool, opts: InstallOpts, batch: bool) -> Outcome
   fn install_trs_md_for(tool: &AiTool, quiet: bool)
   pub fn install_all(opts: InstallOpts)
   pub fn install_finished(opts: InstallOpts)
@@ -2247,6 +2269,10 @@ if [ -n "$1" ]; then
   fn is_competitor_hook_rejects_trs()
 
 **init_install.rs**
+  pub enum Outcome
+
+  impl Outcome
+  pub fn from_row(row: &str) -> Self
   pub fn install_from_spec(spec: &HookSpec, opts: InstallOpts) -> Result<String>
   pub fn remove_hookspec_at(path: &Path, dry_run: bool) -> Result<()>
   pub fn ensure_parent(path: &Path) -> Result<()>
@@ -2355,6 +2381,7 @@ if [ -n "$1" ]; then
   mod doctor_checks
   mod doctor_hooks
   mod exec
+  mod exec_verdict
   mod formatter
   mod help
   mod help_text
@@ -2733,6 +2760,7 @@ if [ -n "$1" ]; then
 
 **process.rs**
   mod helpers
+  pub use helpers::{exit_code_of, exit_on_spawn_failure, spawn_failure
   pub struct ProcessOutput
 
   impl ProcessOutput
@@ -2765,7 +2793,6 @@ if [ -n "$1" ]; then
   pub fn timeout(mut self, timeout: Duration) -> Self
   pub fn capture_stdout(mut self, capture: bool) -> Self
   pub fn capture_stderr(mut self, capture: bool) -> Self
-  pub fn capture_exit_code(mut self, capture: bool) -> Self
   pub fn capture_duration(mut self, capture: bool) -> Self
   pub fn run(&self) -> Result<ProcessOutput, ProcessError>
   pub fn run_checked(&self) -> Result<ProcessOutput, ProcessError>
@@ -2775,9 +2802,17 @@ if [ -n "$1" ]; then
   mod tests
 
 **process_helpers.rs**
+  pub fn exit_code_of(status: &ExitStatus) -> i32
+  pub fn exit_on_spawn_failure(cmd: &str, error: &io::Error) -> !
+  pub fn spawn_failure(cmd: &str, error: &io::Error) -> (i32, String)
   pub(super) fn classify_spawn_error(command: &str, error: io::Error) -> ProcessError
-  pub(super) fn capture_output(
-  pub(super) fn capture_partial_output(child: &mut std::process::Child) -> (String, String)
+  pub(super) struct OutputReaders
+
+  impl OutputReaders
+  pub(super) fn start(child: &mut std::process::Child) -> Self
+  pub(super) fn finish() -> (String, String)
+  fn drain(mut pipe: impl Read + Send + 'static) -> JoinHandle<String>
+  fn collect(reader: Option<JoinHandle<String>>) -> String
   pub(super) trait ChildExt
   fn wait_timeout(&mut self, timeout: Duration) -> io::Result<Option<ExitStatus>>
 
@@ -2786,7 +2821,6 @@ if [ -n "$1" ]; then
 **process_tests.rs**
   fn test_process_output_success()
   fn test_process_output_failure()
-  fn test_process_output_no_exit_code()
   fn test_process_error_display()
   fn test_process_error_helpers()
   fn test_process_builder_basic()
@@ -2808,13 +2842,13 @@ if [ -n "$1" ]; then
   fn test_run_capture_stderr()
   fn test_run_no_capture_stdout()
   fn test_run_no_capture_stderr()
-  fn test_run_no_capture_exit_code()
-  fn test_run_capture_exit_code_default()
-  fn test_run_capture_exit_code_non_zero()
+  fn test_run_reports_exit_code_zero()
   fn test_run_no_capture_duration()
   fn test_run_capture_duration_default()
   fn test_process_builder_env_clear()
   fn test_process_output_has_output()
+  fn test_run_output_larger_than_the_pipe_buffer_does_not_hang()
+  fn test_run_keeps_output_around_invalid_utf8()
 
 **report.rs**
   pub fn scrub(text: &str) -> String
@@ -4446,9 +4480,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult
   pub struct RunInput
 
-  impl From<(&String, &Vec<String>, bool, bool, bool, bool, Option<u64>)> for RunInput
-  fn from(
-
 **search.rs**
   pub struct SearchHandler
 
@@ -4464,6 +4495,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   type Error = std::io::Error
   fn matched(
   fn context(
+  fn keep_first_results(files: &mut Vec<GrepFile>, limit: usize)
   pub fn format_output(grep_output: &GrepOutput, format: OutputFormat) -> String
   pub fn format_json(grep_output: &GrepOutput) -> String
   pub fn format_csv(grep_output: &GrepOutput) -> String
@@ -5242,6 +5274,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub mod ls
   pub mod ls_format
   pub mod maven
+  pub mod node_test
   pub mod npm_format
   pub mod npm_parse
   pub mod ollama
@@ -5273,6 +5306,20 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   impl CommandHandler for ParseHandler
   type Input = ParseCommands
   fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult
+
+**node_test.rs**
+  struct Failure
+  pub struct NodeTestRun
+
+  impl NodeTestRun
+  pub fn read(input: &str) -> Option<Self>
+  fn failures_of(input: &str, failed: usize) -> Vec<Failure>
+  fn file_of(location: &str) -> String
+  fn spec_failures(recap: &str) -> Vec<Failure>
+  fn tap_failures(input: &str) -> Vec<Failure>
+
+  impl NodeTestRun
+  pub fn $method() -> $output
 
 **npm_format.rs**
   impl ParseHandler
@@ -5520,7 +5567,7 @@ pub(crate) struct GrepMatch {
     pub(crate) is_context: bool,
     pub(crate) excerpt: Option<String>,
 }
-... (29 lines)
+... (48 lines)
 
 **logs.rs**
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -5827,4 +5874,4 @@ pub(crate) enum LogLevel {
   fn test_test_output_round_trip()
 
 ---
-*trs ingest v0.9.2 | 114ms | 202.8KB*
+*trs ingest v0.10.0 | 140ms | 204.6KB*

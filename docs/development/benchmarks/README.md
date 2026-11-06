@@ -302,9 +302,29 @@ there, because the file itself is the way back.
 `git branch -a` drops nothing to gain ground. The tool that cuts more here prints
 `... +20 more` and hides real branches, so trs only nests repeated prefixes.
 
-## trs alone on v0.9.2
+## trs alone on v0.10.0
 
 2026-11-05, same corpus and command as below. This is what usetrs.dev shows.
+`truth.py`: 9/9 pipelines match, 0 RISK rows, 0 SILENT rows, 0 BLIND rows.
+`compare.py`: 1 RISK row (`ps aux`). `chain-rewrite.sh`: 43/43.
+Startup: 3.05 ms median over 300 runs of `trs --version`.
+
+| | tokens cut | anchors kept | facts kept |
+|---|---:|---:|---:|
+| all 38 commands (token-weighted) | 83% | 62% | 71% |
+| mean per command | 31% | 79% | 94% |
+| median command | 27% | | |
+| commands cut by half or more | 11 of 38 | | |
+
+The repo moved under the corpus, not the compressor: v0.9.2 run on this same
+state matches v0.10.0 on 36 of 37 distinct commands, and the other is `ps aux`,
+which changes between runs. `git diff HEAD~5` is now 12,687 raw tokens, not
+53,587, so it cuts 38% instead of 85% and weighs less in the pooled row.
+`gh run list` keeps 0 of the 2 anchors found in this run; v0.9.2 does the same.
+
+## trs alone on v0.9.2
+
+2026-11-05, same corpus and command as below.
 `truth.py`: 9/9 pipelines match, 0 RISK rows, 0 SILENT rows, 1 BLIND row
 (`git diff HEAD~5`). `compare.py`: 1 RISK row (`ps aux`). `chain-rewrite.sh`: 43/43.
 Startup: 3.61 ms median over 300 runs of `trs --version`.
