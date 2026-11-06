@@ -210,6 +210,12 @@ impl CommandHandler for IsCleanHandler {
         // 0 - clean
         // 1 - dirty (has changes)
         // 2 - not a git repository
+        if ctx.format == OutputFormat::Json && !(state.is_git_repo && state.is_clean) {
+            return Err(CommandError::Reported {
+                exit_code: if state.is_git_repo { 1 } else { 2 },
+            });
+        }
+
         if !state.is_git_repo {
             return Err(CommandError::ExecutionError {
                 message: "not a git repository".to_string(),
