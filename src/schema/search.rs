@@ -125,9 +125,9 @@ impl GrepMatch {
 /// Count summary for grep output.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GrepCounts {
-    /// Number of files with matches shown.
+    /// Files with matches, before truncation.
     pub files: usize,
-    /// Number of matches shown.
+    /// Matches, before truncation; `matches_shown` holds what was printed.
     pub matches: usize,
     /// Total number of files before truncation.
     #[serde(default)]

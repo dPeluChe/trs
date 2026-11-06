@@ -301,56 +301,12 @@ impl SearchHandler {
     /// Format search output for display.
     pub(crate) fn format_output(grep_output: &GrepOutput, format: OutputFormat) -> String {
         match format {
-            OutputFormat::Json => Self::format_json(grep_output),
+            OutputFormat::Json => ParseHandler::format_grep_json(grep_output),
             OutputFormat::Csv => Self::format_csv(grep_output),
             OutputFormat::Tsv => Self::format_tsv(grep_output),
             OutputFormat::Compact | OutputFormat::Agent => Self::format_compact(grep_output),
             OutputFormat::Raw => Self::format_raw(grep_output),
         }
-    }
-
-    /// Format search output as JSON using the schema.
-    pub(crate) fn format_json(grep_output: &GrepOutput) -> String {
-        use crate::schema::{
-            GrepCounts, GrepFile as SchemaGrepFile, GrepMatch as SchemaGrepMatch, GrepOutputSchema,
-        };
-
-        let mut schema = GrepOutputSchema::new();
-        schema.is_empty = grep_output.is_empty;
-        schema.is_truncated = grep_output.is_truncated;
-
-        // Convert internal GrepFile to schema GrepFile
-        schema.files = grep_output
-            .files
-            .iter()
-            .map(|f| SchemaGrepFile {
-                path: f.path.clone(),
-                matches: f
-                    .matches
-                    .iter()
-                    .map(|m| SchemaGrepMatch {
-                        line_number: m.line_number,
-                        column: m.column,
-                        line: m.line.clone(),
-                        is_context: m.is_context,
-                        excerpt: m.excerpt.clone(),
-                    })
-                    .collect(),
-            })
-            .collect();
-
-        schema.counts = GrepCounts {
-            files: grep_output.file_count,
-            matches: grep_output.match_count,
-            total_files: grep_output.total_files,
-            total_matches: grep_output.total_matches,
-            files_shown: grep_output.files_shown,
-            matches_shown: grep_output.matches_shown,
-        };
-
-        serde_json::to_string_pretty(&schema).unwrap_or_else(|e| {
-            serde_json::json!({"error": format!("Failed to serialize: {}", e)}).to_string()
-        })
     }
 
     /// Format search output as CSV.

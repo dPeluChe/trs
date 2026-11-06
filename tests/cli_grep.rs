@@ -363,3 +363,21 @@ fn test_parse_grep_context_lines_with_dashed_path() {
     assert_eq!(json["files"][0]["matches"][1]["line_number"], 4);
     assert_eq!(json["files"][0]["matches"][1]["is_context"], true);
 }
+
+#[test]
+fn test_parse_grep_json_counts_every_match_when_truncated() {
+    let input: String = (0..399)
+        .flat_map(|f| (1..=3).map(move |n| format!("src/f{f}.rs:{n}:x\n")))
+        .collect();
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args(["--json", "parse", "grep"])
+        .write_stdin(input)
+        .output()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(json["is_truncated"], true);
+    assert_eq!(json["counts"]["files"], 399);
+    assert_eq!(json["counts"]["matches"], 1197);
+    assert_eq!(json["counts"]["matches_shown"], 600);
+}

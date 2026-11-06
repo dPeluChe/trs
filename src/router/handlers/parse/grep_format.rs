@@ -26,9 +26,6 @@ impl ParseHandler {
             GrepCounts, GrepFile as SchemaGrepFile, GrepMatch as SchemaGrepMatch, GrepOutputSchema,
         };
 
-        // Count only non-context matches
-        let match_count: usize = grep_output.files.iter().map(GrepFile::match_count).sum();
-
         let mut schema = GrepOutputSchema::new();
         schema.is_empty = grep_output.is_empty;
         schema.is_truncated = grep_output.is_truncated;
@@ -55,7 +52,7 @@ impl ParseHandler {
 
         schema.counts = GrepCounts {
             files: grep_output.file_count,
-            matches: match_count,
+            matches: grep_output.match_count,
             total_files: grep_output.total_files,
             total_matches: grep_output.total_matches,
             files_shown: grep_output.files_shown,
