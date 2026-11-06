@@ -124,6 +124,9 @@ fn a_usage_error_is_a_document_under_json() {
 #[test]
 fn a_failed_ingest_write_is_a_document_under_json() {
     let dir = tempfile::tempdir().unwrap();
+    support::git(dir.path(), &["init", "-q"]);
+    std::fs::write(dir.path().join("main.rs"), "fn main() {}\n").unwrap();
+    support::git(dir.path(), &["add", "main.rs"]);
     let blocker = dir.path().join("a_file");
     std::fs::write(&blocker, "").unwrap();
     let ingest = || {
