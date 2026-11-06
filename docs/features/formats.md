@@ -43,8 +43,9 @@ On failure `success` is `false`, `exit_code` holds the real status and
 `full_output`. Objects trs changes are re-serialized, so their keys come out
 sorted. The exit status of `trs` matches in every case.
 
-`trs run` and `trs is-clean` report a failure in that document alone, with
-nothing on stderr, so `2>&1` still parses.
+`trs run`, `trs is-clean` and `trs err` report a failure in that document alone,
+with nothing on stderr, so `2>&1` still parses. `trs err` prints
+`{"lines": [...], "errors": 1, "warnings": 0, "total_lines": 2, "success": false}`.
 
 ## Examples
 
