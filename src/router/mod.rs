@@ -250,22 +250,20 @@ impl Router {
             Ok(()) => {}
             Err(CommandError::NotImplemented(msg)) => {
                 // Format not implemented message according to output format
-                let formatted = Self::format_not_implemented(&msg, ctx.format);
-                if ctx.format == OutputFormat::Json {
-                    // For JSON, output to stderr (consistent with error handling)
-                    eprintln!("{}", formatted);
-                } else {
-                    println!("{}", formatted);
-                }
+                println!("{}", Self::format_not_implemented(&msg, ctx.format));
             }
             Err(CommandError::Reported { exit_code }) => std::process::exit(exit_code),
             Err(e) => {
-                // Format error according to output format
-                let formatted = Self::format_command_error(&e, ctx.format);
-                eprintln!("{}", formatted);
+                let message = match ctx.format {
+                    OutputFormat::Json => e.to_string(),
+                    _ => format!("Error: {e}"),
+                };
                 // Propagate the exit code if available, otherwise default to 1
-                let exit_code = e.exit_code().unwrap_or(1);
-                std::process::exit(exit_code);
+                crate::exec_verdict::exit_with_error(
+                    ctx.format,
+                    &message,
+                    e.exit_code().unwrap_or(1),
+                )
             }
         }
     }
@@ -361,23 +359,6 @@ impl Router {
             | OutputFormat::Agent
             | OutputFormat::Csv
             | OutputFormat::Tsv => format!("{} not yet implemented", msg),
-        }
-    }
-
-    /// Format a CommandError based on the output format.
-    fn format_command_error(error: &CommandError, format: OutputFormat) -> String {
-        match format {
-            OutputFormat::Json => serde_json::json!({
-                "error": true,
-                "message": error.to_string(),
-                "exit_code": error.exit_code(),
-            })
-            .to_string(),
-            OutputFormat::Raw
-            | OutputFormat::Compact
-            | OutputFormat::Agent
-            | OutputFormat::Csv
-            | OutputFormat::Tsv => format!("Error: {}", error),
         }
     }
 }

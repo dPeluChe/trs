@@ -285,6 +285,7 @@ impl JsonFormatter {
     pub fn format_error_with_code(message: &str, exit_code: i32) -> String {
         serde_json::json!({
             "error": true,
+            "success": false,
             "message": message,
             "exit_code": exit_code
         })

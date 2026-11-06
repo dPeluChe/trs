@@ -57,8 +57,8 @@ pub(crate) fn run(cmd: &Commands, ctx: &CommandContext) {
             match ingest::resolve_remote(path, mode) {
                 Ok(src) => Some(src),
                 Err(e) => {
-                    eprintln!("trs ingest: {}", e);
-                    std::process::exit(1);
+                    let message = format!("trs ingest: {e}");
+                    crate::exec_verdict::exit_with_error(ctx.format, &message, 1)
                 }
             }
         } else {
@@ -71,8 +71,8 @@ pub(crate) fn run(cmd: &Commands, ctx: &CommandContext) {
         let root = match ingest::resolve_project_root(&input_path) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("trs ingest: {}", e);
-                std::process::exit(1);
+                let message = format!("trs ingest: {e}");
+                crate::exec_verdict::exit_with_error(ctx.format, &message, 1)
             }
         };
         let budget_tokens = budget.as_ref().map(|b| parse_token_budget(b));

@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 #[path = "process_helpers.rs"]
 mod helpers;
 use helpers::{classify_spawn_error, ChildExt, OutputReaders};
-pub use helpers::{exit_code_of, exit_on_spawn_failure, spawn_failure};
+pub use helpers::{exit_code_of, spawn_failure};
 
 /// Result of a process execution.
 #[derive(Debug, Clone)]
