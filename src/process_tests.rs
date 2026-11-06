@@ -7,7 +7,7 @@ fn test_process_output_success() {
         args: vec!["hello".to_string()],
         stdout: "hello\n".to_string(),
         stderr: String::new(),
-        exit_code: Some(0),
+        exit_code: 0,
         duration: Duration::from_millis(10),
         timed_out: false,
     };
@@ -25,30 +25,13 @@ fn test_process_output_failure() {
         args: vec![],
         stdout: String::new(),
         stderr: String::new(),
-        exit_code: Some(1),
+        exit_code: 1,
         duration: Duration::from_millis(10),
         timed_out: false,
     };
 
     assert!(!output.success());
     assert_eq!(output.code(), 1);
-}
-
-#[test]
-fn test_process_output_no_exit_code() {
-    let output = ProcessOutput {
-        command: "killed".to_string(),
-        args: vec![],
-        stdout: String::new(),
-        stderr: String::new(),
-        exit_code: None,
-        duration: Duration::from_millis(10),
-        timed_out: true,
-    };
-
-    assert!(!output.success());
-    assert_eq!(output.code(), 1); // Default to 1
-    assert!(output.timed_out);
 }
 
 #[test]
@@ -107,7 +90,7 @@ fn test_process_error_helpers() {
         args: vec![],
         stdout: String::new(),
         stderr: String::new(),
-        exit_code: Some(42),
+        exit_code: 42,
         duration: Duration::ZERO,
         timed_out: false,
     };
@@ -208,7 +191,7 @@ fn test_run_non_zero_exit() {
 
     let output = result.unwrap();
     assert!(!output.success());
-    assert_eq!(output.exit_code, Some(1));
+    assert_eq!(output.exit_code, 1);
 }
 
 #[test]
@@ -335,7 +318,7 @@ fn test_run_reports_exit_code_zero() {
 
     assert!(result.is_ok());
     let output = result.unwrap();
-    assert_eq!(output.exit_code, Some(0));
+    assert_eq!(output.exit_code, 0);
     assert!(output.success());
 }
 
@@ -380,7 +363,7 @@ fn test_process_output_has_output() {
         args: vec![],
         stdout: "content".to_string(),
         stderr: "error".to_string(),
-        exit_code: Some(0),
+        exit_code: 0,
         duration: Duration::ZERO,
         timed_out: false,
     };
@@ -393,7 +376,7 @@ fn test_process_output_has_output() {
         args: vec![],
         stdout: String::new(),
         stderr: String::new(),
-        exit_code: Some(0),
+        exit_code: 0,
         duration: Duration::ZERO,
         timed_out: false,
     };

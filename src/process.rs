@@ -24,8 +24,8 @@ pub struct ProcessOutput {
     pub stdout: String,
     /// Captured standard error.
     pub stderr: String,
-    /// Exit code of the process; None when a signal killed it.
-    pub exit_code: Option<i32>,
+    /// Exit code of the process; 128+N when signal N killed it.
+    pub exit_code: i32,
     /// Duration of the execution.
     pub duration: Duration,
     /// Whether the process was killed due to timeout.
@@ -35,12 +35,12 @@ pub struct ProcessOutput {
 impl ProcessOutput {
     /// Returns true if the process exited successfully (exit code 0).
     pub fn success(&self) -> bool {
-        self.exit_code == Some(0)
+        self.exit_code == 0
     }
 
-    /// Returns the exit code, or 1 if not available.
+    /// Returns the exit code.
     pub fn code(&self) -> i32 {
-        self.exit_code.unwrap_or(1)
+        self.exit_code
     }
 
     /// Returns true if stdout is not empty.
@@ -323,7 +323,7 @@ impl ProcessBuilder {
             args: self.args.clone(),
             stdout,
             stderr,
-            exit_code: Some(exit_code_of(&status)),
+            exit_code: exit_code_of(&status),
             duration: if self.capture_duration {
                 start.elapsed()
             } else {

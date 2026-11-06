@@ -481,7 +481,7 @@ pub(crate) fn check_stdin_pipeline() -> Check {
                 }
                 Ok(out) => Check::fail(
                     "stdin pipe",
-                    format!("exit code {}", out.status.code().unwrap_or(-1)),
+                    format!("exit code {}", crate::process::exit_code_of(&out.status)),
                 ),
                 Err(e) => Check::fail("stdin pipe", format!("failed: {}", e)),
             }

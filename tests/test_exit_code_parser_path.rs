@@ -4,7 +4,7 @@
 //!
 //! A known failure mode in this class of tool is a compact path reporting
 //! `ok` (exit 0) when the underlying command actually failed (e.g. git
-//! status/commit). trs already propagates `output.status.code()` on every
+//! status/commit). trs already propagates the child's exit status on every
 //! branch of `execute_and_parse`; these tests lock that so a future parser
 //! change can't silently swallow a non-zero exit an agent relies on
 //! (e.g. `grep` "no match" = 1).
