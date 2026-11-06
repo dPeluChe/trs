@@ -37,8 +37,8 @@ Output that is already a JSON object stays one. A JSON array the program
 printed is left as written. Anything else is wrapped as
 `{"output": "...", "success": true}`, and a command that never started
 prints `{"error": true, "success": false, "exit_code": 127, "message": "..."}`.
-On Windows `trs <command>` starts programs through `cmd`, so a missing one is
-an ordinary failed run with `cmd`'s exit 1 and message.
+On Windows `trs <command>` and `trs run` start programs through `cmd`, so a
+missing one is an ordinary failed run with `cmd`'s exit 1 and message.
 A failed `trs` subcommand prints the same document. Only a usage error caught
 while reading the arguments stays plain text on stderr, with exit 2.
 
