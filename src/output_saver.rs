@@ -106,8 +106,9 @@ pub(crate) fn standalone_file() -> String {
          instead of re-running the command.\n\n\
          A failed command always says so: the summary never reports\n\
          success for a non-zero exit, and a `[trs] exit N` line carries\n\
-         the real status plus a path to the full raw output. Redirecting\n\
-         to a file (`> out.log`, `| tee`) skips compression, so that file\n\
+         the real status, plus a path to the raw output if one was\n\
+         saved (`--json`: `exit_code`, `full_output`). Redirecting to\n\
+         a file (`> out.log`, `| tee`) skips compression, so that file\n\
          holds the command's raw output.\n\n\
          {}\n",
         IMPORT_FILENAME, BLOCK
