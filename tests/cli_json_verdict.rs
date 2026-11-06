@@ -190,7 +190,7 @@ fn a_childs_array_keeps_its_shape_and_its_stderr_stream() {
 #[test]
 fn a_long_stderr_is_cut_and_points_to_the_rest() {
     let (json, code) = json_run(
-        "zzz_tool",
+        "zzz_noisy_tool",
         "echo out; i=0; while [ $i -lt 3000 ]; do echo \"noise line $i\" >&2; i=$((i+1)); done",
     );
     assert_eq!(code, Some(0));
