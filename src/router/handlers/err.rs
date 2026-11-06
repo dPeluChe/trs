@@ -4,6 +4,7 @@
 //! errors, warnings, panics, and fatal messages.
 
 use super::common::{CommandContext, CommandError, CommandResult};
+use crate::OutputFormat;
 
 /// Check if a line looks like an error or warning.
 fn is_error_line(line: &str) -> bool {
@@ -68,9 +69,10 @@ fn is_error_not_warning(line: &str) -> bool {
 }
 
 /// Execute a command and show only error/warning lines.
-pub(crate) fn handle_err(command: &str, args: &[String], _ctx: &CommandContext) -> CommandResult {
+pub(crate) fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -> CommandResult {
     use std::process::{Command, Stdio};
 
+    let start = std::time::Instant::now();
     let output = match Command::new(command)
         .args(args)
         .stdout(Stdio::piped())
@@ -128,20 +130,46 @@ pub(crate) fn handle_err(command: &str, args: &[String], _ctx: &CommandContext) 
         i += 1;
     }
 
-    if matched_lines.is_empty() && output.status.success() {
-        println!("clean: no errors or warnings");
-    } else if matched_lines.is_empty() {
+    let code = crate::process::exit_code_of(&output.status);
+    let failed = !output.status.success();
+    let shown = if matched_lines.is_empty() && failed {
         // Failed with nothing the keywords caught: never hide that behind "clean".
         let text = all_lines.join("\n");
         let max = crate::config::config().limits.passthrough_max_chars;
-        println!(
-            "{}",
-            crate::passthrough_cut::cut(&text, max).unwrap_or(text)
-        );
+        let text = crate::passthrough_cut::cut(&text, max).unwrap_or(text);
+        text.lines().map(str::to_string).collect()
     } else {
-        for line in &matched_lines {
-            println!("{}", line);
+        matched_lines
+    };
+
+    if ctx.format == OutputFormat::Json {
+        let report = serde_json::json!({
+            "success": !failed,
+            "errors": error_count,
+            "warnings": warning_count,
+            "total_lines": total_lines,
+            "lines": shown,
+        })
+        .to_string();
+        crate::exec_verdict::JsonRun {
+            fcmd: crate::classifier::full_cmd(command, args),
+            stdout: &stdout,
+            stderr: &stderr,
+            code,
+            in_bytes: output.stdout.len() + output.stderr.len(),
+            start,
+            status: &output.status,
         }
+        .finish(&report, false);
+    }
+
+    if shown.is_empty() && !failed {
+        println!("clean: no errors or warnings");
+    }
+    for line in &shown {
+        println!("{}", line);
+    }
+    if error_count + warning_count > 0 {
         println!(
             "\n{} errors, {} warnings found in {} lines",
             error_count, warning_count, total_lines
@@ -149,8 +177,7 @@ pub(crate) fn handle_err(command: &str, args: &[String], _ctx: &CommandContext) 
     }
 
     // Propagate exit code from the wrapped command
-    if !output.status.success() {
-        let code = crate::process::exit_code_of(&output.status);
+    if failed {
         return Err(CommandError::ExecutionError {
             message: format!("Command '{}' exited with code {}", command, code),
             exit_code: Some(code),

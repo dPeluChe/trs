@@ -108,3 +108,46 @@ fn is_clean_reports_a_failure_once_so_2_to_1_still_parses() {
         assert_eq!(json["is_clean"], false);
     }
 }
+
+fn err_json(script: &str) -> (serde_json::Value, Option<i32>) {
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args(["--json", "err", "sh", "-c", script])
+        .output()
+        .unwrap();
+    assert!(out.stderr.is_empty(), "{:?}", out.stderr);
+    (
+        serde_json::from_slice(&out.stdout).unwrap(),
+        out.status.code(),
+    )
+}
+
+#[test]
+fn err_prints_one_document_with_the_lines_and_the_verdict() {
+    let (json, code) = err_json("echo fine; echo 'error: boom'; echo next; exit 3");
+    assert_eq!(code, Some(3));
+    assert_eq!(json["success"], false);
+    assert_eq!(json["exit_code"], 3);
+    assert_eq!(json["errors"], 1);
+    assert_eq!(json["total_lines"], 3);
+    assert_eq!(json["lines"][0], "error: boom");
+    let raw = json["full_output"].as_str().unwrap();
+    assert!(std::fs::read_to_string(raw).unwrap().contains("fine"));
+}
+
+#[test]
+fn err_keeps_a_failure_no_keyword_caught() {
+    let (json, code) = err_json("echo boom; exit 5");
+    assert_eq!(code, Some(5));
+    assert_eq!(json["success"], false);
+    assert_eq!(json["lines"][0], "boom");
+}
+
+#[test]
+fn err_on_a_clean_run_has_no_lines() {
+    let (json, code) = err_json("echo fine");
+    assert_eq!(code, Some(0));
+    assert_eq!(json["success"], true);
+    assert_eq!(json["lines"], serde_json::json!([]));
+    assert!(json.get("full_output").is_none());
+}
