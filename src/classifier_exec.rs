@@ -5,6 +5,7 @@
 
 use crate::classifier::{build_command, classify_command, full_cmd, keep_ratio};
 use crate::exec_verdict::{failure_is_visible, reconcile_json};
+use crate::process::exit_code_of;
 use crate::router::{CommandContext, Router};
 use crate::Commands;
 
@@ -42,7 +43,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     // Publish the real exit status so summarizing parsers can state the
     // verdict as fact instead of inferring it from text.
-    crate::router::handlers::common::set_child_exit(output.status.code().unwrap_or(1));
+    crate::router::handlers::common::set_child_exit(exit_code_of(&output.status));
 
     // Everything below routes by the program's name (`/usr/bin/git`, `./mvnw`)
     // and its real subcommand (`git -C dir push`); only the spawn needs `cmd`.
@@ -70,7 +71,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         if !output.status.success() {
             emit_failure_footer(&output.status, &full_cmd, &stdout, &stderr);
         }
-        std::process::exit(output.status.code().unwrap_or(1));
+        std::process::exit(exit_code_of(&output.status));
     }
 
     // Several commands write their primary output (errors, warnings, results)
@@ -170,7 +171,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             let cut =
                 dropped || mostly_cut || crate::anchor_guard::anchors_lost(stdout_ref, &parsed);
             if matches!(ctx.format, crate::OutputFormat::Json) {
-                let code = output.status.code().unwrap_or(1);
+                let code = exit_code_of(&output.status);
                 let fcmd = full_cmd(cmd, args);
                 let wants_raw = code != 0 || cut;
                 let raw = || {
@@ -302,7 +303,7 @@ fn emit_failure_footer(
     stdout: &str,
     stderr: &str,
 ) -> ! {
-    let code = status.code().unwrap_or(1);
+    let code = exit_code_of(status);
     match save_tee_output(fcmd, stdout, stderr) {
         Some(tee_path) => println!("[trs] exit {} · full output: {}", code, tee_path),
         None => println!("[trs] exit {}", code),

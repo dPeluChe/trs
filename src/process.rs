@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 
 #[path = "process_helpers.rs"]
 mod helpers;
+pub use helpers::exit_code_of;
 use helpers::{classify_spawn_error, ChildExt, OutputReaders};
 
 /// Result of a process execution.
@@ -322,7 +323,7 @@ impl ProcessBuilder {
             args: self.args.clone(),
             stdout,
             stderr,
-            exit_code: status.code(),
+            exit_code: Some(exit_code_of(&status)),
             duration: if self.capture_duration {
                 start.elapsed()
             } else {

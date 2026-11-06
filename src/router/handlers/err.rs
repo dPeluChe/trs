@@ -150,13 +150,10 @@ pub(crate) fn handle_err(command: &str, args: &[String], _ctx: &CommandContext) 
 
     // Propagate exit code from the wrapped command
     if !output.status.success() {
+        let code = crate::process::exit_code_of(&output.status);
         return Err(CommandError::ExecutionError {
-            message: format!(
-                "Command '{}' exited with code {}",
-                command,
-                output.status.code().unwrap_or(1)
-            ),
-            exit_code: output.status.code(),
+            message: format!("Command '{}' exited with code {}", command, code),
+            exit_code: Some(code),
         });
     }
 
