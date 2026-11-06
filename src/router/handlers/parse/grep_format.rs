@@ -122,9 +122,6 @@ impl ParseHandler {
             return output;
         }
 
-        // Count only non-context matches for the summary
-        let match_count: usize = grep_output.files.iter().map(GrepFile::match_count).sum();
-
         // Show summary header only for multi-file results or truncated output
         if grep_output.is_truncated {
             output.push_str(&format!(
@@ -141,7 +138,7 @@ impl ParseHandler {
             // repeats what the lines already say.
             output.push_str(&format!(
                 "matches: {} files, {} results\n",
-                grep_output.file_count, match_count
+                grep_output.file_count, grep_output.match_count
             ));
         }
 
@@ -225,7 +222,7 @@ impl ParseHandler {
         } else if grep_output.file_count > 1 {
             output.push_str(&format!(
                 "total: {} files, {} matches\n",
-                grep_output.file_count, match_count
+                grep_output.file_count, grep_output.match_count
             ));
         }
 
