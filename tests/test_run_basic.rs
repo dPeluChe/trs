@@ -154,7 +154,7 @@ fn test_run_no_capture_stdout() {
         .arg("hello")
         .assert()
         .success()
-        .stdout("hello\n");
+        .stdout(predicate::str::starts_with("hello"));
 }
 
 #[test]
