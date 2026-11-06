@@ -4,7 +4,7 @@
 //! and saves full output on failure for recovery.
 
 use crate::classifier::{build_command, classify_command, full_cmd, keep_ratio};
-use crate::exec_verdict::{failure_is_visible, reconcile_json};
+use crate::exec_verdict::{failure_is_visible, print_spawn_failure, JsonRun};
 use crate::process::exit_code_of;
 use crate::router::{CommandContext, Router};
 use crate::Commands;
@@ -27,7 +27,12 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         .output()
     {
         Ok(o) => o,
-        Err(e) => crate::process::exit_on_spawn_failure(cmd, &e),
+        Err(e) => {
+            if matches!(ctx.format, crate::OutputFormat::Json) {
+                print_spawn_failure(cmd, &e);
+            }
+            crate::process::exit_on_spawn_failure(cmd, &e)
+        }
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -41,6 +46,16 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     // Everything below routes by the program's name (`/usr/bin/git`, `./mvnw`)
     // and its real subcommand (`git -C dir push`); only the spawn needs `cmd`.
+    let json_run = matches!(ctx.format, crate::OutputFormat::Json).then(|| JsonRun {
+        fcmd: full_cmd(cmd, args),
+        stdout: &stdout,
+        stderr: &stderr,
+        code,
+        in_bytes,
+        start,
+        status: &output.status,
+    });
+
     let name = crate::text_util::cmd_basename(cmd);
     let sub = crate::classifier_args::subcommand(name, args);
     let subcmd = sub.as_str();
@@ -59,6 +74,9 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     if name == "git" && matches!(subcmd, "push" | "pull" | "fetch") {
         let combined = format!("{}{}", stdout, stderr);
         let compact = crate::classifier_transfer::compact_git_transfer(&combined, subcmd);
+        if let Some(run) = &json_run {
+            run.finish(&compact, false);
+        }
         print!("{}", compact);
         let full_cmd = full_cmd(cmd, args);
         track(&full_cmd, in_bytes, compact.len(), start, &output.status);
@@ -100,6 +118,9 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         || crate::command_registry::is_verbatim_invocation(name, &args.join(" "))
         || crate::classifier_args::has_structured_output_flag(args)
     {
+        if let Some(run) = &json_run {
+            run.finish(stdout_ref, false);
+        }
         print!("{}", stdout_ref);
         out_bytes = stdout_ref.len();
         let fcmd = full_cmd(cmd, args);
@@ -164,19 +185,11 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                 stdout_ref.len() >= RECOVERABLE_MIN_BYTES && parsed.len() * 10 <= stdout_ref.len();
             let cut =
                 dropped || mostly_cut || crate::anchor_guard::anchors_lost(stdout_ref, &parsed);
-            if matches!(ctx.format, crate::OutputFormat::Json) {
-                let fcmd = full_cmd(cmd, args);
-                let wants_raw = code != 0 || cut;
-                let raw = || {
-                    wants_raw
-                        .then(|| save_tee_output(&fcmd, &stdout, &stderr))
-                        .flatten()
-                };
-                if let Some(json) = reconcile_json(&parsed, code, raw) {
-                    println!("{json}");
-                    track(&fcmd, in_bytes, json.len(), start, &output.status);
-                    std::process::exit(code);
-                }
+            // Nothing is never a summary of something: a parser that misread
+            // its input and printed nothing would otherwise "win" on size.
+            let parsed_nothing = parsed.trim().is_empty() && !stdout_ref.trim().is_empty();
+            if let Some(run) = &json_run {
+                run.finish(if parsed_nothing { stdout_ref } else { &parsed }, cut);
             }
             // Truth guard: a summary must never stand in for a failed command
             // unless it actually shows the failure. Parsers infer success from
@@ -189,9 +202,6 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             // the raw command output. If it somehow did (degenerate/tiny
             // input, header overhead), emit the raw instead. Ties go to raw —
             // no point spending a parse when it didn't save anything.
-            // Nothing is never a summary of something: a parser that misread
-            // its input and printed nothing would otherwise "win" on size.
-            let parsed_nothing = parsed.trim().is_empty() && !stdout_ref.trim().is_empty();
             let smaller = wants_format || parsed.len() < stdout_ref.len();
             if smaller && !summary_hides_failure && !parsed_nothing {
                 print!("{}", parsed);
@@ -211,6 +221,12 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         } else {
             // Tier 3: Passthrough with truncation (parser failed)
             let passthrough_max = crate::config::config().limits.passthrough_max_chars;
+            if let Some(run) = &json_run {
+                match crate::passthrough_cut::cut(stdout_ref, passthrough_max) {
+                    Some(cut) => run.finish(&cut, true),
+                    None => run.finish(stdout_ref, false),
+                }
+            }
             let truncated = match crate::passthrough_cut::cut(stdout_ref, passthrough_max) {
                 Some(mut cut) => {
                     let saved = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr)
@@ -232,6 +248,9 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     } else {
         // No parser matched — apply generic compression (collapse whitespace, strip ANSI)
         let compressed = generic_compress(stdout_ref);
+        if let Some(run) = &json_run {
+            run.finish(&compressed, crate::parse_out::take_dropped());
+        }
         print!("{}", compressed);
         out_bytes = compressed.len() + point_to_raw(&output.status, cmd, args, &stdout, &stderr);
     }
@@ -246,7 +265,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     }
 }
 
-fn track(
+pub(crate) fn track(
     cmd: &str,
     in_bytes: usize,
     out_bytes: usize,
@@ -300,7 +319,7 @@ fn emit_failure_footer(code: i32, fcmd: &str, stdout: &str, stderr: &str) -> ! {
 
 /// Save full command output to ~/.trs/tee/ for failure recovery.
 /// Returns the path to the saved file, or None if saving failed.
-fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
+pub(crate) fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
     let tee_dir = crate::tracker::trs_dir()?.join("tee");
 
     // Create tee directory if needed
