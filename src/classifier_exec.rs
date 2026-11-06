@@ -4,7 +4,9 @@
 //! and saves full output on failure for recovery.
 
 use crate::classifier::{build_command, classify_command, full_cmd, keep_ratio};
-use crate::exec_verdict::{failure_is_visible, print_spawn_failure, JsonRun};
+use crate::exec_verdict::{
+    emit_failure_footer, failure_is_visible, notice, print_spawn_failure, JsonRun,
+};
 use crate::process::exit_code_of;
 use crate::router::{CommandContext, Router};
 use crate::Commands;
@@ -81,7 +83,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let full_cmd = full_cmd(cmd, args);
         track(&full_cmd, in_bytes, compact.len(), start, &output.status);
         if !output.status.success() {
-            emit_failure_footer(code, &full_cmd, &stdout, &stderr);
+            emit_failure_footer(ctx.format, code, &full_cmd, &stdout, &stderr);
         }
         std::process::exit(code);
     }
@@ -126,7 +128,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         let fcmd = full_cmd(cmd, args);
         track(&fcmd, in_bytes, out_bytes, start, &output.status);
         if !output.status.success() {
-            emit_failure_footer(code, &fcmd, &stdout, &stderr);
+            emit_failure_footer(ctx.format, code, &fcmd, &stdout, &stderr);
         }
         return;
     }
@@ -140,12 +142,12 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         if ratio > 0.90 && !wants_format {
             let compressed = generic_compress(stdout_ref);
             print!("{}", compressed);
-            out_bytes =
-                compressed.len() + point_to_raw(&output.status, cmd, args, &stdout, &stderr);
+            out_bytes = compressed.len()
+                + point_to_raw(ctx.format, &output.status, cmd, args, &stdout, &stderr);
             let fcmd = full_cmd(cmd, args);
             track(&fcmd, in_bytes, out_bytes, start, &output.status);
             if !output.status.success() {
-                emit_failure_footer(code, &fcmd, &stdout, &stderr);
+                emit_failure_footer(ctx.format, code, &fcmd, &stdout, &stderr);
             }
             return;
         }
@@ -208,11 +210,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                 out_bytes = parsed.len();
                 // Failures already get this from the footer below.
                 if output.status.success() && cut {
-                    if let Some(path) = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr) {
-                        let line = format!("[trs] full output: {}\n", path);
-                        print!("{}", line);
-                        out_bytes += line.len();
-                    }
+                    out_bytes += print_raw_path(ctx.format, cmd, args, &stdout, &stderr);
                 }
             } else {
                 print!("{}", stdout_ref);
@@ -252,7 +250,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             run.finish(&compressed, crate::parse_out::take_dropped());
         }
         print!("{}", compressed);
-        out_bytes = compressed.len() + point_to_raw(&output.status, cmd, args, &stdout, &stderr);
+        out_bytes = compressed.len()
+            + point_to_raw(ctx.format, &output.status, cmd, args, &stdout, &stderr);
     }
 
     // Track execution (fire-and-forget)
@@ -261,7 +260,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     // Tee system: on failure, save full raw output for recovery
     if !output.status.success() {
-        emit_failure_footer(code, &fcmd, &stdout, &stderr);
+        emit_failure_footer(ctx.format, code, &fcmd, &stdout, &stderr);
     }
 }
 
@@ -279,6 +278,7 @@ pub(crate) fn track(
 /// When the generic pass cut a dense line from a successful command, save the
 /// raw and print where; failures get this from the footer. Returns bytes added.
 fn point_to_raw(
+    format: crate::OutputFormat,
     status: &std::process::ExitStatus,
     cmd: &str,
     args: &[String],
@@ -288,10 +288,21 @@ fn point_to_raw(
     if !crate::parse_out::take_dropped() || !status.success() {
         return 0;
     }
+    print_raw_path(format, cmd, args, stdout, stderr)
+}
+
+/// Save the raw output and print where. Returns bytes added.
+fn print_raw_path(
+    format: crate::OutputFormat,
+    cmd: &str,
+    args: &[String],
+    stdout: &str,
+    stderr: &str,
+) -> usize {
     match save_tee_output(&full_cmd(cmd, args), stdout, stderr) {
         Some(path) => {
             let line = format!("[trs] full output: {}\n", path);
-            print!("{}", line);
+            notice(format, &line);
             line.len()
         }
         None => 0,
@@ -302,20 +313,6 @@ fn point_to_raw(
 /// path, for parsers that summarize without saying so. Ones that drop content
 /// on purpose call `parse_out::mark_dropped` and get the pointer at any size.
 const RECOVERABLE_MIN_BYTES: usize = 16 * 1024;
-
-/// Terminal failure footer, printed on STDOUT and never returning.
-///
-/// stdout, not stderr: agents run commands with `2>/dev/null` to keep their
-/// context clean, which silently drops a stderr-only notice exactly when it
-/// matters most. The exit code makes the status verifiable instead of
-/// inferred, and the tee path is the escape hatch to the full raw output.
-fn emit_failure_footer(code: i32, fcmd: &str, stdout: &str, stderr: &str) -> ! {
-    match save_tee_output(fcmd, stdout, stderr) {
-        Some(tee_path) => println!("[trs] exit {} · full output: {}", code, tee_path),
-        None => println!("[trs] exit {}", code),
-    }
-    std::process::exit(code);
-}
 
 /// Save full command output to ~/.trs/tee/ for failure recovery.
 /// Returns the path to the saved file, or None if saving failed.
