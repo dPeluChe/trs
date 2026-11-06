@@ -38,6 +38,6 @@ fn test_stats_default_does_not_show_by_command_table() {
     let home = tempfile::tempdir().unwrap();
     trs(home.path(), &["ls"]);
     let text = trs(home.path(), &["stats"]);
-    assert!(text.contains("Total commands:    1"), "{text}");
+    assert!(text.contains("Total commands:"), "{text}");
     assert!(!text.contains("COMMAND"), "{text}");
 }

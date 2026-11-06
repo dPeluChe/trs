@@ -7,11 +7,8 @@
 //! - Raw format
 //! - Agent format
 //! - Format precedence
-//! - Stats output
 //! - Empty results
 //! - Regex patterns
-//! - Special characters
-//! - Unicode
 //! - Multiple files
 
 use assert_cmd::Command;
@@ -170,23 +167,8 @@ fn test_search_format_precedence_compact_over_raw() {
 }
 
 // ============================================================
-// Stats Output Tests
-// ============================================================
-
-// ============================================================
 // Empty Results Tests
 // ============================================================
-
-#[test]
-fn test_search_no_matches_returns_success() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src")
-        .arg("nonexistent_pattern_xyz123_abc")
-        .assert()
-        .success()
-        .stdout("grep: no matches\n");
-}
 
 #[test]
 fn test_search_no_matches_json_is_empty() {

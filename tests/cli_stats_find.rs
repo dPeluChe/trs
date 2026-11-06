@@ -1,6 +1,8 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+mod support;
+
 // Stats Output Tests for Command Execution
 // ============================================================
 
@@ -337,11 +339,7 @@ fn test_is_clean_in_git_repo() {
 #[test]
 fn test_is_clean_json_format() {
     let dir = tempfile::tempdir().unwrap();
-    std::process::Command::new("git")
-        .args(["init", "-q"])
-        .current_dir(dir.path())
-        .status()
-        .unwrap();
+    support::git(dir.path(), &["init", "-q"]);
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.current_dir(dir.path())
         .arg("--json")

@@ -7,11 +7,11 @@ use std::net::TcpListener;
 
 const PAGE: &str = "<html><body><h1>Moby-Dick</h1><p>Herman Melville</p></body></html>";
 
-fn serve(requests: usize) -> String {
+fn serve() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}/page", listener.local_addr().unwrap());
     std::thread::spawn(move || {
-        for stream in listener.incoming().take(requests) {
+        for stream in listener.incoming() {
             let mut stream = stream.unwrap();
             let mut request = [0u8; 1024];
             let _ = stream.read(&mut request);
@@ -29,6 +29,7 @@ fn html2md(args: &[&str]) -> String {
     let out = Command::cargo_bin("trs")
         .unwrap()
         .args(args)
+        .env("NO_PROXY", "127.0.0.1")
         .output()
         .unwrap();
     assert!(out.status.success(), "{args:?}");
@@ -37,7 +38,7 @@ fn html2md(args: &[&str]) -> String {
 
 #[test]
 fn a_fetched_page_becomes_markdown() {
-    let url = serve(3);
+    let url = serve();
     let text = html2md(&["html2md", &url]);
     assert!(
         text.contains("Moby-Dick") && text.contains("Herman Melville"),

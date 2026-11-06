@@ -2,18 +2,28 @@
 //! content, so a flag that stops working fails instead of matching nothing.
 
 use assert_cmd::Command;
+use std::process::Output;
+
+mod support;
 
 fn tree() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(dir.path().join("src")).unwrap();
-    std::fs::create_dir_all(dir.path().join("docs")).unwrap();
-    std::fs::write(
-        dir.path().join("src/a.rs"),
+    support::write_file(
+        dir.path(),
+        "src/a.rs",
         "fn main() {}\nfn Helper() {}\nlet a = 1;\nlet b = 2;\nmain-thread\nv1.2.3\nv1x2y3\ncafé\n",
-    )
-    .unwrap();
-    std::fs::write(dir.path().join("docs/b.md"), "fn main() {}\nHELPER\n").unwrap();
+    );
+    support::write_file(dir.path(), "docs/b.md", "fn main() {}\nHELPER\n");
     dir
+}
+
+fn trs(dir: &std::path::Path, args: &[&str]) -> Output {
+    Command::cargo_bin("trs")
+        .unwrap()
+        .current_dir(dir)
+        .args(args)
+        .output()
+        .unwrap()
 }
 
 #[test]
@@ -31,16 +41,13 @@ fn each_flag_changes_what_is_found() {
         (&["main-thread"], &["main-thread"], &["fn main"]),
         (&["v1\\.2"], &["v1.2.3"], &["v1x2y3"]),
         (&["café"], &["café"], &["fn main"]),
+        (&["zzz_absent"], &["no matches"], &["a.rs"]),
+        (&["fn ", "-e", "zzz"], &["no matches"], &["a.rs"]),
+        (&[""], &["a.rs", "b.md"], &[]),
     ];
     let dir = tree();
     for (args, found, absent) in cases {
-        let out = Command::cargo_bin("trs")
-            .unwrap()
-            .current_dir(dir.path())
-            .args(["search", "."])
-            .args(*args)
-            .output()
-            .unwrap();
+        let out = trs(dir.path(), &[&["search", "."], *args].concat());
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(out.status.success(), "{args:?}: {stdout}");
         for text in *found {
@@ -55,17 +62,11 @@ fn each_flag_changes_what_is_found() {
 #[test]
 fn stats_report_what_was_searched() {
     let dir = tree();
-    let trs = |flags: &[&str]| {
-        let out = Command::cargo_bin("trs")
-            .unwrap()
-            .current_dir(dir.path())
-            .args(flags)
-            .args(["--stats", "search", ".", "main"])
-            .output()
-            .unwrap();
-        String::from_utf8_lossy(&out.stderr).into_owned()
+    let stats = |flags: &[&str]| {
+        let args = [flags, &["--stats", "search", ".", "main"]].concat();
+        String::from_utf8_lossy(&trs(dir.path(), &args).stderr).into_owned()
     };
-    let stats = trs(&[]);
+    let compact = stats(&[]);
     for line in [
         "Reducer: search",
         "Output mode: compact",
@@ -76,7 +77,7 @@ fn stats_report_what_was_searched() {
         "Files with matches: 2",
         "Total matches: 3",
     ] {
-        assert!(stats.contains(line), "lost {line:?}: {stats}");
+        assert!(compact.contains(line), "lost {line:?}: {compact}");
     }
-    assert!(trs(&["--json"]).contains("Output mode: json"));
+    assert!(stats(&["--json"]).contains("Output mode: json"));
 }

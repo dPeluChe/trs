@@ -5,7 +5,6 @@
 //! - Extension filtering
 //! - Case-insensitive search
 //! - Context lines
-//! - Result limiting
 //! - JSON output format
 
 use assert_cmd::Command;
@@ -103,19 +102,6 @@ fn test_search_with_extension_md() {
         .success()
         // Should only find .md files, verify extension filter works
         .stdout(predicate::str::contains(".md"));
-}
-
-#[test]
-fn test_search_with_extension_nonexistent() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg(".")
-        .arg("fn ")
-        .arg("-e")
-        .arg("nonexistent_ext_xyz")
-        .assert()
-        .success()
-        .stdout("grep: no matches\n");
 }
 
 // ============================================================

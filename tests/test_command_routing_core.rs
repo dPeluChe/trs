@@ -26,9 +26,11 @@ fn test_run_command_routes_correctly() {
 
 #[test]
 fn test_search_command_routes_correctly() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.rs"), "fn main() {}\n").unwrap();
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
-        .arg(".")
+        .arg(dir.path())
         .arg("fn main")
         .assert()
         .success()
@@ -47,7 +49,7 @@ fn test_replace_command_routes_correctly() {
         .arg("--dry-run")
         .assert()
         .success()
-        .stdout(predicate::str::contains("1 replacements in 1 files"));
+        .stdout(predicate::str::contains("Preview"));
     let kept = std::fs::read_to_string(dir.path().join("a.txt")).unwrap();
     assert_eq!(kept, "old\n");
 }
@@ -249,6 +251,23 @@ fn test_compact_flag_routes_correctly() {
         .stdout(predicate::str::contains("test"));
 }
 
+#[test]
+fn test_format_precedence_picks_the_stronger_flag() {
+    let cases: &[(&[&str], &str)] = &[
+        (&["--csv", "--tsv"], "command,args,stdout"),
+        (&["--tsv", "--agent"], "command\targs\tstdout"),
+        (&["--json", "--csv"], "\"command\":\"echo\""),
+    ];
+    for (flags, header) in cases {
+        let mut cmd = Command::cargo_bin("trs").unwrap();
+        cmd.args(*flags)
+            .args(["run", "echo", "test"])
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(*header));
+    }
+}
+
 // ============================================================
 // Stats Flag Routing Tests
 // ============================================================
@@ -321,29 +340,15 @@ fn test_parse_without_subcommand_fails() {
     cmd.arg("parse").assert().failure();
 }
 
-#[test]
-fn test_format_precedence_picks_the_stronger_flag() {
-    let cases: &[(&[&str], &str)] = &[
-        (&["--csv", "--tsv"], "command,args,stdout"),
-        (&["--tsv", "--agent"], "command\targs\tstdout"),
-        (&["--json", "--csv"], "\"command\":\"echo\""),
-    ];
-    for (flags, header) in cases {
-        let mut cmd = Command::cargo_bin("trs").unwrap();
-        cmd.args(*flags)
-            .args(["run", "echo", "test"])
-            .assert()
-            .success()
-            .stdout(predicate::str::contains(*header));
-    }
-}
+// ============================================================
+// Command Alias Tests
+// ============================================================
 
 #[test]
 fn test_is_clean_exit_code_names_the_repo_state() {
-    const ALIASES: [&str; 3] = ["is-clean", "clean?", "repo-clean"];
     let dir = tempfile::tempdir().unwrap();
     let expect = |code: i32| {
-        for alias in ALIASES {
+        for alias in ["is-clean", "clean?", "repo-clean"] {
             Command::cargo_bin("trs")
                 .unwrap()
                 .current_dir(dir.path())

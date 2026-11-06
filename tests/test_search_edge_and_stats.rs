@@ -89,17 +89,6 @@ fn test_search_with_absolute_path() {
 // ============================================================
 
 #[test]
-fn test_search_empty_query() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("src/main.rs")
-        .arg("")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("main.rs"));
-}
-
-#[test]
 fn test_search_nonexistent_directory() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("search")
