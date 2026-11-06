@@ -43,10 +43,11 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
 
     // Everything below routes by the program's name (`/usr/bin/git`, `./mvnw`)
     // and its real subcommand (`git -C dir push`); only the spawn needs `cmd`.
-    let json_run = matches!(ctx.format, crate::OutputFormat::Json).then(|| JsonRun {
+    let mut json_run = matches!(ctx.format, crate::OutputFormat::Json).then(|| JsonRun {
         fcmd: full_cmd(cmd, args),
         stdout: &stdout,
         stderr: &stderr,
+        unread_stderr: "",
         code,
         in_bytes,
         start,
@@ -97,8 +98,9 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         &effective_stdout
     } else {
         // Print stderr passthrough (warnings, progress, etc.)
-        if !stderr.is_empty() {
-            eprint!("{}", stderr);
+        match &mut json_run {
+            Some(run) => run.unread_stderr = &stderr,
+            None => eprint!("{}", stderr),
         }
         &*stdout
     };
@@ -394,7 +396,7 @@ fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()
 /// Generic compression for commands without a dedicated parser.
 /// Collapses consecutive whitespace in tabular output, strips ANSI codes,
 /// removes carriage returns (progress bars), and collapses blank lines.
-fn generic_compress(input: &str) -> String {
+pub(crate) fn generic_compress(input: &str) -> String {
     use crate::router::handlers::common::strip_ansi_codes;
 
     // Whitespace collapsing and folds would change the text inside the values.

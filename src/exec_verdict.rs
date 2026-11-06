@@ -59,12 +59,33 @@ pub(crate) fn json_document(text: &str, code: i32, raw: impl Fn() -> Option<Stri
     reconcile_json(&wrapped, code, || path.clone()).unwrap_or(wrapped)
 }
 
+/// `document` with the child's stderr, where `2>&1` cannot split it from the
+/// JSON. An array or a `stderr` key the child printed is its data, so that
+/// stderr stays on stderr.
+fn with_stderr(document: String, stderr: &str) -> String {
+    if stderr.is_empty() {
+        return document;
+    }
+    match serde_json::from_str(&document) {
+        Ok(Value::Object(mut object)) if !object.contains_key("stderr") => {
+            object.insert("stderr".to_string(), stderr.into());
+            Value::Object(object).to_string()
+        }
+        _ => {
+            eprint!("{stderr}");
+            document
+        }
+    }
+}
+
 /// What ending a `--json` run needs: stdout holds one document, so the exit
 /// status and the raw path go inside it rather than in a footer after it.
 pub(crate) struct JsonRun<'a> {
     pub(crate) fcmd: String,
     pub(crate) stdout: &'a str,
     pub(crate) stderr: &'a str,
+    /// The part of `stderr` the summary did not read.
+    pub(crate) unread_stderr: &'a str,
     pub(crate) code: i32,
     pub(crate) in_bytes: usize,
     pub(crate) start: std::time::Instant,
@@ -72,8 +93,20 @@ pub(crate) struct JsonRun<'a> {
 }
 
 impl JsonRun<'_> {
+    /// The unread stderr at the size of a passthrough, and whether it lost text.
+    fn trimmed_stderr(&self) -> (String, bool) {
+        let max = crate::config::config().limits.passthrough_max_chars;
+        let clean = crate::classifier_exec::generic_compress(self.unread_stderr);
+        let dropped = crate::parse_out::take_dropped();
+        match crate::passthrough_cut::cut(&clean, max) {
+            Some(cut) => (cut, true),
+            None => (clean, dropped),
+        }
+    }
+
     pub(crate) fn finish(&self, text: &str, cut: bool) -> ! {
-        let wants_raw = self.code != 0 || cut;
+        let (unread, unread_cut) = self.trimmed_stderr();
+        let wants_raw = self.code != 0 || cut || unread_cut;
         let raw = || {
             wants_raw
                 .then(|| {
@@ -81,7 +114,7 @@ impl JsonRun<'_> {
                 })
                 .flatten()
         };
-        let json = json_document(text, self.code, raw);
+        let json = with_stderr(json_document(text, self.code, raw), &unread);
         println!("{json}");
         crate::classifier_exec::track(
             &self.fcmd,
@@ -191,7 +224,7 @@ pub(crate) fn failure_is_visible(parsed: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{json_document, reconcile_json};
+    use super::{json_document, reconcile_json, with_stderr};
 
     #[test]
     fn text_is_wrapped_with_the_verdict() {
@@ -248,6 +281,15 @@ mod tests {
     fn a_success_that_is_not_a_bool_is_left_alone() {
         let out = reconcile_json(r#"{"success":"yes"}"#, 0, || None).unwrap();
         assert_eq!(out, r#"{"success":"yes"}"#);
+    }
+
+    #[test]
+    fn the_childs_stderr_joins_a_document_without_replacing_its_data() {
+        let doc = with_stderr(r#"{"output":"hi"}"#.to_string(), "warn\n");
+        assert_eq!(doc, r#"{"output":"hi","stderr":"warn\n"}"#);
+        let own = r#"{"stderr":"mine"}"#;
+        assert_eq!(with_stderr(own.to_string(), "warn\n"), own);
+        assert_eq!(with_stderr(own.to_string(), ""), own);
     }
 
     #[test]

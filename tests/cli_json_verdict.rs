@@ -6,15 +6,19 @@ use assert_cmd::Command;
 
 mod support;
 
-fn json_run(program: &str, body: &str) -> (serde_json::Value, Option<i32>) {
+fn run_json(program: &str, body: &str) -> std::process::Output {
     let dir = tempfile::tempdir().unwrap();
     support::fake_program(&dir.path().join(program), body);
-    let out = Command::cargo_bin("trs")
+    Command::cargo_bin("trs")
         .unwrap()
         .env("PATH", support::path_with(dir.path()))
         .args(["--json", program, "test"])
         .output()
-        .unwrap();
+        .unwrap()
+}
+
+fn json_run(program: &str, body: &str) -> (serde_json::Value, Option<i32>) {
+    let out = run_json(program, body);
     let stdout = String::from_utf8_lossy(&out.stdout);
     let json = serde_json::from_str(&stdout)
         .unwrap_or_else(|e| panic!("not one JSON document ({e}): {stdout}"));
@@ -165,4 +169,34 @@ fn err_on_a_clean_run_has_no_lines() {
     assert_eq!(json["success"], true);
     assert_eq!(json["lines"], serde_json::json!([]));
     assert!(json.get("full_output").is_none());
+}
+
+#[test]
+fn the_childs_stderr_stays_inside_the_document() {
+    let out = run_json("zzz_tool", "echo out; echo careful >&2; exit 3");
+    assert!(out.stderr.is_empty(), "{:?}", out.stderr);
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(json["stderr"], "careful\n");
+    assert_eq!(json["exit_code"], 3);
+}
+
+#[test]
+fn a_childs_array_keeps_its_shape_and_its_stderr_stream() {
+    let out = run_json("zzz_tool", "echo '[1, 2]'; echo careful >&2");
+    assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "[1, 2]");
+    assert_eq!(String::from_utf8_lossy(&out.stderr), "careful\n");
+}
+
+#[test]
+fn a_long_stderr_is_cut_and_points_to_the_rest() {
+    let (json, code) = json_run(
+        "zzz_tool",
+        "echo out; i=0; while [ $i -lt 3000 ]; do echo \"noise line $i\" >&2; i=$((i+1)); done",
+    );
+    assert_eq!(code, Some(0));
+    assert!(json["stderr"].as_str().unwrap().len() < 4000);
+    let raw = json["full_output"].as_str().unwrap();
+    assert!(std::fs::read_to_string(raw)
+        .unwrap()
+        .contains("noise line 1500"));
 }

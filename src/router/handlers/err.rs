@@ -150,6 +150,7 @@ pub(crate) fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -
             fcmd: crate::classifier::full_cmd(command, args),
             stdout: &stdout,
             stderr: &stderr,
+            unread_stderr: "",
             code,
             in_bytes: output.stdout.len() + output.stderr.len(),
             start,
