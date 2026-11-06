@@ -1,12 +1,14 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+mod support;
+
 // JSON Output Tests for Not-Implemented Commands
 // ============================================================
 
 #[test]
 fn test_search_json_output_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")

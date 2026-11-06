@@ -3,6 +3,8 @@
 
 use assert_cmd::Command;
 
+mod support;
+
 #[cfg(unix)]
 const FAILING: [&str; 3] = ["sh", "-c", "echo error: x; echo bad >&2; exit 3"];
 #[cfg(windows)]
@@ -16,14 +18,27 @@ fn trs(args: &[&str]) -> std::process::Output {
         .unwrap()
 }
 
-fn with_failing(flags: &[&str]) -> std::process::Output {
-    trs(&[flags, FAILING.as_slice()].concat())
+fn failing(flags: &[&'static str]) -> Vec<&'static str> {
+    [flags, FAILING.as_slice()].concat()
 }
 
-fn document(out: &std::process::Output) -> serde_json::Value {
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    serde_json::from_str(&stdout)
-        .unwrap_or_else(|e| panic!("not one JSON document ({e}): {stdout}"))
+/// A document on stdout saying `code`, the same exit code, nothing on stderr.
+fn failed_document(args: &[&str], code: i32) -> serde_json::Value {
+    let out = trs(args);
+    assert_eq!(out.status.code(), Some(code), "{args:?}");
+    assert!(out.stderr.is_empty(), "{args:?}: {:?}", out.stderr);
+    let json = support::document(&out);
+    assert_eq!(json["exit_code"], code, "{args:?}");
+    json
+}
+
+fn assert_not_found(json: &serde_json::Value) {
+    assert_eq!(json["error"], true);
+    assert_eq!(json["success"], false);
+    assert!(json["message"]
+        .as_str()
+        .unwrap()
+        .contains("Command not found"));
 }
 
 #[test]
@@ -34,17 +49,7 @@ fn a_command_that_never_started_is_a_document_too() {
         &["benchmark", "--json", "zzz_no_such_program"],
     ];
     for args in commands {
-        let out = trs(args);
-        assert_eq!(out.status.code(), Some(127), "{args:?}");
-        assert!(out.stderr.is_empty(), "{args:?}: {:?}", out.stderr);
-        let json = document(&out);
-        assert_eq!(json["error"], true);
-        assert_eq!(json["success"], false);
-        assert_eq!(json["exit_code"], 127);
-        assert!(json["message"]
-            .as_str()
-            .unwrap()
-            .contains("Command not found"));
+        assert_not_found(&failed_document(args, 127));
     }
 }
 
@@ -52,41 +57,32 @@ fn a_command_that_never_started_is_a_document_too() {
 fn a_missing_program_is_one_failed_document() {
     // Windows starts programs through `cmd`, which fails with exit 1 itself.
     let expected = if cfg!(windows) { 1 } else { 127 };
-    for args in [&["--json"][..], &["--json", "run"]] {
-        let out = trs(&[args, &["zzz_no_such_program"]].concat());
-        assert_eq!(out.status.code(), Some(expected), "{args:?}");
-        assert!(out.stderr.is_empty(), "{args:?}: {:?}", out.stderr);
-        assert_eq!(document(&out)["exit_code"], expected);
-    }
-}
-
-#[test]
-fn a_failed_run_is_one_document_with_nothing_on_stderr() {
-    for flags in [&["--json", "run"][..], &["--json", "err"]] {
-        let out = with_failing(flags);
-        assert_eq!(out.status.code(), Some(3), "{flags:?}");
-        assert!(out.stderr.is_empty(), "{flags:?}: {:?}", out.stderr);
-        document(&out);
+    let commands: [&[&str]; 2] = [
+        &["--json", "zzz_no_such_program"],
+        &["--json", "run", "zzz_no_such_program"],
+    ];
+    for args in commands {
+        let json = failed_document(args, expected);
+        if cfg!(unix) {
+            assert_not_found(&json);
+        }
     }
 }
 
 #[test]
 fn the_childs_stderr_stays_inside_the_document() {
-    let out = with_failing(&["--json"]);
-    assert_eq!(out.status.code(), Some(3));
-    assert!(out.stderr.is_empty(), "{:?}", out.stderr);
-    let json = document(&out);
-    assert_eq!(json["exit_code"], 3);
+    let json = failed_document(&failing(&["--json"]), 3);
     assert_eq!(json["success"], false);
-    assert!(json["stderr"].as_str().unwrap().contains("bad"));
+    assert_eq!(json["stderr"].as_str().unwrap().trim(), "bad");
+    let run = failed_document(&failing(&["--json", "run"]), 3);
+    assert_eq!(run["stderr"].as_str().unwrap().trim(), "bad");
 }
 
 #[test]
 fn err_counts_and_tabulates_the_same_lines() {
-    let json = document(&with_failing(&["--json", "err"]));
+    let json = failed_document(&failing(&["--json", "err"]), 3);
     assert_eq!(json["errors"], 1);
-    assert_eq!(json["exit_code"], 3);
-    let csv = with_failing(&["--csv", "err"]);
+    let csv = trs(&failing(&["--csv", "err"]));
     assert_eq!(csv.status.code(), Some(3));
     let csv = String::from_utf8_lossy(&csv.stdout);
     assert!(csv.starts_with("kind,line"), "{csv}");

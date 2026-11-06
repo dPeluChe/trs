@@ -25,46 +25,10 @@ fn test_search_help_flag() {
         .success()
         .stdout(predicate::str::contains("Search for patterns"))
         .stdout(predicate::str::contains("PATH"))
-        .stdout(predicate::str::contains("QUERY"));
-}
-
-#[test]
-fn test_search_help_shows_extension_option() {
-    let mut cmd = support::search_cmd();
-    cmd.arg("search")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("--extension"));
-}
-
-#[test]
-fn test_search_help_shows_ignore_case_option() {
-    let mut cmd = support::search_cmd();
-    cmd.arg("search")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("--ignore-case"));
-}
-
-#[test]
-fn test_search_help_shows_context_option() {
-    let mut cmd = support::search_cmd();
-    cmd.arg("search")
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("--context"));
-}
-
-#[test]
-fn test_search_help_shows_limit_option() {
-    let mut cmd = support::search_cmd();
-    cmd.arg("search")
-        .arg("--help")
-        .assert()
-        .success()
+        .stdout(predicate::str::contains("QUERY"))
+        .stdout(predicate::str::contains("--extension"))
+        .stdout(predicate::str::contains("--ignore-case"))
+        .stdout(predicate::str::contains("--context"))
         .stdout(predicate::str::contains("--limit"));
 }
 
@@ -75,9 +39,8 @@ fn test_search_help_shows_limit_option() {
 #[test]
 fn test_search_with_absolute_path() {
     let mut cmd = support::search_cmd();
-    let tree = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/search_tree");
     cmd.arg("search")
-        .arg(tree.to_str().unwrap())
+        .arg(support::search_tree())
         .arg("fn main")
         .assert()
         .success()

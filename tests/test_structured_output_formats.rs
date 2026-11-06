@@ -8,6 +8,8 @@
 use assert_cmd::Command;
 use std::io::Write;
 
+mod support;
+
 // ============================================================
 // Agent Format Validation Tests
 // ============================================================
@@ -38,7 +40,7 @@ fn test_agent_git_status_has_structure() {
 
 #[test]
 fn test_agent_search_has_structure() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--agent")
         .arg("search")
@@ -154,7 +156,7 @@ fn test_compact_git_status_has_structure() {
 
 #[test]
 fn test_compact_search_has_structure() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--compact")
         .arg("search")
@@ -214,7 +216,7 @@ fn test_compact_replace_has_structure() {
 
 #[test]
 fn test_raw_search_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--raw")
         .arg("search")

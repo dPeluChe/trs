@@ -10,6 +10,8 @@
 
 use assert_cmd::Command;
 
+mod support;
+
 /// Helper to parse and validate JSON output
 fn parse_json_output(output: &[u8]) -> serde_json::Value {
     let stdout = String::from_utf8_lossy(output);
@@ -214,7 +216,7 @@ fn test_json_has_highest_precedence() {
 
 #[test]
 fn test_csv_beats_tsv() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--csv")
         .arg("--tsv")
@@ -310,7 +312,7 @@ fn test_all_schemas_have_consistent_version() {
 
     // Test replace command
     {
-        let mut cmd = Command::cargo_bin("trs").unwrap();
+        let mut cmd = support::search_cmd();
         let output = cmd
             .arg("--json")
             .arg("replace")
@@ -334,7 +336,7 @@ fn test_all_schemas_have_consistent_version() {
 
     // Test search command
     {
-        let mut cmd = Command::cargo_bin("trs").unwrap();
+        let mut cmd = support::search_cmd();
         let output = cmd
             .arg("--json")
             .arg("search")

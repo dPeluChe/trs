@@ -2,14 +2,26 @@
 //! subset, hence the `dead_code` allowance.
 #![allow(dead_code)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// `trs` inside `tests/search_tree`, so search results depend on no real source.
+/// Fixed input for search, so results depend on no real source.
+pub fn search_tree() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/search_tree")
+}
+
+/// `trs` running inside `search_tree`.
 pub fn search_cmd() -> assert_cmd::Command {
     let mut cmd = assert_cmd::Command::cargo_bin("trs").unwrap();
-    cmd.current_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/search_tree"));
+    cmd.current_dir(search_tree());
     cmd
+}
+
+/// The one JSON document `--json` promises on stdout.
+pub fn document(out: &std::process::Output) -> serde_json::Value {
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    serde_json::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("not one JSON document ({e}): {stdout}"))
 }
 
 /// Run `git` in `dir` as a fixed identity, so commits work on a machine with

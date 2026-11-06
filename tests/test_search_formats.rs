@@ -238,7 +238,6 @@ fn test_search_invalid_regex_returns_error() {
 #[test]
 fn test_search_multiple_files() {
     let mut cmd = support::search_cmd();
-    // "fn " should appear in multiple files
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -252,7 +251,5 @@ fn test_search_multiple_files() {
 
     let stdout = String::from_utf8_lossy(&output);
     let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
-    // Should find matches in multiple files
-    let files = json["files"].as_array().unwrap();
-    assert!(!files.is_empty(), "Expected at least one file with matches");
+    assert_eq!(json["files"].as_array().unwrap().len(), 2);
 }

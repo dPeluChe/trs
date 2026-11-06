@@ -4,6 +4,8 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+mod support;
+
 // ============================================================
 // JSON Format Tests
 // ============================================================
@@ -42,7 +44,7 @@ fn test_json_output_git_status_structure() {
 
 #[test]
 fn test_json_output_search_structure() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -94,7 +96,7 @@ fn test_json_output_parse_ls_structure() {
 
 #[test]
 fn test_csv_output_has_header() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--csv")
         .arg("search")
         .arg("src")
@@ -125,7 +127,7 @@ fn test_csv_output_escaping() {
 
 #[test]
 fn test_tsv_output_has_header() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--tsv")
         .arg("search")
         .arg("src")
@@ -171,7 +173,7 @@ fn test_agent_output_has_markdown_headers() {
 
 #[test]
 fn test_agent_output_search_has_results_header() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--agent")
         .arg("search")
         .arg("src")
@@ -206,7 +208,7 @@ fn test_agent_output_parse_ls_structure() {
 
 #[test]
 fn test_raw_output_search_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--raw")
         .arg("search")
         .arg("src")
@@ -248,7 +250,7 @@ fn test_compact_output_parse_git_status() {
 
 #[test]
 fn test_compact_output_search() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("fn")
@@ -301,7 +303,7 @@ fn test_search_all_formats() {
     ];
 
     for (flag, expected) in formats {
-        let mut cmd = Command::cargo_bin("trs").unwrap();
+        let mut cmd = support::search_cmd();
         cmd.arg(flag)
             .arg("search")
             .arg("src")
