@@ -157,6 +157,10 @@ impl CommandHandler for RunHandler {
                 print!("{}", formatted);
 
                 if !output.success() {
+                    // Agents run with `2>/dev/null`, so the error alone can vanish.
+                    if matches!(ctx.format, OutputFormat::Compact | OutputFormat::Agent) {
+                        println!("[trs] exit {}", output.code());
+                    }
                     return Err(CommandError::ExecutionError {
                         message: format!("Command exited with code {}", output.code()),
                         exit_code: Some(output.exit_code),

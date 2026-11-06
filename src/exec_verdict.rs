@@ -103,6 +103,36 @@ pub(crate) fn print_spawn_failure(cmd: &str, error: &std::io::Error) {
     );
 }
 
+/// A trs line on stdout, except where it would be a bogus row in a table.
+pub(crate) fn notice(format: crate::OutputFormat, line: &str) {
+    if matches!(format, crate::OutputFormat::Csv | crate::OutputFormat::Tsv) {
+        eprint!("{line}");
+    } else {
+        print!("{line}");
+    }
+}
+
+/// Terminal failure footer, printed on STDOUT and never returning.
+///
+/// stdout, not stderr: agents run commands with `2>/dev/null` to keep their
+/// context clean, which silently drops a stderr-only notice exactly when it
+/// matters most. The exit code makes the status verifiable instead of
+/// inferred, and the tee path is the escape hatch to the full raw output.
+pub(crate) fn emit_failure_footer(
+    format: crate::OutputFormat,
+    code: i32,
+    fcmd: &str,
+    stdout: &str,
+    stderr: &str,
+) -> ! {
+    let footer = match crate::classifier_exec::save_tee_output(fcmd, stdout, stderr) {
+        Some(tee_path) => format!("[trs] exit {} · full output: {}\n", code, tee_path),
+        None => format!("[trs] exit {}\n", code),
+    };
+    notice(format, &footer);
+    std::process::exit(code);
+}
+
 /// Does this compressed output actually show that something went wrong?
 /// Backstop for parsers that summarize without consulting the exit status —
 /// when the answer is "no" we fall back to raw, so a miss costs tokens, never

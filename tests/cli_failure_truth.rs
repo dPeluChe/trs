@@ -97,3 +97,26 @@ fn stdin_is_forwarded_to_the_child() {
         .stdout(predicate::str::contains("alpha"))
         .stdout(predicate::str::contains("beta"));
 }
+
+#[test]
+fn tables_keep_the_failure_notice_out_of_their_rows() {
+    for flag in ["--csv", "--tsv"] {
+        Command::cargo_bin("trs")
+            .unwrap()
+            .args([flag, "sh", "-c", "echo row; exit 3"])
+            .assert()
+            .code(3)
+            .stdout("row\n")
+            .stderr(predicate::str::contains("[trs] exit 3"));
+    }
+}
+
+#[test]
+fn run_says_so_on_stdout_when_the_command_failed() {
+    Command::cargo_bin("trs")
+        .unwrap()
+        .args(["run", "sh", "-c", "exit 3"])
+        .assert()
+        .code(3)
+        .stdout(predicate::str::contains("[trs] exit 3"));
+}
