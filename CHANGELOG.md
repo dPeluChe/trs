@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.10.1] - 2026-11-06
+
+### Bug Fixes
+
+- **json:** Report a failure in one document (#251)
+- **grep:** Count every match in the JSON counts (#252)
+- **output-saver:** Say when the exit line has no path (#253)
+- **err:** Print one JSON document under --json (#254)
+
+### Dependencies
+
+- **deps:** Bump ignore from 0.4.33 to 0.4.34 in the cargo-minor group (#229)
+
 ## [0.10.0] - 2026-11-06
 
 ### Bug Fixes

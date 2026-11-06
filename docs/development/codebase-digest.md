@@ -188,7 +188,7 @@ From the import graph (fan-in↓ / fan-out↑), no AST:
 - **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/74↑)
 - **core**: high fan-in, everything routes through → `ingest` (25↓/5↑), `init` (19↓/10↑), `tracker` (13↓/2↑)
 - **leaf**: used by many, import nothing (utils, types) → `text_util` (11↓/0↑)
-- **internal**: mid-graph plumbing → `router/handlers` (5↓/18↑), `classifier_exec` (2↓/16↑), `rewrite_gate` (10↓/6↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/12↑), `classifier` (7↓/5↑), `init_templates` (10↓/2↑), `output_saver` (10↓/2↑) +11 more
+- **internal**: mid-graph plumbing → `router/handlers` (5↓/19↑), `classifier_exec` (2↓/16↑), `rewrite_gate` (10↓/6↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/12↑), `classifier` (8↓/5↑), `init_templates` (10↓/2↑), `output_saver` (10↓/2↑) +11 more
 
 ## README.md
 
@@ -297,6 +297,19 @@ All notable changes to trs are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-11-06
+
+### Bug Fixes
+
+- json: Report a failure in one document (#251)
+- grep: Count every match in the JSON counts (#252)
+- output-saver: Say when the exit line has no path (#253)
+- err: Print one JSON document under --json (#254)
+
+### Dependencies
+
+- deps: Bump ignore from 0.4.33 to 0.4.34 in the cargo-minor group (#229)
+
 ## [0.10.0] - 2026-11-06
 
 ### Bug Fixes
@@ -318,20 +331,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Drop cargo install, trs is not on crates.io (#234)
-
-### Testing
-
-- Remove tests that cannot catch a regression (#237)
-- Assert what commands print instead of that they ran (#241)
-
-## [0.9.2] - 2026-11-05
-
-### Features
-
-- diff: Share a byte budget across a large diff (#231)
-
-... (756 lines, hidden sections: [0.9.1] - 2026-11-05 · [0.9.0] - 2026-11-05 · [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07 · [0.8.5] - 2026-09-26)
+... (769 lines, hidden sections: [0.9.2] - 2026-11-05 · [0.9.1] - 2026-11-05 · [0.9.0] - 2026-11-05 · [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07)
 
 ## CLAUDE.md
 
@@ -448,7 +448,7 @@ git config core.hooksPath .githooks
 **Cargo.toml**
 [package]
 name = "trs-cli"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2021"
 description = "Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands"
 license = "MIT"
@@ -1186,7 +1186,7 @@ After the command it is trs's only when trs has a formatter for that
 command and the command does not take the flag itself, so
 `trs git status --json` and `trs --json git status` are equivalent.
 Otherwise the flag belongs to the command and is passed on untouched:
-... (153 lines, hidden sections: Structured output is never rewritten · One document under `--json` · Examples · When to use what · Built-in tools vs wrapped commands · See also)
+... (157 lines, hidden sections: Structured output is never rewritten · One document under `--json` · Examples · When to use what · Built-in tools vs wrapped commands · See also)
 
 **ingest.md**
 # `trs ingest`: project digest for AI agents
@@ -4286,7 +4286,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
 **err.rs**
   fn is_error_line(line: &str) -> bool
   fn is_error_not_warning(line: &str) -> bool
-  pub fn handle_err(command: &str, args: &[String], _ctx: &CommandContext) -> CommandResult
+  pub fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -> CommandResult
 
 **html2md.rs**
   pub struct Html2mdHandler
@@ -4497,7 +4497,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn context(
   fn keep_first_results(files: &mut Vec<GrepFile>, limit: usize)
   pub fn format_output(grep_output: &GrepOutput, format: OutputFormat) -> String
-  pub fn format_json(grep_output: &GrepOutput) -> String
   pub fn format_csv(grep_output: &GrepOutput) -> String
   pub fn format_tsv(grep_output: &GrepOutput) -> String
   pub fn format_compact(grep_output: &GrepOutput) -> String
@@ -5874,4 +5873,4 @@ pub(crate) enum LogLevel {
   fn test_test_output_round_trip()
 
 ---
-*trs ingest v0.10.0 | 140ms | 204.6KB*
+*trs ingest v0.10.1 | 132ms | 204.6KB*
