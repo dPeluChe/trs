@@ -157,6 +157,12 @@ impl CommandHandler for RunHandler {
                 print!("{}", formatted);
 
                 if !output.success() {
+                    // The document carries the code; a second one breaks `2>&1` parsers.
+                    if ctx.format == OutputFormat::Json {
+                        return Err(CommandError::Reported {
+                            exit_code: output.code(),
+                        });
+                    }
                     // Agents run with `2>/dev/null`, so the error alone can vanish.
                     if matches!(ctx.format, OutputFormat::Compact | OutputFormat::Agent) {
                         let line = crate::exec_verdict::exit_line(output.code(), None);

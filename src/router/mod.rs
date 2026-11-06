@@ -258,6 +258,7 @@ impl Router {
                     println!("{}", formatted);
                 }
             }
+            Err(CommandError::Reported { exit_code }) => std::process::exit(exit_code),
             Err(e) => {
                 // Format error according to output format
                 let formatted = Self::format_command_error(&e, ctx.format);

@@ -259,16 +259,16 @@ fn test_run_rejects_the_removed_capture_exit_code_flag() {
 }
 
 #[test]
-fn test_run_non_zero_reports_the_exit_on_stderr() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("exit 42")
-        .assert()
-        .code(42)
-        .stderr(predicate::str::contains("exited with code 42"));
+fn test_run_non_zero_reports_the_exit_in_one_document() {
+    let out = Command::cargo_bin("trs")
+        .unwrap()
+        .args(["--json", "run", "sh", "-c", "exit 42"])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(42));
+    assert!(out.stderr.is_empty(), "{:?}", out.stderr);
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(json["exit_code"], 42);
 }
 
 #[test]

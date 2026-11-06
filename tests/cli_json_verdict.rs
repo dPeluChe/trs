@@ -80,3 +80,31 @@ fn a_command_that_never_started_is_a_document_too() {
     assert_eq!(json["error"], true);
     assert_eq!(json["exit_code"], 127);
 }
+
+#[test]
+fn is_clean_reports_a_failure_once_so_2_to_1_still_parses() {
+    let outside = tempfile::tempdir().unwrap();
+    let dirty = tempfile::tempdir().unwrap();
+    assert!(std::process::Command::new("git")
+        .arg("init")
+        .current_dir(dirty.path())
+        .output()
+        .unwrap()
+        .status
+        .success());
+    std::fs::write(dirty.path().join("new.txt"), "x").unwrap();
+
+    for (dir, code) in [(outside.path(), 2), (dirty.path(), 1)] {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .current_dir(dir)
+            .env("GIT_CEILING_DIRECTORIES", dir.parent().unwrap())
+            .args(["--json", "is-clean"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(code));
+        assert!(out.stderr.is_empty(), "{:?}", out.stderr);
+        let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(json["is_clean"], false);
+    }
+}
