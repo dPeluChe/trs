@@ -11,34 +11,24 @@
 //! - Regex patterns
 //! - Multiple files
 
-use assert_cmd::Command;
 use predicates::prelude::*;
+
+mod support;
 
 // ============================================================
 // CSV Output Format Tests
 // ============================================================
 
 #[test]
-fn test_search_csv_has_header() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+fn test_search_csv_has_header_and_file_path() {
+    let mut cmd = support::search_cmd();
     cmd.arg("--csv")
         .arg("search")
         .arg("src")
         .arg("SearchHandler")
         .assert()
         .success()
-        .stdout(predicate::str::contains("path").or(predicate::str::contains("line")));
-}
-
-#[test]
-fn test_search_csv_has_file_path() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--csv")
-        .arg("search")
-        .arg("src")
-        .arg("SearchHandler")
-        .assert()
-        .success()
+        .stdout(predicate::str::starts_with("path,"))
         .stdout(predicate::str::contains("router/"));
 }
 
@@ -48,7 +38,7 @@ fn test_search_csv_has_file_path() {
 
 #[test]
 fn test_search_tsv_has_file_path() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--tsv")
         .arg("search")
         .arg("src")
@@ -64,7 +54,7 @@ fn test_search_tsv_has_file_path() {
 
 #[test]
 fn test_search_compact_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--compact")
         .arg("search")
         .arg("src")
@@ -80,7 +70,7 @@ fn test_search_compact_format() {
 
 #[test]
 fn test_search_raw_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--raw")
         .arg("search")
         .arg("src")
@@ -96,7 +86,7 @@ fn test_search_raw_format() {
 
 #[test]
 fn test_search_agent_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--agent")
         .arg("search")
         .arg("src")
@@ -112,7 +102,7 @@ fn test_search_agent_format() {
 
 #[test]
 fn test_search_format_precedence_json_over_raw() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // JSON should win over raw
     cmd.arg("--json")
         .arg("--raw")
@@ -126,7 +116,7 @@ fn test_search_format_precedence_json_over_raw() {
 
 #[test]
 fn test_search_format_precedence_json_over_compact() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // JSON should win over compact
     cmd.arg("--json")
         .arg("--compact")
@@ -140,7 +130,7 @@ fn test_search_format_precedence_json_over_compact() {
 
 #[test]
 fn test_search_format_precedence_csv_over_tsv() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // CSV should win over TSV
     cmd.arg("--csv")
         .arg("--tsv")
@@ -154,7 +144,7 @@ fn test_search_format_precedence_csv_over_tsv() {
 
 #[test]
 fn test_search_format_precedence_compact_over_raw() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // Compact should win over raw
     cmd.arg("--compact")
         .arg("--raw")
@@ -172,7 +162,7 @@ fn test_search_format_precedence_compact_over_raw() {
 
 #[test]
 fn test_search_no_matches_json_is_empty() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -196,7 +186,7 @@ fn test_search_no_matches_json_is_empty() {
 
 #[test]
 fn test_search_regex_word_boundary() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // Search for whole word "fn"
     cmd.arg("search")
         .arg("src")
@@ -208,7 +198,7 @@ fn test_search_regex_word_boundary() {
 
 #[test]
 fn test_search_regex_character_class() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // Search for pub or Pub
     cmd.arg("search")
         .arg("src")
@@ -220,7 +210,7 @@ fn test_search_regex_character_class() {
 
 #[test]
 fn test_search_regex_alternation() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // Search for fn or struct
     cmd.arg("search")
         .arg("src")
@@ -232,7 +222,7 @@ fn test_search_regex_alternation() {
 
 #[test]
 fn test_search_invalid_regex_returns_error() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("[invalid")
@@ -247,7 +237,7 @@ fn test_search_invalid_regex_returns_error() {
 
 #[test]
 fn test_search_multiple_files() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     // "fn " should appear in multiple files
     let output = cmd
         .arg("--json")
