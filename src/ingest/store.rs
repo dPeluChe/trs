@@ -249,12 +249,13 @@ fn get_repo_name(root: &Path) -> String {
 
 /// Save digest to ~/.trs/ingest/<owner>/<repo>.md (single file, overwrites)
 /// Also cleans up old digest if repo moved to a different owner (e.g. added remote).
-pub(super) fn save_to_store(content: &str, config: &IngestConfig) -> Option<String> {
-    let base = ingest_store_dir()?;
+pub(super) fn save_to_store(content: &str, config: &IngestConfig) -> std::io::Result<String> {
+    let base = ingest_store_dir()
+        .ok_or_else(|| std::io::Error::other("no home directory for the digest store"))?;
     let (owner, repo) = get_repo_identity(&config.root);
 
     let owner_dir = base.join(&owner);
-    std::fs::create_dir_all(&owner_dir).ok()?;
+    std::fs::create_dir_all(&owner_dir)?;
 
     let filename = format!("{}.md", repo);
     let filepath = owner_dir.join(&filename);
@@ -287,8 +288,8 @@ pub(super) fn save_to_store(content: &str, config: &IngestConfig) -> Option<Stri
         }
     }
 
-    std::fs::write(&filepath, content).ok()?;
-    Some(filepath.to_string_lossy().to_string())
+    std::fs::write(&filepath, content)?;
+    Ok(filepath.to_string_lossy().to_string())
 }
 
 /// Get the digest file path for a project root (without creating it).

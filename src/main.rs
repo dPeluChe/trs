@@ -143,6 +143,19 @@ fn main() {
     }
 }
 
+/// Clap exits on its own, before `--json` is known, so look for the flag here.
+/// `--help` and `--version` are not failures and keep clap's text.
+fn parse_cli(args: &[String]) -> Cli {
+    Cli::try_parse_from(args).unwrap_or_else(|e| {
+        let flags = args.iter().take_while(|arg| *arg != "--");
+        if e.use_stderr() && flags.into_iter().any(|arg| arg == "--json") {
+            let message = e.to_string();
+            crate::exec_verdict::exit_with_error(OutputFormat::Json, message.trim(), e.exit_code())
+        }
+        e.exit()
+    })
+}
+
 /// Run the command as typed: trs can't read such arguments, so it stays out.
 fn run_unparsed() -> ! {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
@@ -195,7 +208,7 @@ fn run() {
     // Preprocess arguments to handle tail -N shorthand (e.g., -5 for last 5 lines)
     let processed_args = preprocess_tail_args(&args);
 
-    let cli = Cli::parse_from(&processed_args);
+    let cli = parse_cli(&processed_args);
 
     // Create command context from global CLI options
     let ctx = CommandContext::from_cli(&cli);
@@ -452,18 +465,19 @@ fn run() {
             // Read from stdin when piped
             let mut buffer = Vec::new();
             if let Err(e) = io::stdin().read_to_end(&mut buffer) {
-                eprintln!("Error reading from stdin: {}", e);
-                std::process::exit(1);
+                let message = format!("Error reading from stdin: {e}");
+                crate::exec_verdict::exit_with_error(ctx.format, &message, 1)
             }
 
             let input = String::from_utf8_lossy(&buffer);
 
             match router.process_stdin(&input, &ctx) {
                 Ok(output) => print!("{}", output),
-                Err(e) => {
-                    eprintln!("{}", e);
-                    std::process::exit(e.exit_code().unwrap_or(1));
-                }
+                Err(e) => crate::exec_verdict::exit_with_error(
+                    ctx.format,
+                    &e.to_string(),
+                    e.exit_code().unwrap_or(1),
+                ),
             }
         }
     }

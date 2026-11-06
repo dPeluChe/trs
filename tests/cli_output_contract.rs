@@ -105,3 +105,41 @@ fn err_counts_and_tabulates_the_same_lines() {
     assert!(csv.starts_with("kind,line"), "{csv}");
     assert!(csv.lines().any(|l| l == "error,error: x"), "{csv}");
 }
+
+#[test]
+fn a_usage_error_is_a_document_under_json() {
+    let json = failed_document(&["--json", "search"], 2);
+    assert_eq!(json["error"], true);
+    assert_eq!(json["success"], false);
+    assert!(json["message"].as_str().unwrap().contains("<PATH>"));
+    let help = trs(&["--json", "--help"]);
+    assert_eq!(help.status.code(), Some(0));
+    assert!(String::from_utf8_lossy(&help.stdout).contains("Usage:"));
+    let text = trs(&["search"]);
+    assert_eq!(text.status.code(), Some(2));
+    assert!(text.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&text.stderr).contains("<PATH>"));
+}
+
+#[test]
+fn a_failed_ingest_write_is_a_document_under_json() {
+    let dir = tempfile::tempdir().unwrap();
+    let blocker = dir.path().join("a_file");
+    std::fs::write(&blocker, "").unwrap();
+    let ingest = || {
+        let mut cmd = Command::cargo_bin("trs").unwrap();
+        cmd.current_dir(dir.path()).args(["--json", "ingest", "."]);
+        cmd
+    };
+    let to_output = ingest()
+        .arg("--output")
+        .arg(blocker.join("digest.md"))
+        .output()
+        .unwrap();
+    let to_store = ingest().env("TRS_HOME", &blocker).output().unwrap();
+    for out in [to_output, to_store] {
+        assert_eq!(out.status.code(), Some(1), "{out:?}");
+        let json = support::document(&out);
+        assert!(json["message"].as_str().unwrap().contains("write failed"));
+    }
+}

@@ -220,8 +220,8 @@ pub(crate) struct DigestFile {
     pub(crate) symbols: Vec<String>,
 }
 
-/// Run the ingest command.
-pub fn run_ingest(config: &IngestConfig) {
+/// Run the ingest command. An error is a digest that could not be written.
+pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
     let start = std::time::Instant::now();
 
     // Resolve --since-last: look up stored HEAD from last ingest
@@ -258,7 +258,7 @@ pub fn run_ingest(config: &IngestConfig) {
                         } else {
                             println!("{}", path.display());
                         }
-                        return;
+                        return Ok(());
                     }
                 }
             }
@@ -270,7 +270,7 @@ pub fn run_ingest(config: &IngestConfig) {
 
     if files.is_empty() {
         eprintln!("trs ingest: no files found");
-        return;
+        return Ok(());
     }
 
     // Get changed files from git (if needed)
@@ -317,7 +317,7 @@ pub fn run_ingest(config: &IngestConfig) {
             format_tokens(tokens),
         );
         print!("{}", output);
-        return;
+        return Ok(());
     }
 
     // --html mode: emit a self-contained visual report instead of markdown.
@@ -342,21 +342,14 @@ pub fn run_ingest(config: &IngestConfig) {
                 let _ = std::fs::create_dir_all(parent);
             }
         }
-        match std::fs::write(&out_path, &output) {
-            Ok(()) => {
-                eprintln!(
-                    "trs ingest --html: {} -> {}",
-                    format_bytes(output.len()),
-                    out_path.display()
-                );
-                println!("{}", out_path.display());
-            }
-            Err(e) => {
-                eprintln!("trs ingest: write failed: {}", e);
-                std::process::exit(1);
-            }
-        }
-        return;
+        std::fs::write(&out_path, &output)?;
+        eprintln!(
+            "trs ingest --html: {} -> {}",
+            format_bytes(output.len()),
+            out_path.display()
+        );
+        println!("{}", out_path.display());
+        return Ok(());
     }
 
     // Build the dep summary for header injection
@@ -409,20 +402,21 @@ pub fn run_ingest(config: &IngestConfig) {
         if let Some(parent) = out_path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        match std::fs::write(out_path, &final_output) {
-            Ok(()) => Some(out_path.display().to_string()),
-            Err(e) => {
-                eprintln!("trs ingest: write failed: {}", e);
-                std::process::exit(1);
-            }
-        }
+        std::fs::write(out_path, &final_output)?;
+        Some(out_path.display().to_string())
     } else {
-        let saved_path = save_to_store(&final_output, config);
-        if let Some(ref p) = saved_path {
-            let digest_path = std::path::PathBuf::from(p);
-            let _ = meta::save_meta(&digest_path, &digest_meta);
+        match save_to_store(&final_output, config) {
+            Ok(path) => {
+                let _ = meta::save_meta(std::path::Path::new(&path), &digest_meta);
+                Some(path)
+            }
+            // The digest still reaches stdout; only the saved copy is lost.
+            Err(e) if config.print_content => {
+                eprintln!("trs ingest: write failed: {e}");
+                None
+            }
+            Err(e) => return Err(e),
         }
-        saved_path
     };
 
     if let Some(ref p) = written_path {
@@ -456,6 +450,7 @@ pub fn run_ingest(config: &IngestConfig) {
         // Default: emit just the path on stdout for easy capture.
         println!("{}", p);
     }
+    Ok(())
 }
 
 #[cfg(test)]

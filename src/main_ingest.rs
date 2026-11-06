@@ -109,6 +109,9 @@ pub(crate) fn run(cmd: &Commands, ctx: &CommandContext) {
             max_loc: max_loc.unwrap_or(500),
             agent_mode,
         };
-        ingest::run_ingest(&config);
+        if let Err(e) = ingest::run_ingest(&config) {
+            let message = format!("trs ingest: write failed: {e}");
+            crate::exec_verdict::exit_with_error(ctx.format, &message, 1)
+        }
     }
 }
