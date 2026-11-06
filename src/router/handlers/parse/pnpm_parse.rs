@@ -224,7 +224,7 @@ impl ParseHandler {
 
         // Set output properties
         output.is_empty = output.test_suites.is_empty();
-        output.success = output.test_suites.iter().all(|s| s.passed);
+        output.success = !output.is_empty && output.test_suites.iter().all(|s| s.passed);
 
         // Update summary counts from parsed tests
         Self::update_pnpm_summary_from_tests(&mut output);

@@ -168,8 +168,8 @@ macro_rules! into_runner_output {
                 summary.tests_skipped = self.skipped;
                 summary.tests_todo = self.todo;
                 summary.duration = self.duration;
-                output.success = self.failed == 0;
                 output.is_empty = self.tests == 0;
+                output.success = !output.is_empty && self.failed == 0;
                 output
             }
         }
