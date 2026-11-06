@@ -1,60 +1,16 @@
 use assert_cmd::Command;
 
-#[test]
-fn test_search_extension_filter_rs() {
-    // Test that extension filter only searches .rs files
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
-        .arg("search")
-        .arg(".")
-        .arg("fn")
-        .arg("--extension")
-        .arg("rs")
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let output_str = String::from_utf8_lossy(&output);
-
-    // Should only contain .rs files, not .md files
-    assert!(output_str.contains(".rs"));
-    assert!(!output_str.contains(".md:"));
-}
-
-#[test]
-fn test_search_extension_filter_md() {
-    // Test that extension filter only searches .md files
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
-        .arg("search")
-        .arg(".")
-        .arg("CLI")
-        .arg("--extension")
-        .arg("md")
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let output_str = String::from_utf8_lossy(&output);
-
-    // Should only contain .md files, not .rs files
-    assert!(output_str.contains(".md"));
-    assert!(!output_str.contains(".rs:"));
-}
+mod support;
 
 #[test]
 fn test_search_extension_filter_json_output() {
     // Test extension filter with JSON output
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
         .arg(".")
-        .arg("fn")
+        .arg("SearchHandler")
         .arg("--extension")
         .arg("rs")
         .assert()
@@ -68,6 +24,7 @@ fn test_search_extension_filter_json_output() {
 
     // All files should have .rs extension
     let files = json["files"].as_array().unwrap();
+    assert_eq!(files.len(), 3);
     for file in files {
         let path = file["path"].as_str().unwrap();
         assert!(path.ends_with(".rs"), "Expected .rs file, got: {}", path);

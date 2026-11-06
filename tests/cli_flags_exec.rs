@@ -1,6 +1,8 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+mod support;
+
 // ============================================================
 // Global Flags Tests
 // ============================================================
@@ -27,7 +29,7 @@ fn test_global_flags_help() {
 #[test]
 fn test_search_basic() {
     // Search should find results when searching for a pattern that exists
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg(".")
         .arg("SearchHandler")
@@ -41,7 +43,7 @@ fn test_search_basic() {
 
 #[test]
 fn test_search_json_output() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--json")
         .arg("search")
         .arg("src")
@@ -58,7 +60,7 @@ fn test_search_json_output() {
 
 #[test]
 fn test_search_csv_output() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--csv")
         .arg("search")
         .arg("src")
@@ -75,7 +77,7 @@ fn test_search_csv_output() {
 
 #[test]
 fn test_search_tsv_output() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--tsv")
         .arg("search")
         .arg("src")
@@ -92,7 +94,7 @@ fn test_search_tsv_output() {
 
 #[test]
 fn test_search_raw_output() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--raw")
         .arg("search")
         .arg("src")
@@ -107,7 +109,7 @@ fn test_search_raw_output() {
 
 #[test]
 fn test_search_with_context() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("SearchHandler")
@@ -122,7 +124,7 @@ fn test_search_with_context() {
 
 #[test]
 fn test_search_with_limit() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("SearchHandler")
@@ -137,7 +139,7 @@ fn test_search_with_limit() {
 
 #[test]
 fn test_search_no_matches() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("NONEXISTENT_PATTERN_12345")

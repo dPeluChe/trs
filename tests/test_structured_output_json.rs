@@ -8,6 +8,8 @@
 use assert_cmd::Command;
 use std::io::Write;
 
+mod support;
+
 // ============================================================
 // JSON Schema Validation Tests
 // ============================================================
@@ -241,7 +243,7 @@ fn test_json_replace_has_valid_schema() {
 
 #[test]
 fn test_json_search_has_valid_schema() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")

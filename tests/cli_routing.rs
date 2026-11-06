@@ -1,6 +1,8 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+mod support;
+
 // ============================================================
 // Tail -N Shorthand Tests
 // ============================================================
@@ -316,7 +318,7 @@ fn test_router_run_command_with_stats() {
 
 #[test]
 fn test_context_agent_format_routing() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--agent")
         .arg("search")
         .arg("src")
@@ -330,7 +332,7 @@ fn test_context_agent_format_routing() {
 
 #[test]
 fn test_context_combined_flags_routing() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--json")
         .arg("--stats")
         .arg("search")

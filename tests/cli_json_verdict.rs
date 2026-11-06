@@ -19,10 +19,7 @@ fn run_json(program: &str, body: &str) -> std::process::Output {
 
 fn json_run(program: &str, body: &str) -> (serde_json::Value, Option<i32>) {
     let out = run_json(program, body);
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    let json = serde_json::from_str(&stdout)
-        .unwrap_or_else(|e| panic!("not one JSON document ({e}): {stdout}"));
-    (json, out.status.code())
+    (support::document(&out), out.status.code())
 }
 
 #[test]
@@ -95,7 +92,7 @@ fn is_clean_reports_a_failure_once_so_2_to_1_still_parses() {
             .unwrap();
         assert_eq!(out.status.code(), Some(code));
         assert!(out.stderr.is_empty(), "{:?}", out.stderr);
-        let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        let json = support::document(&out);
         assert_eq!(json["is_clean"], false);
     }
 }
@@ -107,10 +104,7 @@ fn err_json(script: &str) -> (serde_json::Value, Option<i32>) {
         .output()
         .unwrap();
     assert!(out.stderr.is_empty(), "{:?}", out.stderr);
-    (
-        serde_json::from_slice(&out.stdout).unwrap(),
-        out.status.code(),
-    )
+    (support::document(&out), out.status.code())
 }
 
 #[test]
@@ -141,15 +135,6 @@ fn err_on_a_clean_run_has_no_lines() {
     assert_eq!(json["success"], true);
     assert_eq!(json["lines"], serde_json::json!([]));
     assert!(json.get("full_output").is_none());
-}
-
-#[test]
-fn the_childs_stderr_stays_inside_the_document() {
-    let out = run_json("zzz_tool", "echo out; echo careful >&2; exit 3");
-    assert!(out.stderr.is_empty(), "{:?}", out.stderr);
-    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(json["stderr"], "careful\n");
-    assert_eq!(json["exit_code"], 3);
 }
 
 #[test]

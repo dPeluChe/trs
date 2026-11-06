@@ -7,6 +7,8 @@
 use assert_cmd::Command;
 use std::io::Write;
 
+mod support;
+
 // ============================================================
 // CSV Format Validation Tests
 // ============================================================
@@ -73,7 +75,7 @@ fn test_csv_grep_has_header() {
 
 #[test]
 fn test_csv_search_has_header() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--csv")
         .arg("search")
@@ -266,7 +268,7 @@ fn test_tsv_grep_has_header() {
 
 #[test]
 fn test_tsv_search_has_header() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--tsv")
         .arg("search")
@@ -324,7 +326,7 @@ fn test_tsv_tail_has_header() {
 #[test]
 fn test_tsv_uses_tab_delimiter() {
     // Use a command that produces tabular output with TSV format
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--tsv")
         .arg("search")

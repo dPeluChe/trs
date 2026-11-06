@@ -1,12 +1,12 @@
 // Test file to verify that line numbers are returned in search results
 // This test file specifically addresses the requirement: "return line numbers"
 
-use assert_cmd::Command;
+mod support;
 
 /// Test that line numbers are present in compact format output
 #[test]
 fn test_line_numbers_compact_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg("src/router/")
@@ -31,7 +31,7 @@ fn test_line_numbers_compact_format() {
 /// Test that line numbers are present in JSON format
 #[test]
 fn test_line_numbers_json_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -66,7 +66,7 @@ fn test_line_numbers_json_format() {
 /// Test that line numbers are present in CSV format
 #[test]
 fn test_line_numbers_csv_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--csv")
         .arg("search")
@@ -96,7 +96,7 @@ fn test_line_numbers_csv_format() {
 /// Test that line numbers are present in TSV format
 #[test]
 fn test_line_numbers_tsv_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--tsv")
         .arg("search")
@@ -125,7 +125,7 @@ fn test_line_numbers_tsv_format() {
 /// Test that line numbers are present in raw format
 #[test]
 fn test_line_numbers_raw_format() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--raw")
         .arg("search")
@@ -143,18 +143,13 @@ fn test_line_numbers_raw_format() {
     assert!(output_str.contains("router/"));
     assert!(output_str.contains("SearchHandler"));
 
-    // Should contain at least one numeric line number
-    let lines: Vec<&str> = output_str.lines().collect();
-    assert!(!lines.is_empty());
-
-    // First line should have format like "src/router.rs:1400:12:..."
-    assert!(lines[0].contains(":1400:") || lines[0].contains(":"));
+    assert!(output_str.contains("search.rs:1:12:"), "{output_str}");
 }
 
 /// Test that line numbers work with context lines
 #[test]
 fn test_line_numbers_with_context() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg("src/router/")
@@ -191,7 +186,7 @@ fn test_line_numbers_with_context() {
 /// Test that line numbers are accurate across multiple matches
 #[test]
 fn test_line_numbers_accuracy() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -206,23 +201,17 @@ fn test_line_numbers_accuracy() {
     let output_str = String::from_utf8_lossy(&output);
     let json: serde_json::Value = serde_json::from_str(&output_str).unwrap();
 
-    let matches = json["files"][0]["matches"].as_array().unwrap();
-
-    // Verify all matches have valid line numbers
-    for m in matches {
-        assert!(m["line_number"].is_number());
-        let line_num = m["line_number"].as_u64().unwrap();
-        assert!(line_num > 0);
-        assert!(line_num < 100000); // Reasonable upper bound
-    }
-
-    // Verify line numbers are in ascending order
-    let line_numbers: Vec<u64> = matches
+    let file = json["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"].as_str().unwrap().ends_with("handlers/search.rs"))
+        .unwrap();
+    let line_numbers: Vec<u64> = file["matches"]
+        .as_array()
+        .unwrap()
         .iter()
         .filter_map(|m| m["line_number"].as_u64())
         .collect();
-
-    let mut sorted = line_numbers.clone();
-    sorted.sort();
-    assert_eq!(line_numbers, sorted);
+    assert_eq!(line_numbers, [1, 3, 5]);
 }

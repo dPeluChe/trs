@@ -1,5 +1,6 @@
-use assert_cmd::Command;
 use predicates::prelude::*;
+
+mod support;
 
 // Search Grouping Tests
 // ============================================================
@@ -7,7 +8,7 @@ use predicates::prelude::*;
 #[test]
 fn test_search_groups_matches_by_file_compact() {
     // Test that matches are grouped by file in compact output
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("SearchHandler")
@@ -25,7 +26,7 @@ fn test_search_groups_matches_by_file_compact() {
 #[test]
 fn test_search_groups_matches_by_file_json() {
     // Test that matches are grouped by file in JSON output
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -64,7 +65,7 @@ fn test_search_groups_matches_by_file_json() {
 #[test]
 fn test_search_groups_multiple_files_correctly() {
     // Test that multiple files are each shown as separate groups
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("fn") // Pattern that appears in multiple files
@@ -81,7 +82,7 @@ fn test_search_groups_multiple_files_correctly() {
 #[test]
 fn test_search_groups_single_file_multiple_matches() {
     // Test that multiple matches in the same file are grouped together
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg("src/router/")
@@ -105,7 +106,7 @@ fn test_search_groups_single_file_multiple_matches() {
 #[test]
 fn test_search_groups_preserve_line_numbers() {
     // Test that grouping preserves line numbers
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--raw")
         .arg("search")
@@ -127,7 +128,7 @@ fn test_search_groups_preserve_line_numbers() {
 #[test]
 fn test_search_groups_with_truncation() {
     // Test that grouping works correctly with truncation
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg(".")
         .arg("fn") // Common pattern
@@ -144,7 +145,7 @@ fn test_search_groups_with_truncation() {
 #[test]
 fn test_search_csv_maintains_file_column() {
     // Test that CSV output includes file path for each match
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--csv")
         .arg("search")
         .arg("src")
@@ -160,7 +161,7 @@ fn test_search_csv_maintains_file_column() {
 #[test]
 fn test_search_tsv_maintains_file_column() {
     // Test that TSV output includes file path for each match
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("--tsv")
         .arg("search")
         .arg("src")
@@ -176,7 +177,7 @@ fn test_search_tsv_maintains_file_column() {
 #[test]
 fn test_search_counts_match_groups() {
     // Test that counts reflect grouped matches
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg("src/router/")
@@ -198,7 +199,7 @@ fn test_search_counts_match_groups() {
 #[test]
 fn test_search_groups_case_insensitive() {
     // Test that grouping works with case-insensitive search
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     cmd.arg("search")
         .arg("src")
         .arg("searchhandler") // lowercase
@@ -213,7 +214,7 @@ fn test_search_groups_case_insensitive() {
 #[test]
 fn test_search_includes_excerpts_compact() {
     // Test that compact output includes match excerpts
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg("src")
@@ -240,7 +241,7 @@ fn test_search_includes_excerpts_compact() {
 #[test]
 fn test_search_includes_excerpts_json() {
     // Test that JSON output includes excerpt field
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("--json")
         .arg("search")
@@ -277,7 +278,7 @@ fn test_search_includes_excerpts_json() {
 #[test]
 fn test_search_shows_total_files_and_match_count() {
     // Test that compact output shows total files and match count at the end
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg("src/router/")
@@ -306,7 +307,7 @@ fn test_search_shows_total_files_and_match_count() {
 #[test]
 fn test_search_shows_total_with_truncation() {
     // Test that truncated output shows shown/total format
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg(".")
@@ -334,7 +335,7 @@ fn test_search_shows_total_with_truncation() {
 #[test]
 fn test_search_total_no_matches() {
     // Test that no matches case doesn't show total
-    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let mut cmd = support::search_cmd();
     let output = cmd
         .arg("search")
         .arg("src")
