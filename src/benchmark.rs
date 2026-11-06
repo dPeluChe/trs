@@ -40,8 +40,8 @@ pub(crate) fn run_benchmark(command: &str, args: &[String], repeat: usize, json:
 
     for _ in 0..iterations {
         match run_once(command, args, json) {
-            Some(r) => results.push(r),
-            None => std::process::exit(1),
+            Ok(r) => results.push(r),
+            Err(message) => crate::exec_verdict::exit_with_error(format_of(json), &message, 1),
         }
     }
 
@@ -86,7 +86,7 @@ pub(crate) fn run_benchmark(command: &str, args: &[String], repeat: usize, json:
 }
 
 /// Run one iteration: execute raw, then execute through trs.
-fn run_once(cmd: &str, args: &[String], json: bool) -> Option<IterResult> {
+fn run_once(cmd: &str, args: &[String], json: bool) -> Result<IterResult, String> {
     let start = Instant::now();
 
     // Step 1: Execute the command raw and capture output
@@ -103,7 +103,7 @@ fn run_once(cmd: &str, args: &[String], json: bool) -> Option<IterResult> {
 
     let time_ms = start.elapsed().as_millis() as u64;
 
-    Some(IterResult {
+    Ok(IterResult {
         raw_bytes,
         compressed_bytes,
         time_ms,
@@ -114,7 +114,7 @@ fn run_once(cmd: &str, args: &[String], json: bool) -> Option<IterResult> {
 /// Byte count of `trs <cmd> [args...]`, measured. Never estimated: a
 /// benchmark that swaps in a table value when trs loses reports a win it
 /// did not get.
-fn run_through_trs(cmd: &str, args: &[String]) -> Option<usize> {
+fn run_through_trs(cmd: &str, args: &[String]) -> Result<usize, String> {
     let output = std::env::current_exe()
         .and_then(|trs| {
             Command::new(trs)
@@ -124,9 +124,8 @@ fn run_through_trs(cmd: &str, args: &[String]) -> Option<usize> {
                 .stderr(Stdio::piped())
                 .output()
         })
-        .map_err(|e| eprintln!("Failed to run '{}' through trs: {}", cmd, e))
-        .ok()?;
-    Some(output.stdout.len() + output.stderr.len())
+        .map_err(|e| format!("Failed to run '{cmd}' through trs: {e}"))?;
+    Ok(output.stdout.len() + output.stderr.len())
 }
 
 fn print_json(r: &BenchReport) {

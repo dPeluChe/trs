@@ -32,15 +32,21 @@ lines in it.
 
 ## One document under `--json`
 
-Stdout holds one JSON document on every path, with no text footer after it.
+Stdout holds one JSON document, with no text footer after it, for every run of
+a program and every command with JSON output.
 Output that is already a JSON object stays one. A JSON array the program
 printed is left as written. Anything else is wrapped as
 `{"output": "...", "success": true}`, and a command that never started
 prints `{"error": true, "success": false, "exit_code": 127, "message": "..."}`.
 On Windows every `trs` command starts programs through `cmd`, so a missing one
 is an ordinary failed run with `cmd`'s exit 1 and message.
-A failed `trs` subcommand prints the same document. Only a usage error caught
-while reading the arguments stays plain text on stderr, with exit 2.
+Those commands print the same document when they fail, and so does a usage
+error, with exit 2.
+
+`--help` and `--version` keep their text, as do the admin commands (`init`,
+`uninstall`, `upgrade`, `report`, `output-saver`, `debug-info`, `history`).
+`ingest` prints its path or digest as text and uses the document only to report
+a failure, and it may write progress to stderr first.
 
 On failure `success` is `false`, `exit_code` holds the real status and
 `full_output` is the path to the raw output. A cut output also gets
