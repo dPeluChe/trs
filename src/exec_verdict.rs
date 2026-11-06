@@ -112,7 +112,15 @@ pub(crate) fn notice(format: crate::OutputFormat, line: &str) {
     }
 }
 
-/// Terminal failure footer, printed on STDOUT and never returning.
+/// `[trs] exit N`, with the raw path when there is one.
+pub(crate) fn exit_line(code: i32, raw: Option<&str>) -> String {
+    match raw {
+        Some(path) => format!("[trs] exit {} · full output: {}\n", code, path),
+        None => format!("[trs] exit {}\n", code),
+    }
+}
+
+/// Terminal failure footer. Goes through `notice` and never returns.
 ///
 /// stdout, not stderr: agents run commands with `2>/dev/null` to keep their
 /// context clean, which silently drops a stderr-only notice exactly when it
@@ -125,11 +133,8 @@ pub(crate) fn emit_failure_footer(
     stdout: &str,
     stderr: &str,
 ) -> ! {
-    let footer = match crate::classifier_exec::save_tee_output(fcmd, stdout, stderr) {
-        Some(tee_path) => format!("[trs] exit {} · full output: {}\n", code, tee_path),
-        None => format!("[trs] exit {}\n", code),
-    };
-    notice(format, &footer);
+    let raw = crate::classifier_exec::save_tee_output(fcmd, stdout, stderr);
+    notice(format, &exit_line(code, raw.as_deref()));
     std::process::exit(code);
 }
 

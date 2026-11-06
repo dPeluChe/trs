@@ -159,7 +159,8 @@ impl CommandHandler for RunHandler {
                 if !output.success() {
                     // Agents run with `2>/dev/null`, so the error alone can vanish.
                     if matches!(ctx.format, OutputFormat::Compact | OutputFormat::Agent) {
-                        println!("[trs] exit {}", output.code());
+                        let line = crate::exec_verdict::exit_line(output.code(), None);
+                        crate::exec_verdict::notice(ctx.format, &line);
                     }
                     return Err(CommandError::ExecutionError {
                         message: format!("Command exited with code {}", output.code()),

@@ -210,11 +210,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                 out_bytes = parsed.len();
                 // Failures already get this from the footer below.
                 if output.status.success() && cut {
-                    if let Some(path) = save_tee_output(&full_cmd(cmd, args), &stdout, &stderr) {
-                        let line = format!("[trs] full output: {}\n", path);
-                        notice(ctx.format, &line);
-                        out_bytes += line.len();
-                    }
+                    out_bytes += print_raw_path(ctx.format, cmd, args, &stdout, &stderr);
                 }
             } else {
                 print!("{}", stdout_ref);
@@ -292,6 +288,17 @@ fn point_to_raw(
     if !crate::parse_out::take_dropped() || !status.success() {
         return 0;
     }
+    print_raw_path(format, cmd, args, stdout, stderr)
+}
+
+/// Save the raw output and print where. Returns bytes added.
+fn print_raw_path(
+    format: crate::OutputFormat,
+    cmd: &str,
+    args: &[String],
+    stdout: &str,
+    stderr: &str,
+) -> usize {
     match save_tee_output(&full_cmd(cmd, args), stdout, stderr) {
         Some(path) => {
             let line = format!("[trs] full output: {}\n", path);
