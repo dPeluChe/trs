@@ -42,6 +42,15 @@ impl SearchHandler {
         use ignore::WalkBuilder;
         use std::sync::{Arc, Mutex};
 
+        // The walker yields a missing root as a skippable entry, which read as
+        // "no matches" for a mistyped path.
+        if !input.path.exists() {
+            return Err(CommandError::ExecutionError {
+                message: format!("path not found: {}", input.path.display()),
+                exit_code: Some(2),
+            });
+        }
+
         // Build the regex matcher
         let matcher = if input.ignore_case {
             RegexMatcher::new(&format!("(?i){}", input.query))

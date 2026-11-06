@@ -95,8 +95,11 @@ fn test_search_nonexistent_directory() {
         .arg("/nonexistent/directory/xyz123")
         .arg("test")
         .assert()
-        .success()
-        .stdout("grep: no matches\n");
+        .code(2)
+        .stdout("")
+        .stderr(predicate::str::contains(
+            "path not found: /nonexistent/directory/xyz123",
+        ));
 }
 
 #[test]
