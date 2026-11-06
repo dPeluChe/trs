@@ -138,7 +138,8 @@ impl CompactFormatter {
 
         // Files with matches
         for file in &grep.files {
-            output.push_str(&Self::format_grep_file(&file.path, file.matches.len()));
+            let matches = file.matches.iter().filter(|m| !m.is_context).count();
+            output.push_str(&Self::format_grep_file(&file.path, matches));
             for m in &file.matches {
                 if m.is_context {
                     // Context lines shown with ...

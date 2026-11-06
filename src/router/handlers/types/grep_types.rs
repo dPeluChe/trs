@@ -28,6 +28,13 @@ pub(crate) struct GrepFile {
     pub(crate) matches: Vec<GrepMatch>,
 }
 
+impl GrepFile {
+    /// Real matches; `matches` also holds the -A/-B/-C lines around them.
+    pub(crate) fn match_count(&self) -> usize {
+        self.matches.iter().filter(|m| !m.is_context).count()
+    }
+}
+
 /// Parsed grep output.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GrepOutput {
