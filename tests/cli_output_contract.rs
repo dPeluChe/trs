@@ -41,10 +41,10 @@ fn assert_not_found(json: &serde_json::Value) {
         .contains("Command not found"));
 }
 
+#[cfg(unix)]
 #[test]
-fn a_command_that_never_started_is_a_document_too() {
-    let commands: [&[&str]; 3] = [
-        &["--json", "err", "zzz_no_such_program"],
+fn the_comparison_commands_report_a_missing_program_as_a_document() {
+    let commands: [&[&str]; 2] = [
         &["diff", "--json", "zzz_no_such_program"],
         &["benchmark", "--json", "zzz_no_such_program"],
     ];
@@ -57,15 +57,32 @@ fn a_command_that_never_started_is_a_document_too() {
 fn a_missing_program_is_one_failed_document() {
     // Windows starts programs through `cmd`, which fails with exit 1 itself.
     let expected = if cfg!(windows) { 1 } else { 127 };
-    let commands: [&[&str]; 2] = [
+    let commands: [&[&str]; 3] = [
         &["--json", "zzz_no_such_program"],
         &["--json", "run", "zzz_no_such_program"],
+        &["--json", "err", "zzz_no_such_program"],
     ];
     for args in commands {
         let json = failed_document(args, expected);
         if cfg!(unix) {
             assert_not_found(&json);
         }
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn every_command_reaches_a_cmd_shim() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("zzz_shim.cmd"), "@echo shim ran\r\n").unwrap();
+    for tool in ["err", "raw", "diff", "benchmark"] {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .env("PATH", support::path_with(dir.path()))
+            .args([tool, "zzz_shim"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(0), "{tool}: {out:?}");
     }
 }
 

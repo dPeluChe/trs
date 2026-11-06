@@ -121,15 +121,8 @@ fn format_output(
 
 /// Execute a command and show only error/warning lines.
 pub(crate) fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -> CommandResult {
-    use std::process::{Command, Stdio};
-
     let start = std::time::Instant::now();
-    let output = match Command::new(command)
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-    {
+    let output = match crate::classifier::build_command(command, args).output() {
         Ok(o) => o,
         Err(e) => {
             let (code, message) = crate::process::spawn_failure(command, &e);

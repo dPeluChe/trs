@@ -145,11 +145,11 @@ fn main() {
 
 /// Run the command as typed: trs can't read such arguments, so it stays out.
 fn run_unparsed() -> ! {
-    let mut args = std::env::args_os().skip(1);
-    let Some(program) = args.next() else {
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    let Some((program, args)) = args.split_first() else {
         std::process::exit(2)
     };
-    match std::process::Command::new(program).args(args).status() {
+    match crate::classifier::build_command(program, args).status() {
         Ok(status) => std::process::exit(crate::process::exit_code_of(&status)),
         Err(e) => {
             eprintln!("trs: {e}");
@@ -389,15 +389,10 @@ fn run() {
         }
         Some(Commands::Raw { args }) => {
             // Execute command without filtering but track usage
-            use std::process::{Command, Stdio};
             let start = std::time::Instant::now();
             let cmd = &args[0];
             let cmd_args = &args[1..];
-            let output = Command::new(cmd)
-                .args(cmd_args)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .output();
+            let output = crate::classifier::build_command(cmd, cmd_args).output();
             match output {
                 Ok(out) => {
                     let stdout = String::from_utf8_lossy(&out.stdout);

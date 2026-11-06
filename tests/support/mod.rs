@@ -46,7 +46,9 @@ pub fn git(dir: &Path, args: &[&str]) -> String {
 
 /// `PATH` with `dir` first, so programs in it shadow the real ones.
 pub fn path_with(dir: &Path) -> String {
-    format!("{}:{}", dir.display(), std::env::var("PATH").unwrap())
+    let path = std::env::var_os("PATH").unwrap();
+    let dirs = std::iter::once(dir.to_path_buf()).chain(std::env::split_paths(&path));
+    std::env::join_paths(dirs).unwrap().into_string().unwrap()
 }
 
 /// A stand-in program: an executable `#!/bin/sh` script with this body.
