@@ -361,19 +361,6 @@ fn test_run_command_with_nonexistent_path() {
 }
 
 #[test]
-fn test_search_nonexistent_directory() {
-    // Test search in a directory that doesn't exist
-    // Note: The search command may succeed with "no matches" rather than fail
-    // since it uses ripgrep which handles nonexistent paths gracefully
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("search")
-        .arg("/nonexistent/directory/path")
-        .arg("pattern")
-        .assert()
-        .stdout(predicate::str::contains("grep:").or(predicate::str::contains("no matches")));
-}
-
-#[test]
 fn test_stdin_very_large_input() {
     // Test handling of very large input (100KB)
     let large_content: String = (0..1000)

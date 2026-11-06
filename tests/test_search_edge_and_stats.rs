@@ -95,8 +95,31 @@ fn test_search_nonexistent_directory() {
         .arg("/nonexistent/directory/xyz123")
         .arg("test")
         .assert()
-        .success()
-        .stdout("grep: no matches\n");
+        .code(2)
+        .stdout("")
+        .stderr(predicate::str::contains(
+            "cannot read /nonexistent/directory/xyz123",
+        ));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_search_unreadable_directory() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let locked = dir.path().join("locked");
+    std::fs::create_dir(&locked).unwrap();
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+    // root ignores the mode bits, so there is nothing to observe there.
+    let enforced = std::fs::read_dir(&locked).is_err();
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let assert = cmd.arg("search").arg(&locked).arg("test").assert();
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+    if enforced {
+        assert
+            .code(2)
+            .stderr(predicate::str::contains("cannot read"));
+    }
 }
 
 #[test]

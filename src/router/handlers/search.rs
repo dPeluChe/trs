@@ -42,6 +42,17 @@ impl SearchHandler {
         use ignore::WalkBuilder;
         use std::sync::{Arc, Mutex};
 
+        // The walker skips a root it cannot read, which read as "no matches".
+        let root = if input.path.is_dir() {
+            std::fs::read_dir(&input.path).map(drop)
+        } else {
+            std::fs::metadata(&input.path).map(drop)
+        };
+        root.map_err(|e| CommandError::ExecutionError {
+            message: format!("cannot read {}: {}", input.path.display(), e),
+            exit_code: Some(2),
+        })?;
+
         // Build the regex matcher
         let matcher = if input.ignore_case {
             RegexMatcher::new(&format!("(?i){}", input.query))
