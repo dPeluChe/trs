@@ -42,14 +42,16 @@ impl SearchHandler {
         use ignore::WalkBuilder;
         use std::sync::{Arc, Mutex};
 
-        // The walker yields a missing root as a skippable entry, which read as
-        // "no matches" for a mistyped path.
-        if !input.path.exists() {
-            return Err(CommandError::ExecutionError {
-                message: format!("path not found: {}", input.path.display()),
-                exit_code: Some(2),
-            });
-        }
+        // The walker skips a root it cannot read, which read as "no matches".
+        let root = if input.path.is_dir() {
+            std::fs::read_dir(&input.path).map(drop)
+        } else {
+            std::fs::metadata(&input.path).map(drop)
+        };
+        root.map_err(|e| CommandError::ExecutionError {
+            message: format!("cannot read {}: {}", input.path.display(), e),
+            exit_code: Some(2),
+        })?;
 
         // Build the regex matcher
         let matcher = if input.ignore_case {
