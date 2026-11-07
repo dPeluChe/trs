@@ -112,8 +112,11 @@ The form is for reading: a literal `\n` in the data looks the same.
 `trs clean` and `trs trim` print one-column tables under the same rule.
 `html2md` and `txt2md` print their markdown as is.
 
-The `trs replace` summary goes to stderr, and `trs db` keeps every row instead
-of the compact sample. A command without a table prints its compact form.
+A table holds every row: `db`, `search`, `grep` and `err` skip the limits they
+apply to compact output, and `trs search --limit` still applies. The `trs replace`
+summary goes to stderr. A failed command keeps its table, with the exit code as the
+verdict. A command without a table prints its compact form, and `grep` without
+file names prints its lines as they came.
 
 ### Agent
 

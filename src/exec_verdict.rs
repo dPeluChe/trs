@@ -160,7 +160,7 @@ pub(crate) fn exit_on_spawn_failure(
 
 /// A trs line on stdout, except where it would be a bogus row in a table.
 pub(crate) fn notice(format: crate::OutputFormat, line: &str) {
-    if matches!(format, crate::OutputFormat::Csv | crate::OutputFormat::Tsv) {
+    if format.is_table() {
         eprint!("{line}");
     } else {
         print!("{line}");

@@ -33,7 +33,11 @@ impl SearchHandler {
     const DEFAULT_MAX_FILES: usize = 50;
 
     /// Execute high-performance search using ripgrep crates.
-    pub(crate) fn execute_search(&self, input: &SearchInput) -> CommandResult<GrepOutput> {
+    pub(crate) fn execute_search(
+        &self,
+        input: &SearchInput,
+        format: OutputFormat,
+    ) -> CommandResult<GrepOutput> {
         use grep::matcher::Matcher;
         use grep::regex::RegexMatcher;
         use grep::searcher::Searcher;
@@ -261,7 +265,7 @@ impl SearchHandler {
         // Apply truncation
         match input.limit {
             Some(limit) => Self::keep_first_results(&mut files, limit),
-            None => files.truncate(Self::DEFAULT_MAX_FILES),
+            None => files.truncate(format.cap(Self::DEFAULT_MAX_FILES)),
         }
 
         let files_shown = files.len();
@@ -335,7 +339,7 @@ impl CommandHandler for SearchHandler {
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
         // Execute the search
-        let grep_output = self.execute_search(input)?;
+        let grep_output = self.execute_search(input, ctx.format)?;
 
         // Print stats if requested
         if ctx.stats {

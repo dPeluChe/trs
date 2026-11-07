@@ -171,7 +171,9 @@ pub(crate) fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -
     let shown = if matched_lines.is_empty() && failed {
         // Failed with nothing the keywords caught: never hide that behind "clean".
         let text = all_lines.join("\n");
-        let max = crate::config::config().limits.passthrough_max_chars;
+        let max = ctx
+            .format
+            .cap(crate::config::config().limits.passthrough_max_chars);
         let text = crate::passthrough_cut::cut(&text, max).unwrap_or(text);
         text.lines().map(|l| ("output", l.to_string())).collect()
     } else {
