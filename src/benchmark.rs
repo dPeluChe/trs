@@ -3,9 +3,9 @@
 //! Runs a command both raw and through the trs pipeline, then reports
 //! byte reduction, estimated token savings, and execution time.
 
-use std::process::{Command, Stdio};
 use std::time::Instant;
 
+use crate::classifier;
 use crate::classifier::{build_command, full_cmd};
 use crate::exec_verdict::{exit_on_spawn_failure, format_of};
 
@@ -115,15 +115,7 @@ fn run_once(cmd: &str, args: &[String], json: bool) -> Result<IterResult, String
 /// benchmark that swaps in a table value when trs loses reports a win it
 /// did not get.
 fn run_through_trs(cmd: &str, args: &[String]) -> Result<usize, String> {
-    let output = std::env::current_exe()
-        .and_then(|trs| {
-            Command::new(trs)
-                .arg(cmd)
-                .args(args)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .output()
-        })
+    let output = classifier::run_through_trs(cmd, args)
         .map_err(|e| format!("Failed to run '{cmd}' through trs: {e}"))?;
     Ok(output.stdout.len() + output.stderr.len())
 }

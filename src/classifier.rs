@@ -10,6 +10,14 @@ use crate::{ParseCommands, TestRunner};
 // working without churn.
 pub(crate) use crate::command_registry::keep_ratio;
 
+/// `trs <cmd> [args]`, through this binary, with its output captured.
+pub(crate) fn run_through_trs(cmd: &str, args: &[String]) -> std::io::Result<std::process::Output> {
+    std::process::Command::new(std::env::current_exe()?)
+        .arg(cmd)
+        .args(args)
+        .output()
+}
+
 /// Build a full command string from command name and arguments.
 pub(crate) fn full_cmd(cmd: &str, args: &[String]) -> String {
     if args.is_empty() {
