@@ -10,6 +10,7 @@ pub mod parse;
 pub mod read;
 pub mod read_filters;
 pub mod replace;
+mod replace_text;
 pub mod run;
 pub mod search;
 pub mod stats;

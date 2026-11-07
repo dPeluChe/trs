@@ -251,6 +251,11 @@ A missing root exits 2 as well. `ingest` does the same on stderr; see
 `replace` also skips `node_modules`, `vendor`, `build`, `dist`, `target`
 and similar directories below the root; name one as the root to edit it.
 
+`search` and `replace` match one line at a time, so `[^\n]` and `\s` stop
+at the line end. A pattern that needs a newline (`a\nb`, `\x0A`) matches
+across lines instead; a CRLF file needs `\r\n` there. `replace` keeps each
+file's line endings and final newline as written.
+
 ## Dispatch mechanisms
 
 ### Runners
