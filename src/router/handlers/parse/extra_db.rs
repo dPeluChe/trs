@@ -323,15 +323,12 @@ impl ParseHandler {
         Self::json_to_string(json)
     }
 
+    /// Every row: sampling saves tokens in compact, but a table is data to pipe.
     fn format_db_table(result: &DbResult, row: fn(&[&str]) -> String) -> String {
         let cells = |cells: &[String]| row(&cells.iter().map(String::as_str).collect::<Vec<_>>());
         let mut out = cells(&result.columns);
 
-        let (sample, omitted) = Self::sample_rows(&result.rows);
-        for (i, line) in sample.iter().enumerate() {
-            if omitted > 0 && i == HEAD_ROWS {
-                out.push_str(&format!("# [...{} rows omitted]\n", omitted));
-            }
+        for line in &result.rows {
             out.push_str(&cells(line));
         }
         out

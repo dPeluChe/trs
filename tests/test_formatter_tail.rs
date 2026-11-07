@@ -266,5 +266,5 @@ fn test_replace_csv_output() {
         .arg("rs")
         .assert()
         .success()
-        .stdout(predicate::str::contains("dry_run"));
+        .stdout("file,line_number,original,replaced\n");
 }

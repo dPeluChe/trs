@@ -188,8 +188,8 @@ impl ReplaceHandler {
     ) -> String {
         match format {
             OutputFormat::Json => Self::format_json(replacements, input),
-            OutputFormat::Csv => Self::format_csv(replacements, input),
-            OutputFormat::Tsv => Self::format_tsv(replacements, input),
+            OutputFormat::Csv => Self::format_csv(replacements),
+            OutputFormat::Tsv => Self::format_tsv(replacements),
             OutputFormat::Compact | OutputFormat::Agent => {
                 Self::format_compact(replacements, input)
             }
@@ -232,11 +232,7 @@ impl ReplaceHandler {
         })
     }
 
-    fn table(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-        row: fn(&[&str]) -> String,
-    ) -> String {
+    fn table(replacements: &[(String, Vec<Replacement>)], row: fn(&[&str]) -> String) -> String {
         let mut result = row(&["file", "line_number", "original", "replaced"]);
 
         for (path, reps) in replacements {
@@ -250,34 +246,17 @@ impl ReplaceHandler {
             }
         }
 
-        let total_replacements: usize = replacements
-            .iter()
-            .map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>())
-            .sum();
-        result.push_str(&format!(
-            "\n# Summary: {} files, {} replacements (dry_run: {})\n",
-            replacements.len(),
-            total_replacements,
-            input.dry_run
-        ));
-
         result
     }
 
     /// Format replace output as CSV.
-    pub(crate) fn format_csv(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-    ) -> String {
-        Self::table(replacements, input, csv_row)
+    pub(crate) fn format_csv(replacements: &[(String, Vec<Replacement>)]) -> String {
+        Self::table(replacements, csv_row)
     }
 
     /// Format replace output as TSV.
-    pub(crate) fn format_tsv(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-    ) -> String {
-        Self::table(replacements, input, tsv_row)
+    pub(crate) fn format_tsv(replacements: &[(String, Vec<Replacement>)]) -> String {
+        Self::table(replacements, tsv_row)
     }
 
     /// Format replace output in compact format.
@@ -432,6 +411,13 @@ impl CommandHandler for ReplaceHandler {
         }
 
         print!("{}", output);
+
+        if matches!(ctx.format, OutputFormat::Csv | OutputFormat::Tsv) {
+            eprintln!(
+                "# Summary: {} files, {} replacements (dry_run: {})",
+                files_count, total_replacements, input.dry_run
+            );
+        }
 
         Ok(())
     }
