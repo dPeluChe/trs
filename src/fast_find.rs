@@ -4,9 +4,11 @@
 //! Uses a gitignore-aware walker instead of spawning `find`,
 //! which is significantly faster on large repos with build artifacts.
 
-use crate::router::CommandContext;
+use crate::router::handlers::common::{check_root, finish_partial, readable};
+use crate::router::{CommandContext, CommandResult};
 use crate::OutputFormat;
 use std::collections::BTreeMap;
+use std::fmt::Write;
 use std::path::Path;
 use std::time::Instant;
 
@@ -14,7 +16,7 @@ use std::time::Instant;
 ///
 /// Supports a subset of find flags:
 ///   trs find --gitignore [path] [-name "pattern"] [-type f|d]
-pub(crate) fn run(args: &[&str], ctx: &CommandContext) {
+pub(crate) fn run(args: &[&str], ctx: &CommandContext) -> CommandResult {
     let start = Instant::now();
 
     // Parse args: extract path, -name pattern, -type filter
@@ -42,6 +44,8 @@ pub(crate) fn run(args: &[&str], ctx: &CommandContext) {
             }
         }
     }
+
+    check_root(Path::new(root))?;
 
     // Build glob from -name pattern
     let glob_pattern = name_pattern.map(|p| {
@@ -72,8 +76,12 @@ pub(crate) fn run(args: &[&str], ctx: &CommandContext) {
 
     let mut files: Vec<String> = Vec::new();
     let mut dirs: Vec<String> = Vec::new();
+    let mut failures: Vec<String> = Vec::new();
 
-    for entry in builder.build().flatten() {
+    for entry in builder.build() {
+        let Some(entry) = readable(entry, &mut failures) else {
+            continue;
+        };
         let path = entry.path();
 
         // Skip the root directory itself
@@ -121,11 +129,12 @@ pub(crate) fn run(args: &[&str], ctx: &CommandContext) {
     let total_dirs = dirs.len();
     let duration_ms = start.elapsed().as_millis() as u64;
 
-    match ctx.format {
-        OutputFormat::Json => print_json(&files, &dirs),
-        OutputFormat::Raw => print_raw(&files, &dirs),
-        _ => print_compact(&files, &dirs, root),
-    }
+    let rendered = match ctx.format {
+        OutputFormat::Json => render_json(&files, &dirs),
+        OutputFormat::Raw => render_raw(&files, &dirs),
+        _ => render_compact(&files, &dirs),
+    };
+    let result = finish_partial(&rendered, &failures, ctx.format);
 
     // Track
     let raw_est = files.iter().map(|f| f.len() + 1).sum::<usize>()
@@ -146,10 +155,11 @@ pub(crate) fn run(args: &[&str], ctx: &CommandContext) {
             total_files, total_dirs, duration_ms
         );
     }
+
+    result
 }
 
-/// Print compact tree-style output (default).
-fn print_compact(files: &[String], dirs: &[String], _root: &str) {
+fn render_compact(files: &[String], dirs: &[String]) -> String {
     // Group files by directory
     let mut tree: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
@@ -166,44 +176,41 @@ fn print_compact(files: &[String], dirs: &[String], _root: &str) {
         tree.entry(dir).or_default().push(name.to_string());
     }
 
-    println!("{}F {}D:", files.len(), dirs.len());
-    println!();
+    let mut output = format!("{}F {}D:\n\n", files.len(), dirs.len());
 
     for (dir, filenames) in &tree {
-        print!("{}/", dir);
+        let _ = write!(output, "{dir}/ ");
         if filenames.len() <= 8 {
             // Inline
-            println!(" {}", filenames.join(" "));
+            let _ = writeln!(output, "{}", filenames.join(" "));
         } else {
             // Show first 6 + count
-            println!(
-                " {} +{} more",
-                filenames[..6].join(" "),
-                filenames.len() - 6
-            );
+            let hidden = filenames.len() - 6;
+            let _ = writeln!(output, "{} +{hidden} more", filenames[..6].join(" "));
         }
     }
+    output
 }
 
-/// Print raw paths (one per line, like find).
-fn print_raw(files: &[String], dirs: &[String]) {
-    for d in dirs {
-        println!("{}", d);
+fn render_raw(files: &[String], dirs: &[String]) -> String {
+    let mut output = String::new();
+    for path in dirs.iter().chain(files) {
+        output.push_str(path);
+        output.push('\n');
     }
-    for f in files {
-        println!("{}", f);
-    }
+    output
 }
 
-/// Print JSON output.
-fn print_json(files: &[String], dirs: &[String]) {
+fn render_json(files: &[String], dirs: &[String]) -> String {
     let obj = serde_json::json!({
         "files": files,
         "directories": dirs,
         "total_files": files.len(),
         "total_dirs": dirs.len(),
     });
-    println!("{}", serde_json::to_string_pretty(&obj).unwrap_or_default());
+    let mut output = serde_json::to_string_pretty(&obj).unwrap_or_default();
+    output.push('\n');
+    output
 }
 
 /// Simple glob matching (supports * and ? only, no brackets).

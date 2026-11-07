@@ -180,9 +180,15 @@ pub(crate) fn project_walker(root: &std::path::Path) -> ignore::WalkBuilder {
     builder
 }
 
-/// What a walk error left unread. A bad glob in an ignore file leaves nothing.
-pub(crate) fn walk_failure(error: &ignore::Error) -> Option<String> {
-    error.io_error().map(|_| error.to_string())
+/// The entry, or a note of what the walk left unread. A bad glob in an ignore
+/// file leaves nothing unread.
+pub(crate) fn readable(
+    entry: Result<ignore::DirEntry, ignore::Error>,
+    failures: &mut Vec<String>,
+) -> Option<ignore::DirEntry> {
+    entry
+        .map_err(|e| failures.extend(e.io_error().map(|_| e.to_string())))
+        .ok()
 }
 
 /// `output`, then what could not be done: a partial run must not read as a

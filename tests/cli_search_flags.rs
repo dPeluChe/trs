@@ -114,24 +114,17 @@ fn parsed_grep_context_is_not_counted_either() {
 #[cfg(unix)]
 #[test]
 fn a_part_it_could_not_read_fails_and_keeps_the_matches() {
-    use std::os::unix::fs::PermissionsExt;
-    let set_mode = |path: &std::path::Path, mode| {
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
-    };
-
     let dir = tempfile::tempdir().unwrap();
     support::write_file(dir.path(), "ok.txt", "needle\n");
     support::write_file(dir.path(), "locked/secret.txt", "needle\n");
-    let locked = dir.path().join("locked");
-    set_mode(&locked, 0o000);
-    // Root reads through the mode bits, so there is no failure to see.
-    let readable = std::fs::read_dir(&locked).is_ok();
-    let out = trs(dir.path(), &["search", ".", "needle"]);
-    let json = trs(dir.path(), &["--json", "search", ".", "needle"]);
-    set_mode(&locked, 0o755);
-    if readable {
+    let Some([out, json]) = support::while_locked(&dir.path().join("locked"), || {
+        [
+            trs(dir.path(), &["search", ".", "needle"]),
+            trs(dir.path(), &["--json", "search", ".", "needle"]),
+        ]
+    }) else {
         return;
-    }
+    };
 
     let text = String::from_utf8_lossy(&out.stdout);
     assert_eq!(out.status.code(), Some(2));

@@ -197,7 +197,7 @@ fn run() {
                     .filter(|a| a.as_str() != "--gitignore")
                     .map(|a| a.as_str())
                     .collect();
-                fast_find::run(&find_args, &ctx);
+                Router::report(fast_find::run(&find_args, &ctx), ctx.format);
                 return;
             }
             execute_and_parse(cmd, rest, &ctx);

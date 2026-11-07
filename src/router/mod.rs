@@ -246,24 +246,24 @@ impl Router {
 
     /// Execute a command and print the result or error.
     pub fn execute_and_print(&self, command: &Commands, ctx: &CommandContext) {
-        match self.route(command, ctx) {
+        Self::report(self.route(command, ctx), ctx.format);
+    }
+
+    pub(crate) fn report(result: CommandResult, format: OutputFormat) {
+        match result {
             Ok(()) => {}
             Err(CommandError::NotImplemented(msg)) => {
                 // Format not implemented message according to output format
-                println!("{}", Self::format_not_implemented(&msg, ctx.format));
+                println!("{}", Self::format_not_implemented(&msg, format));
             }
             Err(CommandError::Reported { exit_code }) => std::process::exit(exit_code),
             Err(e) => {
-                let message = match ctx.format {
+                let message = match format {
                     OutputFormat::Json => e.to_string(),
                     _ => format!("Error: {e}"),
                 };
                 // Propagate the exit code if available, otherwise default to 1
-                crate::exec_verdict::exit_with_error(
-                    ctx.format,
-                    &message,
-                    e.exit_code().unwrap_or(1),
-                )
+                crate::exec_verdict::exit_with_error(format, &message, e.exit_code().unwrap_or(1))
             }
         }
     }
