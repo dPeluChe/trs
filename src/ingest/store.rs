@@ -131,10 +131,9 @@ pub fn list_ingests() {
 
 /// Read a saved digest by project name (fuzzy match across all owners).
 /// If no name given, uses the current repo name.
-pub fn read_digest(name: Option<&str>, project_path: &Path) {
+pub fn read_digest(name: Option<&str>, project_path: &Path) -> Result<(), String> {
     let Some(base) = ingest_store_dir() else {
-        eprintln!("No ingests found. Run: trs ingest [path]");
-        return;
+        return Err("No ingests found. Run: trs ingest [path]".to_string());
     };
 
     let search = match name {
@@ -172,24 +171,28 @@ pub fn read_digest(name: Option<&str>, project_path: &Path) {
         }
     }
 
-    match matches.len() {
-        0 => {
-            eprintln!("No digest found for '{}'. Available:", search);
-            list_ingests();
+    match matches.as_slice() {
+        [] => Err(format!(
+            "No digest found for '{search}'. See: trs ingest --list"
+        )),
+        [digest] => {
+            let content = std::fs::read_to_string(digest)
+                .map_err(|e| format!("trs ingest: error reading {}: {e}", digest.display()))?;
+            print!("{content}");
+            Ok(())
         }
-        1 => match std::fs::read_to_string(&matches[0]) {
-            Ok(content) => print!("{}", content),
-            Err(e) => eprintln!("trs ingest: error reading {}: {}", matches[0].display(), e),
-        },
-        _ => {
-            eprintln!("Multiple matches for '{}'. Be more specific:", search);
-            for m in &matches {
-                let display = m.strip_prefix(&base).unwrap_or(m);
-                eprintln!(
-                    "  trs ingest --read {}",
-                    display.to_string_lossy().trim_end_matches(".md")
-                );
-            }
+        many => {
+            let hints: Vec<String> = many
+                .iter()
+                .map(|m| {
+                    let rel = m.strip_prefix(&base).unwrap_or(m).to_string_lossy();
+                    format!("  trs ingest --read {}", rel.trim_end_matches(".md"))
+                })
+                .collect();
+            Err(format!(
+                "Multiple matches for '{search}'. Be more specific:\n{}",
+                hints.join("\n")
+            ))
         }
     }
 }

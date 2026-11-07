@@ -161,3 +161,33 @@ fn a_root_inside_a_skipped_directory_is_still_read() {
     assert_eq!(out.status.code(), Some(0));
     assert!(digest.contains("kept"), "{digest}");
 }
+
+#[test]
+fn reading_a_digest_that_is_not_there_fails() {
+    let home = tempfile::tempdir().unwrap();
+    support::write_file(home.path(), "ingest/me/alpha-one.md", "digest one\n");
+    support::write_file(home.path(), "ingest/me/alpha-two.md", "digest two\n");
+    let read = |args: &[&str]| {
+        Command::cargo_bin("trs")
+            .unwrap()
+            .env("TRS_HOME", home.path())
+            .args(args)
+            .output()
+            .unwrap()
+    };
+
+    let found = read(&["ingest", "--read", "alpha-one"]);
+    assert_eq!(found.status.code(), Some(0));
+    assert_eq!(String::from_utf8_lossy(&found.stdout), "digest one\n");
+
+    for (name, says) in [("nope", "No digest found"), ("alpha", "Multiple matches")] {
+        let out = read(&["ingest", "--read", name]);
+        assert_eq!(out.status.code(), Some(1));
+        assert!(out.stdout.is_empty());
+        assert!(String::from_utf8_lossy(&out.stderr).contains(says));
+
+        let out = read(&["--json", "ingest", "--read", name]);
+        assert_eq!(out.status.code(), Some(1));
+        assert!(support::document(&out).to_string().contains(says));
+    }
+}
