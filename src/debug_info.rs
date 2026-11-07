@@ -232,11 +232,7 @@ fn truncate_for_report(cmd: &str, max_chars: usize) -> String {
             other => other,
         })
         .collect();
-    if single_line.chars().count() <= max_chars {
-        return single_line;
-    }
-    let truncated: String = single_line.chars().take(max_chars).collect();
-    format!("{}…", truncated)
+    crate::text_util::truncate_chars(&single_line, max_chars)
 }
 
 #[cfg(test)]

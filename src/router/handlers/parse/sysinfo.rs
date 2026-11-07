@@ -53,12 +53,7 @@ fn short_cmd(cmd: &str) -> String {
     } else {
         format!("{} {}", base, rest.join(" "))
     };
-    if joined.chars().count() > CMD_MAX {
-        let cut: String = joined.chars().take(CMD_MAX).collect();
-        format!("{}…", cut)
-    } else {
-        joined
-    }
+    crate::text_util::truncate_chars(&joined, CMD_MAX)
 }
 
 /// `du` rows sorted by size descending, tail summarized. None when the shape

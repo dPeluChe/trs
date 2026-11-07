@@ -209,7 +209,7 @@ fn scan_json(path: &Path) -> Vec<Collision> {
                     kind: CollisionKind::HookBinary {
                         binary: comp.to_string(),
                     },
-                    detail: truncate(s, 80),
+                    detail: crate::text_util::truncate_chars(s, 80),
                 });
                 break;
             }
@@ -308,15 +308,6 @@ fn collect_string_values(val: &serde_json::Value, out: &mut Vec<String>) {
             }
         }
         _ => {}
-    }
-}
-
-fn truncate(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
-        s.to_string()
-    } else {
-        let truncated: String = s.chars().take(max).collect();
-        format!("{}…", truncated)
     }
 }
 
