@@ -181,8 +181,7 @@ src/
 │                          #   (aliases, rewrite/known, keep_ratio, stderr)
 ├── classifier.rs          # Subcommand → parser dispatch
 ├── router/handlers/parse/ # All input parsers live here
-├── router/handlers/       # Built-in tools (search, replace, json, read...)
-└── formatter/             # 6 output formats (compact, json, csv, tsv, agent, raw)
+└── router/handlers/       # Built-in tools (search, replace, json, read...)
 
 tests/
 ├── cli_*.rs               # CLI integration tests

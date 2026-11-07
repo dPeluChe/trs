@@ -260,7 +260,7 @@ impl ParseHandler {
             // `at … (path:line:col)` ends in the location: never cut it.
             .map(|l| match l.starts_with("at ") {
                 true => l.to_string(),
-                false => crate::formatter::helpers::truncate(l, 160),
+                false => crate::text_util::truncate(l, 160),
             })
             .collect::<Vec<_>>()
             .join("\n")

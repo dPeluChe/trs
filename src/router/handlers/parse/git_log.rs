@@ -6,7 +6,7 @@ use crate::OutputFormat;
 /// char plus the ellipsis (`max >= 4`). `None` / `Some(n<4)` is a no-op.
 fn apply_truncate(subject: &str, max: Option<usize>) -> String {
     match max {
-        Some(n) if n >= 4 => crate::formatter::helpers::truncate(subject, n),
+        Some(n) if n >= 4 => crate::text_util::truncate(subject, n),
         _ => subject.to_string(),
     }
 }
@@ -72,7 +72,7 @@ fn condense_body(msg: &[String], hash: &str) -> Vec<String> {
         .iter()
         .chain(body.iter().skip(opening.len()).filter(squashed).take(5))
         .chain(body.iter().skip(opening.len()).filter(signal).take(3))
-        .map(|l| crate::formatter::helpers::truncate(l, 160))
+        .map(|l| crate::text_util::truncate(l, 160))
         .collect();
     // Files the omitted text names: cheap, and it answers "which commit
     // touched X" without opening each one.

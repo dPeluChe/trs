@@ -47,7 +47,7 @@ pub(super) fn extract_module_doc(content: &str, ext: &str) -> Option<String> {
         return None;
     }
 
-    Some(crate::formatter::helpers::truncate(&line, 120))
+    Some(crate::text_util::truncate(&line, 120))
 }
 
 /// Cargo.toml / package.json field names we treat as leakage if they appear

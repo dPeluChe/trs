@@ -131,7 +131,12 @@ impl JsonRun<'_> {
 /// stdout, so nothing goes to stderr where `2>&1` would break it.
 pub(crate) fn exit_with_error(format: crate::OutputFormat, message: &str, code: i32) -> ! {
     if format == crate::OutputFormat::Json {
-        let json = crate::formatter::JsonFormatter::format_error_with_code(message, code);
+        let json = serde_json::json!({
+            "error": true,
+            "success": false,
+            "message": message,
+            "exit_code": code,
+        });
         println!("{json}");
     } else {
         eprintln!("{message}");

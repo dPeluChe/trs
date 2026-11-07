@@ -330,7 +330,7 @@ impl ReplaceHandler {
 
     /// Truncate a line to a maximum length. UTF-8 safe.
     pub(crate) fn truncate_line(line: &str, max_len: usize) -> String {
-        crate::formatter::helpers::truncate(line, max_len)
+        crate::text_util::truncate(line, max_len)
     }
 
     /// Format replacement count for output (just the number).

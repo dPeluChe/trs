@@ -46,7 +46,6 @@ mod doctor_checks;
 mod doctor_hooks;
 mod exec;
 mod exec_verdict;
-mod formatter;
 mod help;
 mod help_text;
 mod help_text_more;
@@ -87,7 +86,6 @@ mod rewrite_pipe_status;
 mod rewrite_rules;
 mod router;
 mod safe_folds;
-#[allow(dead_code)]
 mod schema;
 mod sentinel;
 mod text_util;
