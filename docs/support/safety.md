@@ -16,6 +16,9 @@ that from happening.
   the structured form passes through untouched.
 - **Exit codes always propagated.** If the wrapped command exits 1,
   trs exits 1. Scripts and CI relying on exit codes keep working.
+- **A partial run never reads as complete.** `search`, `replace`,
+  `find` and `ingest` name what they could not read and exit 2, as
+  grep does. See [partial runs](commands.md#partial-runs).
 - **Never silently change semantics.** No rewrites that would change
   what the tool does, only how its output is presented.
 
