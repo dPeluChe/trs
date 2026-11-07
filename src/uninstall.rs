@@ -3,13 +3,13 @@
 //! prompt for scripts.
 
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use crate::init::{file_has_any_trs_marker, AiTool};
 use crate::init_templates::{CODEX_AGENTS_SENTINEL_END, CODEX_AGENTS_SENTINEL_START};
 use crate::uninstall_scrub::{
-    confirm, delete_plugin_file, delete_rules_file, has_output_saver_installed, is_json,
+    delete_plugin_file, delete_rules_file, has_output_saver_installed, is_json,
     is_trs_plugin_dir_file, output_saver_agent_id, remove_between_sentinels, remove_output_saver,
     run_output_saver_removal, scrub_trs_from_json,
 };
@@ -36,7 +36,12 @@ pub(crate) fn run_uninstall(tool: Option<&str>, opts: UninstallOpts) {
     if let Some(name) = tool {
         match AiTool::from_str(name) {
             Some(t) => {
-                if !opts.yes && !opts.dry_run && !confirm(&format!("Remove trs from {}?", t.name()))
+                if !opts.yes
+                    && !opts.dry_run
+                    && !crate::prompt::confirm(
+                        &format!("Remove trs from {}?", t.name()),
+                        "pass --yes",
+                    )
                 {
                     println!("aborted");
                     return;
@@ -55,7 +60,10 @@ pub(crate) fn run_uninstall(tool: Option<&str>, opts: UninstallOpts) {
 }
 
 fn run_all(opts: UninstallOpts) {
-    if !opts.yes && !opts.dry_run && !confirm("Remove trs from EVERY detected agent?") {
+    if !opts.yes
+        && !opts.dry_run
+        && !crate::prompt::confirm("Remove trs from EVERY detected agent?", "pass --yes")
+    {
         println!("aborted");
         return;
     }
@@ -68,7 +76,10 @@ fn run_all(opts: UninstallOpts) {
 fn run_output_saver_only(opts: UninstallOpts) {
     if !opts.yes
         && !opts.dry_run
-        && !confirm("Remove the trs output-saver block from every agent that has it?")
+        && !crate::prompt::confirm(
+            "Remove the trs output-saver block from every agent that has it?",
+            "pass --yes",
+        )
     {
         println!("aborted");
         return;
@@ -106,11 +117,8 @@ fn run_interactive(opts: UninstallOpts) {
     print!("\nPick (e.g. 1,3 or 'a'): ");
     let _ = io::stdout().flush();
 
-    let mut line = String::new();
-    if io::stdin().lock().read_line(&mut line).is_err() {
-        eprintln!("read error, aborting");
-        return;
-    }
+    let line = crate::prompt::answer()
+        .unwrap_or_else(|| crate::prompt::no_answer("name a tool, or pass --all --yes"));
     let pick = line.trim();
     if pick.is_empty() || pick == "q" {
         println!("aborted");

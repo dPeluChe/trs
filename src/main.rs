@@ -50,6 +50,7 @@ mod help;
 mod help_text;
 mod help_text_more;
 mod ingest;
+mod json_child;
 mod main_args;
 use main_args::{is_closed_pipe_panic, is_external_fast_path, CLOSED_PIPE_EXIT};
 mod init;
@@ -70,6 +71,7 @@ mod passthrough_cut;
 mod path_display;
 mod pointer_recall;
 mod process;
+mod prompt;
 mod report;
 mod rerun_rate;
 mod rewrite;
@@ -151,16 +153,30 @@ fn parse_cli(args: &[String]) -> Cli {
 
 /// Run the command as typed: trs can't read such arguments, so it stays out.
 fn run_unparsed() -> ! {
+    use crate::classifier_args::{trs_flag, Flag};
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    let Some((program, args)) = args.split_first() else {
+    let flags: Vec<_> = args
+        .iter()
+        .map_while(|a| a.to_str().and_then(trs_flag))
+        .collect();
+    let format = crate::exec_verdict::format_of(flags.contains(&Flag::Format(OutputFormat::Json)));
+    let Some((program, args)) = args[flags.len()..].split_first() else {
         std::process::exit(2)
     };
-    match crate::classifier::build_command(program, args).status() {
+    let name = program.to_string_lossy();
+    if main_args::is_trs_subcommand(&name) {
+        let message = format!("trs {name}: an argument is not valid UTF-8");
+        crate::exec_verdict::exit_with_error(format, &message, 2)
+    }
+    let mut command = crate::classifier::build_command(program, args);
+    let ran = if format == OutputFormat::Json {
+        command.output().map(|out| json_child::finish(&name, &out))
+    } else {
+        command.status()
+    };
+    match ran {
         Ok(status) => std::process::exit(crate::process::exit_code_of(&status)),
-        Err(e) => {
-            eprintln!("trs: {e}");
-            std::process::exit(127)
-        }
+        Err(e) => crate::exec_verdict::exit_on_spawn_failure(format, &name, &e),
     }
 }
 
@@ -200,6 +216,10 @@ fn run() {
 
     // Create command context from global CLI options
     let ctx = CommandContext::from_cli(&cli);
+
+    if ctx.format == OutputFormat::Json && cli.command.as_ref().is_some_and(json_child::wraps) {
+        json_child::run_wrapped();
+    }
 
     // Create router and execute the command
     let router = Router::new();
@@ -241,11 +261,14 @@ fn run() {
                             init::install_finished(opts);
                         }
                     }
-                    None => eprintln!(
-                        "Unknown tool: '{}'. Supported: {}",
-                        tool_name,
-                        init::AiTool::all_names()
-                    ),
+                    None => {
+                        eprintln!(
+                            "Unknown tool: '{}'. Supported: {}",
+                            tool_name,
+                            init::AiTool::all_names()
+                        );
+                        std::process::exit(2);
+                    }
                 }
             } else {
                 // No args: show current status + usage hint combined.

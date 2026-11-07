@@ -4,7 +4,6 @@
 //! scrubbing and sentinel removal.
 
 use std::fs;
-use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 
 use crate::init::{file_has_any_trs_marker, AiTool};
@@ -203,14 +202,4 @@ pub(crate) fn is_json(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| e.eq_ignore_ascii_case("json"))
-}
-
-pub(crate) fn confirm(prompt: &str) -> bool {
-    print!("{} [y/N] ", prompt);
-    let _ = io::stdout().flush();
-    let mut line = String::new();
-    if io::stdin().lock().read_line(&mut line).is_err() {
-        return false;
-    }
-    matches!(line.trim().to_ascii_lowercase().as_str(), "y" | "yes")
 }

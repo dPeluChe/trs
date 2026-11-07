@@ -143,6 +143,7 @@ fn a_failed_ingest_write_is_a_document_under_json() {
     for out in [to_output, to_store] {
         assert_eq!(out.status.code(), Some(1), "{out:?}");
         let json = support::document(&out);
-        assert!(json["message"].as_str().unwrap().contains("write failed"));
+        assert_eq!(json["success"], false);
+        assert!(json["stderr"].as_str().unwrap().contains("write failed"));
     }
 }

@@ -16,7 +16,6 @@
 //! 3. Never post without being asked twice: `--submit` plus a `y` at the
 //!    prompt. The default writes a file and tells you the command.
 
-use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -31,16 +30,6 @@ pub(crate) fn scrub(text: &str) -> String {
     match std::env::var("HOME") {
         Ok(home) if !home.is_empty() => masked.replace(&home, "~"),
         _ => masked,
-    }
-}
-
-fn confirm(prompt: &str) -> bool {
-    print!("{} [y/N] ", prompt);
-    let _ = io::stdout().flush();
-    let mut line = String::new();
-    match io::stdin().lock().read_line(&mut line) {
-        Ok(_) => matches!(line.trim(), "y" | "Y" | "yes"),
-        Err(_) => false,
     }
 }
 
@@ -85,7 +74,10 @@ fn finish(title: &str, path: Option<PathBuf>, submit: bool) {
         println!("  Install it, or paste the file at https://github.com/{REPO}/issues/new");
         return;
     }
-    if !confirm("\n  Open a PUBLIC issue with exactly the text above?") {
+    if !crate::prompt::confirm(
+        "\n  Open a PUBLIC issue with exactly the text above?",
+        "run it in a terminal to review the text first",
+    ) {
         println!("  not sent.");
         return;
     }
