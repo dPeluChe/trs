@@ -9,15 +9,15 @@ pub(crate) fn is_external_fast_path(args: &[String]) -> bool {
         return false;
     }
     let first = args[1].as_str();
-    // Skip if it's a flag
-    if first.starts_with('-') {
-        return false;
-    }
+    !first.starts_with('-') && !is_trs_subcommand(first)
+}
+
+pub(crate) fn is_trs_subcommand(first: &str) -> bool {
     // Known trs subcommands (and aliases) that must go through clap.
     // `every_clap_subcommand_takes_the_clap_path` pins this against the clap
     // definition: a name missing here does not error, it silently becomes an
     // external command lookup and the subcommand appears not to exist.
-    !matches!(
+    matches!(
         first,
         "parse"
             | "search"

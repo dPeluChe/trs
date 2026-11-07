@@ -262,8 +262,8 @@ pub(crate) fn subcommand(cmd: &str, args: &[String]) -> String {
 }
 
 /// What one of trs's own flags asks for.
-#[derive(Clone, Copy)]
-enum Flag {
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Flag {
     Format(crate::OutputFormat),
     Stats,
 }
@@ -280,7 +280,7 @@ const FLAGS: &[(&str, Flag)] = &[
     ("--stats", Flag::Stats),
 ];
 
-fn trs_flag(arg: &str) -> Option<Flag> {
+pub(crate) fn trs_flag(arg: &str) -> Option<Flag> {
     FLAGS.iter().find(|(name, _)| *name == arg).map(|(_, f)| *f)
 }
 

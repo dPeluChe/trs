@@ -85,7 +85,7 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: boo
             if check_only {
                 return;
             }
-            if !skip_confirm && !prompt_yes("Proceed?") {
+            if !skip_confirm && !crate::prompt::confirm("Proceed?", "pass --yes") {
                 println!("aborted.");
                 return;
             }
@@ -105,7 +105,7 @@ pub(crate) fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: boo
             if check_only {
                 return;
             }
-            if !skip_confirm && !prompt_yes("Proceed?") {
+            if !skip_confirm && !crate::prompt::confirm("Proceed?", "pass --yes") {
                 println!("aborted.");
                 return;
             }
@@ -187,22 +187,9 @@ pub(crate) fn detect_install_method(exe: Option<&Path>) -> InstallMethod {
     InstallMethod::Unknown
 }
 
-fn prompt_yes(question: &str) -> bool {
-    use std::io::{self, Write};
-    print!("{} [y/N] ", question);
-    if io::stdout().flush().is_err() {
-        return false;
-    }
-    let mut line = String::new();
-    if io::stdin().read_line(&mut line).is_err() {
-        return false;
-    }
-    matches!(line.trim().to_lowercase().as_str(), "y" | "yes")
-}
-
 /// Run a shell command and return whether it succeeded. Stdout/stderr
-/// inherit the current terminal so the user sees the installer's
-/// progress output live.
+/// inherit the terminal so the installer's progress shows live; under
+/// `--json` they land in the document instead.
 fn run_shell(cmd: &str) -> bool {
     println!();
     let status = Command::new("sh").arg("-c").arg(cmd).status();

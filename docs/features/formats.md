@@ -43,10 +43,16 @@ is an ordinary failed run with `cmd`'s exit 1 and message.
 Those commands print the same document when they fail, and so does a usage
 error, with exit 2.
 
-`--help` and `--version` keep their text, as do the admin commands (`init`,
-`uninstall`, `upgrade`, `report`, `output-saver`, `debug-info`, `history`).
-`ingest` prints its path or digest as text and uses the document only to report
-a failure, and it may write progress to stderr first.
+`--help` and `--version` keep their text. The commands that print text
+(`init`, `uninstall`, `upgrade`, `report`, `output-saver`, `debug-info`,
+`history`, `ingest`, `discover`, `audit-docs`) are wrapped like any program:
+`output` holds what they printed and `stderr` their notes and progress.
+They get no stdin under `--json`. A prompt with no answer does nothing and
+exits 1 with a hint (`--yes` for `uninstall` and `upgrade`); this holds
+without `--json` too, whenever stdin is closed. Answering `n` is not a failure.
+A command line trs cannot read (an argument that is not UTF-8) runs as typed
+and is wrapped the same way, cut like any passthrough; put trs flags before the
+program there. A trs command given such an argument exits 2 and says so.
 
 On failure `success` is `false`, `exit_code` holds the real status and
 `full_output` is the path to the raw output. A cut output also gets

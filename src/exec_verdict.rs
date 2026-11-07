@@ -62,7 +62,7 @@ pub(crate) fn json_document(text: &str, code: i32, raw: impl Fn() -> Option<Stri
 /// `document` with the child's stderr, where `2>&1` cannot split it from the
 /// JSON. An array or a `stderr` key the child printed is its data, so that
 /// stderr stays on stderr.
-fn with_stderr(document: String, stderr: &str) -> String {
+pub(crate) fn with_stderr(document: String, stderr: &str) -> String {
     if stderr.is_empty() {
         return document;
     }
