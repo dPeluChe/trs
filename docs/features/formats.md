@@ -112,6 +112,9 @@ The form is for reading: a literal `\n` in the data looks the same.
 `trs clean` and `trs trim` print one-column tables under the same rule.
 `html2md` and `txt2md` print their markdown as is.
 
+The `trs replace` summary goes to stderr, and `trs db` keeps every row instead
+of the compact sample. A command without a table prints its compact form.
+
 ### Agent
 
 ```

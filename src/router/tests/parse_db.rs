@@ -235,3 +235,12 @@ fn test_classifier_mariadb() {
     let result = crate::classifier::classify_command("mariadb", &[]);
     assert!(matches!(result, Some(ParseCommands::Db { .. })));
 }
+
+#[test]
+fn test_db_tables_keep_every_row() {
+    let rows: Vec<String> = (0..30).map(|i| format!("{i}|x")).collect();
+    let input = format!("id|name\n--+--\n{}\n", rows.join("\n"));
+    let result = ParseHandler::parse_db(&input);
+    let csv = ParseHandler::format_db_csv(&result);
+    assert_eq!(csv.lines().count(), result.rows.len() + 1, "{csv}");
+}

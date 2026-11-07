@@ -62,7 +62,8 @@ fn test_replace_csv_has_summary() {
         .arg("--dry-run")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Summary:"));
+        .stdout(predicate::str::contains("Summary:").not())
+        .stderr(predicate::str::contains("# Summary: 1 files"));
 }
 
 // ============================================================
