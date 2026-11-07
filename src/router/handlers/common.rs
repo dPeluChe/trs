@@ -437,3 +437,13 @@ impl CommandStats {
 // ============================================================
 
 pub(crate) use super::common_markers::*;
+
+/// Whether the pattern can only match by crossing a line: grep's matcher
+/// refuses such a pattern once lines end in `\n`, as ripgrep does.
+pub(crate) fn needs_newline(pattern: &str) -> bool {
+    grep::regex::RegexMatcherBuilder::new()
+        .line_terminator(Some(b'\n'))
+        .build(pattern)
+        .is_err()
+        && regex::Regex::new(pattern).is_ok()
+}

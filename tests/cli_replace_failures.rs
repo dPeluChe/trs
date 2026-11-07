@@ -1,5 +1,6 @@
 //! A replace that could not finish says so, in the output and the exit code,
-//! and a target the user named is never skipped as if it held no match.
+//! a target the user named is never skipped as if it held no match, and an
+//! edit leaves the rest of the file as written.
 
 use assert_cmd::Command;
 use std::path::Path;
@@ -122,4 +123,40 @@ mod unwritable {
         assert!(!String::from_utf8_lossy(&out.stdout).contains("failed: "));
         assert!(String::from_utf8_lossy(&out.stderr).contains("failed: "));
     }
+}
+
+#[test]
+fn a_crlf_file_keeps_its_line_endings() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("a.txt");
+    std::fs::write(&file, "foo a\r\nbar\r\nfoo").unwrap();
+    Command::cargo_bin("trs")
+        .unwrap()
+        .args([
+            "replace".as_ref(),
+            dir.path().as_os_str(),
+            "foo".as_ref(),
+            "baz".as_ref(),
+        ])
+        .assert()
+        .success();
+    assert_eq!(std::fs::read(&file).unwrap(), b"baz a\r\nbar\r\nbaz");
+}
+
+#[test]
+fn a_pattern_with_a_newline_replaces_across_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("a.txt");
+    std::fs::write(&file, "x\na\nb\ny\n").unwrap();
+    Command::cargo_bin("trs")
+        .unwrap()
+        .args([
+            "replace".as_ref(),
+            dir.path().as_os_str(),
+            r"a\nb".as_ref(),
+            "AB".as_ref(),
+        ])
+        .assert()
+        .success();
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), "x\nAB\ny\n");
 }

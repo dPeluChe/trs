@@ -166,3 +166,14 @@ fn only_git_and_gitignored_directories_are_left_out() {
         assert!(text.contains(path), "{path} missing: {text}");
     }
 }
+
+#[test]
+fn a_pattern_that_needs_a_newline_matches_across_lines() {
+    let dir = tree();
+    let out = trs(dir.path(), &["--json", "search", ".", r"let a = 1;\nlet b"]);
+    let doc = support::document(&out);
+    assert_eq!(doc["counts"]["matches"], 1, "{doc}");
+    assert_eq!(doc["files"][0]["matches"][0]["line_number"], 3);
+    let out = trs(dir.path(), &["--json", "search", ".", r"main[^\n]*"]);
+    assert_eq!(support::document(&out)["counts"]["matches"], 3);
+}

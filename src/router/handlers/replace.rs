@@ -2,6 +2,7 @@ use super::common::{
     check_root, csv_row, finish_partial, project_walker, readable, tsv_row, CommandContext,
     CommandError, CommandResult, CommandStats, FAILED_EXIT,
 };
+use super::replace_text::{Pattern, Replacement};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -28,41 +29,26 @@ const SKIPPED_DIRS: &[&str] = &[
     ".nuxt",
 ];
 
-#[derive(Debug, Clone)]
-pub(crate) struct Replacement {
-    line_number: usize,
-    original: String,
-    replaced: String,
-    /// Number of individual matches replaced in this line.
-    match_count: usize,
-}
-
 /// Handler for the `replace` command.
 pub(crate) struct ReplaceHandler;
 
 impl ReplaceHandler {
-    /// Execute search and replace using ripgrep crates.
+    /// Execute search and replace.
     pub(crate) fn execute_replace(
         &self,
         input: &ReplaceInput,
     ) -> CommandResult<(Vec<(String, Vec<Replacement>)>, Vec<String>)> {
-        use grep::matcher::Matcher;
-        use grep::regex::RegexMatcher;
-
         check_root(&input.path)?;
 
-        // Build the regex matcher
-        let matcher =
-            RegexMatcher::new(&input.search).map_err(|e| CommandError::ExecutionError {
-                message: format!("Invalid regex pattern '{}': {}", input.search, e),
-                exit_code: Some(FAILED_EXIT),
-            })?;
+        let invalid = |e: regex::Error| CommandError::ExecutionError {
+            message: format!("Invalid regex pattern '{}': {}", input.search, e),
+            exit_code: Some(FAILED_EXIT),
+        };
+        let pattern = Pattern::new(&input.search).map_err(invalid)?;
 
-        // Shared state for collecting replacements per file
         let mut file_replacements: Vec<(String, Vec<Replacement>)> = Vec::new();
         let mut failures: Vec<String> = Vec::new();
 
-        // Process each file
         for entry in project_walker(&input.path, SKIPPED_DIRS).build() {
             let Some(entry) = readable(entry, &mut failures) else {
                 continue;
@@ -84,7 +70,6 @@ impl ReplaceHandler {
 
             let path = entry.path().to_string_lossy().to_string();
 
-            // Read file content
             let bytes = match std::fs::read(entry.path()) {
                 Ok(bytes) => bytes,
                 Err(e) => {
@@ -95,68 +80,15 @@ impl ReplaceHandler {
             let content = match String::from_utf8(bytes) {
                 Ok(content) => content,
                 Err(e) => {
-                    if matcher.is_match(e.as_bytes()).unwrap_or(false) {
+                    if pattern.matches_bytes(e.as_bytes()) {
                         failures.push(format!("{path}: not UTF-8, not replaced"));
                     }
                     continue;
                 }
             };
 
-            // Find all matches in this file
-            let lines: Vec<&str> = content.lines().collect();
-            let mut replacements: Vec<Replacement> = Vec::new();
-            let mut modified_lines: Vec<String> = lines.iter().map(|s| s.to_string()).collect();
-            let mut has_changes = false;
-
-            for (line_idx, line) in lines.iter().enumerate() {
-                let line_bytes = line.as_bytes();
-
-                // Count matches first, then replace all at once
-                let mut offset = 0usize;
-                let mut line_match_count = 0usize;
-
-                while let Ok(Some(m)) = matcher.find_at(line_bytes, offset) {
-                    line_match_count += 1;
-                    let end = m.end();
-                    let start = m.start();
-                    if end == start {
-                        offset = end + 1;
-                    } else {
-                        offset = end;
-                    }
-                    if offset >= line_bytes.len() {
-                        break;
-                    }
-                }
-
-                // Use regex crate to do the actual replacement (handles offsets correctly)
-                let modified_line = if line_match_count > 0 {
-                    has_changes = true;
-                    let re = regex::Regex::new(&input.search).unwrap();
-                    re.replace_all(line, &input.replace as &str).to_string()
-                } else {
-                    line.to_string()
-                };
-
-                if line_match_count > 0 {
-                    replacements.push(Replacement {
-                        line_number: line_idx + 1, // 1-indexed
-                        original: line.to_string(),
-                        replaced: modified_line.clone(),
-                        match_count: line_match_count,
-                    });
-                    modified_lines[line_idx] = modified_line;
-                }
-            }
-
-            // If there are changes and not dry run, write the file back
-            if has_changes {
+            if let Some((new_content, replacements)) = pattern.apply(&content, &input.replace) {
                 if !input.dry_run {
-                    let mut new_content = modified_lines.join("\n");
-                    // Preserve trailing newline if original had one
-                    if content.ends_with('\n') && !new_content.ends_with('\n') {
-                        new_content.push('\n');
-                    }
                     if let Err(e) = std::fs::write(entry.path(), new_content) {
                         failures.push(format!("{path}: {e}"));
                         continue;

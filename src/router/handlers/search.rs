@@ -40,6 +40,7 @@ impl SearchHandler {
             message: format!("Invalid regex pattern '{}': {}", input.query, e),
             exit_code: Some(2),
         })?;
+        let multi_line = super::common::needs_newline(&input.query);
 
         /// A single match result with column information.
         #[derive(Debug, Clone)]
@@ -154,7 +155,7 @@ impl SearchHandler {
 
             // Create a new searcher for each file
             let mut searcher_builder = SearcherBuilder::new();
-            searcher_builder.line_number(true);
+            searcher_builder.line_number(true).multi_line(multi_line);
 
             // Configure context if requested
             if let Some(ctx) = input.context {
