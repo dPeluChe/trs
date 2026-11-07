@@ -35,17 +35,8 @@ pub(crate) fn install_agent_with_home(
                 if let Ok(existing) = fs::read_to_string(&root_path_tmp) {
                     let legacy_import = format!("@{}", IMPORT_FILENAME_LEGACY);
                     if existing.contains(&legacy_import) {
-                        let stripped: String = existing
-                            .lines()
-                            .filter(|l| l.trim() != legacy_import.as_str())
-                            .collect::<Vec<_>>()
-                            .join("\n");
-                        let final_content = if existing.ends_with('\n') && !stripped.is_empty() {
-                            format!("{}\n", stripped)
-                        } else {
-                            stripped
-                        };
-                        let _ = fs::write(&root_path_tmp, final_content);
+                        let stripped = crate::text_util::without_line(&existing, &legacy_import);
+                        let _ = fs::write(&root_path_tmp, stripped);
                     }
                 }
             }
@@ -156,17 +147,8 @@ pub(crate) fn remove_agent_with_home(
             let root_path = dir.join(&root_file);
             if let Ok(existing) = fs::read_to_string(&root_path) {
                 let import_line = format!("@{}", IMPORT_FILENAME);
-                let stripped: String = existing
-                    .lines()
-                    .filter(|l| l.trim() != import_line)
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                let final_content = if existing.ends_with('\n') && !stripped.is_empty() {
-                    format!("{}\n", stripped)
-                } else {
-                    stripped
-                };
-                crate::fs_atomic::write_if_unchanged(&root_path, &existing, &final_content)
+                let stripped = crate::text_util::without_line(&existing, &import_line);
+                crate::fs_atomic::write_if_unchanged(&root_path, &existing, &stripped)
                     .map_err(|e| format!("{}: {}", root_path.display(), e))?;
             }
             Ok(format!("removed {} and import line", saver_path.display()))

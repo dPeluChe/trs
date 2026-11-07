@@ -165,3 +165,15 @@ fn block_status_reports_a_missing_file_as_absent() {
         RulesBlock::Absent
     );
 }
+
+#[test]
+fn a_crlf_rules_file_with_a_current_block_is_unchanged() {
+    let content = "mine\r\n<!-- s -->\r\nrule\r\n<!-- e -->\r\n";
+    let updated = refresh_sentinel_block(
+        content,
+        "<!-- s -->",
+        "<!-- e -->",
+        "<!-- s -->\nrule\n<!-- e -->",
+    );
+    assert_eq!(updated.as_deref(), Some(content));
+}

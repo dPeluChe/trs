@@ -459,10 +459,10 @@ pub(crate) fn replace_between(content: &str, start: &str, end: &str, new_block: 
     // Strip any newlines sitting between the end sentinel and the rest
     // of the file — otherwise each install/replace cycle appends
     // another \n.
-    let after = content[e..].trim_start_matches('\n');
+    let after = content[e..].trim_start_matches(['\r', '\n']);
     let combined = format!("{}{}{}", before, new_block.trim_start(), after);
     // Exactly one trailing newline, no more.
-    format!("{}\n", combined.trim_end_matches('\n'))
+    format!("{}\n", combined.trim_end_matches(['\r', '\n']))
 }
 
 #[cfg(test)]

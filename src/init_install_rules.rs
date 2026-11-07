@@ -108,7 +108,8 @@ pub(crate) fn refresh_sentinel_block(
     if e <= s {
         return None;
     }
-    Some(format!("{}{}{}", &content[..s], block, &content[e..]))
+    let updated = format!("{}{}{}", &content[..s], block, &content[e..]);
+    Some(crate::text_util::with_endings_of(content, updated))
 }
 
 /// Append the trs sentinel block to an `AGENTS.md`. Shared write path for
