@@ -23,8 +23,8 @@ impl ParseHandler {
         let limits = &crate::config::config().limits;
         Self::truncate_grep(
             &mut grep_output,
-            limits.grep_max_results,
-            limits.grep_max_per_file,
+            ctx.format.cap(limits.grep_max_results),
+            ctx.format.cap(limits.grep_max_per_file),
         );
 
         // Format output based on the requested format
@@ -79,8 +79,7 @@ impl ParseHandler {
                 continue;
             }
 
-            // Skip grep summary lines (e.g., from ripgrep)
-            if line.starts_with("grep:") || line.contains("matched ") && line.ends_with(" files") {
+            if line.starts_with("grep:") {
                 continue;
             }
 
@@ -92,7 +91,7 @@ impl ParseHandler {
                 }
                 // Add match to the file's group
                 matches_by_file.entry(path).or_default().push(grep_match);
-            } else if line != "--" {
+            } else if line != "--" && !(line.contains("matched ") && line.ends_with(" files")) {
                 grep_output.has_unread = true;
             }
         }

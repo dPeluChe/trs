@@ -149,6 +149,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             return;
         }
 
+        let prints_table = ctx.format.is_table() && parser.has_table();
+
         // Tier 1: Try parser. Its output is captured (not streamed) so we can
         // measure it and enforce the never-worse guard below.
         let router = Router::new();
@@ -196,7 +198,9 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             // `error TS2322:`) yields a clean-looking summary for a non-zero
             // exit — a false claim, not lossy compression. Emit the raw output
             // instead so the real error survives.
-            let summary_hides_failure = !output.status.success() && !failure_is_visible(&parsed);
+            // A table claims nothing: its rows stand, and the footer carries the failure.
+            let summary_hides_failure =
+                !prints_table && !output.status.success() && !failure_is_visible(&parsed);
             // Never-worse guard: a parser must never make output larger than
             // the raw command output. If it somehow did (degenerate/tiny
             // input, header overhead), emit the raw instead. Ties go to raw —

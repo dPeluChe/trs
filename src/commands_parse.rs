@@ -451,3 +451,13 @@ pub enum ParseCommands {
 
 #[path = "commands_parse_with_file.rs"]
 mod with_file;
+
+impl ParseCommands {
+    /// Whether `--csv` and `--tsv` print rows here rather than the compact form.
+    pub(crate) fn has_table(&self) -> bool {
+        matches!(
+            self,
+            Self::GitStatus { .. } | Self::Grep { .. } | Self::Logs { .. } | Self::Db { .. }
+        )
+    }
+}

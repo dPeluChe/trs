@@ -412,7 +412,7 @@ impl CommandHandler for ReplaceHandler {
 
         print!("{}", output);
 
-        if matches!(ctx.format, OutputFormat::Csv | OutputFormat::Tsv) {
+        if ctx.format.is_table() {
             eprintln!(
                 "# Summary: {} files, {} replacements (dry_run: {})",
                 files_count, total_replacements, input.dry_run

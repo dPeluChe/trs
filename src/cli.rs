@@ -127,6 +127,22 @@ pub enum OutputFormat {
     Agent,
 }
 
+impl OutputFormat {
+    /// Data for a pipeline: rows only, and no row dropped to save tokens.
+    pub(crate) fn is_table(self) -> bool {
+        matches!(self, Self::Csv | Self::Tsv)
+    }
+
+    /// The limit compact output applies, or none for a table.
+    pub(crate) fn cap(self, limit: usize) -> usize {
+        if self.is_table() {
+            usize::MAX
+        } else {
+            limit
+        }
+    }
+}
+
 /// Precedence rank for output formats (higher number = higher precedence)
 pub(crate) const fn format_precedence(format: OutputFormat) -> u8 {
     match format {
