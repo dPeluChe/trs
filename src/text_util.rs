@@ -4,8 +4,9 @@
 /// `[A-Za-z_][A-Za-z0-9_]*`. UTF-8 safe. Used by the ingest symbol indexer and
 /// the audit-docs symbol resolver.
 pub(crate) fn first_ident(s: &str) -> Option<String> {
-    let mut chars = s.char_indices();
-    let start = chars.position(|(_, c)| c.is_ascii_alphabetic() || c == '_')?;
+    let (start, _) = s
+        .char_indices()
+        .find(|(_, c)| c.is_ascii_alphabetic() || *c == '_')?;
     let mut end = start;
     for (i, c) in s[start..].char_indices() {
         if c.is_ascii_alphanumeric() || c == '_' {
@@ -79,5 +80,7 @@ mod tests {
         assert_eq!(first_ident("_priv = 1").as_deref(), Some("_priv"));
         assert_eq!(first_ident("!!! ---"), None);
         assert_eq!(first_ident(""), None);
+        assert_eq!(first_ident("ñandu x").as_deref(), Some("andu"));
+        assert_eq!(first_ident("«ok»").as_deref(), Some("ok"));
     }
 }

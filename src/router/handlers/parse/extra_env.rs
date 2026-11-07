@@ -200,10 +200,8 @@ impl ParseHandler {
                     .map(|(k, v)| {
                         let display = if Self::is_secret_key(k) {
                             "[REDACTED]".to_string()
-                        } else if v.len() > 80 {
-                            format!("{}...", &v[..77])
                         } else {
-                            v.clone()
+                            crate::text_util::truncate(v, 80)
                         };
                         (k.clone(), serde_json::Value::String(display))
                     })
@@ -237,10 +235,8 @@ impl ParseHandler {
                         // For PATH-like vars, show entry count
                         let entries: Vec<&str> = val.split(':').filter(|s| !s.is_empty()).collect();
                         format!("({} entries)", entries.len())
-                    } else if val.len() > 60 {
-                        format!("{}...", &val[..57])
                     } else {
-                        val.clone()
+                        crate::text_util::truncate(val, 60)
                     };
 
                     match category {

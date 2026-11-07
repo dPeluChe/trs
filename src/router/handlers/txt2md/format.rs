@@ -27,11 +27,7 @@ impl Txt2mdHandler {
             let trimmed = line.trim();
             if !trimmed.is_empty() {
                 // Use first line as title (truncate if too long)
-                let title = if trimmed.len() > 80 {
-                    format!("{}...", &trimmed[..77])
-                } else {
-                    trimmed.to_string()
-                };
+                let title = crate::text_util::truncate(trimmed, 80);
                 metadata["title"] = serde_json::json!(title);
                 break;
             }

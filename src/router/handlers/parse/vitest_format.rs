@@ -139,11 +139,7 @@ impl ParseHandler {
                     result.push_str(&format!("    ✕ {}\n", test.name));
                     if let Some(ref msg) = test.error_message {
                         if let Some(first_line) = msg.lines().next() {
-                            let truncated = if first_line.len() > 80 {
-                                format!("{}...", &first_line[..77])
-                            } else {
-                                first_line.to_string()
-                            };
+                            let truncated = crate::text_util::truncate(first_line, 80);
                             result.push_str(&format!("      {}\n", truncated));
                         }
                     }
