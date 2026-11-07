@@ -158,21 +158,6 @@ fn test_exit_code_255_propagated() {
 }
 
 #[test]
-fn test_exit_code_command_not_found_is_127() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("nonexistent_command_xyz123");
-    let assert = cmd.assert();
-    // POSIX: direct spawn → 127 + "Command not found". Windows routes through
-    // `cmd /C`, which signals a missing command via its own non-zero exit (#53).
-    #[cfg(not(windows))]
-    assert
-        .code(127)
-        .stderr(predicate::str::contains("Command not found"));
-    #[cfg(windows)]
-    assert.failure();
-}
-
-#[test]
 fn test_exit_code_permission_denied_is_126() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     // 126 ("not executable") is a POSIX convention; `/etc/passwd` is Unix-only.

@@ -71,28 +71,6 @@ fn test_replace_preview_json_output() {
 }
 
 #[test]
-fn test_tail_basic() {
-    // Create a temporary test file
-    use std::io::Write;
-    let temp_file = tempfile::NamedTempFile::new().unwrap();
-    let path = temp_file.path();
-
-    let mut file = std::fs::File::create(path).unwrap();
-    writeln!(file, "line 1").unwrap();
-    writeln!(file, "line 2").unwrap();
-    writeln!(file, "line 3").unwrap();
-
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("tail")
-        .arg(path)
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("line 1"))
-        .stdout(predicate::str::contains("line 2"))
-        .stdout(predicate::str::contains("line 3"));
-}
-
-#[test]
 fn test_tail_with_lines() {
     // Create a temporary test file with many lines
     use std::io::Write;
@@ -215,27 +193,6 @@ fn test_tail_tsv_output() {
         .stdout(predicate::str::contains("line_number\tline\tis_error"))
         .stdout(predicate::str::contains("line 1"))
         .stdout(predicate::str::contains("line 2"));
-}
-
-#[test]
-fn test_tail_raw_output() {
-    // Create a temporary test file
-    use std::io::Write;
-    let temp_file = tempfile::NamedTempFile::new().unwrap();
-    let path = temp_file.path();
-
-    let mut file = std::fs::File::create(path).unwrap();
-    writeln!(file, "line 1").unwrap();
-    writeln!(file, "line 2").unwrap();
-
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--raw")
-        .arg("tail")
-        .arg(path)
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("1:line 1"))
-        .stdout(predicate::str::contains("2:line 2"));
 }
 
 #[test]

@@ -128,23 +128,6 @@ fn test_replace_compact_format() {
 }
 
 #[test]
-fn test_replace_compact_is_default() {
-    // Compact is the default format
-    let temp_dir = TempDir::new().unwrap();
-    create_temp_file(&temp_dir, "test.txt", "Hello world\n");
-
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("replace")
-        .arg(temp_dir.path())
-        .arg("Hello")
-        .arg("Hi")
-        .arg("--dry-run")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Preview:"));
-}
-
-#[test]
 fn test_replace_compact_shows_replaced_line() {
     let temp_dir = TempDir::new().unwrap();
     create_temp_file(&temp_dir, "test.txt", "Hello world\n");

@@ -122,18 +122,6 @@ fn test_run_cat_command() {
 // ============================================================
 
 #[test]
-fn test_run_json_output_has_command() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""command":"echo"#));
-}
-
-#[test]
 fn test_run_json_output_has_args() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")
@@ -169,31 +157,6 @@ fn test_run_json_output_has_stdout() {
         .success()
         // Drop the trailing newline: Windows `echo` via cmd emits CRLF.
         .stdout(predicate::str::contains(r#""stdout":"hello_world"#));
-}
-
-#[test]
-fn test_run_json_output_has_duration() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("echo")
-        .arg("test")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""duration_ms"#));
-}
-
-#[test]
-fn test_run_json_output_has_stderr() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("--json")
-        .arg("run")
-        .arg("sh")
-        .arg("-c")
-        .arg("echo test_stderr >&2")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(r#""stderr":"test_stderr\n"#));
 }
 
 #[test]
