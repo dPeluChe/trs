@@ -173,12 +173,7 @@ fn aggregate(entries: &[HistoryEntry]) -> (AggMap, SubMap) {
 
 /// Trim a command string to a short sample line — 70 chars max.
 fn sample_of(cmd: &str) -> String {
-    let s = cmd.replace(['\n', '\r'], " ");
-    if s.len() <= 70 {
-        s
-    } else {
-        format!("{}…", &s[..69])
-    }
+    crate::text_util::truncate_chars(&cmd.replace(['\n', '\r'], " "), 70)
 }
 
 /// Classify into three tiers:
@@ -279,8 +274,8 @@ fn print_sub_table(rows: &[((String, String), &Agg)]) {
     for ((bin, sub), a) in rows {
         println!(
             "  {:<14} {:<14} {:>6} {:>9.0} {:>5.0}%  {}",
-            truncate(bin, 14),
-            truncate(sub, 14),
+            crate::text_util::truncate_chars(bin, 14),
+            crate::text_util::truncate_chars(sub, 14),
             a.count,
             a.avg_in(),
             a.low_pct(),
@@ -297,20 +292,12 @@ fn print_bin_table(rows: &[(String, &Agg)]) {
     for (bin, a) in rows {
         println!(
             "  {:<22} {:>6} {:>9.0} {:>5.0}%  {}",
-            truncate(bin, 22),
+            crate::text_util::truncate_chars(bin, 22),
             a.count,
             a.avg_in(),
             a.low_pct(),
             a.sample
         );
-    }
-}
-
-fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        s.to_string()
-    } else {
-        format!("{}…", &s[..max - 1])
     }
 }
 
@@ -423,6 +410,14 @@ fn print_json(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, li
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_multibyte_sample_is_cut_at_a_char() {
+        let cmd = format!("tool {}ñññ", "x".repeat(63));
+        let sample = sample_of(&cmd);
+        assert_eq!(sample.chars().count(), 70);
+        assert!(sample.ends_with('…'));
+    }
 
     #[test]
     fn parse_cmd_basic() {

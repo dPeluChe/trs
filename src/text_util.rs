@@ -40,9 +40,28 @@ pub(crate) fn truncate(s: &str, max_len: usize) -> String {
     }
 }
 
+/// `s` in at most `max` chars, ending in `…` when cut. Counts chars, not
+/// bytes, so it never splits one and fits a padded column.
+pub(crate) fn truncate_chars(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    let mut out: String = s.chars().take(max.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn truncate_chars_never_splits_a_char() {
+        assert_eq!(truncate_chars("short", 14), "short");
+        assert_eq!(truncate_chars("herramientañññ", 14), "herramientañññ");
+        assert_eq!(truncate_chars("herramientaññññ", 14), "herramientaññ…");
+        assert_eq!(truncate_chars("abc", 0), "…");
+    }
 
     #[test]
     fn truncate_cuts_with_an_ellipsis_at_a_char_boundary() {

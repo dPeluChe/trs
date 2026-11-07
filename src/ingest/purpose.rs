@@ -80,7 +80,7 @@ fn kv_value(content: &str, key: &str) -> Option<String> {
             if let Some(rest) = rest.trim_start().strip_prefix('=') {
                 let v = rest.trim().trim_matches(|c| c == '"' || c == '\'').trim();
                 if !v.is_empty() {
-                    return Some(truncate(v, 240));
+                    return Some(crate::text_util::truncate_chars(v, 240));
                 }
             }
         }
@@ -99,7 +99,7 @@ fn json_value(content: &str, key: &str) -> Option<String> {
     if v.is_empty() {
         None
     } else {
-        Some(truncate(v, 240))
+        Some(crate::text_util::truncate_chars(v, 240))
     }
 }
 
@@ -125,7 +125,7 @@ fn readme_first_para(content: &str) -> Option<String> {
         }
         let clean = t.replace(['*', '`'], "");
         if clean.len() >= 20 {
-            return Some(truncate(clean.trim(), 240));
+            return Some(crate::text_util::truncate_chars(clean.trim(), 240));
         }
     }
     None
@@ -137,16 +137,6 @@ fn is_ordered_item(t: &str) -> bool {
     !digits.is_empty()
         && matches!(t[digits.len()..].chars().next(), Some('.') | Some(')'))
         && t[digits.len() + 1..].starts_with(' ')
-}
-
-pub(super) fn truncate(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
-        s.to_string()
-    } else {
-        let mut out: String = s.chars().take(max).collect();
-        out.push('…');
-        out
-    }
 }
 
 /// Deduped module-level import edges `(src_module, dst_module)` → weight.
