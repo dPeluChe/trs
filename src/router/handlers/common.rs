@@ -141,31 +141,11 @@ pub(crate) const FAILED_EXIT: i32 = 2;
 /// Failures listed by name before the rest become a count.
 const FAILURES_SHOWN: usize = 20;
 
-/// Directories `search` and `replace` never enter below the root.
-const IGNORED_DIRS: &[&str] = &[
-    ".git",
-    "node_modules",
-    "target",
-    "dist",
-    "build",
-    ".cache",
-    "__pycache__",
-    ".venv",
-    "venv",
-    ".idea",
-    ".vscode",
-    "vendor",
-    "bundle",
-    ".tox",
-    ".mypy_cache",
-    ".pytest_cache",
-    "coverage",
-    ".next",
-    ".nuxt",
-];
-
 /// Pruned, not filtered per file: exit 2 must only mean content in scope went unread.
-pub(crate) fn project_walker(root: &std::path::Path) -> ignore::WalkBuilder {
+pub(crate) fn project_walker(
+    root: &std::path::Path,
+    skip: &'static [&'static str],
+) -> ignore::WalkBuilder {
     let mut builder = ignore::WalkBuilder::new(root);
     builder
         .hidden(false)
@@ -175,7 +155,7 @@ pub(crate) fn project_walker(root: &std::path::Path) -> ignore::WalkBuilder {
         .filter_entry(|entry| {
             let is_dir = entry.file_type().is_some_and(|kind| kind.is_dir());
             let name = entry.file_name().to_str().unwrap_or("");
-            entry.depth() == 0 || !is_dir || !IGNORED_DIRS.contains(&name)
+            entry.depth() == 0 || !is_dir || !skip.contains(&name)
         });
     builder
 }

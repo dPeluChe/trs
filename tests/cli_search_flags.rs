@@ -147,11 +147,22 @@ fn a_bad_glob_in_a_parent_ignore_file_is_not_a_failure() {
 }
 
 #[test]
-fn ignored_directories_are_not_searched_below_the_root() {
+fn only_git_and_gitignored_directories_are_left_out() {
     let dir = tempfile::tempdir().unwrap();
-    support::write_file(dir.path(), "src/a.txt", "needle\n");
-    support::write_file(dir.path(), "node_modules/b.txt", "needle\n");
+    support::write_file(dir.path(), ".gitignore", "node_modules/\n");
+    support::write_file(dir.path(), ".git/HEAD", "needle\n");
+    support::write_file(dir.path(), "node_modules/dep.txt", "needle\n");
+    let kept = ["src/a.txt", "vendor/lib.txt", "build/gen.txt"];
+    for path in kept {
+        support::write_file(dir.path(), path, "needle\n");
+    }
     let text =
         String::from_utf8_lossy(&trs(dir.path(), &["search", ".", "needle"]).stdout).into_owned();
-    assert!(text.contains("a.txt") && !text.contains("b.txt"), "{text}");
+    assert!(
+        !text.contains("HEAD") && !text.contains("dep.txt"),
+        "{text}"
+    );
+    for path in kept {
+        assert!(text.contains(path), "{path} missing: {text}");
+    }
 }

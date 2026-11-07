@@ -6,6 +6,9 @@ use super::parse::ParseHandler;
 use super::types::*;
 use crate::OutputFormat;
 
+/// Anything else not gitignored may hold the answer.
+const SKIPPED_DIRS: &[&str] = &[".git"];
+
 pub(crate) struct SearchHandler;
 
 impl SearchHandler {
@@ -128,7 +131,7 @@ impl SearchHandler {
         let mut failures: Vec<String> = Vec::new();
 
         // Search each file
-        for entry in project_walker(&input.path).build() {
+        for entry in project_walker(&input.path, SKIPPED_DIRS).build() {
             let Some(entry) = readable(entry, &mut failures) else {
                 continue;
             };
