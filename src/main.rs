@@ -72,8 +72,6 @@ mod path_display;
 mod pointer_recall;
 #[allow(dead_code)]
 mod process;
-#[allow(dead_code)]
-mod reducer;
 mod report;
 mod rerun_rate;
 mod rewrite;
