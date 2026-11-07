@@ -69,7 +69,6 @@ mod parse_out;
 mod passthrough_cut;
 mod path_display;
 mod pointer_recall;
-#[allow(dead_code)]
 mod process;
 mod report;
 mod rerun_rate;
@@ -94,8 +93,6 @@ mod uninstall;
 mod uninstall_scrub;
 mod upgrade;
 
-#[allow(unused_imports)]
-pub(crate) use cli::format_precedence;
 pub use cli::{Cli, OutputFormat};
 pub use commands::{Commands, ParseCommands, TestRunner};
 

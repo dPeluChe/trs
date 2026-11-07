@@ -11,7 +11,6 @@ fn test_html2md_nested_list_conversion() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let temp_dir = std::env::temp_dir();
@@ -91,7 +90,6 @@ fn test_html2md_mixed_nested_list_conversion() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let temp_dir = std::env::temp_dir();
@@ -165,7 +163,6 @@ fn test_html2md_combined_elements() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let temp_dir = std::env::temp_dir();
@@ -215,7 +212,6 @@ fn test_html2md_noise_removal() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let temp_dir = std::env::temp_dir();

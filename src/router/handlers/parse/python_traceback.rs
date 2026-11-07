@@ -22,15 +22,12 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
 
-/// Parsed stack frame. `code` is dropped for compact mode but preserved
-/// on the struct in case a future format wants it.
+/// Parsed stack frame; the source line under it is skipped.
 #[derive(Debug, Clone)]
 struct Frame {
     file: String,
     line: u32,
     func: String,
-    #[allow(dead_code)]
-    code: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -103,16 +100,12 @@ fn parse_traceback(input: &str) -> Traceback {
         let trimmed = line.trim_start();
         if let Some(frame) = parse_file_line(trimmed) {
             lines.next();
-            let code = match lines.peek() {
-                Some(next)
-                    if next.starts_with("    ") && !next.trim_start().starts_with("File ") =>
-                {
-                    let code_line = lines.next().unwrap().trim().to_string();
-                    Some(code_line)
-                }
-                _ => None,
-            };
-            out.frames.push(Frame { code, ..frame });
+            if lines.peek().is_some_and(|next| {
+                next.starts_with("    ") && !next.trim_start().starts_with("File ")
+            }) {
+                lines.next();
+            }
+            out.frames.push(frame);
         } else {
             break;
         }
@@ -141,7 +134,6 @@ fn parse_file_line(line: &str) -> Option<Frame> {
         file: basename(file_path),
         line: line_num,
         func,
-        code: None,
     })
 }
 

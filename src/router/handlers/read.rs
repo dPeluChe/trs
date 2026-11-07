@@ -11,9 +11,8 @@
 use std::path::PathBuf;
 
 use super::common::{CommandContext, CommandError, CommandResult, CommandStats};
-#[allow(unused_imports)]
-pub(crate) use super::read_filters::{
-    apply_line_range, count_braces, detect_language, filter_aggressive, filter_minimal, Language,
+use super::read_filters::{
+    apply_line_range, detect_language, filter_aggressive, filter_minimal, Language,
 };
 use crate::OutputFormat;
 

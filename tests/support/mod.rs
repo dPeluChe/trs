@@ -129,3 +129,35 @@ pub fn run_hook_with(
 pub fn decision(v: &serde_json::Value) -> Option<&str> {
     v["hookSpecificOutput"]["permissionDecision"].as_str()
 }
+
+/// Every `.rs` file under `src/` as `(path from the repo root, text)`.
+pub fn src_files() -> Vec<(String, String)> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                walk(&path, out);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                out.push(path);
+            }
+        }
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut files = Vec::new();
+    walk(&root.join("src"), &mut files);
+    files
+        .into_iter()
+        .map(|f| {
+            let rel = f.strip_prefix(root).unwrap().to_string_lossy();
+            (rel.replace('\\', "/"), std::fs::read_to_string(&f).unwrap())
+        })
+        .collect()
+}
+
+/// `src_files` minus unit-test files, for guards on shipped code.
+pub fn production_src_files() -> Vec<(String, String)> {
+    src_files()
+        .into_iter()
+        .filter(|(rel, _)| !rel.ends_with("_tests.rs") && !rel.contains("/tests/"))
+        .collect()
+}

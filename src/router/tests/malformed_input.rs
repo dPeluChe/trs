@@ -87,7 +87,6 @@ fn test_process_stdin_with_null_bytes() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = "hello\x00world\nline2";
     let result = router.process_stdin(input, &ctx).unwrap();
@@ -100,7 +99,6 @@ fn test_process_stdin_with_control_chars() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = "hello\x01world";
     let result = router.process_stdin(input, &ctx).unwrap();
@@ -113,7 +111,6 @@ fn test_process_stdin_with_ansi_and_control() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = "\x1b[31mhello\x1b[0m\x00world";
     let result = router.process_stdin(input, &ctx).unwrap();
@@ -126,34 +123,9 @@ fn test_process_stdin_json_format() {
     let ctx = CommandContext {
         format: OutputFormat::Json,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = "hello\x00world";
     let result = router.process_stdin(input, &ctx).unwrap();
     let json: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(json["content"], "helloworld");
-}
-
-#[test]
-fn test_command_context_creation() {
-    let ctx = CommandContext {
-        format: OutputFormat::Json,
-        stats: true,
-        enabled_formats: vec![OutputFormat::Json, OutputFormat::Csv],
-    };
-
-    assert_eq!(ctx.format, OutputFormat::Json);
-    assert!(ctx.stats);
-    assert!(ctx.has_conflicting_formats());
-}
-
-#[test]
-fn test_command_context_no_conflict() {
-    let ctx = CommandContext {
-        format: OutputFormat::Json,
-        stats: false,
-        enabled_formats: vec![OutputFormat::Json],
-    };
-
-    assert!(!ctx.has_conflicting_formats());
 }

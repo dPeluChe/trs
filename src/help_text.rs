@@ -1,8 +1,7 @@
 //! Help text for text-processing commands (search/replace/tail/clean/
-//! parse/html2md/txt2md/trim). Split out of help.rs to keep it lean.
+//! parse/html2md/txt2md/trim).
 
 /// Help text for the search command.
-#[allow(dead_code)]
 pub const SEARCH_HELP: &str = "\
 Search for patterns in files using ripgrep-powered search.
 
@@ -36,7 +35,6 @@ EXAMPLES:
     trs search ./src \"import\" --limit 100";
 
 /// Help text for the replace command.
-#[allow(dead_code)]
 pub const REPLACE_HELP: &str = "\
 Search and replace patterns in files.
 
@@ -77,7 +75,6 @@ EXAMPLES:
     trs replace . \"TODO\" \"DONE\" --count";
 
 /// Help text for the tail command.
-#[allow(dead_code)]
 pub const TAIL_HELP: &str = "\
 Tail a file with compact log output.
 
@@ -113,7 +110,6 @@ EXAMPLES:
     trs --json tail /var/log/app.log -n 100";
 
 /// Help text for the clean command.
-#[allow(dead_code)]
 pub const CLEAN_HELP: &str = "\
 Clean and format text output.
 
@@ -141,7 +137,6 @@ EXAMPLES:
     cat messy.txt | trs clean --no-ansi --collapse-blanks --trim";
 
 /// Help text for the parse command.
-#[allow(dead_code)]
 pub const PARSE_HELP: &str = "\
 Parse structured input from stdin or file.
 
@@ -179,7 +174,6 @@ EXAMPLES:
     ls -la | trs parse ls";
 
 /// Help text for the html2md command.
-#[allow(dead_code)]
 pub const HTML2MD_HELP: &str = "\
 Convert HTML to Markdown.
 
@@ -209,7 +203,6 @@ EXAMPLES:
     trs html2md https://example.com --metadata";
 
 /// Help text for the txt2md command.
-#[allow(dead_code)]
 pub const TXT2MD_HELP: &str = "\
 Convert plain text to Markdown.
 
@@ -234,7 +227,6 @@ EXAMPLES:
     trs --json txt2md -i notes.txt";
 
 /// Help text for the trim command.
-#[allow(dead_code)]
 pub const TRIM_HELP: &str = "\
 Trim whitespace from text lines.
 

@@ -18,7 +18,7 @@ impl RunHandler {
                     "stderr": output.stderr,
                     "exit_code": output.exit_code,
                     "duration_ms": output.duration.as_millis(),
-                    "timed_out": output.timed_out,
+                    "timed_out": false,
                 })
                 .to_string()
             }
@@ -41,7 +41,7 @@ impl RunHandler {
             OutputFormat::Raw => {
                 // Raw output: unprocessed stdout and stderr
                 let mut result = output.stdout.clone();
-                if output.has_stderr() && !output.stderr.is_empty() {
+                if output.has_stderr() {
                     result.push_str(&output.stderr);
                 }
                 result
@@ -67,29 +67,8 @@ impl RunHandler {
                 &output.stderr,
                 &output.exit_code.to_string(),
                 &output.duration.as_millis().to_string(),
-                &output.timed_out.to_string(),
+                "false",
             ])
-    }
-
-    /// Format error message based on format.
-    #[allow(dead_code)]
-    pub(crate) fn format_error(error: &ProcessError, format: OutputFormat) -> String {
-        match format {
-            OutputFormat::Json => serde_json::json!({
-                "error": true,
-                "message": error.to_string(),
-                "exit_code": error.exit_code(),
-                "is_timeout": error.is_timeout(),
-                "is_command_not_found": error.is_command_not_found(),
-                "is_permission_denied": error.is_permission_denied(),
-            })
-            .to_string(),
-            OutputFormat::Raw
-            | OutputFormat::Compact
-            | OutputFormat::Agent
-            | OutputFormat::Csv
-            | OutputFormat::Tsv => format!("Error: {}", error),
-        }
     }
 }
 
@@ -174,19 +153,9 @@ impl CommandHandler for RunHandler {
                         message: format!("Permission denied: {}", command),
                         exit_code: Some(126), // Standard "permission denied" exit code
                     },
-                    ProcessError::Timeout {
-                        command, duration, ..
-                    } => CommandError::ExecutionError {
-                        message: format!(
-                            "Command '{}' timed out after {:.2}s",
-                            command,
-                            duration.as_secs_f64()
-                        ),
-                        exit_code: Some(124), // Standard timeout exit code
-                    },
-                    ProcessError::NonZeroExit { output } => CommandError::ExecutionError {
-                        message: format!("Command exited with code {}", output.code()),
-                        exit_code: Some(output.exit_code),
+                    ProcessError::Timeout { .. } => CommandError::ExecutionError {
+                        message: error.to_string(),
+                        exit_code: Some(124),
                     },
                     ProcessError::IoError { message, .. } => CommandError::IoError(message.clone()),
                     ProcessError::SpawnFailed { message, .. } => CommandError::ExecutionError {

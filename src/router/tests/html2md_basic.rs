@@ -11,7 +11,6 @@ fn test_html2md_handler() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     // Create a temporary HTML file for testing
@@ -58,7 +57,6 @@ fn test_html2md_handler_with_metadata() {
     let ctx = CommandContext {
         format: OutputFormat::Json,
         stats: false,
-        enabled_formats: vec![],
     };
 
     // Create a temporary HTML file for testing
@@ -99,7 +97,6 @@ fn test_html2md_handler_json_includes_metadata_automatically() {
     let ctx = CommandContext {
         format: OutputFormat::Json,
         stats: false,
-        enabled_formats: vec![],
     };
 
     // Create a temporary HTML file for testing
@@ -148,7 +145,6 @@ fn test_html2md_file_not_found() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let input = Html2mdInput {
@@ -168,7 +164,6 @@ fn test_html2md_heading_conversion() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let temp_dir = std::env::temp_dir();
@@ -220,7 +215,6 @@ fn test_html2md_heading_with_inline_elements() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let temp_dir = std::env::temp_dir();
@@ -260,7 +254,6 @@ fn test_html2md_link_conversion() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let temp_dir = std::env::temp_dir();
@@ -306,7 +299,6 @@ fn test_html2md_list_conversion() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     let temp_dir = std::env::temp_dir();

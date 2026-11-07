@@ -10,7 +10,6 @@ fn test_run_handler_success() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = RunInput {
         command: "echo".to_string(),
@@ -32,7 +31,6 @@ fn test_run_handler_command_not_found() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = RunInput {
         command: "nonexistent_command_xyz123".to_string(),
@@ -61,7 +59,6 @@ fn test_run_handler_non_zero_exit() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = RunInput {
         command: "false".to_string(),
@@ -90,7 +87,6 @@ fn test_run_handler_json_format() {
     let ctx = CommandContext {
         format: OutputFormat::Json,
         stats: false,
-        enabled_formats: vec![OutputFormat::Json],
     };
     let input = RunInput {
         command: "echo".to_string(),
@@ -111,7 +107,6 @@ fn test_run_handler_no_capture_stdout() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = RunInput {
         command: "echo".to_string(),
@@ -137,7 +132,6 @@ fn test_search_handler() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = SearchInput {
         path: std::path::PathBuf::from("src"),
@@ -163,7 +157,6 @@ fn test_replace_handler() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = ReplaceInput {
         path: std::path::PathBuf::from("."),
@@ -185,7 +178,6 @@ fn test_replace_handler_json_format() {
     let ctx = CommandContext {
         format: OutputFormat::Json,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = ReplaceInput {
         path: std::path::PathBuf::from("."),
@@ -245,7 +237,6 @@ fn test_tail_handler_file_not_found() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let input = TailInput {
         file: std::path::PathBuf::from("/nonexistent/file.log"),
@@ -288,7 +279,6 @@ fn test_clean_handler() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
     // Use a temp file instead of stdin to avoid blocking
     let tmp = std::env::temp_dir().join("trs_test_clean.tmp");

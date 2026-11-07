@@ -24,8 +24,6 @@ use handlers::trim::*;
 use handlers::txt2md::*;
 use handlers::types::*;
 
-#[allow(unused_imports)]
-use crate::ParseCommands;
 use crate::{Commands, OutputFormat};
 
 pub struct Router {
@@ -252,10 +250,6 @@ impl Router {
     pub(crate) fn report(result: CommandResult, format: OutputFormat) {
         match result {
             Ok(()) => {}
-            Err(CommandError::NotImplemented(msg)) => {
-                // Format not implemented message according to output format
-                println!("{}", Self::format_not_implemented(&msg, format));
-            }
             Err(CommandError::Reported { exit_code }) => std::process::exit(exit_code),
             Err(e) => {
                 let message = match format {
@@ -334,22 +328,6 @@ impl Router {
         };
 
         Ok(formatted)
-    }
-
-    /// Format a not-implemented message based on the output format.
-    fn format_not_implemented(msg: &str, format: OutputFormat) -> String {
-        match format {
-            OutputFormat::Json => serde_json::json!({
-                "not_implemented": true,
-                "message": format!("{} not yet implemented", msg),
-            })
-            .to_string(),
-            OutputFormat::Raw
-            | OutputFormat::Compact
-            | OutputFormat::Agent
-            | OutputFormat::Csv
-            | OutputFormat::Tsv => format!("{} not yet implemented", msg),
-        }
     }
 }
 

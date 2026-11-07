@@ -80,9 +80,6 @@ fn test_command_stats_no_reduction_when_output_larger() {
 
 #[test]
 fn test_command_error_display() {
-    let err = CommandError::NotImplemented("test command".to_string());
-    assert_eq!(format!("{}", err), "Not implemented: test command");
-
     let err = CommandError::ExecutionError {
         message: "failed".to_string(),
         exit_code: Some(1),

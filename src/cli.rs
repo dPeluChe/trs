@@ -143,33 +143,7 @@ impl OutputFormat {
     }
 }
 
-/// Precedence rank for output formats (higher number = higher precedence)
-pub(crate) const fn format_precedence(format: OutputFormat) -> u8 {
-    match format {
-        OutputFormat::Json => 6,
-        OutputFormat::Csv => 5,
-        OutputFormat::Tsv => 4,
-        OutputFormat::Agent => 3,
-        OutputFormat::Compact => 2,
-        OutputFormat::Raw => 1,
-    }
-}
-
 impl Cli {
-    /// Returns the precedence order for output formats as a slice.
-    ///
-    /// The order is from highest to lowest precedence.
-    pub fn output_format_precedence() -> &'static [OutputFormat] {
-        &[
-            OutputFormat::Json,
-            OutputFormat::Csv,
-            OutputFormat::Tsv,
-            OutputFormat::Agent,
-            OutputFormat::Compact,
-            OutputFormat::Raw,
-        ]
-    }
-
     /// Determine the output format based on flag precedence.
     ///
     /// Uses the defined precedence order: json > csv > tsv > agent > compact > raw
@@ -191,41 +165,5 @@ impl Cli {
         } else {
             OutputFormat::default()
         }
-    }
-
-    /// Returns a list of all enabled output format flags.
-    ///
-    /// Useful for debugging or warning users about conflicting flags.
-    pub fn enabled_format_flags(&self) -> Vec<OutputFormat> {
-        let mut enabled = Vec::new();
-        if self.json {
-            enabled.push(OutputFormat::Json);
-        }
-        if self.csv {
-            enabled.push(OutputFormat::Csv);
-        }
-        if self.tsv {
-            enabled.push(OutputFormat::Tsv);
-        }
-        if self.agent {
-            enabled.push(OutputFormat::Agent);
-        }
-        if self.compact {
-            enabled.push(OutputFormat::Compact);
-        }
-        if self.raw {
-            enabled.push(OutputFormat::Raw);
-        }
-        enabled
-    }
-
-    /// Returns true if multiple format flags are enabled (potential conflict).
-    pub fn has_conflicting_format_flags(&self) -> bool {
-        self.enabled_format_flags().len() > 1
-    }
-
-    /// Returns the precedence rank of the currently selected format.
-    pub fn current_format_precedence(&self) -> u8 {
-        format_precedence(self.output_format())
     }
 }

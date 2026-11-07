@@ -3,8 +3,6 @@
 //! This module provides a robust interface for executing external commands
 //! and capturing their output, exit codes, and execution duration.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 
@@ -28,8 +26,6 @@ pub struct ProcessOutput {
     pub exit_code: i32,
     /// Duration of the execution.
     pub duration: Duration,
-    /// Whether the process was killed due to timeout.
-    pub timed_out: bool,
 }
 
 impl ProcessOutput {
@@ -62,15 +58,7 @@ pub enum ProcessError {
     /// Permission denied when executing the command.
     PermissionDenied { command: String },
     /// The process timed out.
-    Timeout {
-        command: String,
-        args: Vec<String>,
-        duration: Duration,
-        partial_stdout: String,
-        partial_stderr: String,
-    },
-    /// The process exited with a non-zero exit code.
-    NonZeroExit { output: ProcessOutput },
+    Timeout { command: String, duration: Duration },
     /// I/O error during execution.
     IoError { command: String, message: String },
     /// Failed to spawn the process.
@@ -86,22 +74,12 @@ impl std::fmt::Display for ProcessError {
             ProcessError::PermissionDenied { command } => {
                 write!(f, "Permission denied: {}", command)
             }
-            ProcessError::Timeout {
-                command, duration, ..
-            } => {
+            ProcessError::Timeout { command, duration } => {
                 write!(
                     f,
                     "Command '{}' timed out after {:.2}s",
                     command,
                     duration.as_secs_f64()
-                )
-            }
-            ProcessError::NonZeroExit { output } => {
-                write!(
-                    f,
-                    "Command '{}' exited with code {}",
-                    output.command,
-                    output.code()
                 )
             }
             ProcessError::IoError { command, message } => {
@@ -116,39 +94,11 @@ impl std::fmt::Display for ProcessError {
 
 impl std::error::Error for ProcessError {}
 
-impl ProcessError {
-    /// Returns the exit code if this is a NonZeroExit error.
-    pub fn exit_code(&self) -> Option<i32> {
-        match self {
-            ProcessError::NonZeroExit { output } => Some(output.code()),
-            _ => None,
-        }
-    }
-
-    /// Returns true if this is a timeout error.
-    pub fn is_timeout(&self) -> bool {
-        matches!(self, ProcessError::Timeout { .. })
-    }
-
-    /// Returns true if this is a command not found error.
-    pub fn is_command_not_found(&self) -> bool {
-        matches!(self, ProcessError::CommandNotFound { .. })
-    }
-
-    /// Returns true if this is a permission denied error.
-    pub fn is_permission_denied(&self) -> bool {
-        matches!(self, ProcessError::PermissionDenied { .. })
-    }
-}
-
 /// Builder for configuring and executing a process.
 #[derive(Debug, Clone)]
 pub struct ProcessBuilder {
     command: String,
     args: Vec<String>,
-    current_dir: Option<PathBuf>,
-    env: HashMap<String, String>,
-    env_clear: bool,
     timeout: Option<Duration>,
     capture_stdout: bool,
     capture_stderr: bool,
@@ -161,20 +111,11 @@ impl ProcessBuilder {
         Self {
             command: command.into(),
             args: Vec::new(),
-            current_dir: None,
-            env: HashMap::new(),
-            env_clear: false,
             timeout: None,
             capture_stdout: true,
             capture_stderr: true,
             capture_duration: true,
         }
-    }
-
-    /// Add an argument to the command.
-    pub fn arg(mut self, arg: impl Into<String>) -> Self {
-        self.args.push(arg.into());
-        self
     }
 
     /// Add multiple arguments to the command.
@@ -186,37 +127,6 @@ impl ProcessBuilder {
         for arg in args {
             self.args.push(arg.into());
         }
-        self
-    }
-
-    /// Set the working directory for the process.
-    pub fn current_dir(mut self, dir: impl Into<PathBuf>) -> Self {
-        self.current_dir = Some(dir.into());
-        self
-    }
-
-    /// Set an environment variable for the process.
-    pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.env.insert(key.into(), value.into());
-        self
-    }
-
-    /// Set multiple environment variables for the process.
-    pub fn envs<I, K, V>(mut self, vars: I) -> Self
-    where
-        I: IntoIterator<Item = (K, V)>,
-        K: Into<String>,
-        V: Into<String>,
-    {
-        for (key, value) in vars {
-            self.env.insert(key.into(), value.into());
-        }
-        self
-    }
-
-    /// Clear all environment variables before setting new ones.
-    pub fn env_clear(mut self, clear: bool) -> Self {
-        self.env_clear = clear;
         self
     }
 
@@ -256,17 +166,6 @@ impl ProcessBuilder {
         // POSIX spawns directly.
         let mut cmd = crate::classifier::build_command(&self.command, &self.args);
 
-        // Set working directory
-        if let Some(ref dir) = self.current_dir {
-            cmd.current_dir(dir);
-        }
-
-        // Handle environment
-        if self.env_clear {
-            cmd.env_clear();
-        }
-        cmd.envs(&self.env);
-
         // Configure stdio
         if self.capture_stdout {
             cmd.stdout(Stdio::piped());
@@ -300,13 +199,9 @@ impl ProcessBuilder {
             Ok(None) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                let (partial_stdout, partial_stderr) = readers.finish();
                 return Err(ProcessError::Timeout {
                     command: self.command.clone(),
-                    args: self.args.clone(),
                     duration: start.elapsed(),
-                    partial_stdout,
-                    partial_stderr,
                 });
             }
             Err(e) => {
@@ -329,47 +224,8 @@ impl ProcessBuilder {
             } else {
                 Duration::ZERO
             },
-            timed_out: false,
         })
     }
-
-    /// Execute the process and return the output, treating non-zero exit codes as errors.
-    pub fn run_checked(&self) -> Result<ProcessOutput, ProcessError> {
-        let output = self.run()?;
-        if output.success() {
-            Ok(output)
-        } else {
-            Err(ProcessError::NonZeroExit { output })
-        }
-    }
-}
-
-/// Execute a command with arguments and return the output.
-///
-/// This is a convenience function for simple command execution.
-pub fn run(command: &str, args: &[&str]) -> Result<ProcessOutput, ProcessError> {
-    ProcessBuilder::new(command)
-        .args(args.iter().copied())
-        .run()
-}
-
-/// Execute a command with arguments and return the output, treating non-zero exit as error.
-pub fn run_checked(command: &str, args: &[&str]) -> Result<ProcessOutput, ProcessError> {
-    ProcessBuilder::new(command)
-        .args(args.iter().copied())
-        .run_checked()
-}
-
-/// Execute a command with a timeout.
-pub fn run_with_timeout(
-    command: &str,
-    args: &[&str],
-    timeout: Duration,
-) -> Result<ProcessOutput, ProcessError> {
-    ProcessBuilder::new(command)
-        .args(args.iter().copied())
-        .timeout(timeout)
-        .run()
 }
 
 #[cfg(test)]

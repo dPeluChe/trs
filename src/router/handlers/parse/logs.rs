@@ -124,7 +124,6 @@ impl ParseHandler {
             line: line.to_string(),
             level: LogLevel::Unknown,
             timestamp: None,
-            source: None,
             message: line.to_string(),
             line_number,
         };

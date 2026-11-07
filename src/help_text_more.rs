@@ -1,8 +1,7 @@
-//! Help text for exec / inspection commands (run/read/json/err/stats/
-//! doctor/benchmark/diff/ingest). Split out of help.rs to keep it lean.
+//! Help text for exec / inspection commands (run/read/json/
+//! benchmark/diff/ingest).
 
 /// Help text for the run command.
-#[allow(dead_code)]
 pub const RUN_HELP: &str = "\
 Execute a command and process its output.
 
@@ -27,7 +26,6 @@ EXAMPLES:
     trs --json run npm test";
 
 /// Help text for the read command.
-#[allow(dead_code)]
 pub const READ_HELP: &str = "\
 Read a file with optional filtering to reduce token consumption.
 
@@ -56,7 +54,6 @@ EXAMPLES:
     trs --json read src/main.rs -l aggressive # JSON output";
 
 /// Help text for the json command.
-#[allow(dead_code)]
 pub const JSON_HELP: &str = "\
 Show JSON structure without values.
 
@@ -87,80 +84,7 @@ EXAMPLES:
     # JSON schema output
     cat data.json | trs --json json";
 
-/// Help text for the err command.
-#[allow(dead_code)]
-pub const ERR_HELP: &str = "\
-Run a command and show only errors and warnings.
-
-Filters stdout and stderr to lines containing error, warning,
-panic, fatal, or failed patterns. Includes 1 line of context
-after each error for stack traces.
-
-USAGE:
-    trs err <COMMAND> [ARGS]...
-
-EXAMPLES:
-    trs err cargo build          # Show only build errors
-    trs err npm install          # Show only install warnings/errors
-    trs err make                 # Show only make failures
-    trs err cargo test           # Show only test failures";
-
-/// Help text for the stats command.
-#[allow(dead_code)]
-pub const STATS_HELP: &str = "\
-Show token savings statistics.
-
-Displays cumulative savings from using trs, grouped by command.
-Data is stored in ~/.trs/history.jsonl.
-
-USAGE:
-    trs stats [OPTIONS]
-
-OPTIONS:
-    -H, --history    Show recent command history
-    -p, --project    Filter to current project directory
-        --json       Output in JSON format
-
-EXAMPLES:
-    trs stats                    # Global savings summary
-    trs stats --history          # Recent commands with reduction %
-    trs stats --project          # Savings for current project only
-    trs stats --json             # JSON output for dashboards";
-
-/// Help text for the doctor command.
-#[allow(dead_code)]
-pub const DOCTOR_HELP: &str = "\
-Validate trs installation health.
-
-Runs a series of checks to verify that trs is correctly installed,
-runtime dependencies are available, and configuration is functional.
-
-CHECKS:
-    version      Binary version is readable
-    binary       Binary path on disk
-    PATH         trs is findable in PATH
-    dep:git      git is available
-    dep:rg       ripgrep (rg) is available
-    config dir   ~/.trs/ exists and is writable
-    history      history.jsonl is writable
-    stdin pipe   stdin pipeline works (trs clean)
-    hooks        AI tool hooks installed
-
-STATUS MARKERS:
-    +  PASS: check passed
-    ~  WARN: non-critical issue
-    !  FAIL: needs attention
-
-EXIT CODES:
-    0  All checks passed (or only warnings)
-    1  One or more checks failed
-
-EXAMPLES:
-    trs doctor                   # Run all checks
-    trs doctor --json            # JSON output for CI pipelines";
-
 /// Help text for the benchmark command.
-#[allow(dead_code)]
 pub const BENCHMARK_HELP: &str = "\
 Benchmark a command showing compression metrics.
 
@@ -188,7 +112,6 @@ EXAMPLES:
     trs benchmark cargo test --repeat 3 --json";
 
 /// Help text for the diff command.
-#[allow(dead_code)]
 pub const DIFF_HELP: &str = "\
 Show raw vs compact output and exactly what trs dropped.
 
@@ -213,7 +136,6 @@ EXAMPLES:
     trs diff --json git log -10        (flags go before the command)";
 
 /// Help text for the ingest command.
-#[allow(dead_code)]
 pub const INGEST_HELP: &str = "\
 Generate an LLM-ready digest of a project.
 

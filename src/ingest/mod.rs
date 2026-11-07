@@ -140,10 +140,6 @@ pub(crate) const SKIP_DIRS: &[&str] = &[
 /// Max file size to include (64 KB -- large files are usually data, not code).
 pub(crate) const MAX_FILE_SIZE: u64 = 64 * 1024;
 
-/// Max size for data files like JSON (truncate with note).
-#[allow(dead_code)]
-pub(crate) const MAX_DATA_FILE_SIZE: usize = 2048;
-
 /// Compression level for file content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IngestLevel {

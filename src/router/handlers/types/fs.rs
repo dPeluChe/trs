@@ -43,11 +43,7 @@ pub(crate) struct LsEntry {
     /// Whether this is a hidden file (starts with .).
     pub(crate) is_hidden: bool,
     /// File size in bytes (if available).
-    #[allow(dead_code)]
     pub(crate) size: Option<u64>,
-    /// File permissions (if available).
-    #[allow(dead_code)]
-    pub(crate) permissions: Option<String>,
     /// Number of hard links (if available).
     pub(crate) links: Option<u64>,
     /// Owner user name (if available).
