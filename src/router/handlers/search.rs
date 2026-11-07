@@ -1,5 +1,5 @@
 use super::common::{
-    check_root, finish_partial, project_walker, walk_failure, CommandContext, CommandError,
+    check_root, finish_partial, project_walker, readable, CommandContext, CommandError,
     CommandResult, CommandStats,
 };
 use super::parse::ParseHandler;
@@ -128,13 +128,9 @@ impl SearchHandler {
         let mut failures: Vec<String> = Vec::new();
 
         // Search each file
-        for entry_result in project_walker(&input.path).build() {
-            let entry = match entry_result {
-                Ok(e) => e,
-                Err(e) => {
-                    failures.extend(walk_failure(&e));
-                    continue;
-                }
+        for entry in project_walker(&input.path).build() {
+            let Some(entry) = readable(entry, &mut failures) else {
+                continue;
             };
 
             // Skip directories

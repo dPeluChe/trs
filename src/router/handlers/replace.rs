@@ -1,5 +1,5 @@
 use super::common::{
-    check_root, csv_row, finish_partial, project_walker, tsv_row, walk_failure, CommandContext,
+    check_root, csv_row, finish_partial, project_walker, readable, tsv_row, CommandContext,
     CommandError, CommandResult, CommandStats, FAILED_EXIT,
 };
 use super::types::CommandHandler;
@@ -40,13 +40,9 @@ impl ReplaceHandler {
         let mut failures: Vec<String> = Vec::new();
 
         // Process each file
-        for entry_result in project_walker(&input.path).build() {
-            let entry = match entry_result {
-                Ok(e) => e,
-                Err(e) => {
-                    failures.extend(walk_failure(&e));
-                    continue;
-                }
+        for entry in project_walker(&input.path).build() {
+            let Some(entry) = readable(entry, &mut failures) else {
+                continue;
             };
 
             // Skip directories. Nested symlinks stay skipped; a named one is the target.
