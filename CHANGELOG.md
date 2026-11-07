@@ -5,6 +5,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.10.3] - 2026-11-07
+
+### Bug Fixes
+
+- **csv:** Write every table through one row helper (#267)
+- **tables:** Print the replace summary outside the table, keep every db row (#268)
+- **tables:** Keep every row, and the table when the command fails (#269)
+- **replace:** Report what it could not do (#270)
+- **search:** Report what it could not read (#271)
+- **find:** Report what it could not read (#272)
+- **find:** Reach the walker however the command is spelled (#273)
+- **ingest:** Report what it could not read (#274)
+- **ingest:** --read fails when it has nothing to print (#275)
+- **diff:** Fail when the compact side cannot run (#276)
+- **search:** Only .git and gitignored dirs are left out (#277)
+- **stats:** --coverage no longer panics on non-ASCII commands (#281)
+- **parse:** Never cut user text inside a multibyte char (#282)
+- **json:** Every command prints one document under --json (#284)
+- **replace:** Keep line endings; patterns that need a newline match across lines (#285)
+- **init:** Files trs edits keep their CRLF line endings (#286)
+- **csv:** Every command prints a table under --csv and --tsv (#287)
+
+### Refactor
+
+- Delete the unused reducer module (#279)
+- Delete the unused formatter module and schemas (#280)
+- Delete the dead leftovers the dead_code allows were hiding (#283)
+
+### Documentation
+
+- Record the thorough-and-bold test (#266)
+- Document exit 2 on partial runs and what search and replace skip (#278)
+
+### Testing
+
+- Drop 12 tests that repeat another test line for line (#288)
+
 ## [0.10.2] - 2026-11-06
 
 ### Bug Fixes
