@@ -152,8 +152,7 @@ fn test_tsv_output_parse_ls() {
         .write_stdin(ls_input)
         .assert()
         .success()
-        .stdout(predicate::str::contains("src/"))
-        .stdout(predicate::str::contains("main.rs"));
+        .stdout("line\nsrc\nmain.rs\n");
 }
 
 // ============================================================

@@ -323,8 +323,7 @@ impl Router {
             OutputFormat::Agent => {
                 format!("Content:\n{}\n", result)
             }
-            OutputFormat::Csv => csv_lines(&result),
-            OutputFormat::Tsv => tsv_lines(&result),
+            OutputFormat::Csv | OutputFormat::Tsv => line_table(ctx.format, &result),
         };
 
         Ok(formatted)

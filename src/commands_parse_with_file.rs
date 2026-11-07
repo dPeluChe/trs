@@ -59,4 +59,53 @@ impl ParseCommands {
             Self::Fmt { .. } => Self::Fmt { file: Some(path) },
         }
     }
+
+    /// The file this parser reads, or None for stdin.
+    pub(crate) fn file(&self) -> Option<&std::path::Path> {
+        match self {
+            Self::GitStatus { file, .. } => file.as_deref(),
+            Self::GitDiff { file, .. } => file.as_deref(),
+            Self::GitLog { file, .. } => file.as_deref(),
+            Self::GitBranch { file, .. } => file.as_deref(),
+            Self::Ls { file, .. } => file.as_deref(),
+            Self::Grep { file, .. } => file.as_deref(),
+            Self::Find { file, .. } => file.as_deref(),
+            Self::Test { file, .. } => file.as_deref(),
+            Self::Logs { file, .. } => file.as_deref(),
+            Self::Tree { file, .. } => file.as_deref(),
+            Self::DockerPs { file, .. } => file.as_deref(),
+            Self::DockerLogs { file, .. } => file.as_deref(),
+            Self::Ping { file, .. } => file.as_deref(),
+            Self::Brew { file, .. } => file.as_deref(),
+            Self::PythonTraceback { file, .. } => file.as_deref(),
+            Self::Ps { file, .. } => file.as_deref(),
+            Self::GhApi { file, .. } => file.as_deref(),
+            Self::Ollama { file, .. } => file.as_deref(),
+            Self::Du { file, .. } => file.as_deref(),
+            Self::Lsof { file, .. } => file.as_deref(),
+            Self::Pgrep { file, .. } => file.as_deref(),
+            Self::Deps { file, .. } => file.as_deref(),
+            Self::Install { file, .. } => file.as_deref(),
+            Self::Build { file, .. } => file.as_deref(),
+            Self::Aws { file, .. } => file.as_deref(),
+            Self::Env { file, .. } => file.as_deref(),
+            Self::Wc { file, .. } => file.as_deref(),
+            Self::Download { file, .. } => file.as_deref(),
+            Self::GhPr { file, .. } => file.as_deref(),
+            Self::GhIssue { file, .. } => file.as_deref(),
+            Self::GhRun { file, .. } => file.as_deref(),
+            Self::GhPrChecks { file, .. } => file.as_deref(),
+            Self::GhRunView { file, .. } => file.as_deref(),
+            Self::GhPrView { file, .. } => file.as_deref(),
+            Self::CargoTest { file, .. } => file.as_deref(),
+            Self::GoTest { file, .. } => file.as_deref(),
+            Self::Maven { file, .. } => file.as_deref(),
+            Self::Gradle { file, .. } => file.as_deref(),
+            Self::Lint { file, .. } => file.as_deref(),
+            Self::Db { file, .. } => file.as_deref(),
+            Self::GitPull { file, .. } => file.as_deref(),
+            Self::GitCommit { file, .. } => file.as_deref(),
+            Self::Fmt { file, .. } => file.as_deref(),
+        }
+    }
 }

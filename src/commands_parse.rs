@@ -453,7 +453,8 @@ pub enum ParseCommands {
 mod with_file;
 
 impl ParseCommands {
-    /// Whether `--csv` and `--tsv` print rows here rather than the compact form.
+    /// Whether the parser has columns of its own for `--csv` and `--tsv`;
+    /// any other prints its input lines as a one-column `line` table.
     pub(crate) fn has_table(&self) -> bool {
         matches!(
             self,

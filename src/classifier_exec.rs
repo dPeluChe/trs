@@ -9,7 +9,18 @@ use crate::exec_verdict::{
 };
 use crate::process::exit_code_of;
 use crate::router::{CommandContext, Router};
+pub(crate) use crate::tee_output::save_tee_output;
 use crate::Commands;
+
+/// Output with no table of its own, as a one-column table under `--csv`
+/// and `--tsv`, so a table format always prints a table.
+fn shown(format: crate::OutputFormat, text: &str) -> std::borrow::Cow<'_, str> {
+    if format.is_table() {
+        crate::router::handlers::common::line_table(format, text).into()
+    } else {
+        text.into()
+    }
+}
 
 /// Execute an external command, optionally pipe through a parser, and print output.
 pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext) {
@@ -75,9 +86,10 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         if let Some(run) = &json_run {
             run.finish(&compact, false);
         }
-        print!("{}", compact);
+        let printed = shown(ctx.format, &compact);
+        print!("{printed}");
         let full_cmd = full_cmd(cmd, args);
-        track(&full_cmd, in_bytes, compact.len(), start, &output.status);
+        track(&full_cmd, in_bytes, printed.len(), start, &output.status);
         if !output.status.success() {
             emit_failure_footer(ctx.format, code, &full_cmd, &stdout, &stderr);
         }
@@ -109,19 +121,25 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     #[allow(unused_assignments)]
     let mut out_bytes = in_bytes; // default: no reduction (passthrough)
 
+    let parser = classify_command(cmd, args);
+    // A table format with no table for this command: its lines are the rows,
+    // unfolded, since every row is data.
+    let line_rows = ctx.format.is_table() && !parser.as_ref().is_some_and(|p| p.has_table());
     // Min input guard: skip parsing entirely for tiny outputs. Verbatim
     // commands take the same exit at every size: their spacing is the data.
     // So does a requested machine format (`--json`, `--porcelain`).
     let min_input = crate::config::config().limits.min_input_chars;
-    if (stdout_ref.len() < min_input && !wants_format)
+    if line_rows
+        || (stdout_ref.len() < min_input && !wants_format)
         || crate::command_registry::is_verbatim_invocation(name, &args.join(" "))
         || crate::classifier_args::has_structured_output_flag(args)
     {
         if let Some(run) = &json_run {
             run.finish(stdout_ref, false);
         }
-        print!("{}", stdout_ref);
-        out_bytes = stdout_ref.len();
+        let printed = shown(ctx.format, stdout_ref);
+        print!("{printed}");
+        out_bytes = printed.len();
         let fcmd = full_cmd(cmd, args);
         track(&fcmd, in_bytes, out_bytes, start, &output.status);
         if !output.status.success() {
@@ -130,7 +148,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         return;
     }
 
-    if let Some(parser) = classify_command(cmd, args) {
+    if let Some(parser) = parser {
         // Estimate output size based on benchmarked reduction ratios per command
         let ratio = keep_ratio(name, subcmd);
 
@@ -149,7 +167,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             return;
         }
 
-        let prints_table = ctx.format.is_table() && parser.has_table();
+        // `line_rows` sent every table format without columns away above.
+        let prints_table = ctx.format.is_table();
 
         // Tier 1: Try parser. Its output is captured (not streamed) so we can
         // measure it and enforce the never-worse guard below.
@@ -214,9 +233,15 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                     out_bytes += print_raw_path(ctx.format, cmd, args, &stdout, &stderr);
                 }
             } else {
-                print!("{}", stdout_ref);
-                out_bytes = stdout_ref.len();
+                let printed = shown(ctx.format, stdout_ref);
+                print!("{printed}");
+                out_bytes = printed.len();
             }
+        } else if prints_table {
+            // A table holds every row, so a failed parse is not cut either.
+            let printed = shown(ctx.format, stdout_ref);
+            print!("{printed}");
+            out_bytes = printed.len();
         } else {
             // Tier 3: Passthrough with truncation (parser failed)
             let passthrough_max = crate::config::config().limits.passthrough_max_chars;
@@ -314,88 +339,6 @@ fn print_raw_path(
 /// path, for parsers that summarize without saying so. Ones that drop content
 /// on purpose call `parse_out::mark_dropped` and get the pointer at any size.
 const RECOVERABLE_MIN_BYTES: usize = 16 * 1024;
-
-/// Save full command output to ~/.trs/tee/ for failure recovery.
-/// Returns the path to the saved file, or None if saving failed.
-pub(crate) fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> {
-    let tee_dir = crate::tracker::trs_dir()?.join("tee");
-
-    // Create tee directory if needed
-    std::fs::create_dir_all(&tee_dir).ok()?;
-
-    // Clean old tee files (keep last N from config)
-    let max_files = crate::config::config().limits.tee_max_files;
-    if let Ok(entries) = std::fs::read_dir(&tee_dir) {
-        let mut files: Vec<std::path::PathBuf> = entries
-            .filter_map(|e| e.ok().map(|e| e.path()))
-            .filter(|p| p.extension().map_or(false, |e| e == "log"))
-            .collect();
-        files.sort();
-        if files.len() > max_files {
-            for old in &files[..files.len() - max_files] {
-                let _ = std::fs::remove_file(old);
-            }
-        }
-    }
-
-    // Generate filename: timestamp_command.log
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let safe_cmd = cmd
-        .chars()
-        .take(40)
-        .map(|c| {
-            if c.is_alphanumeric() || c == '-' || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect::<String>();
-    let filename = format!("{}_{}.log", timestamp, safe_cmd);
-    let filepath = tee_dir.join(&filename);
-
-    // Write stdout + stderr
-    let mut content = String::new();
-    if !stdout.is_empty() {
-        content.push_str(stdout);
-    }
-    if !stderr.is_empty() {
-        if !content.is_empty() {
-            content.push_str("\n--- stderr ---\n");
-        }
-        content.push_str(stderr);
-    }
-
-    // Truncate if exceeds max size
-    let max_bytes = crate::config::config().limits.tee_max_bytes;
-    if max_bytes > 0 && content.len() > max_bytes {
-        content.truncate(max_bytes);
-        content.push_str(&format!("\n--- truncated at {} bytes ---", max_bytes));
-    }
-
-    // mode 0600: tee/*.log can carry response bodies that include
-    // credentials or session tokens — user-only readable on Unix.
-    write_user_only(&filepath, content.as_bytes()).ok()?;
-    crate::pointer_recall::note_pointer();
-    Some(filepath.to_string_lossy().to_string())
-}
-
-fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()> {
-    use std::fs::OpenOptions;
-    use std::io::Write;
-    let mut opts = OpenOptions::new();
-    opts.create(true).truncate(true).write(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        opts.mode(0o600);
-    }
-    let mut f = opts.open(path)?;
-    f.write_all(content)
-}
 
 /// Generic compression for commands without a dedicated parser.
 /// Collapses consecutive whitespace in tabular output, strips ANSI codes,

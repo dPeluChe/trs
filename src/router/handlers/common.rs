@@ -241,13 +241,15 @@ pub(crate) fn tsv_row(fields: &[&str]) -> String {
     escaped.join("\t") + "\n"
 }
 
-/// Always quoted: a bare empty row is skipped by readers.
-pub(crate) fn csv_lines(text: &str) -> String {
-    text.lines().map(|line| quote_csv(line) + "\n").collect()
-}
-
-pub(crate) fn tsv_lines(text: &str) -> String {
-    text.lines().map(|line| tsv_row(&[line])).collect()
+/// `text` as a one-column `line` table, for output with no columns of its
+/// own. CSV rows are always quoted: a bare empty row is skipped by readers.
+pub(crate) fn line_table(format: OutputFormat, text: &str) -> String {
+    let rows: String = if format == OutputFormat::Tsv {
+        text.lines().map(|line| tsv_row(&[line])).collect()
+    } else {
+        text.lines().map(|line| quote_csv(line) + "\n").collect()
+    };
+    format!("line\n{rows}")
 }
 
 /// Statistics about command execution.

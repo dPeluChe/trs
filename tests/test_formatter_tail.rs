@@ -198,7 +198,7 @@ fn test_empty_input_csv() {
         .write_stdin("")
         .assert()
         .success()
-        .stdout(predicate::str::contains("empty"));
+        .stdout("line\n");
 }
 
 #[test]
@@ -210,7 +210,7 @@ fn test_empty_input_tsv() {
         .write_stdin("")
         .assert()
         .success()
-        .stdout(predicate::str::contains("empty"));
+        .stdout("line\n");
 }
 
 #[test]

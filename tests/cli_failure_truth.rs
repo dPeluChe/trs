@@ -100,13 +100,13 @@ fn stdin_is_forwarded_to_the_child() {
 
 #[test]
 fn tables_keep_the_failure_notice_out_of_their_rows() {
-    for flag in ["--csv", "--tsv"] {
+    for (flag, rows) in [("--csv", "line\n\"row\"\n"), ("--tsv", "line\nrow\n")] {
         Command::cargo_bin("trs")
             .unwrap()
             .args([flag, "sh", "-c", "echo row; exit 3"])
             .assert()
             .code(3)
-            .stdout("row\n")
+            .stdout(rows)
             .stderr(predicate::str::contains("[trs] exit 3"));
     }
 }
@@ -119,4 +119,43 @@ fn run_says_so_on_stdout_when_the_command_failed() {
         .assert()
         .code(3)
         .stdout(predicate::str::contains("[trs] exit 3"));
+}
+
+#[test]
+fn a_command_with_no_table_prints_its_lines_as_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.txt"), "foo 1\nbar\nfoo 2\n").unwrap();
+    for args in [&["grep", "-n", "foo", "a.txt"][..], &["ls"][..]] {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .current_dir(dir.path())
+            .arg("--csv")
+            .args(args)
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(stdout.starts_with("line\n\""), "{args:?}: {stdout}");
+        assert!(!stdout.contains("[1 files]"), "{stdout}");
+    }
+}
+
+#[test]
+fn a_text_command_prints_a_line_table() {
+    let home = tempfile::tempdir().unwrap();
+    for (flag, header) in [("--csv", "line\n\""), ("--tsv", "line\ntrs history")] {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .env("TRS_HOME", home.path())
+            .args([flag, "history", "--prune", "--dry-run"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(0));
+        assert!(String::from_utf8_lossy(&out.stdout).starts_with(header));
+    }
+    Command::cargo_bin("trs")
+        .unwrap()
+        .args(["--csv", "parse", "ls"])
+        .write_stdin("a.txt\nb.txt\n")
+        .assert()
+        .stdout("line\n\"a.txt\"\n\"b.txt\"\n");
 }

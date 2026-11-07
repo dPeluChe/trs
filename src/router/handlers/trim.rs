@@ -1,6 +1,4 @@
-use super::common::{
-    csv_lines, tsv_lines, CommandContext, CommandError, CommandResult, CommandStats,
-};
+use super::common::{line_table, CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -87,12 +85,7 @@ impl TrimHandler {
                 })
                 .to_string()
             }
-            OutputFormat::Csv => {
-                format!("line\n{}", csv_lines(trimmed))
-            }
-            OutputFormat::Tsv => {
-                format!("line\n{}", tsv_lines(trimmed))
-            }
+            OutputFormat::Csv | OutputFormat::Tsv => line_table(format, trimmed),
             OutputFormat::Agent => {
                 let input_len = original.len();
                 let output_len = trimmed.len();

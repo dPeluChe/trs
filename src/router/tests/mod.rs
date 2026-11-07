@@ -1,8 +1,8 @@
 #![allow(unused_imports)]
 use crate::router::handlers::clean::{CleanHandler, CleanInput};
 use crate::router::handlers::common::{
-    csv_lines, csv_row, sanitize_control_chars, strip_ansi_codes, tsv_lines, tsv_row,
-    CommandContext, CommandError, CommandResult, CommandStats,
+    csv_row, line_table, sanitize_control_chars, strip_ansi_codes, tsv_row, CommandContext,
+    CommandError, CommandResult, CommandStats,
 };
 use crate::router::handlers::html2md::{Html2mdHandler, Html2mdInput};
 use crate::router::handlers::isclean::{IsCleanHandler, IsCleanInput};

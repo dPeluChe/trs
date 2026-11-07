@@ -50,7 +50,6 @@ mod help;
 mod help_text;
 mod help_text_more;
 mod ingest;
-mod json_child;
 mod main_args;
 use main_args::{is_closed_pipe_panic, is_external_fast_path, CLOSED_PIPE_EXIT};
 mod init;
@@ -89,6 +88,8 @@ mod router;
 mod safe_folds;
 mod schema;
 mod sentinel;
+mod tee_output;
+mod text_child;
 mod text_util;
 pub(crate) mod tracker;
 mod uninstall;
@@ -170,7 +171,7 @@ fn run_unparsed() -> ! {
     }
     let mut command = crate::classifier::build_command(program, args);
     let ran = if format == OutputFormat::Json {
-        command.output().map(|out| json_child::finish(&name, &out))
+        command.output().map(|out| text_child::finish(&name, &out))
     } else {
         command.status()
     };
@@ -217,8 +218,10 @@ fn run() {
     // Create command context from global CLI options
     let ctx = CommandContext::from_cli(&cli);
 
-    if ctx.format == OutputFormat::Json && cli.command.as_ref().is_some_and(json_child::wraps) {
-        json_child::run_wrapped();
+    if let Some(command) = cli.command.as_ref() {
+        if text_child::wraps(command, ctx.format) {
+            text_child::run_wrapped(command, ctx.format);
+        }
     }
 
     // Create router and execute the command
