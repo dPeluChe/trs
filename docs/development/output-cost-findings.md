@@ -92,6 +92,26 @@ recommendations."). Sonnet, low effort, repo and stale suites.
 - The stale control sits near the ceiling, so a null here can't rule out a gain.
   Neither suite scores recommendations; output tokens and cost show the price.
 
+Result: neither arm won, so the block stays. No correct-answer CI excludes zero.
+
+| Suite | Arm | Runs | Cost | Turns | Reply chars | Correct | Both values shown |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Stale | none | 37 | $0.049 | 3.8 | 598 | 95% | 95% |
+| Stale | concise | 37 | $0.047 | 3.1 | 306 | 100% | 100% |
+| Stale | tweet | 37 | $0.052 | 4.0 | 783 | 100% | 100% |
+| Stale | bold | 37 | $0.046 | 2.8 | 359 | 97% | 89% |
+| Repo | none | 24 | $0.054 | 4.5 | 325 | 100% | n/a |
+| Repo | concise | 24 | $0.054 | 4.8 | 232 | 96% | n/a |
+| Repo | tweet | 24 | $0.055 | 4.5 | 378 | 100% | n/a |
+| Repo | bold | 24 | $0.055 | 4.8 | 287 | 100% | n/a |
+
+- On stale, `tweet` costs 11.6% more than `concise` (+$0.005, CI +$0.003 to
+  +$0.008) and adds 0.92 turns (CI +0.38 to +1.51). That fails the 10% limit.
+- `bold` matches `concise` on cost, but 4 of 37 replies left the disagreement out.
+- The one `concise` repo miss reported the planted bug and asked before fixing it.
+- The stale sweep hit its $7 cap at 148 of 160 runs, balanced across arms. The
+  ceiling caveat above applies: `concise` already scored 100% on stale.
+
 ## How to run the next test
 
 1. Commit the criteria first, including what happens if the change loses.
