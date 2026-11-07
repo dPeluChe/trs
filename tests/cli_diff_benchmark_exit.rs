@@ -48,3 +48,20 @@ fn a_file_that_cannot_run_is_126() {
             .code(126);
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn diff_fails_when_the_compact_side_cannot_run() {
+    let dir = tempfile::tempdir().unwrap();
+    let copy = dir.path().join("trs");
+    std::fs::copy(assert_cmd::cargo::cargo_bin("trs"), &copy).unwrap();
+
+    // The raw side deletes the binary the compact side would run.
+    Command::new(&copy)
+        .args(["diff", "rm"])
+        .arg(&copy)
+        .assert()
+        .code(1)
+        .stdout(predicate::str::contains("smaller").not())
+        .stderr(predicate::str::contains("compact side"));
+}

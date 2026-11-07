@@ -5,10 +5,9 @@
 //! in raw but absent from compact. Lets a user verify what the agent loses.
 
 use std::collections::HashSet;
-use std::process::{Command, Stdio};
 
-use crate::classifier::{build_command, full_cmd};
-use crate::exec_verdict::{exit_on_spawn_failure, format_of};
+use crate::classifier::{build_command, full_cmd, run_through_trs};
+use crate::exec_verdict::{exit_on_spawn_failure, exit_with_error, format_of};
 
 /// Rough GPT/Claude average; matches `benchmark.rs`.
 const BYTES_PER_TOKEN: f64 = 4.0;
@@ -18,7 +17,10 @@ const MAX_DROPPED_SHOWN: usize = 40;
 
 pub(crate) fn run_diff(command: &str, args: &[String], json: bool) {
     let (raw, code) = capture_raw(command, args, json);
-    let compact = capture_compact(command, args).unwrap_or_default();
+    let compact = capture_compact(command, args).unwrap_or_else(|e| {
+        let message = format!("trs diff: cannot run the compact side: {e}");
+        exit_with_error(format_of(json), &message, 1)
+    });
 
     let dropped = dropped_lines(&raw, &compact);
     let raw_bytes = raw.len();
@@ -67,20 +69,11 @@ fn capture_raw(cmd: &str, args: &[String], json: bool) -> (String, i32) {
 }
 
 /// Run `trs <cmd> [args]` (this binary) and return its compacted stdout+stderr.
-fn capture_compact(cmd: &str, args: &[String]) -> Option<String> {
-    let trs_bin = std::env::current_exe().ok()?;
-    let mut trs_args: Vec<&str> = Vec::with_capacity(args.len() + 1);
-    trs_args.push(cmd);
-    trs_args.extend(args.iter().map(String::as_str));
-    let o = Command::new(&trs_bin)
-        .args(&trs_args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .ok()?;
+fn capture_compact(cmd: &str, args: &[String]) -> std::io::Result<String> {
+    let o = run_through_trs(cmd, args)?;
     let mut s = String::from_utf8_lossy(&o.stdout).into_owned();
     s.push_str(&String::from_utf8_lossy(&o.stderr));
-    Some(s)
+    Ok(s)
 }
 
 fn print_human(
