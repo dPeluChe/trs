@@ -78,6 +78,20 @@ moved turns by +0.25 (CI -0.67 to +1.13).
   because they cover what the one line doesn't, and the comment limits are
   mirrored by other configs.
 
+## Pre-registered: "thorough and bold" (2026-11-06)
+
+Claim under test: "Be thorough in your analysis and bold in your
+recommendations." beats "Answer concisely." Arms: `none`, `concise`, `tweet`
+(the phrase alone), `bold` ("Answer concisely. Be bold in your
+recommendations."). Sonnet, low effort, repo and stale suites.
+
+- Primary: correct answers and cost per run, each arm against `concise`.
+- A new arm replaces `concise` only if its correct-answer CI excludes zero in
+  its favor and its cost is at most 10% above `concise`.
+- If neither arm wins, the block stays as is and this section records the numbers.
+- The stale control sits near the ceiling, so a null here can't rule out a gain.
+  Neither suite scores recommendations; output tokens and cost show the price.
+
 ## How to run the next test
 
 1. Commit the criteria first, including what happens if the change loses.
