@@ -69,7 +69,6 @@ impl ParseHandler {
             line: t.to_string(),
             level,
             timestamp,
-            source,
             message,
             line_number,
         })

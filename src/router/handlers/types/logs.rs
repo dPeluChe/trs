@@ -36,9 +36,6 @@ pub(crate) struct LogEntry {
     pub(crate) level: LogLevel,
     /// Timestamp (if detected).
     pub(crate) timestamp: Option<String>,
-    /// Source/logger name (if detected).
-    #[allow(dead_code)]
-    pub(crate) source: Option<String>,
     /// Message content (without timestamp/level prefix).
     pub(crate) message: String,
     /// Line number in the input.

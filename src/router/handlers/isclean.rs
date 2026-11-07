@@ -19,8 +19,6 @@ impl IsCleanHandler {
                 if !process_output.success() {
                     return Ok(RepositoryState {
                         is_git_repo: false,
-                        is_detached: false,
-                        branch: None,
                         is_clean: false,
                         staged_count: 0,
                         unstaged_count: 0,
@@ -37,8 +35,6 @@ impl IsCleanHandler {
                 if stdout.trim().is_empty() {
                     return Ok(RepositoryState {
                         is_git_repo: true,
-                        is_detached: false,
-                        branch: None,
                         is_clean: true,
                         staged_count: 0,
                         unstaged_count: 0,
@@ -101,8 +97,6 @@ impl IsCleanHandler {
 
                 Ok(RepositoryState {
                     is_git_repo: true,
-                    is_detached: false,
-                    branch: None,
                     is_clean,
                     staged_count,
                     unstaged_count,
@@ -115,8 +109,6 @@ impl IsCleanHandler {
                 // git command failed - likely not a git repository
                 Ok(RepositoryState {
                     is_git_repo: false,
-                    is_detached: false,
-                    branch: None,
                     is_clean: false,
                     staged_count: 0,
                     unstaged_count: 0,
@@ -245,12 +237,6 @@ impl CommandHandler for IsCleanHandler {
 pub(crate) struct RepositoryState {
     /// Whether this is a git repository.
     is_git_repo: bool,
-    /// Whether the repository is in a detached HEAD state.
-    #[allow(dead_code)]
-    is_detached: bool,
-    /// The current branch name (or commit hash if detached).
-    #[allow(dead_code)]
-    branch: Option<String>,
     /// Whether the repository is clean (no changes).
     is_clean: bool,
     /// Number of staged files.

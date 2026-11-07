@@ -11,7 +11,6 @@ fn test_txt2md_handler() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     // Create a temp input file
@@ -139,7 +138,6 @@ fn test_txt2md_handler_with_spacing_issues() {
     let ctx = CommandContext {
         format: OutputFormat::Raw,
         stats: false,
-        enabled_formats: vec![],
     };
 
     // Create a temp input file with spacing issues

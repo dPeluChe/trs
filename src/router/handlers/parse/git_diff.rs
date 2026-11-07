@@ -335,17 +335,6 @@ impl ParseHandler {
         diff.is_empty = diff.files.is_empty();
         Ok(diff)
     }
-
-    #[allow(dead_code)]
-    const DEFAULT_MAX_DIFF_FILES: usize = 50;
-    #[allow(dead_code)]
-    pub(crate) fn truncate_diff(diff: &mut GitDiff, max_files: usize) {
-        if diff.files.len() > max_files {
-            diff.is_truncated = true;
-            diff.files_shown = max_files;
-            diff.files.truncate(max_files);
-        }
-    }
 }
 
 /// `commit <hash>` / Author / Date / indented message, up to the first diff or

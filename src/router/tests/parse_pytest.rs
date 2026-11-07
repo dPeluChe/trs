@@ -10,7 +10,6 @@ fn test_parse_handler_git_status() {
     let ctx = CommandContext {
         format: OutputFormat::Json,
         stats: false,
-        enabled_formats: vec![OutputFormat::Json],
     };
     // Use temp file instead of stdin to avoid blocking
     let tmp = std::env::temp_dir().join("trs_test_git_status.tmp");
@@ -34,7 +33,6 @@ fn test_parse_handler_test() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     // Use temp file instead of stdin to avoid blocking
     let tmp = std::env::temp_dir().join("trs_test_pytest.tmp");
@@ -352,7 +350,6 @@ fn test_router_run_command_success() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let command = Commands::Run {
         command: "echo".to_string(),
@@ -373,7 +370,6 @@ fn test_router_run_command_failure() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let command = Commands::Run {
         command: "false".to_string(),
@@ -394,7 +390,6 @@ fn test_router_default() {
     let ctx = CommandContext {
         format: OutputFormat::Compact,
         stats: false,
-        enabled_formats: vec![],
     };
     let command = Commands::Search {
         path: std::path::PathBuf::from("."),

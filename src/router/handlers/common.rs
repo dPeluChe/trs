@@ -9,9 +9,6 @@ pub struct CommandContext {
     pub format: OutputFormat,
     /// Whether to show execution statistics.
     pub stats: bool,
-    /// List of enabled format flags (for warnings/debugging).
-    #[allow(dead_code)]
-    pub enabled_formats: Vec<OutputFormat>,
 }
 
 impl CommandContext {
@@ -20,7 +17,6 @@ impl CommandContext {
         Self {
             format: OutputFormat::Compact,
             stats: false,
-            enabled_formats: vec![],
         }
     }
 
@@ -29,14 +25,7 @@ impl CommandContext {
         Self {
             format: cli.output_format(),
             stats: cli.stats,
-            enabled_formats: cli.enabled_format_flags(),
         }
-    }
-
-    /// Returns true if multiple format flags were specified.
-    #[allow(dead_code)]
-    pub fn has_conflicting_formats(&self) -> bool {
-        self.enabled_formats.len() > 1
     }
 }
 
@@ -46,9 +35,6 @@ pub type CommandResult<T = ()> = Result<T, CommandError>;
 /// Error type for command execution.
 #[derive(Debug, Clone)]
 pub enum CommandError {
-    /// The command is not yet implemented.
-    #[allow(dead_code)]
-    NotImplemented(String),
     /// An error occurred during execution with an optional exit code.
     ExecutionError {
         message: String,
@@ -76,7 +62,6 @@ impl CommandError {
 impl std::fmt::Display for CommandError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CommandError::NotImplemented(msg) => write!(f, "Not implemented: {}", msg),
             CommandError::ExecutionError { message, .. } => {
                 write!(f, "Execution error: {}", message)
             }
