@@ -43,7 +43,9 @@ pub(crate) fn run(cmd: &Commands, ctx: &CommandContext) {
         ingest::list_ingests();
     } else if let Some(read_name) = read {
         let project_path = std::path::Path::new(path);
-        ingest::read_digest(read_name.as_deref(), project_path);
+        if let Err(message) = ingest::read_digest(read_name.as_deref(), project_path) {
+            crate::exec_verdict::exit_with_error(ctx.format, &message, 1)
+        }
     } else {
         // Resolve remote inputs (URLs / owner/repo shorthands) to a
         // local path. The guard keeps ephemeral clones alive until
