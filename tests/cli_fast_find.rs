@@ -5,15 +5,17 @@ use assert_cmd::Command;
 
 mod support;
 
-fn fast_find(dir: &std::path::Path, args: &[&str]) -> std::process::Output {
+fn trs(dir: &std::path::Path, args: &[&str]) -> std::process::Output {
     Command::cargo_bin("trs")
         .unwrap()
         .current_dir(dir)
-        .arg("find")
-        .arg("--gitignore")
         .args(args)
         .output()
         .unwrap()
+}
+
+fn fast_find(dir: &std::path::Path, args: &[&str]) -> std::process::Output {
+    trs(dir, &[&["find", "--gitignore"], args].concat())
 }
 
 #[test]
@@ -79,4 +81,27 @@ fn a_complete_walk_succeeds_without_a_failure_field() {
     let out = fast_find(dir.path(), &[".", "-type", "f", "-name", "a*", "--raw"]);
     assert_eq!(out.status.code(), Some(0));
     assert_eq!(String::from_utf8_lossy(&out.stdout).lines().count(), 1);
+}
+
+#[test]
+fn a_format_flag_before_the_command_reaches_the_walker() {
+    let dir = tempfile::tempdir().unwrap();
+    support::write_file(dir.path(), "a.rs", "");
+    let out = trs(dir.path(), &["--json", "find", "--gitignore", "."]);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(support::document(&out)["total_files"], 1);
+
+    let out = trs(dir.path(), &["--raw", "find", "--gitignore", "."]);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "./a.rs");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_full_path_to_find_reaches_the_walker() {
+    let dir = tempfile::tempdir().unwrap();
+    support::write_file(dir.path(), "a.rs", "");
+    let out = trs(dir.path(), &["/usr/bin/find", "--gitignore", "."]);
+    assert_eq!(out.status.code(), Some(0));
+    assert!(String::from_utf8_lossy(&out.stdout).contains("1F 0D"));
 }

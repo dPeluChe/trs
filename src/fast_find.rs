@@ -12,6 +12,17 @@ use std::fmt::Write;
 use std::path::Path;
 use std::time::Instant;
 
+/// The walker's arguments, when this command asks for it.
+pub(crate) fn gitignore_args<'a>(cmd: &str, args: &'a [String]) -> Option<Vec<&'a str>> {
+    let is_find = matches!(crate::text_util::cmd_basename(cmd), "find" | "fd");
+    (is_find && args.iter().any(|a| a == "--gitignore")).then(|| {
+        args.iter()
+            .map(String::as_str)
+            .filter(|a| *a != "--gitignore")
+            .collect()
+    })
+}
+
 /// Run a fast gitignore-aware find.
 ///
 /// Supports a subset of find flags:

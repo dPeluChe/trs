@@ -171,6 +171,20 @@ fn run_unparsed() -> ! {
     }
 }
 
+fn run_external(args: &[String], mut ctx: CommandContext) {
+    let (cmd_args, format, stats) = classifier_args::split_format_flags(args);
+    ctx.format = format.unwrap_or(ctx.format);
+    ctx.stats |= stats;
+    let Some((cmd, rest)) = cmd_args.split_first() else {
+        return;
+    };
+    if let Some(find_args) = fast_find::gitignore_args(cmd, rest) {
+        Router::report(fast_find::run(&find_args, &ctx), ctx.format);
+        return;
+    }
+    execute_and_parse(cmd, rest, &ctx);
+}
+
 fn run() {
     // `env::args` panics on non-UTF-8, which is a legal file name.
     let Ok(args) = std::env::args_os()
@@ -182,26 +196,7 @@ fn run() {
 
     // Fast path: bypass clap for external commands (saves ~2-4ms)
     if args.len() >= 2 && is_external_fast_path(&args) {
-        let mut ctx = CommandContext::default_compact();
-        let (cmd_args, format, stats) = classifier_args::split_format_flags(&args[1..]);
-        if let Some(format) = format {
-            ctx.format = format;
-        }
-        ctx.stats |= stats;
-        if let Some((cmd, rest)) = cmd_args.split_first() {
-            // Fast find: trs find --gitignore . -name "*.rs"
-            // Uses internal walker (respects .gitignore) instead of spawning find
-            if (cmd == "find" || cmd == "fd") && rest.iter().any(|a| a == "--gitignore") {
-                let find_args: Vec<&str> = rest
-                    .iter()
-                    .filter(|a| a.as_str() != "--gitignore")
-                    .map(|a| a.as_str())
-                    .collect();
-                Router::report(fast_find::run(&find_args, &ctx), ctx.format);
-                return;
-            }
-            execute_and_parse(cmd, rest, &ctx);
-        }
+        run_external(&args[1..], CommandContext::default_compact());
         return;
     }
 
@@ -441,17 +436,7 @@ fn run() {
             router.execute_and_print(cli.command.as_ref().unwrap(), &ctx);
         }
         Some(Commands::External(ext_args)) => {
-            // External command: classify, execute, and parse. Flags after the
-            // command are trs's or the command's, same rule as the fast path.
-            let (cmd_args, format, stats) = classifier_args::split_format_flags(ext_args);
-            let mut ctx = ctx;
-            if let Some(format) = format {
-                ctx.format = format;
-            }
-            ctx.stats |= stats;
-            if let Some((cmd, args)) = cmd_args.split_first() {
-                execute_and_parse(cmd, args, &ctx);
-            }
+            run_external(ext_args, ctx);
         }
         None => {
             use std::io::{self, IsTerminal, Read};
