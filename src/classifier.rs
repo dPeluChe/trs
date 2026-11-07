@@ -12,10 +12,8 @@ pub(crate) use crate::command_registry::keep_ratio;
 
 /// `trs <cmd> [args]`, through this binary, with its output captured.
 pub(crate) fn run_through_trs(cmd: &str, args: &[String]) -> std::io::Result<std::process::Output> {
-    std::process::Command::new(std::env::current_exe()?)
-        .arg(cmd)
-        .args(args)
-        .output()
+    let trs = std::env::current_exe()?;
+    std::process::Command::new(trs).arg(cmd).args(args).output()
 }
 
 /// Build a full command string from command name and arguments.

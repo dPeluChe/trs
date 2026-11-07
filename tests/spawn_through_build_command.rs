@@ -7,8 +7,7 @@ use std::path::Path;
 /// its own binary or probing fixed names held in a variable.
 const ALLOWED: &[(&str, &str)] = &[
     ("src/exec.rs", "cmd"),
-    ("src/diff.rs", "&trs_bin"),
-    ("src/benchmark.rs", "trs"),
+    ("src/classifier.rs", "trs"),
     ("src/doctor_checks.rs", "cmd"),
     ("src/doctor_checks.rs", "&trs"),
 ];
