@@ -239,6 +239,18 @@ ship inside the single-binary install.
 | `trs stats` | token-savings dashboard |
 | `trs ingest` | whole-repo digest for agent context |
 
+### Partial runs
+
+When `search`, `replace` or `find --gitignore` cannot read part of the
+tree, it keeps what it did, prints a `failed: <path>` line per miss (20
+at most, then a count; `--json`: `failed`, `failed_total`) and exits 2.
+A missing root exits 2 as well. `ingest` does the same on stderr; see
+[ingest](../features/ingest.md).
+
+`search` leaves out only `.git` and what `.gitignore` excludes.
+`replace` also skips `node_modules`, `vendor`, `build`, `dist`, `target`
+and similar directories below the root; name one as the root to edit it.
+
 ## Dispatch mechanisms
 
 ### Runners
