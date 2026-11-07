@@ -110,3 +110,55 @@ fn parsed_grep_context_is_not_counted_either() {
     assert_eq!(json["counts"]["total_matches"], 1);
     assert_eq!(json["counts"]["matches_shown"], 1);
 }
+
+#[cfg(unix)]
+#[test]
+fn a_part_it_could_not_read_fails_and_keeps_the_matches() {
+    use std::os::unix::fs::PermissionsExt;
+    let set_mode = |path: &std::path::Path, mode| {
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
+    };
+
+    let dir = tempfile::tempdir().unwrap();
+    support::write_file(dir.path(), "ok.txt", "needle\n");
+    support::write_file(dir.path(), "locked/secret.txt", "needle\n");
+    let locked = dir.path().join("locked");
+    set_mode(&locked, 0o000);
+    // Root reads through the mode bits, so there is no failure to see.
+    let readable = std::fs::read_dir(&locked).is_ok();
+    let out = trs(dir.path(), &["search", ".", "needle"]);
+    let json = trs(dir.path(), &["--json", "search", ".", "needle"]);
+    set_mode(&locked, 0o755);
+    if readable {
+        return;
+    }
+
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        text.contains("ok.txt") && text.contains("failed: "),
+        "{text}"
+    );
+    let doc = support::document(&json);
+    assert_eq!(doc["success"], false);
+    assert_eq!(doc["failed_total"], 1);
+}
+
+#[test]
+fn a_bad_glob_in_a_parent_ignore_file_is_not_a_failure() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join(".ignore"), "{bad\n").unwrap();
+    support::write_file(dir.path(), "src/a.txt", "needle\n");
+    let out = trs(&dir.path().join("src"), &["search", ".", "needle"]);
+    assert_eq!(out.status.code(), Some(0));
+}
+
+#[test]
+fn ignored_directories_are_not_searched_below_the_root() {
+    let dir = tempfile::tempdir().unwrap();
+    support::write_file(dir.path(), "src/a.txt", "needle\n");
+    support::write_file(dir.path(), "node_modules/b.txt", "needle\n");
+    let text =
+        String::from_utf8_lossy(&trs(dir.path(), &["search", ".", "needle"]).stdout).into_owned();
+    assert!(text.contains("a.txt") && !text.contains("b.txt"), "{text}");
+}

@@ -100,6 +100,21 @@ mod unwritable {
     }
 
     #[test]
+    fn a_long_list_of_failures_is_capped() {
+        let Some(dir) = locked_tree() else { return };
+        for i in 0..24 {
+            let name = format!("more{i}.txt");
+            support::write_file(dir.path(), &name, "hello\n");
+            let mode = std::fs::Permissions::from_mode(0o444);
+            std::fs::set_permissions(dir.path().join(name), mode).unwrap();
+        }
+        let out = replace(&[], dir.path());
+        let text = String::from_utf8_lossy(&out.stdout);
+        assert_eq!(text.matches("failed: ").count(), 21, "{text}");
+        assert!(text.contains("failed: 5 more"), "{text}");
+    }
+
+    #[test]
     fn a_table_keeps_the_failure_on_stderr() {
         let Some(dir) = locked_tree() else { return };
         let out = replace(&["--csv"], dir.path());
