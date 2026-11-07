@@ -264,6 +264,30 @@ this test could not show a small gain. Runs of one task are not independent, and
 the shipped short block was not itself rerun. On this model the agent already
 read the code without being told to.
 
+**Did "thorough and bold" beat it?** No. Criteria were committed before the runs
+(2026-11-06): against "Answer concisely.", `tweet` ("Be thorough in your analysis
+and bold in your recommendations.") and `bold` ("Answer concisely. Be bold in
+your recommendations.") each had to win on correct answers with a 95% CI excluding
+zero, at no more than 10% extra cost, or the block would stay as is. It stays.
+
+| Suite | Arm | Runs | Cost | Turns | Reply chars | Correct | Both values shown |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Stale | none | 37 | $0.049 | 3.8 | 598 | 95% | 95% |
+| Stale | concise | 37 | $0.047 | 3.1 | 306 | 100% | 100% |
+| Stale | tweet | 37 | $0.052 | 4.0 | 783 | 100% | 100% |
+| Stale | bold | 37 | $0.046 | 2.8 | 359 | 97% | 89% |
+| Repo | none | 24 | $0.054 | 4.5 | 325 | 100% | n/a |
+| Repo | concise | 24 | $0.054 | 4.8 | 232 | 96% | n/a |
+| Repo | tweet | 24 | $0.055 | 4.5 | 378 | 100% | n/a |
+| Repo | bold | 24 | $0.055 | 4.8 | 287 | 100% | n/a |
+
+On stale, `tweet` cost +$0.005 (CI +$0.003 to +$0.008) and 0.92 more turns (CI
++0.38 to +1.51). `bold` left the disagreement out of 4 of 37 replies. The one
+`concise` repo miss reported the planted bug and asked before fixing it. The
+stale sweep stopped at its $7 cap, 148 of 160 runs. To repeat it:
+`output_saver_agentic.py --n 5 --suite stale --model sonnet --effort low
+--arm tweet=FILE --arm bold=FILE`, and `--n 6` without `--suite` for repo.
+
 ## Interaction with `trs init`
 
 For Claude Code and Gemini CLI, `trs init --global` now writes `trs.md`

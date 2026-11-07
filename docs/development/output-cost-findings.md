@@ -1,13 +1,14 @@
 # What actually moves agent cost: findings from the output-saver tests
 
-Measured 2026-11-04 on Claude Code with sonnet. Read this before changing the
+Measured 2026-11-04 and 2026-11-06 on Claude Code with sonnet. Read this before changing the
 output-saver block or claiming an output-side saving. Per-test numbers and the
 public claims live in [the output-saver doc](../features/output-saver.md#measuring-impact).
 
 ## The short version
 
 - Reply rules don't pay. No rule block beat the one line "Answer concisely."
-  on tokens, cost, turns or correct answers.
+  on tokens, cost, turns or correct answers. Neither did asking for more
+  ("Be thorough ... bold in your recommendations"), which cost 11.6% more.
 - Asking for brevity at all does work: about half the output tokens of no
   instruction on chat-style prompts.
 - Output is a small part of the bill. Turns and context size are the lever.
@@ -43,6 +44,7 @@ system prompt aimed at fewer steps cut median cost 17.9%.
 | Chat replies, no tools (`output_saver_ab.py`) | 40 per arm | none, one line, block | Run 2, with the longer block: vs none -235 tokens (CI -326 to -141), vs one line -22 (CI -80 to +39), fidelity 100% in every arm. Run 1, older block: -237 and -20, fidelity 95%, see the feature doc |
 | Small repo tasks, tools on (`output_saver_agentic.py`) | 24 per arm | none, one line, 3 blocks | No arm differs on cost or turns. Blocks about $0.004 per run above none |
 | Stale docs vs code (`--suite stale`) | 40 per arm | none, one line, block | Correct: 95%, 95%, 90%. Block vs one line -5 points (CI -17.5 to +5) |
+| "Thorough and bold" (stale and repo suites, [numbers](../features/output-saver.md#measuring-impact)) | 37 and 24 per arm | none, one line, phrase, one line + bold | No winner. The phrase cost +11.6% on stale, over the 10% limit |
 
 The third test also gave the only clear cost signal, and it favors the one
 line. Same runs:
@@ -56,11 +58,13 @@ line. Same runs:
 The one line beats none on cost (-$0.003, CI -$0.005 to -$0.001) and turns
 (-0.68, CI -1.28 to -0.05), and beats the block on cost (-$0.005, CI -$0.007 to
 -$0.002). These comparisons were not the pre-registered ones and many were
-looked at, so treat them as a lead to retest, not a result.
+looked at, so treat them as a lead to retest, not a result. The "thorough and
+bold" runs repeat the gap over none: cost -$0.003 (CI -$0.005 to -$0.000), turns
+-0.70 (CI -1.43 to -0.03). It held, again as a secondary comparison.
 
 Rules tried and dropped, none with a measured gain: word budgets, shape and
 style rules, "fewer turns" (batching, bounded reads, no polling), "read once",
-"verify against code", "prefer the newest source". The "fewer turns" rules
+"verify against code", "prefer the newest source", "be thorough", "be bold". The "fewer turns" rules
 moved turns by +0.25 (CI -0.67 to +1.13).
 
 ## What we don't know
@@ -70,47 +74,15 @@ moved turns by +0.25 (CI -0.67 to +1.13).
 - Weaker models may need the rules this one doesn't. Nothing here covers them.
 - 40 runs per arm only show gaps of about 25 points, and runs of one task are
   not independent. A null is not proof of no effect.
-- The stale-doc control was near the ceiling, and almost every miss was one trap
-  task (a default port changed by an override).
+- The stale-doc control was near the ceiling, 100% in the latest sweep, and
+  almost every miss was one trap task (a default port changed by an override).
+- Neither suite scores recommendations, so "bold in your recommendations" is
+  untested on what it promises. Rerunning these suites can't settle it.
 - The shipped 698-byte block was not itself rerun. Its rules are a subset of
   the tested block plus the control line.
 - The comment rule and "never invent" have never been measured. They stay
   because they cover what the one line doesn't, and the comment limits are
   mirrored by other configs.
-
-## Pre-registered: "thorough and bold" (2026-11-06)
-
-Claim under test: "Be thorough in your analysis and bold in your
-recommendations." beats "Answer concisely." Arms: `none`, `concise`, `tweet`
-(the phrase alone), `bold` ("Answer concisely. Be bold in your
-recommendations."). Sonnet, low effort, repo and stale suites.
-
-- Primary: correct answers and cost per run, each arm against `concise`.
-- A new arm replaces `concise` only if its correct-answer CI excludes zero in
-  its favor and its cost is at most 10% above `concise`.
-- If neither arm wins, the block stays as is and this section records the numbers.
-- The stale control sits near the ceiling, so a null here can't rule out a gain.
-  Neither suite scores recommendations; output tokens and cost show the price.
-
-Result: neither arm won, so the block stays. No correct-answer CI excludes zero.
-
-| Suite | Arm | Runs | Cost | Turns | Reply chars | Correct | Both values shown |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Stale | none | 37 | $0.049 | 3.8 | 598 | 95% | 95% |
-| Stale | concise | 37 | $0.047 | 3.1 | 306 | 100% | 100% |
-| Stale | tweet | 37 | $0.052 | 4.0 | 783 | 100% | 100% |
-| Stale | bold | 37 | $0.046 | 2.8 | 359 | 97% | 89% |
-| Repo | none | 24 | $0.054 | 4.5 | 325 | 100% | n/a |
-| Repo | concise | 24 | $0.054 | 4.8 | 232 | 96% | n/a |
-| Repo | tweet | 24 | $0.055 | 4.5 | 378 | 100% | n/a |
-| Repo | bold | 24 | $0.055 | 4.8 | 287 | 100% | n/a |
-
-- On stale, `tweet` costs 11.6% more than `concise` (+$0.005, CI +$0.003 to
-  +$0.008) and adds 0.92 turns (CI +0.38 to +1.51). That fails the 10% limit.
-- `bold` matches `concise` on cost, but 4 of 37 replies left the disagreement out.
-- The one `concise` repo miss reported the planted bug and asked before fixing it.
-- The stale sweep hit its $7 cap at 148 of 160 runs, balanced across arms. The
-  ceiling caveat above applies: `concise` already scored 100% on stale.
 
 ## How to run the next test
 
@@ -126,7 +98,8 @@ Result: neither arm won, so the block stays. No correct-answer CI excludes zero.
    config and the trs hook.
 6. Use `--permission-mode acceptEdits` with a scoped `--allowedTools`, never
    `bypassPermissions`.
-7. Cap spend with `--total-cap-usd`. About 120 runs cost $6 to $8 at low effort.
+7. Cap spend with `--total-cap-usd`. About 120 runs cost $6 to $8 at low effort;
+   160 stale runs need more than $7.
 
 ## Where to go next
 
