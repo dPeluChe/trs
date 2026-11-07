@@ -221,7 +221,7 @@ pub(crate) struct DigestFile {
 }
 
 /// Run the ingest command. An error is a digest that could not be written.
-pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
+pub fn run_ingest(config: &IngestConfig) -> std::io::Result<Vec<String>> {
     let start = std::time::Instant::now();
 
     // Resolve --since-last: look up stored HEAD from last ingest
@@ -258,19 +258,11 @@ pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
                         } else {
                             println!("{}", path.display());
                         }
-                        return Ok(());
+                        return Ok(Vec::new());
                     }
                 }
             }
         }
-    }
-
-    // Collect files
-    let mut files = collect_files(config);
-
-    if files.is_empty() {
-        eprintln!("trs ingest: no files found");
-        return Ok(());
     }
 
     // Get changed files from git (if needed)
@@ -280,11 +272,12 @@ pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
         None
     };
 
-    // Filter to changed files only
-    if let Some(ref changed) = changed_set {
-        if config.changed_only || effective_since.is_some() {
-            files.retain(|f| changed.contains(&f.rel_path));
-        }
+    // Collect files
+    let (mut files, unread) = collect_files(config, changed_set.as_deref());
+
+    if files.is_empty() {
+        eprintln!("trs ingest: no files found");
+        return Ok(unread);
     }
 
     // Mark changed files
@@ -317,7 +310,7 @@ pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
             format_tokens(tokens),
         );
         print!("{}", output);
-        return Ok(());
+        return Ok(unread);
     }
 
     // --html mode: emit a self-contained visual report instead of markdown.
@@ -349,7 +342,7 @@ pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
             out_path.display()
         );
         println!("{}", out_path.display());
-        return Ok(());
+        return Ok(unread);
     }
 
     // Build the dep summary for header injection
@@ -369,7 +362,7 @@ pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
     );
 
     // Ollama post-processing
-    let final_output = if let Some(ref model) = config.ollama_model {
+    let mut final_output = if let Some(ref model) = config.ollama_model {
         match ollama_format(&output, model) {
             Some(formatted) => formatted,
             None => output,
@@ -377,6 +370,12 @@ pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
     } else {
         output
     };
+    if !unread.is_empty() {
+        final_output.push_str(&format!(
+            "\n<!-- incomplete: {} paths could not be read -->\n",
+            unread.len()
+        ));
+    }
 
     let total_tokens = (final_output.len() as f64 / BYTES_PER_TOKEN) as usize;
     let file_count = files.iter().filter(|f| !f.rel_path.is_empty()).count();
@@ -387,7 +386,11 @@ pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
     // stderr always gets a one-line summary with bytes/tokens/file counts.
 
     let digest_meta = meta::IngestMeta {
-        head_sha: meta::get_head_sha(&config.root),
+        // No HEAD, so `--fresh` regenerates a partial digest instead of reusing it.
+        head_sha: unread
+            .is_empty()
+            .then(|| meta::get_head_sha(&config.root))
+            .flatten(),
         timestamp: meta::now_unix(),
         file_count,
         tokens: total_tokens,
@@ -450,7 +453,7 @@ pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()> {
         // Default: emit just the path on stdout for easy capture.
         println!("{}", p);
     }
-    Ok(())
+    Ok(unread)
 }
 
 #[cfg(test)]

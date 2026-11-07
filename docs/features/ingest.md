@@ -30,6 +30,13 @@ format implies `--print`, so `trs ingest --agent` emits the **digest content**
 to stdout directly, no second read step. Passing `-o <file>` always wins:
 the content goes to the file and stdout stays the path.
 
+**Partial digests:** a directory or file it could not read does not stop the
+digest. It lists them as `failed:` lines on stderr, so stdout stays the path
+or the content, marks the digest `<!-- incomplete: ... -->`, and exits 2.
+`--fresh` regenerates such a digest instead of reusing it. Binary files and
+dangling symlinks are not failures, and neither is anything skipped or
+excluded.
+
 **In-band budget warning (agent mode):** the oversized-digest warning normally
 goes to stderr, but agents run with `2>/dev/null`, so it never reaches them.
 When `--agent` pulls a large digest with **no `--budget`** set (over the

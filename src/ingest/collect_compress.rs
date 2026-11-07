@@ -26,12 +26,18 @@ pub(super) struct CompressResult {
     pub loc: usize,
 }
 
-/// Intelligently extract what matters from a file for LLM consumption.
+/// A file's compressed content, or None when it holds nothing to keep.
+pub(super) fn read_and_compress(
+    path: &Path,
+    level: IngestLevel,
+) -> std::io::Result<Option<CompressResult>> {
+    Ok(compress(path, std::fs::read_to_string(path)?, level))
+}
+
+/// Intelligently extract what matters from a file's text for LLM consumption.
 /// Returns a `CompressResult` with the compressed content plus metadata
 /// (raw imports, module-level docstring, exported symbol names).
-pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<CompressResult> {
-    let content = std::fs::read_to_string(path).ok()?;
-
+fn compress(path: &Path, content: String, level: IngestLevel) -> Option<CompressResult> {
     if content.chars().take(512).any(|c| c == '\0') {
         return None;
     }
