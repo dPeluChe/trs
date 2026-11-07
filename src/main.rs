@@ -88,6 +88,7 @@ mod router;
 mod safe_folds;
 mod schema;
 mod sentinel;
+mod tee_output;
 mod text_child;
 mod text_util;
 pub(crate) mod tracker;
