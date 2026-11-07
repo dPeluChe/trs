@@ -1,4 +1,4 @@
-# labs-tarscli (339 files, 52.3k tokens, rust)
+# labs-tarscli (322 files, 48.7k tokens, rust)
 
 > Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands
 
@@ -99,31 +99,26 @@ src/
   commands_parse.rs  commands_parse_with_file.rs  config.rs  
   debug_info.rs  diff.rs  discover.rs  doctor.rs  doctor_checks.rs  
   doctor_hooks.rs  doctor_tests.rs  exec.rs  exec_verdict.rs  
-  fast_find.rs  fs_atomic.rs  help.rs  help_tests.rs  help_text.rs  
-  help_text_more.rs  init.rs  init_collision.rs  
-  init_collision_tests.rs  init_install.rs  init_install_plugins.rs  
-  init_install_rules.rs  init_install_rules_tests.rs  
-  init_install_tests.rs  init_show.rs  init_templates.rs  
-  init_templates_plugins.rs  init_vibe.rs  main.rs  main_args.rs  
-  main_ingest.rs  main_tests.rs  main_tests_precedence.rs  
-  output_saver.rs  output_saver_core.rs  output_saver_core_tests.rs  
-  output_saver_write.rs  parse_out.rs  passthrough_cut.rs  
-  path_display.rs  pointer_recall.rs  process.rs  process_helpers.rs  
-  process_tests.rs  report.rs  report_tests.rs  rerun_rate.rs  
-  rewrite.rs  rewrite_decide.rs  rewrite_decide_capture_tests.rs  
-  rewrite_decide_tests.rs  rewrite_gate.rs  rewrite_perm_codex.rs  
-  rewrite_perm_cursor.rs  rewrite_perm_devin.rs  rewrite_perm_droid.rs  
+  fast_find.rs  fs_atomic.rs  help.rs  help_text.rs  help_text_more.rs  
+  init.rs  init_collision.rs  init_collision_tests.rs  init_install.rs  
+  init_install_plugins.rs  init_install_rules.rs  
+  init_install_rules_tests.rs  init_install_tests.rs  init_show.rs  
+  init_templates.rs  init_templates_plugins.rs  init_vibe.rs  main.rs  
+  main_args.rs  main_ingest.rs  main_tests.rs  
+  main_tests_precedence.rs  output_saver.rs  output_saver_core.rs  
+  output_saver_core_tests.rs  output_saver_write.rs  parse_out.rs  
+  passthrough_cut.rs  path_display.rs  pointer_recall.rs  process.rs  
+  process_helpers.rs  process_tests.rs  prompt.rs  report.rs  
+  report_tests.rs  rerun_rate.rs  rewrite.rs  rewrite_decide.rs  
+  rewrite_decide_capture_tests.rs  rewrite_decide_tests.rs  
+  rewrite_gate.rs  rewrite_perm_codex.rs  rewrite_perm_cursor.rs  
+  rewrite_perm_devin.rs  rewrite_perm_droid.rs  
   rewrite_perm_droid_match.rs  rewrite_perm_droid_rules.rs  
   rewrite_perm_gemini.rs  rewrite_perm_gemini_policy.rs  
   rewrite_permissions.rs  rewrite_pipe_status.rs  rewrite_rules.rs  
   rewrite_tests.rs  safe_folds.rs  safe_folds_tests.rs  sentinel.rs  
-  text_util.rs  tracker.rs  tracker_tests.rs  uninstall.rs  
-  uninstall_scrub.rs  upgrade.rs
-
-src/formatter/: Formatter system for trs (Token-Reducing Shell)
-  agent.rs  compact.rs  compact_schema_git.rs  
-  compact_schema_output.rs  csv.rs  helpers.rs  json.rs  
-  json_schema.rs  mod.rs  raw.rs  tsv.rs
+  tee_output.rs  text_child.rs  text_util.rs  tracker.rs  
+  tracker_tests.rs  uninstall.rs  uninstall_scrub.rs  upgrade.rs
 
 src/ingest/: Project digest generator for LLM consumption
   collect.rs  collect_compress.rs  collect_index.rs  
@@ -132,18 +127,15 @@ src/ingest/: Project digest generator for LLM consumption
   meta.rs  mod.rs  mod_html.rs  ollama.rs  purpose.rs  remote.rs  
   resolve.rs  signatures.rs  store.rs  tests.rs
 
-src/reducer/: Reducer system for trs (Token-Reducing Shell)
-  mod.rs  output.rs  registry.rs  truncation.rs
-
 src/router/: Command routing system for trs (Token-Reducing Shell)
   mod.rs
 
 src/router/handlers/
   ansi.rs  clean.rs  common.rs  common_markers.rs  err.rs  html2md.rs  
   isclean.rs  json.rs  json_query.rs  json_tests.rs  mod.rs  read.rs  
-  read_filters.rs  read_tests.rs  replace.rs  run.rs  search.rs  
-  stats.rs  stats_coverage.rs  stats_efficiency.rs  stats_render.rs  
-  stats_render_tests.rs  tail.rs  trim.rs
+  read_filters.rs  read_tests.rs  replace.rs  replace_text.rs  run.rs  
+  search.rs  stats.rs  stats_coverage.rs  stats_efficiency.rs  
+  stats_render.rs  stats_render_tests.rs  tail.rs  trim.rs
 
 src/router/handlers/parse/
   aws.rs  aws_tests.rs  brew.rs  bun_format.rs  bun_parse.rs  
@@ -168,27 +160,26 @@ src/router/handlers/types/: Shared data structures and types for command handler
   fs.rs  git.rs  grep_types.rs  logs.rs  mod.rs  test_types_core.rs  
   test_types_runners.rs
 
-src/schema/: Stable JSON schemas for trs (Token-Reducing Shell) reducers
-  fs.rs  git.rs  logs.rs  mod.rs  process.rs  search.rs  test.rs  
-  tests.rs
+src/schema/: Versioned JSON schemas for `trs search` and `trs replace` output
+  mod.rs  search.rs  tests.rs
 
 
 ## Key Dependencies
 
-  parse_out.rs ← src/classifier_exec.rs, src/exec_verdict.rs, src/main.rs, parse/aws.rs (+34)
-  tests.rs ← ai_tool.rs, classifier.rs, classifier_args.rs, command_registry.rs (+29)
+  parse_out.rs ← src/classifier_exec.rs, exec_verdict.rs, src/main.rs, parse/aws.rs (+34)
+  text_util.rs ← audit_docs_symbols.rs, src/classifier.rs, src/classifier_args.rs, src/classifier_exec.rs (+29)
+  tests.rs ← ai_tool.rs, src/classifier.rs, src/classifier_args.rs, src/command_registry.rs (+26)
   init.rs ← src/doctor_checks.rs, src/doctor_hooks.rs, doctor_tests.rs, src/init_collision.rs (+15)
-  src/tracker.rs ← src/classifier_exec.rs, config.rs, debug_info.rs, src/doctor_checks.rs (+13)
-  formatter/mod.rs ← src/exec_verdict.rs, agent.rs, compact.rs, csv.rs (+12)
+  src/tracker.rs ← src/classifier_exec.rs, config.rs, src/debug_info.rs, src/doctor_checks.rs (+14)
 
 ## Architecture (module roles)
 
 From the import graph (fan-in↓ / fan-out↑), no AST:
 
-- **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/74↑)
-- **core**: high fan-in, everything routes through → `ingest` (25↓/5↑), `init` (19↓/11↑), `tracker` (13↓/2↑)
-- **leaf**: used by many, import nothing (utils, types) → `text_util` (11↓/0↑)
-- **internal**: mid-graph plumbing → `router/handlers` (5↓/19↑), `classifier_exec` (2↓/16↑), `classifier` (11↓/5↑), `rewrite_gate` (10↓/6↑), `rewrite_permissions` (10↓/5↑), `router/handlers/parse` (3↓/12↑), `exec_verdict` (7↓/6↑), `router` (9↓/4↑) +11 more
+- **entry**: roots, nothing imports them (main, CLI) → `main` (0↓/75↑)
+- **core**: high fan-in, everything routes through → `init` (19↓/11↑), `ingest` (22↓/4↑), `classifier` (12↓/5↑), `tracker` (14↓/2↑)
+- **leaf**: used by many, import nothing (utils, types) → `text_util` (21↓/0↑)
+- **internal**: mid-graph plumbing → `router/handlers` (5↓/19↑), `classifier_exec` (3↓/16↑), `rewrite_gate` (10↓/6↑), `rewrite_permissions` (10↓/5↑), `router` (10↓/4↑), `router/handlers/parse` (2↓/12↑), `exec_verdict` (8↓/5↑), `init_install_rules` (4↓/8↑) +10 more
 
 ## README.md
 
@@ -287,7 +278,7 @@ falls back to `./target/release/trs` if one isn't installed.
   `docs/development/output-cost-findings.md`.
   Check-first by default (`--install` to commit, `--remove` to undo).
 - `trs ingest`: project digest for LLM consumption. Use symbol index,
-... (118 lines, hidden sections: Architecture · Key Design Decisions · Development · Testing)
+... (117 lines, hidden sections: Architecture · Key Design Decisions · Development · Testing)
 
 ## CHANGELOG.md
 
@@ -297,41 +288,41 @@ All notable changes to trs are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.2] - 2026-11-06
+## [0.10.3] - 2026-11-07
 
 ### Bug Fixes
 
-- json: Report every trs failure as one document on stdout (#256)
-- json: Keep the child's stderr inside the document (#257)
-- err: Print a table under --csv and --tsv (#258)
-- exec: Start every user program through build_command (#262)
-- json: Report usage errors and ingest failures as a document (#263)
-- tsv: Keep every row on one line with its columns (#264)
+- csv: Write every table through one row helper (#267)
+- tables: Print the replace summary outside the table, keep every db row (#268)
+- tables: Keep every row, and the table when the command fails (#269)
+- replace: Report what it could not do (#270)
+- search: Report what it could not read (#271)
+- find: Report what it could not read (#272)
+- find: Reach the walker however the command is spelled (#273)
+- ingest: Report what it could not read (#274)
+- ingest: --read fails when it has nothing to print (#275)
+- diff: Fail when the compact side cannot run (#276)
+- search: Only .git and gitignored dirs are left out (#277)
+- stats: --coverage no longer panics on non-ASCII commands (#281)
+- parse: Never cut user text inside a multibyte char (#282)
+- json: Every command prints one document under --json (#284)
+- replace: Keep line endings; patterns that need a newline match across lines (#285)
+- init: Files trs edits keep their CRLF line endings (#286)
+- csv: Every command prints a table under --csv and --tsv (#287)
+
+### Refactor
+
+- Delete the unused reducer module (#279)
+- Delete the unused formatter module and schemas (#280)
+- Delete the dead leftovers the dead_code allows were hiding (#283)
+
+### Documentation
+
+- Record the thorough-and-bold test (#266)
+- Document exit 2 on partial runs and what search and replace skip (#278)
 
 ### Testing
-
-- json: Run the output contract on Windows too (#259)
-- search: Run the search tests against a fixed tree (#260)
-- Finish the search fixture and tighten the output contract (#261)
-
-## [0.10.1] - 2026-11-06
-
-### Bug Fixes
-
-- json: Report a failure in one document (#251)
-- grep: Count every match in the JSON counts (#252)
-- output-saver: Say when the exit line has no path (#253)
-- err: Print one JSON document under --json (#254)
-
-### Dependencies
-
-- deps: Bump ignore from 0.4.33 to 0.4.34 in the cargo-minor group (#229)
-
-## [0.10.0] - 2026-11-06
-
-### Bug Fixes
-
-... (786 lines, hidden sections: [0.9.2] - 2026-11-05 · [0.9.1] - 2026-11-05 · [0.9.0] - 2026-11-05 · [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19 · [0.8.8] - 2026-10-08 · [0.8.7] - 2026-10-08 · [0.8.6] - 2026-10-07)
+... (823 lines, hidden sections: [0.10.2] - 2026-11-06 · [0.10.1] - 2026-11-06 · [0.10.0] - 2026-11-06 · [0.9.2] - 2026-11-05 · [0.9.1] - 2026-11-05 · [0.9.0] - 2026-11-05 · [0.8.10] - 2026-10-22 · [0.8.9] - 2026-10-19)
 
 ## CLAUDE.md
 
@@ -443,12 +434,12 @@ git config core.hooksPath .githooks
 - Prefer simple code over clever code. Three similar lines > premature abstraction.
 - Don't add doc comments to every function, only where the logic isn't obvious.
 
-... (226 lines, hidden sections: Adding a new parser · Proposing new commands · Project structure · Commit messages · Releasing · Questions?)
+... (225 lines, hidden sections: Adding a new parser · Proposing new commands · Project structure · Commit messages · Releasing · Questions?)
 
 **Cargo.toml**
 [package]
 name = "trs-cli"
-version = "0.10.2"
+version = "0.10.3"
 edition = "2021"
 description = "Token-reducing shell for AI agents: compact terminal output, up to 60% fewer tokens on real agent commands"
 license = "MIT"
@@ -850,14 +841,15 @@ hook harness (`BeforeTool` entry in `~/.gemini/settings.json`). agy
 **output-cost-findings.md**
 # What actually moves agent cost: findings from the output-saver tests
 
-Measured 2026-11-04 on Claude Code with sonnet. Read this before changing the
+Measured 2026-11-04 and 2026-11-06 on Claude Code with sonnet. Read this before changing the
 output-saver block or claiming an output-side saving. Per-test numbers and the
 public claims live in [the output-saver doc](../features/output-saver.md#measuring-impact).
 
 ## The short version
 
 - Reply rules don't pay. No rule block beat the one line "Answer concisely."
-  on tokens, cost, turns or correct answers.
+  on tokens, cost, turns or correct answers. Neither did asking for more
+  ("Be thorough ... bold in your recommendations"), which cost 11.6% more.
 - Asking for brevity at all does work: about half the output tokens of no
   instruction on chat-style prompts.
 - Output is a small part of the bill. Turns and context size are the lever.
@@ -867,8 +859,7 @@ public claims live in [the output-saver doc](../features/output-saver.md#measuri
 
 ## Where the money goes
 
-From local transcripts, 105,592 model calls, at price ratios of 1 (input), 1.25
-... (117 lines, hidden sections: The tests · What we don't know · How to run the next test · Where to go next)
+... (124 lines, hidden sections: The tests · What we don't know · How to run the next test · Where to go next)
 
 ## docs/development/benchmarks/
 
@@ -1186,7 +1177,7 @@ After the command it is trs's only when trs has a formatter for that
 command and the command does not take the flag itself, so
 `trs git status --json` and `trs --json git status` are equivalent.
 Otherwise the flag belongs to the command and is passed on untouched:
-... (176 lines, hidden sections: Structured output is never rewritten · One document under `--json` · Examples · When to use what · Built-in tools vs wrapped commands · See also)
+... (191 lines, hidden sections: Structured output is never rewritten · One document under `--json` · Examples · When to use what · Built-in tools vs wrapped commands · See also)
 
 **ingest.md**
 # `trs ingest`: project digest for AI agents
@@ -1209,7 +1200,7 @@ trs ingest --print              # emit content to stdout instead of path
 trs ingest --agent              # agent format ⇒ implicit --print (content to stdout)
 trs ingest --warn-at 40k        # stderr warning if digest exceeds N tokens
 trs ingest --list               # list saved digests + HEAD sha + stale markers
-... (218 lines, hidden sections: What the digest contains · <project name> · Structure · Dependencies · Architecture (module roles) · Files (highlights) · Files (signatures) · Budget-aware truncation)
+... (225 lines, hidden sections: What the digest contains · <project name> · Structure · Dependencies · Architecture (module roles) · Files (highlights) · Files (signatures) · Budget-aware truncation)
 
 **init.md**
 # `trs init`: install hooks for AI agents
@@ -1255,7 +1246,7 @@ trs output-saver --verify        # per-agent: block matches current canonical?
 trs output-saver --refresh       # re-write the block where it's already present
 trs output-saver --remove        # clean uninstall
 trs output-saver --print         # dump the block to stdout (pipe-friendly)
-... (272 lines, hidden sections: What the block says · Why it is this short · Coverage matrix · How the install is idempotent · Output saver: keep replies cheap · Check-first semantics · `--refresh`: pick up template changes without adding new installs · `--remove` behavior)
+... (296 lines, hidden sections: What the block says · Why it is this short · Coverage matrix · How the install is idempotent · Output saver: keep replies cheap · Check-first semantics · `--refresh`: pick up template changes without adding new installs · `--remove` behavior)
 
 **stats.md**
 # `trs stats`: token savings dashboard
@@ -1514,7 +1505,7 @@ Every command supported by trs falls into one of four levels.
    are content. A 300+ char line with
    almost no spaces (minified code, base64, a data URI) keeps its head
    and tail around `…[minified, 4184 chars]…`, and the full output is
-... (319 lines, hidden sections: Commands with dedicated parsers · Built-in trs tools (not wrappers) · Dispatch mechanisms · Generic compression (the fallback))
+... (336 lines, hidden sections: Commands with dedicated parsers · Built-in trs tools (not wrappers) · Dispatch mechanisms · Generic compression (the fallback))
 
 **install.md**
 # Installing trs
@@ -1581,9 +1572,9 @@ that from happening.
   the structured form passes through untouched.
 - Exit codes always propagated. If the wrapped command exits 1,
   trs exits 1. Scripts and CI relying on exit codes keep working.
-- Never silently change semantics. No rewrites that would change
-  what the tool does, only how its output is presented.
-... (82 lines, hidden sections: Parser safety · Failure recovery · Permissions · Install-time safety · See also)
+- A partial run never reads as complete. `search`, `replace`,
+  `find` and `ingest` name what they could not read and exit 2, as
+... (85 lines, hidden sections: Parser safety · Failure recovery · Permissions · Install-time safety · See also)
 
 ## memory/
 
@@ -1871,6 +1862,8 @@ if [ -n "$1" ]; then
 
 **classifier.rs**
   pub use crate::command_registry::keep_ratio
+  pub fn run_through_trs(cmd: &str, args: &[String]) -> std::io::Result<std::process::Output>
+  pub fn trs_command() -> std::io::Result<std::process::Command>
   pub fn full_cmd(cmd: &str, args: &[String]) -> String
   pub use crate::exec::build_command
   pub use crate::classifier_args::preprocess_tail_args
@@ -1889,9 +1882,8 @@ if [ -n "$1" ]; then
   pub fn is_help_request<S: AsRef<str>>(cmd: &str, args: &[S]) -> bool
   pub fn has_structured_output_flag(args: &[String]) -> bool
   pub fn subcommand(cmd: &str, args: &[String]) -> String
-
-  enum Flag
-  fn trs_flag(arg: &str) -> Option<Flag>
+  pub enum Flag
+  pub fn trs_flag(arg: &str) -> Option<Flag>
   pub fn child_owns_format_flag(cmd: &str, args: &[String], flag: &str) -> bool
   pub fn split_format_flags(
   mod tests
@@ -1910,12 +1902,12 @@ if [ -n "$1" ]; then
   fn the_subcommand_skips_git_global_options()
 
 **classifier_exec.rs**
+  pub use crate::tee_output::save_tee_output
+  fn shown(format: crate::OutputFormat, text: &str) -> std::borrow::Cow<'_, str>
   pub fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext)
   pub fn track(
   fn point_to_raw(
   fn print_raw_path(
-  pub fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String>
-  fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()>
   pub fn generic_compress(input: &str) -> String
   fn collapse_whitespace(s: &str) -> String
 
@@ -1949,16 +1941,91 @@ if [ -n "$1" ]; then
   fn test_push_remote_error_preserved()
 
 **cli.rs**
-  pub struct Cli
-  pub enum OutputFormat
-  pub const fn format_precedence(format: OutputFormat) -> u8
 
-  impl Cli
-  pub fn output_format_precedence() -> &'static [OutputFormat]
-  pub fn output_format(&self) -> OutputFormat
-  pub fn enabled_format_flags(&self) -> Vec<OutputFormat>
-  pub fn has_conflicting_format_flags(&self) -> bool
-  pub fn current_format_precedence(&self) -> u8
+
+  #[derive(Parser)]
+  #[command(name = "trs", bin_name = "trs")]
+  #[command(
+      version = concat!(
+          env!("CARGO_PKG_VERSION"),
+          "\n\ncheck for updates:  trs upgrade --check\nupgrade now:        trs upgrade"
+      ),
+      about,
+      long_about = Some(help::LONG_ABOUT)
+  )]
+  #[command(propagate_version = true)]
+  #[command(next_display_order = None)]
+  #[command(allow_external_subcommands = true)]
+  pub struct Cli {
+      #[arg(long, global = true)]
+      pub raw: bool,
+
+      #[arg(long, global = true)]
+      pub compact: bool,
+
+      #[arg(long, global = true)]
+      pub json: bool,
+
+      #[arg(long, global = true)]
+      pub csv: bool,
+
+      #[arg(long, global = true)]
+      pub tsv: bool,
+
+      #[arg(long, global = true)]
+      pub agent: bool,
+
+      #[arg(long, global = true)]
+      pub stats: bool,
+
+      #[command(subcommand)]
+      pub command: Option<Commands>,
+  }
+
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
+  pub enum OutputFormat {
+      Raw,
+      #[default]
+      Compact,
+      Json,
+      Csv,
+      Tsv,
+      Agent,
+  }
+
+  impl OutputFormat {
+      pub(crate) fn is_table(self) -> bool {
+          matches!(self, Self::Csv | Self::Tsv)
+      }
+
+      pub(crate) fn cap(self, limit: usize) -> usize {
+          if self.is_table() {
+              usize::MAX
+          } else {
+              limit
+          }
+      }
+  }
+
+  impl Cli {
+      pub fn output_format(&self) -> OutputFormat {
+          if self.json {
+              OutputFormat::Json
+          } else if self.csv {
+              OutputFormat::Csv
+          } else if self.tsv {
+              OutputFormat::Tsv
+          } else if self.agent {
+              OutputFormat::Agent
+          } else if self.compact {
+              OutputFormat::Compact
+          } else if self.raw {
+              OutputFormat::Raw
+          } else {
+              OutputFormat::default()
+          }
+      }
+  }
 
 **codex.rs**
   pub fn parse_version(s: &str) -> Option<(u32, u32, u32)>
@@ -2025,8 +2092,18 @@ if [ -n "$1" ]; then
   pub enum TestRunner
   pub enum ReportKind
 
-**commands_parse.rs**: pub enum ParseCommands | mod with_file
-**commands_parse_with_file.rs**: impl ParseCommands | pub fn with_file(path: PathBuf) -> Self
+**commands_parse.rs**
+  pub enum ParseCommands
+  mod with_file
+
+  impl ParseCommands
+  pub fn has_table(&self) -> bool
+
+**commands_parse_with_file.rs**
+  impl ParseCommands
+  pub fn with_file(path: PathBuf) -> Self
+  pub fn file(&self) -> Option<&std::path::Path>
+
 **config.rs**
   pub fn config() -> &'static Config
   pub struct Config
@@ -2068,7 +2145,7 @@ if [ -n "$1" ]; then
   fn tokens(bytes: usize) -> u64
   fn reduction_pct(raw: usize, compact: usize) -> f64
   fn capture_raw(cmd: &str, args: &[String], json: bool) -> (String, i32)
-  fn capture_compact(cmd: &str, args: &[String]) -> Option<String>
+  fn capture_compact(cmd: &str, args: &[String]) -> std::io::Result<String>
   fn print_human(
   fn print_json(
   fn format_number(n: u64) -> String
@@ -2161,7 +2238,7 @@ if [ -n "$1" ]; then
 **exec_verdict.rs**
   pub fn reconcile_json(
   pub fn json_document(text: &str, code: i32, raw: impl Fn() -> Option<String>) -> String
-  fn with_stderr(document: String, stderr: &str) -> String
+  pub fn with_stderr(document: String, stderr: &str) -> String
   pub struct JsonRun<'a>
 
   impl JsonRun<'_>
@@ -2186,10 +2263,11 @@ if [ -n "$1" ]; then
   fn only_a_json_object_is_reconciled()
 
 **fast_find.rs**
-  pub fn run(args: &[&str], ctx: &CommandContext)
-  fn print_compact(files: &[String], dirs: &[String], _root: &str)
-  fn print_raw(files: &[String], dirs: &[String])
-  fn print_json(files: &[String], dirs: &[String])
+  pub fn gitignore_args<'a>(cmd: &str, args: &'a [String]) -> Option<Vec<&'a str>>
+  pub fn run(args: &[&str], ctx: &CommandContext) -> CommandResult
+  fn render_compact(files: &[String], dirs: &[String]) -> String
+  fn render_raw(files: &[String], dirs: &[String]) -> String
+  fn render_json(files: &[String], dirs: &[String]) -> String
   fn glob_match(pattern: &str, name: &str) -> bool
   fn glob_match_inner(p: &[char], n: &[char]) -> bool
   mod tests
@@ -2201,31 +2279,45 @@ if [ -n "$1" ]; then
   mod tests
   fn replaces_content_and_leaves_no_temp_file()
   fn refuses_when_the_file_changed_since_it_was_read()
+  fn an_edit_keeps_the_files_line_endings()
   fn a_symlink_is_written_through_and_stays_a_symlink()
 
 **help.rs**
-  pub use crate::help_text::*
-  pub use crate::help_text_more::*
-  pub fn get_command_help(command: &str) -> Option<&'static str>
-  pub fn get_format_precedence_help() -> &'static str
-  mod tests
+  pub const LONG_ABOUT: &str = "\
+  trs (Token-Reducing Shell) - Transform noisy terminal output into compact, structured signal
 
-**help_tests.rs**
-  fn test_get_command_help_search()
-  fn test_get_command_help_replace()
-  fn test_get_command_help_tail()
-  fn test_get_command_help_clean()
-  fn test_get_command_help_parse()
-  fn test_get_command_help_html2md()
-  fn test_get_command_help_txt2md()
-  fn test_get_command_help_run()
-  fn test_get_command_help_trim()
-  fn test_get_command_help_unknown()
-  fn test_format_precedence_help()
-  fn test_long_about_not_empty()
+  Cuts the tokens AI agents and automation spend on terminal output (about 70%
+  on real agent commands; measured per command in docs/development/benchmarks).
+  When it leaves something out it says so, and where the rest is.
+  Just prefix any command with trs:
 
-**help_text.rs**: (266 lines)
-**help_text_more.rs**: (271 lines)
+      trs git status
+      trs git log -10
+      trs ls -la
+      trs npm test
+      trs env
+
+  FORMAT FLAGS (work before or after the command):
+      --json     Structured JSON output
+      --csv      CSV tabular output
+      --tsv      TSV tabular output
+      --agent    AI-optimized format
+      --compact  Human-readable (default)
+      --raw      Unprocessed passthrough
+      --stats    Show reduction metrics
+
+  EXAMPLES:
+      trs git status --json        # JSON output
+      trs err cargo build          # Show only errors
+      trs search src \"TODO\"        # Ripgrep search
+      trs curl -I https://api.com  # HTTP headers compact
+      trs stats                    # View token savings";
+
+  pub use crate::help_text::*;
+  pub use crate::help_text_more::*;
+
+**help_text.rs**: (258 lines)
+**help_text_more.rs**: (193 lines)
 **init.rs**
   pub struct InstallOpts
   pub use crate::ai_tool::{AiTool, HookSpec
@@ -2255,7 +2347,6 @@ if [ -n "$1" ]; then
   fn extract_imports(content: &str, base_file: &Path) -> Vec<PathBuf>
   fn resolve_import(target: &str, base_file: &Path) -> Option<PathBuf>
   fn collect_string_values(val: &serde_json::Value, out: &mut Vec<String>)
-  fn truncate(s: &str, max: usize) -> String
   pub fn format_report(tool: &AiTool, collisions: &[Collision]) -> String
   pub fn any_hook_collisions(collisions: &[Collision]) -> bool
   pub fn scrub_file(path: &Path) -> Result<bool>
@@ -2306,6 +2397,7 @@ if [ -n "$1" ]; then
   fn openclaw_merge_preserves_existing_entries()
   fn openclaw_merge_is_idempotent()
   fn openclaw_merge_rejects_non_object_plugins()
+  fn hermes_patch_keeps_crlf()
   fn hermes_patch_empty_file_writes_full_block()
   fn hermes_patch_appends_to_existing_enabled_list()
   fn hermes_patch_matches_sibling_indentation()
@@ -2335,6 +2427,7 @@ if [ -n "$1" ]; then
   fn the_trs_marker_catches_the_backticked_spelling()
   fn block_status_tells_the_four_states_apart()
   fn block_status_reports_a_missing_file_as_absent()
+  fn a_crlf_rules_file_with_a_current_block_is_unchanged()
 
 **init_install_tests.rs**
   fn scrub_legacy_codex_hook_removes_trs_only_event()
@@ -2387,7 +2480,6 @@ if [ -n "$1" ]; then
   mod doctor_hooks
   mod exec
   mod exec_verdict
-  mod formatter
   mod help
   mod help_text
   mod help_text_more
@@ -2411,7 +2503,7 @@ if [ -n "$1" ]; then
   mod path_display
   mod pointer_recall
   mod process
-  mod reducer
+  mod prompt
   mod report
   mod rerun_rate
   mod rewrite
@@ -2429,12 +2521,13 @@ if [ -n "$1" ]; then
   mod safe_folds
   mod schema
   mod sentinel
+  mod tee_output
+  mod text_child
   mod text_util
   pub mod tracker
   mod uninstall
   mod uninstall_scrub
   mod upgrade
-  pub use cli::format_precedence
   pub use cli::{Cli, OutputFormat
   pub use commands::{Commands, ParseCommands, TestRunner
   mod fast_find
@@ -2442,11 +2535,13 @@ if [ -n "$1" ]; then
   fn main()
   fn parse_cli(args: &[String]) -> Cli
   fn run_unparsed() -> !
+  fn run_external(args: &[String], mut ctx: CommandContext)
   fn run()
   mod tests
 
 **main_args.rs**
   pub fn is_external_fast_path(args: &[String]) -> bool
+  pub fn is_trs_subcommand(first: &str) -> bool
   pub fn is_closed_pipe_panic(msg: &str) -> bool
   pub fn parse_token_budget(s: &str) -> usize
   mod tests
@@ -2478,15 +2573,6 @@ if [ -n "$1" ]; then
   mod precedence
 
 **main_tests_precedence.rs**
-  fn test_precedence_order()
-  fn test_format_precedence_values()
-  fn test_current_format_precedence()
-  fn test_enabled_format_flags_single()
-  fn test_enabled_format_flags_multiple()
-  fn test_enabled_format_flags_none()
-  fn test_has_conflicting_format_flags_true()
-  fn test_has_conflicting_format_flags_false_single()
-  fn test_has_conflicting_format_flags_false_none()
   fn test_precedence_json_over_all()
   fn test_precedence_csv_over_all_except_json()
   fn test_precedence_tsv_over_all_except_json_csv()
@@ -2780,31 +2866,16 @@ if [ -n "$1" ]; then
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
 
   impl std::error::Error for ProcessError
-
-  impl ProcessError
-  pub fn exit_code(&self) -> Option<i32>
-  pub fn is_timeout(&self) -> bool
-  pub fn is_command_not_found(&self) -> bool
-  pub fn is_permission_denied(&self) -> bool
   pub struct ProcessBuilder
 
   impl ProcessBuilder
   pub fn new(command: impl Into<String>) -> Self
-  pub fn arg(mut self, arg: impl Into<String>) -> Self
   pub fn args<I, S>(mut self, args: I) -> Self
-  pub fn current_dir(mut self, dir: impl Into<PathBuf>) -> Self
-  pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self
-  pub fn envs<I, K, V>(mut self, vars: I) -> Self
-  pub fn env_clear(mut self, clear: bool) -> Self
   pub fn timeout(mut self, timeout: Duration) -> Self
   pub fn capture_stdout(mut self, capture: bool) -> Self
   pub fn capture_stderr(mut self, capture: bool) -> Self
   pub fn capture_duration(mut self, capture: bool) -> Self
   pub fn run(&self) -> Result<ProcessOutput, ProcessError>
-  pub fn run_checked(&self) -> Result<ProcessOutput, ProcessError>
-  pub fn run(command: &str, args: &[&str]) -> Result<ProcessOutput, ProcessError>
-  pub fn run_checked(command: &str, args: &[&str]) -> Result<ProcessOutput, ProcessError>
-  pub fn run_with_timeout(
   mod tests
 
 **process_helpers.rs**
@@ -2824,40 +2895,52 @@ if [ -n "$1" ]; then
   impl ChildExt for std::process::Child
 
 **process_tests.rs**
+  fn run(command: &str, args: &[&str]) -> Result<ProcessOutput, ProcessError>
+  fn run_with_timeout(
   fn test_process_output_success()
   fn test_process_output_failure()
   fn test_process_error_display()
-  fn test_process_error_helpers()
-  fn test_process_builder_basic()
-  fn test_process_builder_args_iter()
-  fn test_process_builder_env()
-  fn test_process_builder_envs()
-  fn test_process_builder_timeout()
-  fn test_process_builder_capture()
   fn test_run_echo()
   fn test_run_command_not_found()
   fn test_run_non_zero_exit()
-  fn test_run_checked_non_zero_exit()
   fn test_run_with_args()
-  fn test_run_with_env()
-  fn test_run_with_working_dir()
   fn test_run_with_timeout_success()
   fn test_run_with_timeout_exceeded()
-  fn test_run_checked_success()
   fn test_run_capture_stderr()
   fn test_run_no_capture_stdout()
   fn test_run_no_capture_stderr()
   fn test_run_reports_exit_code_zero()
   fn test_run_no_capture_duration()
   fn test_run_capture_duration_default()
-  fn test_process_builder_env_clear()
   fn test_process_output_has_output()
   fn test_run_output_larger_than_the_pipe_buffer_does_not_hang()
   fn test_run_keeps_output_around_invalid_utf8()
 
+**prompt.rs**
+
+  pub(crate) fn confirm(question: &str, skip_hint: &str) -> bool {
+      print!("{question} [y/N] ");
+      let _ = io::stdout().flush();
+      let line = answer().unwrap_or_else(|| no_answer(skip_hint));
+      matches!(line.trim().to_ascii_lowercase().as_str(), "y" | "yes")
+  }
+
+  pub(crate) fn answer() -> Option<String> {
+      let mut line = String::new();
+      match io::stdin().lock().read_line(&mut line) {
+          Ok(n) if n > 0 => Some(line),
+          _ => None,
+      }
+  }
+
+  pub(crate) fn no_answer(skip_hint: &str) -> ! {
+      println!();
+      eprintln!("trs: no answer to the prompt, nothing done; {skip_hint}");
+      std::process::exit(1)
+  }
+
 **report.rs**
   pub fn scrub(text: &str) -> String
-  fn confirm(prompt: &str) -> bool
   fn gh_available() -> bool
   fn write_payload(body: &str, output: Option<&str>, default_name: &str) -> Option<PathBuf>
   fn finish(title: &str, path: Option<PathBuf>, submit: bool)
@@ -3359,16 +3442,26 @@ macro_rules! trs_sentinels {
         pub(crate) const $section: &str = concat!(
 ... (20 lines)
 
+**tee_output.rs**: pub fn save_tee_output(cmd: &str, stdout: &str, stderr: &str) -> Option<String> | fn write_user_only(path: &std::path::Path, content: &[u8]) -> std::io::Result<()>
+**text_child.rs**
+  fn own_formats(command: &Commands) -> (bool, bool)
+  pub fn wraps(command: &Commands, format: OutputFormat) -> bool
+  pub fn run_wrapped(command: &Commands, format: OutputFormat) -> !
+  pub fn finish(cmd: &str, out: &Output) -> !
+  fn finish_table(format: OutputFormat, out: &Output) -> !
+
 **text_util.rs**
-pub(crate) fn first_ident(s: &str) -> Option<String> {
-    let mut chars = s.char_indices();
-    let start = chars.position(|(_, c)| c.is_ascii_alphabetic() || c == '_')?;
-    let mut end = start;
-    for (i, c) in s[start..].char_indices() {
-        if c.is_ascii_alphanumeric() || c == '_' {
-            end = start + i + c.len_utf8();
-        } else {
-... (35 lines)
+  pub fn first_ident(s: &str) -> Option<String>
+  pub fn cmd_basename(cmd: &str) -> &str
+  pub fn truncate(s: &str, max_len: usize) -> String
+  pub fn truncate_chars(s: &str, max: usize) -> String
+  pub fn without_line(text: &str, line: &str) -> String
+  pub fn with_endings_of(old: &str, new: String) -> String
+  mod tests
+  fn truncate_chars_never_splits_a_char()
+  fn truncate_cuts_with_an_ellipsis_at_a_char_boundary()
+  fn line_edits_keep_crlf()
+  fn extracts_first_identifier()
 
 **tracker.rs**
   pub struct HistoryEntry
@@ -3436,7 +3529,6 @@ pub(crate) fn first_ident(s: &str) -> Option<String> {
   pub fn output_saver_agent_id(tool: &AiTool) -> Option<&'static str>
   pub fn is_trs_plugin_dir_file(path: &Path) -> bool
   pub fn is_json(path: &Path) -> bool
-  pub fn confirm(prompt: &str) -> bool
 
 **upgrade.rs**
   pub enum InstallMethod
@@ -3445,7 +3537,6 @@ pub(crate) fn first_ident(s: &str) -> Option<String> {
   fn label(&self) -> &'static str
   pub fn run_upgrade(check_only: bool, skip_confirm: bool, binary_only: bool)
   pub fn detect_install_method(exe: Option<&Path>) -> InstallMethod
-  fn prompt_yes(question: &str) -> bool
   fn run_shell(cmd: &str) -> bool
   fn refresh_configs()
   fn first_broken_hook_json() -> Option<std::path::PathBuf>
@@ -3458,337 +3549,18 @@ pub(crate) fn first_ident(s: &str) -> Option<String> {
   fn unknown_for_built_from_source()
   fn unknown_for_none()
 
-## src/formatter/
-
-**agent.rs**
-
-  #[allow(dead_code)]
-  pub struct AgentFormatter;
-
-  impl Formatter for AgentFormatter {
-      fn name() -> &'static str {
-          "agent"
-      }
-
-      fn format() -> OutputFormat {
-          OutputFormat::Agent
-      }
-  }
-
-**compact.rs**
-  pub struct CompactFormatter
-
-  impl Formatter for CompactFormatter
-  fn name() -> &'static str
-  fn format() -> OutputFormat
-
-  impl CompactFormatter
-  pub fn format_message(key: &str, value: &str) -> String
-  pub fn format_counts(label: &str, counts: &[(&str, usize)]) -> String
-  pub fn format_section_header(name: &str, count: Option<usize>) -> String
-  pub fn format_item(status: &str, path: &str) -> String
-  pub fn format_item_renamed(status: &str, old_path: &str, new_path: &str) -> String
-  pub fn format_test_summary(
-  pub fn format_status(success: bool) -> &'static str
-  pub fn format_failures(failures: &[String]) -> String
-  pub fn format_log_levels(error: usize, warn: usize, info: usize, debug: usize) -> String
-  pub fn format_grep_match(file: &str, line: Option<usize>, content: &str) -> String
-  pub fn format_grep_file(file: &str, match_count: usize) -> String
-  pub fn format_diff_file(
-  pub fn format_diff_summary(
-  pub fn format_clean() -> String
-  pub fn format_dirty(
-  pub fn format_branch_with_tracking(branch: &str, ahead: usize, behind: usize) -> String
-  pub fn format_empty() -> String
-  pub fn format_truncated(shown: usize, total: usize) -> String
-
-**compact_schema_git.rs**
-  impl CompactFormatter
-  pub fn format_git_status(status: &crate::schema::GitStatusSchema) -> String
-  pub fn format_git_diff(diff: &crate::schema::GitDiffSchema) -> String
-
-**compact_schema_output.rs**
-  impl CompactFormatter
-  pub fn format_ls(ls: &crate::schema::LsOutputSchema) -> String
-  pub fn format_grep(grep: &crate::schema::GrepOutputSchema) -> String
-  pub fn format_find(find: &crate::schema::FindOutputSchema) -> String
-  pub fn format_test_output(test: &crate::schema::TestOutputSchema) -> String
-  pub fn format_logs(logs: &crate::schema::LogsOutputSchema) -> String
-  pub fn format_repository_state(state: &crate::schema::RepositoryStateSchema) -> String
-  pub fn format_process(process: &crate::schema::ProcessOutputSchema) -> String
-  pub fn format_error_schema(error: &crate::schema::ErrorSchema) -> String
-
-**csv.rs**
-
-  #[allow(dead_code)]
-  pub struct CsvFormatter;
-
-  impl Formatter for CsvFormatter {
-      fn name() -> &'static str {
-          "csv"
-      }
-
-      fn format() -> OutputFormat {
-          OutputFormat::Csv
-      }
-  }
-
-**helpers.rs**
-  #[allow(dead_code)]
-  pub fn format_count_if_positive(label: &str, count: usize) -> Option<String> {
-      if count > 0 {
-          Some(format!("{}={}", label, count))
-      } else {
-          None
-      }
-  }
-
-  #[allow(dead_code)]
-  pub fn format_list_with_count(label: &str, items: &[String]) -> String {
-      let mut output = String::new();
-      if !items.is_empty() {
-          output.push_str(&format!("{} ({}):\n", label, items.len()));
-          for item in items {
-              output.push_str(&format!("  {}\n", item));
-          }
-      }
-      output
-  }
-
-  #[allow(dead_code)]
-  pub fn format_key_value(key: &str, value: &str, label: Option<&str>) -> String {
-      match label {
-          Some(l) => format!("{} [{}]: {}\n", key, l, value),
-          None => format!("{}: {}\n", key, value),
-      }
-  }
-
-  #[allow(dead_code)]
-  pub fn format_line(key: &str, value: impl std::fmt::Display) -> String {
-      format!("{}: {}\n", key, value)
-  }
-
-  pub fn truncate(s: &str, max_len: usize) -> String {
-      if s.len() <= max_len {
-          s.to_string()
-      } else {
-          let mut end = max_len.saturating_sub(3);
-          while end > 0 && !s.is_char_boundary(end) {
-              end -= 1;
-          }
-          format!("{}...", &s[..end])
-      }
-  }
-
-  #[allow(dead_code)]
-  pub fn format_duration(ms: u64) -> String {
-      if ms < 1000 {
-          format!("{}ms", ms)
-      } else if ms < 60000 {
-          format!("{:.2}s", ms as f64 / 1000.0)
-      } else {
-          let mins = ms / 60000;
-          let secs = (ms % 60000) / 1000;
-          format!("{}m {}s", mins, secs)
-      }
-  }
-
-  #[allow(dead_code)]
-  pub fn format_bytes(bytes: usize) -> String {
-      const KB: usize = 1024;
-      const MB: usize = 1024 * KB;
-      const GB: usize = 1024 * MB;
-
-      if bytes >= GB {
-          format!("{:.2}GB", bytes as f64 / GB as f64)
-      } else if bytes >= MB {
-          format!("{:.2}MB", bytes as f64 / MB as f64)
-      } else if bytes >= KB {
-          format!("{:.2}KB", bytes as f64 / KB as f64)
-      } else {
-          format!("{}B", bytes)
-      }
-  }
-
-**json.rs**
-  pub struct JsonFormatter
-
-  impl Formatter for JsonFormatter
-  fn name() -> &'static str
-  fn format() -> OutputFormat
-
-  impl JsonFormatter
-  pub fn format_message(key: &str, value: &str) -> String
-  pub fn format_key_value(key: &str, value: impl serde::Serialize) -> String
-  pub fn format_object(pairs: &[(&str, serde_json::Value)]) -> String
-  pub fn format_counts(counts: &[(&str, usize)]) -> String
-  pub fn format_section(name: &str, items: &[impl serde::Serialize]) -> String
-  pub fn format_item(status: &str, path: &str) -> String
-  pub fn format_item_renamed(status: &str, old_path: &str, new_path: &str) -> String
-  pub fn format_test_summary(
-  pub fn format_status(success: bool) -> String
-  pub fn format_failures(failures: &[String]) -> String
-  pub fn format_log_levels(error: usize, warn: usize, info: usize, debug: usize) -> String
-  pub fn format_grep_match(file: &str, line: Option<usize>, content: &str) -> String
-  pub fn format_grep_file(file: &str, match_count: usize) -> String
-  pub fn format_diff_file(
-  pub fn format_diff_summary(
-  pub fn format_clean() -> String
-  pub fn format_dirty(
-  pub fn format_branch_with_tracking(branch: &str, ahead: usize, behind: usize) -> String
-  pub fn format_empty() -> String
-  pub fn format_truncated(shown: usize, total: usize) -> String
-  pub fn format_error(message: &str) -> String
-  pub fn format_error_with_code(message: &str, exit_code: i32) -> String
-  pub fn format_not_implemented(message: &str) -> String
-  pub fn format_command_result(
-  pub fn format_list(items: &[impl AsRef<str>]) -> String
-  pub fn format_count(count: usize) -> String
-  pub fn format_flag(name: &str, value: bool) -> String
-  pub fn format_array<T: serde::Serialize>(items: &[T]) -> String
-
-**json_schema.rs**
-
-  #[allow(dead_code)]
-  impl JsonFormatter {
-      pub fn format_git_status(status: &crate::schema::GitStatusSchema) -> String {
-          serde_json::to_string_pretty(status).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_git_diff(diff: &crate::schema::GitDiffSchema) -> String {
-          serde_json::to_string_pretty(diff).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_ls(ls: &crate::schema::LsOutputSchema) -> String {
-          serde_json::to_string_pretty(ls).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_grep(grep: &crate::schema::GrepOutputSchema) -> String {
-          serde_json::to_string_pretty(grep).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_find(find: &crate::schema::FindOutputSchema) -> String {
-          serde_json::to_string_pretty(find).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_test_output(test: &crate::schema::TestOutputSchema) -> String {
-          serde_json::to_string_pretty(test).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_logs(logs: &crate::schema::LogsOutputSchema) -> String {
-          serde_json::to_string_pretty(logs).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_repository_state(state: &crate::schema::RepositoryStateSchema) -> String {
-          serde_json::to_string_pretty(state).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_process(process: &crate::schema::ProcessOutputSchema) -> String {
-          serde_json::to_string_pretty(process).unwrap_or_else(|_| "{}".to_string())
-      }
-
-      pub fn format_error_schema(error: &crate::schema::ErrorSchema) -> String {
-          serde_json::to_string_pretty(error).unwrap_or_else(|_| "{}".to_string())
-      }
-  }
-
-**mod.rs**
-  mod agent;
-  mod compact;
-  mod compact_schema_git;
-  mod compact_schema_output;
-  mod csv;
-  pub mod helpers;
-  mod json;
-  mod json_schema;
-  mod raw;
-  mod tsv;
-
-  #[cfg(test)]
-  mod tests;
-
-  pub use agent::AgentFormatter;
-  pub use compact::CompactFormatter;
-  pub use csv::CsvFormatter;
-  #[allow(unused_imports)]
-  pub use helpers::*;
-  pub use json::JsonFormatter;
-  pub use raw::RawFormatter;
-  pub use tsv::TsvFormatter;
-
-
-  #[allow(dead_code)]
-  pub trait Formatter {
-      fn name() -> &'static str;
-
-      fn format() -> OutputFormat;
-  }
-
-  #[allow(dead_code)]
-  pub fn select_formatter(format: OutputFormat) -> &'static str {
-      match format {
-          OutputFormat::Json => JsonFormatter::name(),
-          OutputFormat::Csv => CsvFormatter::name(),
-          OutputFormat::Tsv => TsvFormatter::name(),
-          OutputFormat::Agent => AgentFormatter::name(),
-          OutputFormat::Compact => CompactFormatter::name(),
-          OutputFormat::Raw => RawFormatter::name(),
-      }
-  }
-
-**raw.rs**
-  pub struct RawFormatter
-
-  impl Formatter for RawFormatter
-  fn name() -> &'static str
-  fn format() -> OutputFormat
-
-  impl RawFormatter
-  pub fn format_list(items: &[impl AsRef<str>]) -> String
-  pub fn format_message(key: &str, value: &str) -> String
-  pub fn format_counts(counts: &[(&str, usize)]) -> String
-  pub fn format_section_header(name: &str, count: Option<usize>) -> String
-  pub fn format_item(status: &str, path: &str) -> String
-  pub fn format_item_renamed(status: &str, old_path: &str, new_path: &str) -> String
-  pub fn format_test_summary(
-  pub fn format_status(success: bool) -> &'static str
-  pub fn format_failures(failures: &[String]) -> String
-  pub fn format_log_levels(error: usize, warn: usize, info: usize, debug: usize) -> String
-  pub fn format_grep_match(file: &str, line: Option<usize>, content: &str) -> String
-  pub fn format_grep_file(file: &str, match_count: usize) -> String
-  pub fn format_diff_file(
-  pub fn format_diff_summary(
-  pub fn format_clean() -> String
-  pub fn format_dirty(
-  pub fn format_branch_with_tracking(branch: &str, ahead: usize, behind: usize) -> String
-  pub fn format_empty() -> String
-  pub fn format_truncated(shown: usize, total: usize) -> String
-  pub fn format_key_value(key: &str, value: &str) -> String
-  pub fn format_raw(content: &str) -> String
-
-**tsv.rs**
-
-  #[allow(dead_code)]
-  pub struct TsvFormatter;
-
-  impl Formatter for TsvFormatter {
-      fn name() -> &'static str {
-          "tsv"
-      }
-
-      fn format() -> OutputFormat {
-          OutputFormat::Tsv
-      }
-  }
-
 ## src/ingest/
 
 **collect.rs**
-pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile>
+pub(super) fn collect_files(
 pub(super) fn get_changed_files(root: &Path, since: Option<&str>) -> Option<Vec<String>>
 pub(super) fn apply_budget(
 
-**collect_compress.rs**: pub(super) struct CompressResult | pub(super) fn read_and_compress(path: &Path, level: IngestLevel) -> Option<CompressResult>
+**collect_compress.rs**
+  pub(super) struct CompressResult
+  pub(super) fn read_and_compress(
+  fn compress(path: &Path, content: String, level: IngestLevel) -> Option<CompressResult>
+
 **collect_index.rs**
   pub(super) fn is_module_anchor(lower_name: &str) -> bool
   pub(super) fn extract_module_doc(content: &str, ext: &str) -> Option<String>
@@ -3998,7 +3770,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn from_str(s: &str) -> Self
   pub struct IngestConfig
   pub struct DigestFile
-  pub fn run_ingest(config: &IngestConfig) -> std::io::Result<()>
+  pub fn run_ingest(config: &IngestConfig) -> std::io::Result<Vec<String>>
   mod tests
 
 **mod_html.rs**: (188 lines)
@@ -4015,7 +3787,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn json_value(content: &str, key: &str) -> Option<String>
   fn readme_first_para(content: &str) -> Option<String>
   fn is_ordered_item(t: &str) -> bool
-  pub(super) fn truncate(s: &str, max: usize) -> String
   pub(super) fn module_edges(files: &[DigestFile]) -> HashMap<(String, String), usize>
   pub(super) fn degrees(
   pub(super) fn core_floor(in_deg: &HashMap<String, usize>) -> usize
@@ -4061,7 +3832,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
 **store.rs**
   struct ListEntry
   pub fn list_ingests()
-  pub fn read_digest(name: Option<&str>, project_path: &Path)
+  pub fn read_digest(name: Option<&str>, project_path: &Path) -> Result<()>
   fn ingest_store_dir() -> Option<PathBuf>
   fn get_repo_identity(root: &Path) -> (String, String)
   fn get_repo_name(root: &Path) -> String
@@ -4077,122 +3848,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn test_skip_files()
   fn test_build_tree()
 
-## src/reducer/
-
-**mod.rs**
-  pub mod output
-  mod registry
-  mod truncation
-  mod tests
-  pub use output::escape_csv
-  pub use output::{ReducerItem, ReducerMetadata, ReducerOutput, ReducerSection, ReducerStats
-  pub use registry::{BaseReducer, ReducerRegistry
-  pub use truncation::{TruncationConfig, TruncationInfo
-  pub struct ReducerContext
-
-  impl ReducerContext
-  pub fn from_cli(cli: &crate::Cli) -> Self
-  pub fn has_conflicting_formats(&self) -> bool
-  pub type ReducerResult<T = ()> = Result<T, ReducerError>
-  pub enum ReducerError
-
-  impl ReducerError
-  pub fn is_not_implemented(&self) -> bool
-  pub fn is_invalid_input(&self) -> bool
-  pub fn is_io_error(&self) -> bool
-  pub fn is_processing_error(&self) -> bool
-
-  impl std::fmt::Display for ReducerError
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-
-  impl std::error::Error for ReducerError
-  pub trait Reducer
-  type Input
-  type Output
-  fn reduce(&self, input: &Self::Input, context: &ReducerContext) -> ReducerResult<Self::Output>
-  fn name(&self) -> &'static str
-
-**output.rs**
-  pub struct ReducerMetadata
-  fn estimate_tokens(bytes: usize) -> usize
-  pub struct ReducerStats
-
-  impl ReducerStats
-  pub fn new(
-  pub struct ReducerOutput
-
-  impl ReducerOutput
-  pub fn new<T: Serialize>(data: T) -> Self
-  pub fn empty() -> Self
-  pub fn with_metadata(mut self, metadata: ReducerMetadata) -> Self
-  pub fn with_stats(mut self, stats: ReducerStats) -> Self
-  pub fn with_summary(mut self, summary: impl Into<String>) -> Self
-  pub fn with_items(mut self, items: Vec<ReducerItem>) -> Self
-  pub fn with_sections(mut self, sections: Vec<ReducerSection>) -> Self
-  pub fn format(&self, context: &ReducerContext) -> String
-  pub fn format_json(&self) -> String
-  pub fn format_csv(&self) -> String
-  pub fn format_tsv(&self) -> String
-  pub fn format_agent(&self) -> String
-  pub fn format_compact(&self) -> String
-  pub fn format_raw(&self) -> String
-  pub struct ReducerItem
-
-  impl ReducerItem
-  pub fn new(key: impl Into<String>, value: impl Into<String>) -> Self
-  pub fn with_label(mut self, label: impl Into<String>) -> Self
-  pub fn with_data(mut self, data: serde_json::Value) -> Self
-  pub struct ReducerSection
-
-  impl ReducerSection
-  pub fn new(name: impl Into<String>) -> Self
-  pub fn with_count(mut self, count: usize) -> Self
-  pub fn add_item(&mut self, item: ReducerItem)
-  pub fn escape_csv(value: &str) -> String
-
-**registry.rs**
-  pub struct BaseReducer<T: Serialize>
-  pub fn new(name: &'static str) -> Self
-  pub fn format_json(output: &T) -> String
-  pub fn format_compact(output: &T) -> String
-  pub fn format_raw(output: &T) -> String
-  type Input = String
-  type Output = T
-  fn reduce(
-  fn name(&self) -> &'static str
-  type ReducerFn = Box<dyn Fn(&str, &ReducerContext) -> ReducerResult<ReducerOutput>>
-  pub struct ReducerRegistry
-
-  impl ReducerRegistry
-  pub fn new() -> Self
-  pub fn register<R>(&mut self, reducer: R)
-  pub fn execute(
-  pub fn reducer_names(&self) -> Vec<&'static str>
-
-**truncation.rs**
-  pub struct TruncationInfo
-
-  impl TruncationInfo
-  pub fn none() -> Self
-  pub fn limited(total: usize, shown: usize, limit: usize) -> Self
-  pub fn size_threshold(total_bytes: usize, shown_bytes: usize, threshold_bytes: usize) -> Self
-  pub fn detected(pattern: &str, original_size: usize) -> Self
-  pub fn detect_from_output(output: &str) -> Self
-  fn detect_incomplete_json(output: &str) -> bool
-  fn detect_cutoff_line(output: &str) -> bool
-  pub fn is_truncated(&self) -> bool
-  pub fn summary(&self) -> Option<String>
-  pub struct TruncationConfig
-
-  impl Default for TruncationConfig
-  fn default() -> Self
-
-  impl TruncationConfig
-  pub fn with_max_items(max_items: usize) -> Self
-  pub fn with_max_bytes(max_bytes: usize) -> Self
-  pub fn truncate_items<T>(&self, items: Vec<T>) -> (Vec<T>, TruncationInfo)
-  pub fn truncate_output(&self, output: String) -> (String, TruncationInfo)
-
 ## src/router/
 
 **mod.rs**
@@ -4204,8 +3859,8 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn new() -> Self
   pub fn route(&self, command: &Commands, ctx: &CommandContext) -> CommandResult
   pub fn execute_and_print(&self, command: &Commands, ctx: &CommandContext)
+  pub fn report(result: CommandResult, format: OutputFormat)
   pub fn process_stdin(&self, input: &str, ctx: &CommandContext) -> CommandResult<String>
-  fn format_not_implemented(msg: &str, format: OutputFormat) -> String
 
   impl Default for Router
   fn default() -> Self
@@ -4241,7 +3896,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   impl CommandContext
   pub fn default_compact() -> Self
   pub fn from_cli(cli: &Cli) -> Self
-  pub fn has_conflicting_formats(&self) -> bool
   pub type CommandResult<T = ()> = Result<T, CommandError>
   pub enum CommandError
 
@@ -4259,9 +3913,17 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn child_failed() -> bool
   pub fn child_exit_code() -> Option<i32>
   pub fn estimate_tokens(bytes: usize) -> usize
-  pub fn escape_csv_field(field: &str) -> String
+  pub fn project_walker(
+  pub fn readable(
+  pub fn failure_lines(failures: &[String]) -> String
+  pub fn finish_partial(
+  pub fn check_root(path: &std::path::Path) -> CommandResult
+  fn quote_csv(field: &str) -> String
+  fn escape_csv_field(field: &str) -> String
   fn escape_tsv_field(field: &str) -> String
+  pub fn csv_row(fields: &[&str]) -> String
   pub fn tsv_row(fields: &[&str]) -> String
+  pub fn line_table(format: OutputFormat, text: &str) -> String
   pub struct CommandStats
 
   impl CommandStats
@@ -4281,6 +3943,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn print(&self)
   pub fn format_output_mode(mode: OutputFormat) -> &'static str
   pub use super::common_markers::*
+  pub fn needs_newline(pattern: &str) -> bool
 
 **common_markers.rs**
   pub fn is_error_line(line: &str) -> bool
@@ -4293,7 +3956,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn is_error_line(line: &str) -> bool
   fn is_error_not_warning(line: &str) -> bool
   fn indented(kind: &str, line: &str) -> String
-  fn table(shown: &[(&str, String)], header: &str, row: impl Fn(&str, &str) -> String) -> String
+  fn table(shown: &[(&str, String)], row: fn(&[&str]) -> String) -> String
   fn count(shown: &[(&str, String)], kind: &str) -> usize
   fn format_output(
   pub fn handle_err(command: &str, args: &[String], ctx: &CommandContext) -> CommandResult
@@ -4407,6 +4070,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub mod read;
   pub mod read_filters;
   pub mod replace;
+  mod replace_text;
   pub mod run;
   pub mod search;
   pub mod stats;
@@ -4419,7 +4083,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub mod types;
 
 **read.rs**
-  pub use super::read_filters
   pub struct ReadInput
   pub enum FilterLevel
   pub struct ReadHandler
@@ -4457,15 +4120,15 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn test_count_braces_ignores_strings()
 
 **replace.rs**
-  pub struct Replacement
   pub struct ReplaceHandler
 
   impl ReplaceHandler
   pub fn execute_replace(
   pub fn format_output(
   pub fn format_json(
-  pub fn format_csv(
-  pub fn format_tsv(
+  fn table(replacements: &[(String, Vec<Replacement>)], row: fn(&[&str]) -> String) -> String
+  pub fn format_csv(replacements: &[(String, Vec<Replacement>)]) -> String
+  pub fn format_tsv(replacements: &[(String, Vec<Replacement>)]) -> String
   pub fn format_compact(
   pub fn format_raw(
   pub fn truncate_line(line: &str, max_len: usize) -> String
@@ -4476,12 +4139,34 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult
   pub struct ReplaceInput
 
+**replace_text.rs**
+  pub struct Replacement
+  pub struct Pattern
+
+  impl Pattern
+  pub fn new(pattern: &str) -> Result<Self, regex::Error>
+  pub fn matches_bytes(&self, haystack: &[u8]) -> bool
+  pub fn apply(&self, content: &str, with: &str) -> Option<(String, Vec<Replacement>)>
+  fn per_line(&self, content: &str, with: &str) -> (String, Vec<Replacement>)
+  fn across_lines(&self, content: &str, with: &str) -> (String, Vec<Replacement>)
+  fn without_ending(line: &str) -> &str
+  mod tests
+  fn apply(pattern: &str, content: &str, with: &str) -> Option<(String, Vec<Replacement>)>
+  fn crlf_and_a_missing_final_newline_are_kept()
+  fn counts_every_match_on_a_line()
+  fn a_pattern_with_a_newline_matches_across_lines()
+  fn anchors_still_mean_line_start_and_end_across_lines()
+  fn groups_expand_in_both_modes()
+  fn only_a_pattern_that_needs_a_newline_crosses_lines()
+  fn rest_of_line_idiom_keeps_crlf()
+  fn several_matches_across_lines_keep_their_line_numbers()
+
 **run.rs**
   pub struct RunHandler
 
   impl RunHandler
   pub fn format_output(output: &ProcessOutput, format: OutputFormat) -> String
-  pub fn format_error(error: &ProcessError, format: OutputFormat) -> String
+  fn table(output: &ProcessOutput, row: fn(&[&str]) -> String) -> String
 
   impl CommandHandler for RunHandler
   type Input = RunInput
@@ -4492,7 +4177,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub struct SearchHandler
 
   impl SearchHandler
-  pub fn execute_search(&self, input: &SearchInput) -> CommandResult<GrepOutput>
+  pub fn execute_search(
 
   struct MatchResult
   struct MatchSink
@@ -4543,13 +4228,13 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn print_human(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, limit: usize)
   fn print_sub_table(rows: &[((String, String), &Agg)])
   fn print_bin_table(rows: &[(String, &Agg)])
-  fn truncate(s: &str, max: usize) -> String
   fn fmt_date(ts: u64) -> String
   fn days_to_ymd(mut days: u64) -> (i32, u32, u32)
   fn is_leap(y: i32) -> bool
   fn coverage_json(
   fn print_json(entries: &[HistoryEntry], binaries: &AggMap, sub_cmds: &SubMap, limit: usize)
   mod tests
+  fn a_multibyte_sample_is_cut_at_a_char()
   fn parse_cmd_basic()
   fn parse_cmd_strips_env_prefix()
   fn parse_cmd_resolves_absolute_path()
@@ -4655,6 +4340,8 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn format_streaming_line(line: &TailLine, format: OutputFormat) -> String
   pub fn format_output(output: &TailOutput, format: OutputFormat) -> String
   pub fn format_json(output: &TailOutput) -> String
+  fn line_row(line: &TailLine, row: fn(&[&str]) -> String) -> String
+  fn table(output: &TailOutput, row: fn(&[&str]) -> String) -> String
   pub fn format_csv(output: &TailOutput) -> String
   pub fn format_tsv(output: &TailOutput) -> String
   fn format_body_lines(output: &TailOutput) -> String
@@ -4777,7 +4464,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   fn format_row_compact(cells: &[String]) -> String
   fn format_db_compact(result: &DbResult) -> String
   pub fn format_db_json(result: &DbResult) -> String
-  fn csv_escape(field: &str) -> String
+  fn format_db_table(result: &DbResult, row: fn(&[&str]) -> String) -> String
   pub fn format_db_csv(result: &DbResult) -> String
   pub fn format_db_tsv(result: &DbResult) -> String
   pub fn handle_db(
@@ -4975,7 +4662,6 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   pub fn handle_git_diff(
   pub fn parse_git_diff(input: &str) -> CommandResult<GitDiff>
   fn parse_git_diff_stat(input: &str) -> CommandResult<GitDiff>
-  pub fn truncate_diff(diff: &mut GitDiff, max_files: usize)
   fn commit_header(input: &str) -> Option<String>
 
 **git_diff_format.rs**
@@ -5018,6 +4704,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
 **git_status_format.rs**
   impl ParseHandler
   pub fn format_git_status(status: &GitStatus, format: OutputFormat) -> String
+  fn git_status_table(status: &GitStatus, row: fn(&[&str]) -> String) -> String
   pub fn format_git_status_csv(status: &GitStatus) -> String
   pub fn format_git_status_tsv(status: &GitStatus) -> String
   pub fn format_git_status_json(status: &GitStatus) -> String
@@ -5091,6 +4778,7 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   impl ParseHandler
   pub fn format_grep(grep_output: &GrepOutput, format: OutputFormat) -> String
   pub fn format_grep_json(grep_output: &GrepOutput) -> String
+  fn grep_table(grep_output: &GrepOutput, row: fn(&[&str]) -> String) -> String
   pub fn format_grep_csv(grep_output: &GrepOutput) -> String
   pub fn format_grep_tsv(grep_output: &GrepOutput) -> String
   pub fn format_grep_compact(grep_output: &GrepOutput) -> String
@@ -5148,12 +4836,12 @@ pub(super) fn scan_assets(root: &Path) -> (String, usize, u64)
   impl ParseHandler
   pub fn format_logs(logs_output: &LogsOutput, format: OutputFormat) -> String
   pub fn format_logs_json(logs_output: &LogsOutput) -> String
+  fn logs_table(logs_output: &LogsOutput, row: fn(&[&str]) -> String) -> String
   pub fn format_logs_csv(logs_output: &LogsOutput) -> String
   pub fn format_logs_tsv(logs_output: &LogsOutput) -> String
   pub fn format_logs_compact(logs_output: &LogsOutput) -> String
   fn level_indicator(level: LogLevel) -> &'static str
   fn level_name(level: LogLevel) -> &'static str
-  fn preview_msg(msg: &str, max: usize) -> String
   fn is_stack_trace_line(entry: &LogEntry) -> bool
   pub fn format_logs_raw(logs_output: &LogsOutput) -> String
 
@@ -5584,7 +5272,7 @@ pub(crate) enum LogLevel {
     Error,
     Fatal,
     Unknown,
-... (51 lines)
+... (49 lines)
 
 **mod.rs**
   pub(crate) mod fs;
@@ -5643,110 +5331,17 @@ pub(crate) enum LogLevel {
 
 ## src/schema/
 
-**fs.rs**
-  pub struct LsOutputSchema
-
-  impl LsOutputSchema
-  pub fn new() -> Self
-
-  impl Default for LsOutputSchema
-  fn default() -> Self
-  pub enum LsEntryType
-  pub struct LsEntry
-
-  impl LsEntry
-  pub fn new(name: &str, entry_type: LsEntryType) -> Self
-  pub struct LsError
-  pub struct LsCounts
-  pub struct FindOutputSchema
-
-  impl FindOutputSchema
-
-  impl Default for FindOutputSchema
-  pub struct FindEntry
-
-  impl FindEntry
-  pub fn new(path: &str) -> Self
-  pub struct FindError
-  pub struct FindCounts
-
-**git.rs**
-  pub struct GitStatusSchema
-
-  impl GitStatusSchema
-  pub fn new(branch: &str) -> Self
-  pub struct GitFileEntry
-
-  impl GitFileEntry
-  pub fn new(status: &str, path: &str) -> Self
-  pub fn renamed(status: &str, old_path: &str, new_path: &str) -> Self
-  pub struct GitStatusCounts
-  pub struct GitDiffSchema
-
-  impl GitDiffSchema
-  pub fn new() -> Self
-
-  impl Default for GitDiffSchema
-  fn default() -> Self
-  pub struct GitDiffEntry
-
-  impl GitDiffEntry
-  pub fn new(path: &str, change_type: &str) -> Self
-  pub struct GitDiffCounts
-  pub struct RepositoryStateSchema
-
-  impl RepositoryStateSchema
-
-  impl Default for RepositoryStateSchema
-
-**logs.rs**
-  pub struct LogsOutputSchema
-
-  impl LogsOutputSchema
-  pub fn new() -> Self
-
-  impl Default for LogsOutputSchema
-  fn default() -> Self
-  pub enum LogLevel
-  pub struct LogEntry
-
-  impl LogEntry
-  pub fn new(line: &str, line_number: usize) -> Self
-  pub struct RepeatedLine
-  pub struct LogCounts
-
 **mod.rs**
-  mod fs;
-  mod git;
-  mod logs;
-  mod process;
   mod search;
-  mod test;
 
   #[cfg(test)]
   mod tests;
 
 
-  #[allow(unused_imports)]
-  pub use fs::{
-      FindCounts, FindEntry, FindError, FindOutputSchema, LsCounts, LsEntry, LsEntryType, LsError,
-      LsOutputSchema,
-  };
-  #[allow(unused_imports)]
-  pub use git::{
-      GitDiffCounts, GitDiffEntry, GitDiffSchema, GitFileEntry, GitStatusCounts, GitStatusSchema,
-      RepositoryStateSchema,
-  };
-  #[allow(unused_imports)]
-  pub use logs::{LogCounts, LogEntry, LogLevel, LogsOutputSchema, RepeatedLine};
-  pub use process::{ErrorSchema, ProcessOutputSchema};
-  #[allow(unused_imports)]
   pub use search::{
       GrepCounts, GrepFile, GrepMatch, GrepOutputSchema, ReplaceCounts, ReplaceFile, ReplaceMatch,
       ReplaceOutputSchema,
   };
-  #[allow(unused_imports)]
-  pub use test::{TestOutputSchema, TestResult, TestRunnerType, TestStatus, TestSuite, TestSummary};
 
   pub const SCHEMA_VERSION: &str = "1.0.0";
 
@@ -5766,17 +5361,6 @@ pub(crate) enum LogLevel {
       }
   }
 
-**process.rs**
-  pub struct ProcessOutputSchema
-
-  impl ProcessOutputSchema
-  pub fn new(command: &str) -> Self
-  pub struct ErrorSchema
-
-  impl ErrorSchema
-  pub fn new(message: &str) -> Self
-  pub fn with_type(message: &str, error_type: &str) -> Self
-
 **search.rs**
   pub struct GrepOutputSchema
 
@@ -5786,13 +5370,7 @@ pub(crate) enum LogLevel {
   impl Default for GrepOutputSchema
   fn default() -> Self
   pub struct GrepFile
-
-  impl GrepFile
-  pub fn new(path: &str) -> Self
   pub struct GrepMatch
-
-  impl GrepMatch
-  pub fn new(line: &str) -> Self
   pub struct GrepCounts
   pub struct ReplaceOutputSchema
 
@@ -5801,83 +5379,23 @@ pub(crate) enum LogLevel {
   pub fn with_files(mut self, files: Vec<ReplaceFile>) -> Self
   pub fn with_counts(mut self, counts: ReplaceCounts) -> Self
   pub struct ReplaceFile
-
-  impl ReplaceFile
   pub struct ReplaceMatch
 
   impl ReplaceMatch
   pub fn new(line_number: usize, original: &str, replaced: &str) -> Self
   pub struct ReplaceCounts
 
-**test.rs**
-  pub struct TestOutputSchema
-
-  impl TestOutputSchema
-  pub fn new(runner: TestRunnerType) -> Self
-  pub enum TestRunnerType
-
-  impl std::fmt::Display for TestRunnerType
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-  pub struct TestSuite
-
-  impl TestSuite
-  pub fn new(file: &str) -> Self
-  pub struct TestResult
-
-  impl TestResult
-  pub fn new(name: &str, status: TestStatus) -> Self
-  pub enum TestStatus
-  pub struct TestSummary
-
 **tests.rs**
-  mod tests
   fn test_schema_version()
   fn test_schema_version_serialization()
-  fn test_git_status_schema_new()
-  fn test_git_status_schema_serialization()
-  fn test_git_file_entry_new()
-  fn test_git_file_entry_renamed()
-  fn test_git_status_counts_default()
-  fn test_git_diff_schema_new()
-  fn test_git_diff_entry_new()
-  fn test_repository_state_schema_new()
-  fn test_ls_output_schema_new()
-  fn test_ls_entry_new()
-  fn test_ls_entry_hidden()
-  fn test_ls_entry_type_serialization()
-  fn test_find_output_schema_new()
-  fn test_find_entry_new()
-  fn test_find_entry_hidden_detection()
   fn test_grep_output_schema_new()
-  fn test_grep_file_new()
-  fn test_grep_match_new()
   fn test_replace_output_schema_new()
   fn test_replace_output_schema_dry_run()
-  fn test_replace_file_new()
   fn test_replace_match_new()
   fn test_replace_output_schema_serialization()
   fn test_replace_counts_default()
   fn test_replace_output_schema_with_files()
   fn test_replace_output_round_trip()
-  fn test_test_output_schema_new()
-  fn test_test_suite_new()
-  fn test_test_result_new()
-  fn test_test_runner_type_display()
-  fn test_test_status_serialization()
-  fn test_logs_output_schema_new()
-  fn test_log_entry_new()
-  fn test_log_level_serialization()
-  fn test_process_output_schema_new()
-  fn test_process_output_schema_serialization()
-  fn test_error_schema_new()
-  fn test_error_schema_with_type()
-  fn test_error_schema_serialization()
-  fn test_git_status_schema_deserialization()
-  fn test_ls_entry_type_deserialization()
-  fn test_test_status_deserialization()
-  fn test_git_status_round_trip()
-  fn test_ls_output_round_trip()
-  fn test_test_output_round_trip()
 
 ---
-*trs ingest v0.10.2 | 171ms | 204.8KB*
+*trs ingest v0.10.3 | 123ms | 190.3KB*
