@@ -492,7 +492,7 @@ pub(crate) fn print_json(
 
 /// Truncate a command string to fit within a given width. UTF-8 safe.
 fn truncate_cmd(cmd: &str, max_len: usize) -> String {
-    crate::formatter::helpers::truncate(cmd, max_len)
+    crate::text_util::truncate(cmd, max_len)
 }
 
 #[cfg(test)]

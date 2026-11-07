@@ -1,4 +1,4 @@
-//! Integration tests for the formatter module - tail command formats,
+//! Integration tests for the output format flags - tail command formats,
 //! edge cases with special characters, empty input, and replace command formats.
 
 use assert_cmd::Command;

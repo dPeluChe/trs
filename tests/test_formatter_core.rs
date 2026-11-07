@@ -1,4 +1,4 @@
-//! Integration tests for the formatter module - JSON, CSV, TSV, Agent, Raw,
+//! Integration tests for the output format flags - JSON, CSV, TSV, Agent, Raw,
 //! Compact formats, format consistency, and parse command format tests.
 
 use assert_cmd::Command;

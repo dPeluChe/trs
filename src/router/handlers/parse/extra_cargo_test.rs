@@ -72,7 +72,7 @@ impl ParseHandler {
                             entry.push_str(&format!(
                                 " ({} {})",
                                 side,
-                                crate::formatter::helpers::truncate(value, 80)
+                                crate::text_util::truncate(value, 80)
                             ));
                         }
                         continue;

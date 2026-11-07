@@ -106,7 +106,7 @@ impl ParseHandler {
 
     /// Truncate a string to max_len chars, appending "..." if truncated.
     pub(crate) fn truncate_str(s: &str, max_len: usize) -> String {
-        crate::formatter::helpers::truncate(s, max_len)
+        crate::text_util::truncate(s, max_len)
     }
 
     /// Emit a compressor's result, falling back to the raw input when it

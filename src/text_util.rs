@@ -27,9 +27,31 @@ pub(crate) fn cmd_basename(cmd: &str) -> &str {
     cmd.rsplit(['/', '\\']).next().unwrap_or(cmd)
 }
 
+/// `s` cut to `max_len` bytes with `...`, at a char boundary.
+pub(crate) fn truncate(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        let mut end = max_len.saturating_sub(3);
+        while end > 0 && !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!("{}...", &s[..end])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn truncate_cuts_with_an_ellipsis_at_a_char_boundary() {
+        assert_eq!(truncate("hello", 10), "hello");
+        assert_eq!(truncate("hello world", 8), "hello...");
+        assert_eq!(truncate("hi", 3), "hi");
+        assert_eq!(truncate("😀😀😀", 8), "😀...");
+        assert!(truncate("ñañañañaña", 8).ends_with("..."));
+    }
 
     #[test]
     fn extracts_first_identifier() {

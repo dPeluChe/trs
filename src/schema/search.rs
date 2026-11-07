@@ -80,16 +80,6 @@ pub struct GrepFile {
     pub matches: Vec<GrepMatch>,
 }
 
-impl GrepFile {
-    /// Create a new grep file entry.
-    pub fn new(path: &str) -> Self {
-        Self {
-            path: path.to_string(),
-            matches: Vec::new(),
-        }
-    }
-}
-
 /// A single match in grep output.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GrepMatch {
@@ -107,19 +97,6 @@ pub struct GrepMatch {
     /// Short excerpt of the matched text (if available).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub excerpt: Option<String>,
-}
-
-impl GrepMatch {
-    /// Create a new grep match.
-    pub fn new(line: &str) -> Self {
-        Self {
-            line_number: None,
-            column: None,
-            line: line.to_string(),
-            is_context: false,
-            excerpt: None,
-        }
-    }
 }
 
 /// Count summary for grep output.
@@ -222,16 +199,6 @@ pub struct ReplaceFile {
     /// List of replacements in this file.
     #[serde(default)]
     pub matches: Vec<ReplaceMatch>,
-}
-
-impl ReplaceFile {
-    /// Create a new replace file entry.
-    pub fn new(path: &str) -> Self {
-        Self {
-            path: path.to_string(),
-            matches: Vec::new(),
-        }
-    }
 }
 
 /// A single replacement match.

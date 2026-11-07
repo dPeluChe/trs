@@ -73,10 +73,9 @@ The load-bearing entry points:
 | `classifier*.rs` | command -> parser routing, subprocess execution |
 | `rewrite*.rs` | the hook: decides what gets wrapped with `trs` |
 | `router/handlers/` | one parser per command family |
-| `formatter/` | output shapes (json / compact / raw) |
 | `ingest/` | project digest + `--html` report |
 | `output_saver*.rs` | the rules block installed into agent configs |
-| `schema/` | shared output types |
+| `schema/` | `search` / `replace` JSON output types |
 
 ## Key Design Decisions
 

@@ -1,6 +1,6 @@
 use super::super::types::*;
 use super::ParseHandler;
-use crate::formatter::helpers::truncate;
+use crate::text_util::truncate;
 use crate::OutputFormat;
 
 impl ParseHandler {
