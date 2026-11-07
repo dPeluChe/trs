@@ -5,6 +5,29 @@ use super::common::{
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
+/// Directories `replace` never edits below the root.
+const SKIPPED_DIRS: &[&str] = &[
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    ".cache",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".idea",
+    ".vscode",
+    "vendor",
+    "bundle",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "coverage",
+    ".next",
+    ".nuxt",
+];
+
 #[derive(Debug, Clone)]
 pub(crate) struct Replacement {
     line_number: usize,
@@ -40,7 +63,7 @@ impl ReplaceHandler {
         let mut failures: Vec<String> = Vec::new();
 
         // Process each file
-        for entry in project_walker(&input.path).build() {
+        for entry in project_walker(&input.path, SKIPPED_DIRS).build() {
             let Some(entry) = readable(entry, &mut failures) else {
                 continue;
             };
