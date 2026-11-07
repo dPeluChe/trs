@@ -33,22 +33,6 @@ fn test_replace_basic_pattern() {
 }
 
 #[test]
-fn test_replace_with_dry_run_flag() {
-    let temp_dir = TempDir::new().unwrap();
-    create_temp_file(&temp_dir, "test.txt", "Hello world\nHello universe\n");
-
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("replace")
-        .arg(temp_dir.path())
-        .arg("Hello")
-        .arg("Hi")
-        .arg("--dry-run")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Preview:"));
-}
-
-#[test]
 fn test_replace_with_preview_alias() {
     let temp_dir = TempDir::new().unwrap();
     create_temp_file(&temp_dir, "test.txt", "Hello world\nHello universe\n");

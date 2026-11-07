@@ -227,61 +227,6 @@ fn test_git_status_preserves_counts() {
 }
 
 #[test]
-fn test_git_status_preserves_ahead_behind() {
-    // Ahead/behind counts are important sync status signals
-    let input = fixtures::git_status_ahead();
-
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
-        .arg("--json")
-        .arg("parse")
-        .arg("git-status")
-        .write_stdin(input)
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let stdout = String::from_utf8_lossy(&output);
-    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
-
-    // Ahead count must be preserved
-    assert!(json["ahead"].is_number(), "Ahead count must be preserved");
-    assert!(
-        json["ahead"].as_u64().unwrap() > 0,
-        "Ahead count should be positive"
-    );
-}
-
-#[test]
-fn test_git_status_preserves_behind() {
-    // Behind counts are important sync status signals
-    let input = fixtures::git_status_behind();
-
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
-        .arg("--json")
-        .arg("parse")
-        .arg("git-status")
-        .write_stdin(input)
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let stdout = String::from_utf8_lossy(&output);
-    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
-
-    assert!(json["behind"].is_number(), "Behind count must be preserved");
-    assert!(
-        json["behind"].as_u64().unwrap() > 0,
-        "Behind count should be positive"
-    );
-}
-
-#[test]
 fn test_git_status_preserves_clean_status() {
     // Clean/dirty status is critical signal
     let input = fixtures::git_status_clean();

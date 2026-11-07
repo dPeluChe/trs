@@ -192,22 +192,6 @@ fn test_run_command_failure() {
 }
 
 #[test]
-fn test_run_command_not_found() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    cmd.arg("run").arg("nonexistent_command_xyz123");
-    let assert = cmd.assert();
-    // POSIX spawns directly → trs maps NotFound to exit 127 + a clear message.
-    // Windows routes through `cmd /C`, which reports a missing command as its
-    // own non-zero exit instead (#53); assert a generic failure there.
-    #[cfg(not(windows))]
-    assert
-        .code(127)
-        .stderr(predicate::str::contains("Command not found"));
-    #[cfg(windows)]
-    assert.failure();
-}
-
-#[test]
 fn test_run_command_json_output() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("--json")

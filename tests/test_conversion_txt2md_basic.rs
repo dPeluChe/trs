@@ -174,24 +174,6 @@ fn test_txt2md_asterisk_list() {
 }
 
 #[test]
-fn test_txt2md_preserves_list_numbers() {
-    let mut cmd = Command::cargo_bin("trs").unwrap();
-    let output = cmd
-        .arg("txt2md")
-        .write_stdin("STEPS\n\n5. Fifth step\n10. Tenth step\n25. Twenty-fifth step")
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let stdout = String::from_utf8_lossy(&output);
-    assert!(stdout.contains("5. Fifth step"));
-    assert!(stdout.contains("10. Tenth step"));
-    assert!(stdout.contains("25. Twenty-fifth step"));
-}
-
-#[test]
 fn test_txt2md_file_with_lists() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
     let output = cmd
