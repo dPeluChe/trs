@@ -146,6 +146,10 @@ impl ParseHandler {
                 let out = serde_json::json!({ "output": input }).to_string();
                 Self::finish(input, &out, reducer, ctx)
             }
+            OutputFormat::Csv | OutputFormat::Tsv => {
+                let out = super::common::line_table(ctx.format, input);
+                Self::finish(input, &out, reducer, ctx)
+            }
             _ => Self::finish(input, input, reducer, ctx),
         }
     }
@@ -200,6 +204,12 @@ impl CommandHandler for ParseHandler {
     type Input = ParseCommands;
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
+        // No columns of its own: the input lines are the rows, unfolded.
+        if ctx.format.is_table() && !input.has_table() {
+            let text = Self::read_input(&input.file().map(std::path::Path::to_path_buf))?;
+            let out = super::common::line_table(ctx.format, &text);
+            return Self::finish(&text, &out, "line-table".to_string(), ctx);
+        }
         match input {
             ParseCommands::GitStatus { file, count } => Self::handle_git_status(file, count, ctx),
             ParseCommands::GitDiff { file } => Self::handle_git_diff(file, ctx),

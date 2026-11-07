@@ -11,6 +11,16 @@ use crate::process::exit_code_of;
 use crate::router::{CommandContext, Router};
 use crate::Commands;
 
+/// Output with no table of its own, as a one-column table under `--csv`
+/// and `--tsv`, so a table format always prints a table.
+fn shown(format: crate::OutputFormat, text: &str) -> std::borrow::Cow<'_, str> {
+    if format.is_table() {
+        crate::router::handlers::common::line_table(format, text).into()
+    } else {
+        text.into()
+    }
+}
+
 /// Execute an external command, optionally pipe through a parser, and print output.
 pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext) {
     use std::process::Stdio;
@@ -75,9 +85,10 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         if let Some(run) = &json_run {
             run.finish(&compact, false);
         }
-        print!("{}", compact);
+        let printed = shown(ctx.format, &compact);
+        print!("{printed}");
         let full_cmd = full_cmd(cmd, args);
-        track(&full_cmd, in_bytes, compact.len(), start, &output.status);
+        track(&full_cmd, in_bytes, printed.len(), start, &output.status);
         if !output.status.success() {
             emit_failure_footer(ctx.format, code, &full_cmd, &stdout, &stderr);
         }
@@ -109,19 +120,25 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
     #[allow(unused_assignments)]
     let mut out_bytes = in_bytes; // default: no reduction (passthrough)
 
+    let parser = classify_command(cmd, args);
+    // A table format with no table for this command: its lines are the rows,
+    // unfolded, since every row is data.
+    let line_rows = ctx.format.is_table() && !parser.as_ref().is_some_and(|p| p.has_table());
     // Min input guard: skip parsing entirely for tiny outputs. Verbatim
     // commands take the same exit at every size: their spacing is the data.
     // So does a requested machine format (`--json`, `--porcelain`).
     let min_input = crate::config::config().limits.min_input_chars;
-    if (stdout_ref.len() < min_input && !wants_format)
+    if line_rows
+        || (stdout_ref.len() < min_input && !wants_format)
         || crate::command_registry::is_verbatim_invocation(name, &args.join(" "))
         || crate::classifier_args::has_structured_output_flag(args)
     {
         if let Some(run) = &json_run {
             run.finish(stdout_ref, false);
         }
-        print!("{}", stdout_ref);
-        out_bytes = stdout_ref.len();
+        let printed = shown(ctx.format, stdout_ref);
+        print!("{printed}");
+        out_bytes = printed.len();
         let fcmd = full_cmd(cmd, args);
         track(&fcmd, in_bytes, out_bytes, start, &output.status);
         if !output.status.success() {
@@ -130,7 +147,7 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
         return;
     }
 
-    if let Some(parser) = classify_command(cmd, args) {
+    if let Some(parser) = parser {
         // Estimate output size based on benchmarked reduction ratios per command
         let ratio = keep_ratio(name, subcmd);
 
@@ -149,7 +166,8 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
             return;
         }
 
-        let prints_table = ctx.format.is_table() && parser.has_table();
+        // `line_rows` sent every table format without columns away above.
+        let prints_table = ctx.format.is_table();
 
         // Tier 1: Try parser. Its output is captured (not streamed) so we can
         // measure it and enforce the never-worse guard below.
@@ -214,9 +232,15 @@ pub(crate) fn execute_and_parse(cmd: &str, args: &[String], ctx: &CommandContext
                     out_bytes += print_raw_path(ctx.format, cmd, args, &stdout, &stderr);
                 }
             } else {
-                print!("{}", stdout_ref);
-                out_bytes = stdout_ref.len();
+                let printed = shown(ctx.format, stdout_ref);
+                print!("{printed}");
+                out_bytes = printed.len();
             }
+        } else if prints_table {
+            // A table holds every row, so a failed parse is not cut either.
+            let printed = shown(ctx.format, stdout_ref);
+            print!("{printed}");
+            out_bytes = printed.len();
         } else {
             // Tier 3: Passthrough with truncation (parser failed)
             let passthrough_max = crate::config::config().limits.passthrough_max_chars;

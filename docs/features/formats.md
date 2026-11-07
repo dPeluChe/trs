@@ -115,14 +115,15 @@ Identical to CSV but with tabs as separators. Preferred when the
 data itself might contain commas. A tab, newline or carriage return inside a
 field prints as `\t`, `\n` or `\r`, so a row stays one line with its columns.
 The form is for reading: a literal `\n` in the data looks the same.
-`trs clean` and `trs trim` print one-column tables under the same rule.
-`html2md` and `txt2md` print their markdown as is.
 
 A table holds every row: `db`, `search`, `grep` and `err` skip the limits they
 apply to compact output, and `trs search --limit` still applies. The `trs replace`
 summary goes to stderr. A failed command keeps its table, with the exit code as the
-verdict. A command without a table prints its compact form, and `grep` without
-file names prints its lines as they came.
+verdict. Output with no columns of its own (a command trs has no table for,
+`grep` without file names, `clean`, `trim`, `html2md`, the admin commands)
+prints as a one-column `line` table: a `line` header, then each line of the
+output as one row, unfolded and never cut. `raw`, `rewrite` (a hook's
+protocol) and a command line with a non-UTF-8 argument print as they are.
 
 ### Agent
 

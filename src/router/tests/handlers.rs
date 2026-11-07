@@ -217,8 +217,14 @@ fn test_csv_row_escapes_every_column() {
 
 #[test]
 fn test_one_column_tables_keep_empty_lines_and_stay_one_column() {
-    assert_eq!(csv_lines("a\n\nb\"c"), "\"a\"\n\"\"\n\"b\"\"c\"\n");
-    assert_eq!(tsv_lines("a\tb\n\nc"), "a\\tb\n\nc\n");
+    assert_eq!(
+        line_table(OutputFormat::Csv, "a\n\nb\"c"),
+        "line\n\"a\"\n\"\"\n\"b\"\"c\"\n"
+    );
+    assert_eq!(
+        line_table(OutputFormat::Tsv, "a\tb\n\nc"),
+        "line\na\\tb\n\nc\n"
+    );
 }
 
 #[test]

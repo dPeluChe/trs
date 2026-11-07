@@ -1,5 +1,5 @@
 use super::common::{
-    csv_lines, sanitize_control_chars, strip_ansi_codes, tsv_lines, CommandContext, CommandError,
+    line_table, sanitize_control_chars, strip_ansi_codes, CommandContext, CommandError,
     CommandResult, CommandStats,
 };
 use super::types::CommandHandler;
@@ -140,8 +140,7 @@ impl CleanHandler {
                 }
             })
             .to_string(),
-            OutputFormat::Csv => csv_lines(cleaned),
-            OutputFormat::Tsv => tsv_lines(cleaned),
+            OutputFormat::Csv | OutputFormat::Tsv => line_table(format, cleaned),
             OutputFormat::Agent => {
                 let reduction = if original.is_empty() {
                     0

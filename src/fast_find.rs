@@ -143,6 +143,9 @@ pub(crate) fn run(args: &[&str], ctx: &CommandContext) -> CommandResult {
     let rendered = match ctx.format {
         OutputFormat::Json => render_json(&files, &dirs),
         OutputFormat::Raw => render_raw(&files, &dirs),
+        OutputFormat::Csv | OutputFormat::Tsv => {
+            crate::router::handlers::common::line_table(ctx.format, &render_raw(&files, &dirs))
+        }
         _ => render_compact(&files, &dirs),
     };
     let result = finish_partial(&rendered, &failures, ctx.format);
