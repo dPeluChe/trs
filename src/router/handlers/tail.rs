@@ -1,6 +1,4 @@
-use super::common::{
-    escape_csv_field, tsv_row, CommandContext, CommandError, CommandResult, CommandStats,
-};
+use super::common::{csv_row, tsv_row, CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -253,15 +251,8 @@ impl TailHandler {
                 .to_string()
                     + "\n"
             }
-            OutputFormat::Csv => {
-                let line_escaped = escape_csv_field(&line.line);
-                format!("{},{},{}\n", line.line_number, line_escaped, line.is_error)
-            }
-            OutputFormat::Tsv => tsv_row(&[
-                &line.line_number.to_string(),
-                &line.line,
-                &line.is_error.to_string(),
-            ]),
+            OutputFormat::Csv => Self::line_row(line, csv_row),
+            OutputFormat::Tsv => Self::line_row(line, tsv_row),
             OutputFormat::Agent | OutputFormat::Compact => {
                 if line.is_error {
                     format!("ERR {}\n", line.display())
@@ -311,36 +302,30 @@ impl TailHandler {
         .to_string()
     }
 
+    fn line_row(line: &TailLine, row: fn(&[&str]) -> String) -> String {
+        row(&[
+            &line.line_number.to_string(),
+            &line.line,
+            &line.is_error.to_string(),
+        ])
+    }
+
+    fn table(output: &TailOutput, row: fn(&[&str]) -> String) -> String {
+        let mut result = row(&["line_number", "line", "is_error"]);
+        for line in &output.lines {
+            result.push_str(&Self::line_row(line, row));
+        }
+        result
+    }
+
     /// Format tail output as CSV.
     pub(crate) fn format_csv(output: &TailOutput) -> String {
-        let mut result = String::new();
-        result.push_str("line_number,line,is_error\n");
-
-        for l in &output.lines {
-            let line_escaped = escape_csv_field(&l.line);
-            result.push_str(&format!(
-                "{},{},{}\n",
-                l.line_number, line_escaped, l.is_error
-            ));
-        }
-
-        result
+        Self::table(output, csv_row)
     }
 
     /// Format tail output as TSV.
     pub(crate) fn format_tsv(output: &TailOutput) -> String {
-        let mut result = String::new();
-        result.push_str("line_number\tline\tis_error\n");
-
-        for l in &output.lines {
-            result.push_str(&tsv_row(&[
-                &l.line_number.to_string(),
-                &l.line,
-                &l.is_error.to_string(),
-            ]));
-        }
-
-        result
+        Self::table(output, tsv_row)
     }
 
     /// Build raw body lines (shared by agent and compact formatters).

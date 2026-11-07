@@ -1,4 +1,4 @@
-use super::super::common::{tsv_row, CommandContext, CommandResult, CommandStats};
+use super::super::common::{csv_row, tsv_row, CommandContext, CommandResult, CommandStats};
 use super::ParseHandler;
 use crate::OutputFormat;
 
@@ -323,49 +323,28 @@ impl ParseHandler {
         Self::json_to_string(json)
     }
 
-    /// Escape a CSV field (quote if it contains comma, quote, or newline).
-    fn csv_escape(field: &str) -> String {
-        if field.contains(',') || field.contains('"') || field.contains('\n') {
-            format!("\"{}\"", field.replace('"', "\"\""))
-        } else {
-            field.to_string()
+    fn format_db_table(result: &DbResult, row: fn(&[&str]) -> String) -> String {
+        let cells = |cells: &[String]| row(&cells.iter().map(String::as_str).collect::<Vec<_>>());
+        let mut out = cells(&result.columns);
+
+        let (sample, omitted) = Self::sample_rows(&result.rows);
+        for (i, line) in sample.iter().enumerate() {
+            if omitted > 0 && i == HEAD_ROWS {
+                out.push_str(&format!("# [...{} rows omitted]\n", omitted));
+            }
+            out.push_str(&cells(line));
         }
+        out
     }
 
     /// Format CSV output.
     pub(crate) fn format_db_csv(result: &DbResult) -> String {
-        let mut out = String::new();
-        // Header
-        let header: Vec<String> = result.columns.iter().map(|c| Self::csv_escape(c)).collect();
-        out.push_str(&header.join(","));
-        out.push('\n');
-
-        let (sample, omitted) = Self::sample_rows(&result.rows);
-        for (i, row) in sample.iter().enumerate() {
-            if omitted > 0 && i == HEAD_ROWS {
-                out.push_str(&format!("# [...{} rows omitted]\n", omitted));
-            }
-            let escaped: Vec<String> = row.iter().map(|c| Self::csv_escape(c)).collect();
-            out.push_str(&escaped.join(","));
-            out.push('\n');
-        }
-        out
+        Self::format_db_table(result, csv_row)
     }
 
     /// Format TSV output.
     pub(crate) fn format_db_tsv(result: &DbResult) -> String {
-        let mut out = String::new();
-        let row = |cells: &[String]| tsv_row(&cells.iter().map(String::as_str).collect::<Vec<_>>());
-        out.push_str(&row(&result.columns));
-
-        let (sample, omitted) = Self::sample_rows(&result.rows);
-        for (i, cells) in sample.iter().enumerate() {
-            if omitted > 0 && i == HEAD_ROWS {
-                out.push_str(&format!("# [...{} rows omitted]\n", omitted));
-            }
-            out.push_str(&row(cells));
-        }
-        out
+        Self::format_db_table(result, tsv_row)
     }
 
     pub(crate) fn handle_db(

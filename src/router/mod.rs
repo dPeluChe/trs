@@ -329,18 +329,8 @@ impl Router {
             OutputFormat::Agent => {
                 format!("Content:\n{}\n", result)
             }
-            OutputFormat::Csv => {
-                // Output as CSV with one row per line
-                result
-                    .lines()
-                    .map(|line| format!("\"{}\"", line.replace('"', "\"\"")))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            }
-            OutputFormat::Tsv => {
-                // Output as TSV with one row per line
-                result.lines().collect::<Vec<_>>().join("\n")
-            }
+            OutputFormat::Csv => csv_lines(&result),
+            OutputFormat::Tsv => tsv_lines(&result),
         };
 
         Ok(formatted)

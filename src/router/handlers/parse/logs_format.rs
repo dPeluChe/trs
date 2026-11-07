@@ -2,7 +2,7 @@
 //!
 //! Contains format_logs and all format-specific variants (JSON, compact, CSV, TSV, raw, agent).
 
-use super::super::common::{escape_csv_field, tsv_row};
+use super::super::common::{csv_row, tsv_row};
 use super::super::types::*;
 use super::ParseHandler;
 use crate::OutputFormat;
@@ -70,10 +70,8 @@ impl ParseHandler {
         .to_string()
     }
 
-    /// Format logs output as CSV.
-    pub(crate) fn format_logs_csv(logs_output: &LogsOutput) -> String {
-        let mut result = String::new();
-        result.push_str("line_number,level,timestamp,message\n");
+    fn logs_table(logs_output: &LogsOutput, row: fn(&[&str]) -> String) -> String {
+        let mut result = row(&["line_number", "level", "timestamp", "message"]);
 
         for entry in &logs_output.entries {
             let level_str = match entry.level {
@@ -85,32 +83,7 @@ impl ParseHandler {
                 LogLevel::Unknown => "unknown",
             };
             let timestamp = entry.timestamp.as_deref().unwrap_or("");
-            let message_escaped = escape_csv_field(&entry.message);
-            result.push_str(&format!(
-                "{},{},{},{}\n",
-                entry.line_number, level_str, timestamp, message_escaped
-            ));
-        }
-
-        result
-    }
-
-    /// Format logs output as TSV.
-    pub(crate) fn format_logs_tsv(logs_output: &LogsOutput) -> String {
-        let mut result = String::new();
-        result.push_str("line_number\tlevel\ttimestamp\tmessage\n");
-
-        for entry in &logs_output.entries {
-            let level_str = match entry.level {
-                LogLevel::Debug => "debug",
-                LogLevel::Info => "info",
-                LogLevel::Warning => "warning",
-                LogLevel::Error => "error",
-                LogLevel::Fatal => "fatal",
-                LogLevel::Unknown => "unknown",
-            };
-            let timestamp = entry.timestamp.as_deref().unwrap_or("");
-            result.push_str(&tsv_row(&[
+            result.push_str(&row(&[
                 &entry.line_number.to_string(),
                 level_str,
                 timestamp,
@@ -119,6 +92,16 @@ impl ParseHandler {
         }
 
         result
+    }
+
+    /// Format logs output as CSV.
+    pub(crate) fn format_logs_csv(logs_output: &LogsOutput) -> String {
+        Self::logs_table(logs_output, csv_row)
+    }
+
+    /// Format logs output as TSV.
+    pub(crate) fn format_logs_tsv(logs_output: &LogsOutput) -> String {
+        Self::logs_table(logs_output, tsv_row)
     }
 
     /// Format logs output in compact format.

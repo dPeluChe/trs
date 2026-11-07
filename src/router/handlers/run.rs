@@ -1,6 +1,4 @@
-use super::common::{
-    escape_csv_field, tsv_row, CommandContext, CommandError, CommandResult, CommandStats,
-};
+use super::common::{csv_row, tsv_row, CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
 use crate::process::{ProcessBuilder, ProcessError, ProcessOutput};
 use crate::OutputFormat;
@@ -24,42 +22,8 @@ impl RunHandler {
                 })
                 .to_string()
             }
-            OutputFormat::Csv => {
-                // CSV output with header row
-                let mut result = String::new();
-                result.push_str("command,args,stdout,stderr,exit_code,duration_ms,timed_out\n");
-                let args_str = output.args.join(" ");
-                let stdout_escaped = escape_csv_field(&output.stdout);
-                let stderr_escaped = escape_csv_field(&output.stderr);
-                result.push_str(&format!(
-                    "{},{},{},{},{},{},{}\n",
-                    output.command,
-                    args_str,
-                    stdout_escaped,
-                    stderr_escaped,
-                    output.exit_code,
-                    output.duration.as_millis(),
-                    output.timed_out
-                ));
-                result
-            }
-            OutputFormat::Tsv => {
-                // TSV output with header row
-                let mut result = String::new();
-                result
-                    .push_str("command\targs\tstdout\tstderr\texit_code\tduration_ms\ttimed_out\n");
-                let args_str = output.args.join(" ");
-                result.push_str(&tsv_row(&[
-                    &output.command,
-                    &args_str,
-                    &output.stdout,
-                    &output.stderr,
-                    &output.exit_code.to_string(),
-                    &output.duration.as_millis().to_string(),
-                    &output.timed_out.to_string(),
-                ]));
-                result
-            }
+            OutputFormat::Csv => Self::table(output, csv_row),
+            OutputFormat::Tsv => Self::table(output, tsv_row),
             OutputFormat::Compact | OutputFormat::Agent => {
                 // Compact output shows essential info
                 let mut result = String::new();
@@ -83,6 +47,28 @@ impl RunHandler {
                 result
             }
         }
+    }
+
+    fn table(output: &ProcessOutput, row: fn(&[&str]) -> String) -> String {
+        let header = row(&[
+            "command",
+            "args",
+            "stdout",
+            "stderr",
+            "exit_code",
+            "duration_ms",
+            "timed_out",
+        ]);
+        header
+            + &row(&[
+                &output.command,
+                &output.args.join(" "),
+                &output.stdout,
+                &output.stderr,
+                &output.exit_code.to_string(),
+                &output.duration.as_millis().to_string(),
+                &output.timed_out.to_string(),
+            ])
     }
 
     /// Format error message based on format.

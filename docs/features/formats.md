@@ -97,10 +97,10 @@ $ trs git status --json
 
 ```
 $ trs git status --csv
-status,path
-M,src/main.rs
-M,src/lib.rs
-A,src/new.rs
+status,path,new_path,section
+M,src/main.rs,,staged
+M,src/lib.rs,,unstaged
+A,src/new.rs,,staged
 ```
 
 ### TSV
@@ -109,6 +109,8 @@ Identical to CSV but with tabs as separators. Preferred when the
 data itself might contain commas. A tab, newline or carriage return inside a
 field prints as `\t`, `\n` or `\r`, so a row stays one line with its columns.
 The form is for reading: a literal `\n` in the data looks the same.
+`trs clean` and `trs trim` print one-column tables under the same rule.
+`html2md` and `txt2md` print their markdown as is.
 
 ### Agent
 

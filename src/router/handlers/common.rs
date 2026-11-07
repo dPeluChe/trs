@@ -135,12 +135,14 @@ pub(crate) fn estimate_tokens(bytes: usize) -> usize {
     bytes / 4
 }
 
-/// Quote a field for CSV output, per RFC 4180: wrap in double quotes when it
-/// holds a comma, quote, CR or LF, doubling any embedded quote. Shared by the
-/// run / replace / tail / parse handlers that emit CSV directly.
-pub(crate) fn escape_csv_field(field: &str) -> String {
+fn quote_csv(field: &str) -> String {
+    format!("\"{}\"", field.replace('"', "\"\""))
+}
+
+/// RFC 4180: a bare field unless it holds a comma, quote, CR or LF.
+fn escape_csv_field(field: &str) -> String {
     if field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r') {
-        format!("\"{}\"", field.replace('"', "\"\""))
+        quote_csv(field)
     } else {
         field.to_string()
     }
@@ -153,11 +155,25 @@ fn escape_tsv_field(field: &str) -> String {
         .replace('\r', "\\r")
 }
 
-/// One TSV row. Every column is escaped here, so no writer picks which are
-/// safe. For reading, not decoding: a literal `\\n` stays as it was.
+/// Rows go through here so no writer picks which columns are safe.
+pub(crate) fn csv_row(fields: &[&str]) -> String {
+    let escaped: Vec<String> = fields.iter().map(|f| escape_csv_field(f)).collect();
+    escaped.join(",") + "\n"
+}
+
+/// For reading, not decoding: a literal `\\n` stays as it was.
 pub(crate) fn tsv_row(fields: &[&str]) -> String {
     let escaped: Vec<String> = fields.iter().map(|f| escape_tsv_field(f)).collect();
     escaped.join("\t") + "\n"
+}
+
+/// Always quoted: a bare empty row is skipped by readers.
+pub(crate) fn csv_lines(text: &str) -> String {
+    text.lines().map(|line| quote_csv(line) + "\n").collect()
+}
+
+pub(crate) fn tsv_lines(text: &str) -> String {
+    text.lines().map(|line| tsv_row(&[line])).collect()
 }
 
 /// Statistics about command execution.
