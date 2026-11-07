@@ -215,23 +215,18 @@ fn test_replace_truncate_line() {
 }
 
 #[test]
-fn test_replace_escape_csv_field() {
+fn test_csv_row_escapes_every_column() {
+    assert_eq!(csv_row(&["simple", "b"]), "simple,b\n");
     assert_eq!(
-        crate::router::handlers::common::escape_csv_field("simple"),
-        "simple"
+        csv_row(&["a,b", "c\"d", "e\nf", "g\rh"]),
+        "\"a,b\",\"c\"\"d\",\"e\nf\",\"g\rh\"\n"
     );
-    assert_eq!(
-        crate::router::handlers::common::escape_csv_field("with,comma"),
-        "\"with,comma\""
-    );
-    assert_eq!(
-        crate::router::handlers::common::escape_csv_field("with\"quote"),
-        "\"with\"\"quote\""
-    );
-    assert_eq!(
-        crate::router::handlers::common::escape_csv_field("with\nnewline"),
-        "\"with\nnewline\""
-    );
+}
+
+#[test]
+fn test_one_column_tables_keep_empty_lines_and_stay_one_column() {
+    assert_eq!(csv_lines("a\n\nb\"c"), "\"a\"\n\"\"\n\"b\"\"c\"\n");
+    assert_eq!(tsv_lines("a\tb\n\nc"), "a\\tb\n\nc\n");
 }
 
 #[test]

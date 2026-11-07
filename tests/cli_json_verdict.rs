@@ -195,6 +195,13 @@ fn err_prints_a_table_with_the_tabular_flags() {
 }
 
 #[test]
+fn csv_quotes_every_column_that_needs_it() {
+    let (run, code) = table(&["--csv", "run", "sh", "-c", "exit 0", "a,b"]);
+    assert_eq!(code, Some(0));
+    assert!(run.contains("sh,\"-c exit 0 a,b\",,,0,"), "{run}");
+}
+
+#[test]
 fn tsv_keeps_every_field_on_its_row_and_column() {
     let (err, _) = err_table("--tsv", "printf 'error:\\tboom\\n'");
     assert_eq!(err, "kind\tline\nerror\terror:\\tboom\n");

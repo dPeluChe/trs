@@ -1,3 +1,4 @@
+use super::super::common::{csv_row, tsv_row};
 use super::super::types::*;
 use super::ParseHandler;
 use crate::OutputFormat;
@@ -14,84 +15,31 @@ impl ParseHandler {
         }
     }
 
-    /// Format git status as CSV.
-    pub(crate) fn format_git_status_csv(status: &GitStatus) -> String {
-        let mut result = String::new();
-        result.push_str("status,path,new_path,section\n");
-
-        for entry in &status.staged {
-            result.push_str(&format!(
-                "{},{},{},staged\n",
-                entry.status,
-                entry.path,
-                entry.new_path.as_deref().unwrap_or(&String::new())
-            ));
-        }
-        for entry in &status.unstaged {
-            result.push_str(&format!(
-                "{},{},{},unstaged\n",
-                entry.status,
-                entry.path,
-                entry.new_path.as_deref().unwrap_or(&String::new())
-            ));
-        }
-        for entry in &status.untracked {
-            result.push_str(&format!(
-                "{},{},{},untracked\n",
-                entry.status,
-                entry.path,
-                entry.new_path.as_deref().unwrap_or(&String::new())
-            ));
-        }
-        for entry in &status.unmerged {
-            result.push_str(&format!(
-                "{},{},{},unmerged\n",
-                entry.status,
-                entry.path,
-                entry.new_path.as_deref().unwrap_or(&String::new())
-            ));
+    fn git_status_table(status: &GitStatus, row: fn(&[&str]) -> String) -> String {
+        let mut result = row(&["status", "path", "new_path", "section"]);
+        let sections = [
+            (&status.staged, "staged"),
+            (&status.unstaged, "unstaged"),
+            (&status.untracked, "untracked"),
+            (&status.unmerged, "unmerged"),
+        ];
+        for (entries, section) in sections {
+            for entry in entries {
+                let new_path = entry.new_path.as_deref().unwrap_or("");
+                result.push_str(&row(&[&entry.status, &entry.path, new_path, section]));
+            }
         }
         result
     }
 
+    /// Format git status as CSV.
+    pub(crate) fn format_git_status_csv(status: &GitStatus) -> String {
+        Self::git_status_table(status, csv_row)
+    }
+
     /// Format git status as TSV.
     pub(crate) fn format_git_status_tsv(status: &GitStatus) -> String {
-        let mut result = String::new();
-        result.push_str("status\tpath\tnew_path\tsection\n");
-
-        for entry in &status.staged {
-            result.push_str(&format!(
-                "{}\t{}\t{}\tstaged\n",
-                entry.status,
-                entry.path,
-                entry.new_path.as_deref().unwrap_or(&String::new())
-            ));
-        }
-        for entry in &status.unstaged {
-            result.push_str(&format!(
-                "{}\t{}\t{}\tunstaged\n",
-                entry.status,
-                entry.path,
-                entry.new_path.as_deref().unwrap_or(&String::new())
-            ));
-        }
-        for entry in &status.untracked {
-            result.push_str(&format!(
-                "{}\t{}\t{}\tuntracked\n",
-                entry.status,
-                entry.path,
-                entry.new_path.as_deref().unwrap_or(&String::new())
-            ));
-        }
-        for entry in &status.unmerged {
-            result.push_str(&format!(
-                "{}\t{}\t{}\tunmerged\n",
-                entry.status,
-                entry.path,
-                entry.new_path.as_deref().unwrap_or(&String::new())
-            ));
-        }
-        result
+        Self::git_status_table(status, tsv_row)
     }
 
     /// Format git status as JSON.

@@ -2,7 +2,7 @@
 //!
 //! Contains format_grep and all format-specific variants (JSON, compact, CSV, TSV, raw).
 
-use super::super::common::{escape_csv_field, tsv_row};
+use super::super::common::{csv_row, tsv_row};
 use super::super::types::*;
 use super::ParseHandler;
 use crate::OutputFormat;
@@ -63,36 +63,12 @@ impl ParseHandler {
         })
     }
 
-    /// Format grep output as CSV.
-    pub(crate) fn format_grep_csv(grep_output: &GrepOutput) -> String {
-        let mut result = String::new();
-        result.push_str("path,line_number,column,is_context,line\n");
+    fn grep_table(grep_output: &GrepOutput, row: fn(&[&str]) -> String) -> String {
+        let mut result = row(&["path", "line_number", "column", "is_context", "line"]);
 
         for file in &grep_output.files {
             for m in &file.matches {
-                let line_escaped = escape_csv_field(&m.line);
-                result.push_str(&format!(
-                    "{},{},{},{},{}\n",
-                    file.path,
-                    m.line_number.map(|n| n.to_string()).unwrap_or_default(),
-                    m.column.map(|c| c.to_string()).unwrap_or_default(),
-                    m.is_context,
-                    line_escaped
-                ));
-            }
-        }
-
-        result
-    }
-
-    /// Format grep output as TSV.
-    pub(crate) fn format_grep_tsv(grep_output: &GrepOutput) -> String {
-        let mut result = String::new();
-        result.push_str("path\tline_number\tcolumn\tis_context\tline\n");
-
-        for file in &grep_output.files {
-            for m in &file.matches {
-                result.push_str(&tsv_row(&[
+                result.push_str(&row(&[
                     &file.path,
                     &m.line_number.map(|n| n.to_string()).unwrap_or_default(),
                     &m.column.map(|c| c.to_string()).unwrap_or_default(),
@@ -103,6 +79,16 @@ impl ParseHandler {
         }
 
         result
+    }
+
+    /// Format grep output as CSV.
+    pub(crate) fn format_grep_csv(grep_output: &GrepOutput) -> String {
+        Self::grep_table(grep_output, csv_row)
+    }
+
+    /// Format grep output as TSV.
+    pub(crate) fn format_grep_tsv(grep_output: &GrepOutput) -> String {
+        Self::grep_table(grep_output, tsv_row)
     }
 
     /// Format grep output in compact format.

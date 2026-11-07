@@ -3,13 +3,7 @@
 use super::Formatter;
 use crate::OutputFormat;
 
-/// Formatter for CSV (Comma-Separated Values) output.
-///
-/// The CSV formatter produces tabular output that:
-/// - Has a header row
-/// - Uses commas as delimiters
-/// - Properly escapes special characters
-/// - Is compatible with spreadsheet tools
+/// Name only: rows come from `router::handlers::common::{csv_row, tsv_row}`.
 #[allow(dead_code)]
 pub struct CsvFormatter;
 

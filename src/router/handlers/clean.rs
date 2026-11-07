@@ -1,6 +1,6 @@
 use super::common::{
-    sanitize_control_chars, strip_ansi_codes, CommandContext, CommandError, CommandResult,
-    CommandStats,
+    csv_lines, sanitize_control_chars, strip_ansi_codes, tsv_lines, CommandContext, CommandError,
+    CommandResult, CommandStats,
 };
 use super::types::CommandHandler;
 use crate::OutputFormat;
@@ -140,18 +140,8 @@ impl CleanHandler {
                 }
             })
             .to_string(),
-            OutputFormat::Csv => {
-                // Output as CSV with one row per line
-                cleaned
-                    .lines()
-                    .map(|line| format!("\"{}\"", line.replace('"', "\"\"")))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            }
-            OutputFormat::Tsv => {
-                // Output as TSV with one row per line
-                cleaned.lines().collect::<Vec<_>>().join("\n")
-            }
+            OutputFormat::Csv => csv_lines(cleaned),
+            OutputFormat::Tsv => tsv_lines(cleaned),
             OutputFormat::Agent => {
                 let reduction = if original.is_empty() {
                     0

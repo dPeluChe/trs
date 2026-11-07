@@ -1,6 +1,4 @@
-use super::common::{
-    escape_csv_field, tsv_row, CommandContext, CommandError, CommandResult, CommandStats,
-};
+use super::common::{csv_row, tsv_row, CommandContext, CommandError, CommandResult, CommandStats};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -234,51 +232,16 @@ impl ReplaceHandler {
         })
     }
 
-    /// Format replace output as CSV.
-    pub(crate) fn format_csv(
+    fn table(
         replacements: &[(String, Vec<Replacement>)],
         input: &ReplaceInput,
+        row: fn(&[&str]) -> String,
     ) -> String {
-        let mut result = String::new();
-        result.push_str("file,line_number,original,replaced\n");
+        let mut result = row(&["file", "line_number", "original", "replaced"]);
 
         for (path, reps) in replacements {
             for rep in reps {
-                let original_escaped = escape_csv_field(&rep.original);
-                let replaced_escaped = escape_csv_field(&rep.replaced);
-                result.push_str(&format!(
-                    "{},{},{},{}\n",
-                    path, rep.line_number, original_escaped, replaced_escaped
-                ));
-            }
-        }
-
-        // Add summary at the end
-        let total_replacements: usize = replacements
-            .iter()
-            .map(|(_, r)| r.iter().map(|rep| rep.match_count).sum::<usize>())
-            .sum();
-        result.push_str(&format!(
-            "\n# Summary: {} files, {} replacements (dry_run: {})\n",
-            replacements.len(),
-            total_replacements,
-            input.dry_run
-        ));
-
-        result
-    }
-
-    /// Format replace output as TSV.
-    pub(crate) fn format_tsv(
-        replacements: &[(String, Vec<Replacement>)],
-        input: &ReplaceInput,
-    ) -> String {
-        let mut result = String::new();
-        result.push_str("file\tline_number\toriginal\treplaced\n");
-
-        for (path, reps) in replacements {
-            for rep in reps {
-                result.push_str(&tsv_row(&[
+                result.push_str(&row(&[
                     path,
                     &rep.line_number.to_string(),
                     &rep.original,
@@ -299,6 +262,22 @@ impl ReplaceHandler {
         ));
 
         result
+    }
+
+    /// Format replace output as CSV.
+    pub(crate) fn format_csv(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
+        Self::table(replacements, input, csv_row)
+    }
+
+    /// Format replace output as TSV.
+    pub(crate) fn format_tsv(
+        replacements: &[(String, Vec<Replacement>)],
+        input: &ReplaceInput,
+    ) -> String {
+        Self::table(replacements, input, tsv_row)
     }
 
     /// Format replace output in compact format.

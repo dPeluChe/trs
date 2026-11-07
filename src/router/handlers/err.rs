@@ -3,7 +3,7 @@
 //! Runs a command and filters output to show only lines containing
 //! errors, warnings, panics, and fatal messages.
 
-use super::common::{escape_csv_field, tsv_row, CommandContext, CommandError, CommandResult};
+use super::common::{csv_row, tsv_row, CommandContext, CommandError, CommandResult};
 use crate::OutputFormat;
 
 /// Check if a line looks like an error or warning.
@@ -77,10 +77,10 @@ fn indented(kind: &str, line: &str) -> String {
 }
 
 /// The shown lines as a `kind,line` table.
-fn table(shown: &[(&str, String)], header: &str, row: impl Fn(&str, &str) -> String) -> String {
-    let mut table = header.to_string();
+fn table(shown: &[(&str, String)], row: fn(&[&str]) -> String) -> String {
+    let mut table = row(&["kind", "line"]);
     for (kind, line) in shown {
-        table.push_str(&row(kind, line));
+        table.push_str(&row(&[kind, line]));
     }
     table
 }
@@ -96,10 +96,8 @@ fn format_output(
     format: OutputFormat,
 ) -> String {
     match format {
-        OutputFormat::Csv => table(shown, "kind,line\n", |kind, line| {
-            format!("{kind},{}\n", escape_csv_field(line))
-        }),
-        OutputFormat::Tsv => table(shown, "kind\tline\n", |kind, line| tsv_row(&[kind, line])),
+        OutputFormat::Csv => table(shown, csv_row),
+        OutputFormat::Tsv => table(shown, tsv_row),
         OutputFormat::Json | OutputFormat::Compact | OutputFormat::Agent | OutputFormat::Raw => {
             let mut text = String::new();
             if shown.is_empty() && !failed {

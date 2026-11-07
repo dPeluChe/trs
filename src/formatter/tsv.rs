@@ -3,13 +3,7 @@
 use super::Formatter;
 use crate::OutputFormat;
 
-/// Formatter for TSV (Tab-Separated Values) output.
-///
-/// The TSV formatter produces tabular output that:
-/// - Has a header row
-/// - Uses tabs as delimiters
-/// - Properly escapes special characters
-/// - Is compatible with data processing tools
+/// Name only: rows come from `router::handlers::common::{csv_row, tsv_row}`.
 #[allow(dead_code)]
 pub struct TsvFormatter;
 
