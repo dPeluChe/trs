@@ -23,6 +23,7 @@ pub(crate) fn write_atomic(path: &Path, content: &str) -> io::Result<()> {
 /// `write_atomic`, but only if the file still holds `base`, the text the new
 /// content was built from. Two `init` runs racing on one file would otherwise
 /// each overwrite the other's read-modify-write.
+/// `content` takes the line endings of `base`, so a CRLF file stays CRLF.
 pub(crate) fn write_if_unchanged(path: &Path, base: &str, content: &str) -> io::Result<()> {
     if fs::read_to_string(path).is_ok_and(|now| now != base) {
         return Err(io::Error::other(format!(
@@ -30,7 +31,10 @@ pub(crate) fn write_if_unchanged(path: &Path, base: &str, content: &str) -> io::
             path.display()
         )));
     }
-    write_atomic(path, content)
+    write_atomic(
+        path,
+        &crate::text_util::with_endings_of(base, content.to_string()),
+    )
 }
 
 #[cfg(test)]
@@ -55,6 +59,15 @@ mod tests {
         let err = write_if_unchanged(&p, "what trs read", "block").unwrap_err();
         assert!(err.to_string().contains("changed while trs"));
         assert_eq!(fs::read_to_string(&p).unwrap(), "mine, edited meanwhile");
+    }
+
+    #[test]
+    fn an_edit_keeps_the_files_line_endings() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("CLAUDE.md");
+        fs::write(&p, "mine\r\n").unwrap();
+        write_if_unchanged(&p, "mine\r\n", "mine\n@trs.md\n").unwrap();
+        assert_eq!(fs::read_to_string(&p).unwrap(), "mine\r\n@trs.md\r\n");
     }
 
     #[cfg(unix)]

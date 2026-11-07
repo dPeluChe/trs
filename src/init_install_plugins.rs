@@ -282,7 +282,7 @@ pub(crate) fn patch_hermes_config(existing: &str) -> HermesConfigPatch {
         // No plugins key at all — appending a fresh top-level block is safe.
         let mut out = existing.trim_end().to_string();
         out.push_str("\nplugins:\n  enabled:\n    - trs-rewrite\n");
-        return HermesConfigPatch::Patched(out);
+        return HermesConfigPatch::Patched(crate::text_util::with_endings_of(existing, out));
     };
 
     // The plugins block: indented lines until the next top-level key.
@@ -338,7 +338,7 @@ pub(crate) fn patch_hermes_config(existing: &str) -> HermesConfigPatch {
     if existing.ends_with('\n') {
         out.push('\n');
     }
-    HermesConfigPatch::Patched(out)
+    HermesConfigPatch::Patched(crate::text_util::with_endings_of(existing, out))
 }
 
 fn indent_of(line: &str) -> usize {
@@ -393,6 +393,19 @@ mod tests {
     fn openclaw_merge_rejects_non_object_plugins() {
         let mut root = serde_json::json!({ "plugins": [] });
         assert!(merge_openclaw_config(&mut root, "/h/p/trs").is_err());
+    }
+
+    #[test]
+    fn hermes_patch_keeps_crlf() {
+        let existing = "model: x\r\nplugins:\r\n  enabled:\r\n    - other\r\n";
+        let HermesConfigPatch::Patched(out) = patch_hermes_config(existing) else {
+            panic!("not patched");
+        };
+        assert_eq!(out, format!("{existing}    - trs-rewrite\r\n"));
+        let HermesConfigPatch::Patched(out) = patch_hermes_config("model: x\r\n") else {
+            panic!("not patched");
+        };
+        assert!(!out.contains("\r\r") && !out.replace("\r\n", "").contains('\n'));
     }
 
     #[test]

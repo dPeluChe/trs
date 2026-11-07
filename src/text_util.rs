@@ -52,6 +52,24 @@ pub(crate) fn truncate_chars(s: &str, max: usize) -> String {
     out
 }
 
+/// `text` without the lines equal to `line` once trimmed. Every other line
+/// keeps its own ending, so a CRLF file stays CRLF.
+pub(crate) fn without_line(text: &str, line: &str) -> String {
+    text.split_inclusive('\n')
+        .filter(|l| l.trim() != line)
+        .collect()
+}
+
+/// `new` with the line endings `old` uses, read from its first line.
+pub(crate) fn with_endings_of(old: &str, new: String) -> String {
+    let crlf = old.find('\n').is_some_and(|i| old[..i].ends_with('\r'));
+    if crlf {
+        new.replace("\r\n", "\n").replace('\n', "\r\n")
+    } else {
+        new
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -71,6 +89,15 @@ mod tests {
         assert_eq!(truncate("hi", 3), "hi");
         assert_eq!(truncate("😀😀😀", 8), "😀...");
         assert!(truncate("ñañañañaña", 8).ends_with("..."));
+    }
+
+    #[test]
+    fn line_edits_keep_crlf() {
+        assert_eq!(without_line("a\r\n@x\r\nb\r\n", "@x"), "a\r\nb\r\n");
+        assert_eq!(without_line("a\n@x", "@x"), "a\n");
+        assert_eq!(with_endings_of("a\r\n", "a\r\nb\n".into()), "a\r\nb\r\n");
+        assert_eq!(with_endings_of("a\n", "a\nb\n".into()), "a\nb\n");
+        assert_eq!(with_endings_of("a\nb\r\n", "x\n".into()), "x\n");
     }
 
     #[test]
