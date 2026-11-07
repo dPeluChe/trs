@@ -135,6 +135,89 @@ pub(crate) fn estimate_tokens(bytes: usize) -> usize {
     bytes / 4
 }
 
+/// Exit code for a run that could not finish, as grep's 2.
+pub(crate) const FAILED_EXIT: i32 = 2;
+
+/// Failures listed by name before the rest become a count.
+const FAILURES_SHOWN: usize = 20;
+
+/// Directories `search` and `replace` never enter below the root.
+const IGNORED_DIRS: &[&str] = &[
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    ".cache",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".idea",
+    ".vscode",
+    "vendor",
+    "bundle",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "coverage",
+    ".next",
+    ".nuxt",
+];
+
+/// Pruned, not filtered per file: exit 2 must only mean content in scope went unread.
+pub(crate) fn project_walker(root: &std::path::Path) -> ignore::WalkBuilder {
+    let mut builder = ignore::WalkBuilder::new(root);
+    builder
+        .hidden(false)
+        .git_ignore(true)
+        .ignore(true)
+        .follow_links(false)
+        .filter_entry(|entry| {
+            let is_dir = entry.file_type().is_some_and(|kind| kind.is_dir());
+            let name = entry.file_name().to_str().unwrap_or("");
+            entry.depth() == 0 || !is_dir || !IGNORED_DIRS.contains(&name)
+        });
+    builder
+}
+
+/// What a walk error left unread. A bad glob in an ignore file leaves nothing.
+pub(crate) fn walk_failure(error: &ignore::Error) -> Option<String> {
+    error.io_error().map(|_| error.to_string())
+}
+
+/// `output`, then what could not be done: a partial run must not read as a
+/// complete one.
+pub(crate) fn finish_partial(
+    output: &str,
+    failures: &[String],
+    format: OutputFormat,
+) -> CommandResult {
+    if failures.is_empty() {
+        print!("{output}");
+        return Ok(());
+    }
+    let shown = &failures[..failures.len().min(FAILURES_SHOWN)];
+    if format == OutputFormat::Json {
+        let json = crate::exec_verdict::json_document(output, FAILED_EXIT, || None);
+        let mut document: serde_json::Value = serde_json::from_str(&json).unwrap_or_default();
+        document["failed"] = serde_json::json!(shown);
+        document["failed_total"] = serde_json::json!(failures.len());
+        println!("{document}");
+    } else {
+        print!("{output}");
+        for failure in shown {
+            crate::exec_verdict::notice(format, &format!("failed: {failure}\n"));
+        }
+        let more = failures.len() - shown.len();
+        if more > 0 {
+            crate::exec_verdict::notice(format, &format!("failed: {more} more\n"));
+        }
+    }
+    Err(CommandError::Reported {
+        exit_code: FAILED_EXIT,
+    })
+}
+
 /// The walker skips a root it cannot read, which would read as "no matches".
 pub(crate) fn check_root(path: &std::path::Path) -> CommandResult {
     let root = if path.is_dir() {
@@ -144,7 +227,7 @@ pub(crate) fn check_root(path: &std::path::Path) -> CommandResult {
     };
     root.map_err(|e| CommandError::ExecutionError {
         message: format!("cannot read {}: {}", path.display(), e),
-        exit_code: Some(2),
+        exit_code: Some(FAILED_EXIT),
     })
 }
 

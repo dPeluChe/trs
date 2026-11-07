@@ -1,4 +1,7 @@
-use super::common::{check_root, CommandContext, CommandError, CommandResult, CommandStats};
+use super::common::{
+    check_root, finish_partial, project_walker, walk_failure, CommandContext, CommandError,
+    CommandResult, CommandStats,
+};
 use super::parse::ParseHandler;
 use super::types::*;
 use crate::OutputFormat;
@@ -6,29 +9,6 @@ use crate::OutputFormat;
 pub(crate) struct SearchHandler;
 
 impl SearchHandler {
-    /// Default directories to ignore during search.
-    const DEFAULT_IGNORE_DIRS: &'static [&'static str] = &[
-        ".git",
-        "node_modules",
-        "target",
-        "dist",
-        "build",
-        ".cache",
-        "__pycache__",
-        ".venv",
-        "venv",
-        ".idea",
-        ".vscode",
-        "vendor",
-        "bundle",
-        ".tox",
-        ".mypy_cache",
-        ".pytest_cache",
-        "coverage",
-        ".next",
-        ".nuxt",
-    ];
-
     /// Default maximum number of files to show in output before truncation.
     const DEFAULT_MAX_FILES: usize = 50;
 
@@ -37,13 +17,12 @@ impl SearchHandler {
         &self,
         input: &SearchInput,
         format: OutputFormat,
-    ) -> CommandResult<GrepOutput> {
+    ) -> CommandResult<(GrepOutput, Vec<String>)> {
         use grep::matcher::Matcher;
         use grep::regex::RegexMatcher;
         use grep::searcher::Searcher;
         use grep::searcher::SearcherBuilder;
         use grep::searcher::Sink;
-        use ignore::WalkBuilder;
         use std::sync::{Arc, Mutex};
 
         check_root(&input.path)?;
@@ -146,26 +125,16 @@ impl SearchHandler {
         let file_matches: Arc<Mutex<Vec<(String, Vec<MatchResult>)>>> =
             Arc::new(Mutex::new(Vec::new()));
 
-        // Build the directory walker with ignore rules
-        let mut walk_builder = WalkBuilder::new(&input.path);
-
-        // Add custom ignore patterns for common directories
-        for dir in Self::DEFAULT_IGNORE_DIRS {
-            walk_builder.add_ignore(format!("!{}/", dir));
-        }
-
-        // Configure walker
-        walk_builder
-            .hidden(false) // Don't skip hidden files by default
-            .git_ignore(true) // Respect .gitignore
-            .ignore(true) // Respect .ignore files
-            .follow_links(false); // Don't follow symlinks
+        let mut failures: Vec<String> = Vec::new();
 
         // Search each file
-        for entry_result in walk_builder.build() {
+        for entry_result in project_walker(&input.path).build() {
             let entry = match entry_result {
                 Ok(e) => e,
-                Err(_) => continue, // Skip files we can't access
+                Err(e) => {
+                    failures.extend(walk_failure(&e));
+                    continue;
+                }
             };
 
             // Skip directories
@@ -200,10 +169,11 @@ impl SearchHandler {
             let mut sink = MatchSink::new(matcher.clone());
 
             // Search with our custom sink
-            let search_result = searcher.search_path(&matcher, entry.path(), &mut sink);
+            if let Err(e) = searcher.search_path(&matcher, entry.path(), &mut sink) {
+                failures.push(format!("{path}: {e}"));
+            }
 
-            // Ignore search errors (binary files, permission issues, etc.)
-            if search_result.is_ok() && !sink.matches.is_empty() {
+            if !sink.matches.is_empty() {
                 file_matches.lock().unwrap().push((path, sink.matches));
             }
         }
@@ -266,7 +236,7 @@ impl SearchHandler {
             crate::parse_out::mark_dropped();
         }
 
-        Ok(GrepOutput {
+        let output = GrepOutput {
             files,
             file_count,
             match_count,
@@ -278,7 +248,8 @@ impl SearchHandler {
             files_shown,
             matches_shown,
             input_bytes,
-        })
+        };
+        Ok((output, failures))
     }
 
     fn keep_first_results(files: &mut Vec<GrepFile>, limit: usize) {
@@ -330,11 +301,11 @@ impl CommandHandler for SearchHandler {
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
         // Execute the search
-        let grep_output = self.execute_search(input, ctx.format)?;
+        let (grep_output, failures) = self.execute_search(input, ctx.format)?;
+        let output = Self::format_output(&grep_output, ctx.format);
 
         // Print stats if requested
         if ctx.stats {
-            let output = Self::format_output(&grep_output, ctx.format);
             let stats = CommandStats::new()
                 .with_reducer("search")
                 .with_output_mode(ctx.format)
@@ -350,14 +321,9 @@ impl CommandHandler for SearchHandler {
                 .with_extra("Files with matches", grep_output.file_count.to_string())
                 .with_extra("Total matches", grep_output.total_matches.to_string());
             stats.print();
-            print!("{}", output);
-        } else {
-            // Format and print the output
-            let output = Self::format_output(&grep_output, ctx.format);
-            print!("{}", output);
         }
 
-        Ok(())
+        finish_partial(&output, &failures, ctx.format)
     }
 }
 
