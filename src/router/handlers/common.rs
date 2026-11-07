@@ -191,6 +191,19 @@ pub(crate) fn readable(
         .ok()
 }
 
+pub(crate) fn failure_lines(failures: &[String]) -> String {
+    let mut lines: String = failures
+        .iter()
+        .take(FAILURES_SHOWN)
+        .map(|failure| format!("failed: {failure}\n"))
+        .collect();
+    let more = failures.len().saturating_sub(FAILURES_SHOWN);
+    if more > 0 {
+        lines.push_str(&format!("failed: {more} more\n"));
+    }
+    lines
+}
+
 /// `output`, then what could not be done: a partial run must not read as a
 /// complete one.
 pub(crate) fn finish_partial(
@@ -202,8 +215,8 @@ pub(crate) fn finish_partial(
         print!("{output}");
         return Ok(());
     }
-    let shown = &failures[..failures.len().min(FAILURES_SHOWN)];
     if format == OutputFormat::Json {
+        let shown = &failures[..failures.len().min(FAILURES_SHOWN)];
         let json = crate::exec_verdict::json_document(output, FAILED_EXIT, || None);
         let mut document: serde_json::Value = serde_json::from_str(&json).unwrap_or_default();
         document["failed"] = serde_json::json!(shown);
@@ -211,13 +224,7 @@ pub(crate) fn finish_partial(
         println!("{document}");
     } else {
         print!("{output}");
-        for failure in shown {
-            crate::exec_verdict::notice(format, &format!("failed: {failure}\n"));
-        }
-        let more = failures.len() - shown.len();
-        if more > 0 {
-            crate::exec_verdict::notice(format, &format!("failed: {more} more\n"));
-        }
+        crate::exec_verdict::notice(format, &failure_lines(failures));
     }
     Err(CommandError::Reported {
         exit_code: FAILED_EXIT,

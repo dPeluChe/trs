@@ -51,16 +51,16 @@ pub fn path_with(dir: &Path) -> String {
     std::env::join_paths(dirs).unwrap().into_string().unwrap()
 }
 
-/// `run` with `dir` unreadable, or None under root, which reads through the
+/// `run` with `path` unreadable, or None under root, which reads through the
 /// mode bits and leaves no failure to see.
 #[cfg(unix)]
-pub fn while_locked<T>(dir: &Path, run: impl FnOnce() -> T) -> Option<T> {
+pub fn while_locked<T>(path: &Path, run: impl FnOnce() -> T) -> Option<T> {
     use std::os::unix::fs::PermissionsExt;
     let set_mode = |mode| {
-        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(mode)).unwrap();
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
     };
     set_mode(0o000);
-    let enforced = std::fs::read_dir(dir).is_err();
+    let enforced = std::fs::File::open(path).is_err();
     let out = run();
     set_mode(0o755);
     enforced.then_some(out)

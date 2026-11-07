@@ -1,3 +1,4 @@
+use std::io::ErrorKind;
 use std::path::Path;
 use std::process::Command;
 
@@ -7,19 +8,38 @@ use super::{
 };
 
 use super::collect_compress::read_and_compress;
+use crate::router::handlers::common::readable;
 
-/// Collect all eligible files from the project.
-pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
+/// Collect all eligible files from the project, or just `only`, and what could
+/// not be read. Out of scope is pruned: exit 2 must mean wanted content is missing.
+pub(super) fn collect_files(
+    config: &IngestConfig,
+    only: Option<&[String]>,
+) -> (Vec<DigestFile>, Vec<String>) {
+    let root = config.root.clone();
+    let exclude = config.exclude.clone();
     let mut builder = ignore::WalkBuilder::new(&config.root);
     builder
         .hidden(false)
         .git_ignore(true)
         .git_global(true)
-        .git_exclude(true);
+        .git_exclude(true)
+        .filter_entry(move |entry| {
+            let name = entry.file_name().to_str().unwrap_or("");
+            let rel_path = entry.path().strip_prefix(&root).unwrap_or(entry.path());
+            let rel_path = rel_path.to_string_lossy();
+            entry.depth() == 0
+                || !(SKIP_DIRS.contains(&name)
+                    || exclude.iter().any(|ex| rel_path.contains(ex.as_str())))
+        });
 
     let mut files: Vec<DigestFile> = Vec::new();
+    let mut unread: Vec<String> = Vec::new();
 
-    for entry in builder.build().flatten() {
+    for entry in builder.build() {
+        let Some(entry) = readable(entry, &mut unread) else {
+            continue;
+        };
         let path = entry.path();
 
         // Skip directories
@@ -41,15 +61,6 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
             }
         }
 
-        // Skip known generated/vendor directories
-        if path.components().any(|c| {
-            SKIP_DIRS
-                .iter()
-                .any(|d| c.as_os_str().to_str().map_or(false, |s| s == *d))
-        }) {
-            continue;
-        }
-
         // Skip too large
         if let Ok(meta) = std::fs::metadata(path) {
             if meta.len() > MAX_FILE_SIZE {
@@ -64,15 +75,19 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
             .to_string_lossy()
             .to_string();
 
-        // Apply exclude patterns
-        if config.exclude.iter().any(|ex| rel_path.contains(ex)) {
+        if only.is_some_and(|changed| !changed.contains(&rel_path)) {
             continue;
         }
 
-        // Read and compress file content
         let result = match read_and_compress(path, config.level) {
-            Some(c) => c,
-            None => continue,
+            Ok(Some(result)) => result,
+            Ok(None) => continue,
+            // Binary files, and symlinks with no file behind them, are not content.
+            Err(e) if e.kind() == ErrorKind::InvalidData || !path.is_file() => continue,
+            Err(e) => {
+                unread.push(format!("{rel_path}: {e}"));
+                continue;
+            }
         };
 
         let tokens = (result.content.len() as f64 / BYTES_PER_TOKEN) as usize;
@@ -142,7 +157,7 @@ pub(super) fn collect_files(config: &IngestConfig) -> Vec<DigestFile> {
         files.remove(i);
     }
 
-    files
+    (files, unread)
 }
 
 /// Get list of changed files from git.
@@ -210,7 +225,7 @@ pub(super) fn apply_budget(
             if file.tokens > 500 && !file.is_changed {
                 // Re-read with ABSOLUTE path from project root
                 let path = root.join(&file.rel_path);
-                if let Some(result) = read_and_compress(&path, IngestLevel::Aggressive) {
+                if let Ok(Some(result)) = read_and_compress(&path, IngestLevel::Aggressive) {
                     file.content = result.content;
                     file.tokens = (file.content.len() as f64 / BYTES_PER_TOKEN) as usize;
                 }

@@ -9,7 +9,7 @@
 use crate::commands::Commands;
 use crate::ingest;
 use crate::main_args::parse_token_budget;
-use crate::router::handlers::common::CommandContext;
+use crate::router::handlers::common::{failure_lines, CommandContext, FAILED_EXIT};
 use crate::OutputFormat;
 
 pub(crate) fn run(cmd: &Commands, ctx: &CommandContext) {
@@ -109,9 +109,14 @@ pub(crate) fn run(cmd: &Commands, ctx: &CommandContext) {
             max_loc: max_loc.unwrap_or(500),
             agent_mode,
         };
-        if let Err(e) = ingest::run_ingest(&config) {
+        let unread = ingest::run_ingest(&config).unwrap_or_else(|e| {
             let message = format!("trs ingest: write failed: {e}");
             crate::exec_verdict::exit_with_error(ctx.format, &message, 1)
+        });
+        if !unread.is_empty() {
+            // stderr: stdout is the path or digest that spark and pipes capture.
+            eprint!("{}", failure_lines(&unread));
+            std::process::exit(FAILED_EXIT);
         }
     }
 }
