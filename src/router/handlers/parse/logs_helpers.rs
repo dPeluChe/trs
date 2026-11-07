@@ -13,12 +13,9 @@ impl ParseHandler {
         // - Common: 2024/01/15 10:30:00, 01/15/2024 10:30:00
         // - Time only: 10:30:00, 10:30:00.123
 
-        let chars: Vec<char> = line.chars().collect();
-
         // ISO 8601 with T separator: 2024-01-15T10:30:00
         // Format: YYYY-MM-DDTHH:MM:SS
-        if chars.len() >= 19 {
-            let potential = &line[..19.min(line.len())];
+        if let Some(potential) = line.get(..19) {
             if Self::is_iso8601_timestamp(potential) {
                 // Check for milliseconds and timezone
                 let mut end = 19;
@@ -50,13 +47,12 @@ impl ParseHandler {
                         }
                     }
                 }
-                return Some(line[..end].to_string());
+                return Some(line.get(..end).unwrap_or(potential).to_string());
             }
         }
 
         // ISO 8601 with space separator: 2024-01-15 10:30:00
-        if chars.len() >= 19 {
-            let potential = &line[..19.min(line.len())];
+        if let Some(potential) = line.get(..19) {
             if Self::is_iso8601_space_timestamp(potential) {
                 let mut end = 19;
                 if line.len() > 19 && line[19..].starts_with('.') {
@@ -71,24 +67,21 @@ impl ParseHandler {
         }
 
         // Slash date format: 2024/01/15 10:30:00
-        if chars.len() >= 19 {
-            let potential = &line[..19.min(line.len())];
+        if let Some(potential) = line.get(..19) {
             if Self::is_slash_date_timestamp(potential) {
                 return Some(potential.to_string());
             }
         }
 
         // Syslog format: Jan 15 10:30:00
-        if chars.len() >= 15 {
-            let potential = &line[..15.min(line.len())];
+        if let Some(potential) = line.get(..15) {
             if Self::is_syslog_timestamp(potential) {
                 return Some(potential.to_string());
             }
         }
 
         // Time only at start: 10:30:00 or 10:30:00.123
-        if chars.len() >= 8 {
-            let potential = &line[..8.min(line.len())];
+        if let Some(potential) = line.get(..8) {
             if Self::is_time_only(potential) {
                 let mut end = 8;
                 if line.len() > 8 && line[8..].starts_with('.') {

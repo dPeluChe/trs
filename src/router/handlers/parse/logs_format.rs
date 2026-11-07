@@ -161,11 +161,7 @@ impl ParseHandler {
             output.push_str("repeated lines:\n");
             for repeated in &logs_output.repeated_lines {
                 if repeated.count > 1 {
-                    let preview = if repeated.line.len() > 60 {
-                        format!("{}...", &repeated.line[..57])
-                    } else {
-                        repeated.line.clone()
-                    };
+                    let preview = crate::text_util::truncate(&repeated.line, 60);
                     output.push_str(&format!(
                         "  [x{}] {} (lines {}-{})\n",
                         repeated.count, preview, repeated.first_line, repeated.last_line
@@ -193,11 +189,7 @@ impl ParseHandler {
                     LogLevel::Fatal => "[F]",
                     _ => "[!]",
                 };
-                let preview = if entry.message.len() > 80 {
-                    format!("{}...", &entry.message[..77])
-                } else {
-                    entry.message.clone()
-                };
+                let preview = crate::text_util::truncate(&entry.message, 80);
                 output.push_str(&format!(
                     "  {} {} {}\n",
                     level_indicator, entry.line_number, preview
@@ -232,7 +224,7 @@ impl ParseHandler {
                         "{} {} {}\n",
                         level_indicator,
                         entry.line_number,
-                        Self::preview_msg(&entry.message, 100)
+                        crate::text_util::truncate(&entry.message, 100)
                     ));
                     i += 1;
 
@@ -241,7 +233,7 @@ impl ParseHandler {
                         output.push_str(&format!(
                             "     {} {}\n",
                             entries[i].line_number,
-                            Self::preview_msg(&entries[i].message, 100)
+                            crate::text_util::truncate(&entries[i].message, 100)
                         ));
                         i += 1;
                     }
@@ -276,7 +268,7 @@ impl ParseHandler {
                         "{} {} {}\n",
                         level_indicator,
                         first.line_number,
-                        Self::preview_msg(&first.message, 80)
+                        crate::text_util::truncate(&first.message, 80)
                     ));
                     output.push_str(&format!(
                         "     [...{} similar {} lines...]\n",
@@ -288,7 +280,7 @@ impl ParseHandler {
                             "{} {} {}\n",
                             level_indicator,
                             last.line_number,
-                            Self::preview_msg(&last.message, 80)
+                            crate::text_util::truncate(&last.message, 80)
                         ));
                     }
                 } else {
@@ -299,7 +291,7 @@ impl ParseHandler {
                             "{} {} {}\n",
                             Self::level_indicator(e.level),
                             e.line_number,
-                            Self::preview_msg(&e.message, 80)
+                            crate::text_util::truncate(&e.message, 80)
                         ));
                     }
                 }
@@ -318,7 +310,7 @@ impl ParseHandler {
                     count += 1;
                 }
 
-                let preview = Self::preview_msg(&entry.line, 80);
+                let preview = crate::text_util::truncate(&entry.line, 80);
                 if count >= 3 {
                     output.push_str(&format!("  {} {}\n", entry.line_number, preview));
                     output.push_str(&format!("     [...repeated {} times...]\n", count - 2));
@@ -361,15 +353,6 @@ impl ParseHandler {
             LogLevel::Error => "error",
             LogLevel::Fatal => "fatal",
             LogLevel::Unknown => "",
-        }
-    }
-
-    /// Preview a message, truncating if needed.
-    fn preview_msg(msg: &str, max: usize) -> String {
-        if msg.len() > max {
-            format!("{}...", &msg[..max - 3])
-        } else {
-            msg.to_string()
         }
     }
 

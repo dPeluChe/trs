@@ -199,9 +199,13 @@ fn tee_section() -> String {
         match fs::read_to_string(&path) {
             Ok(content) => {
                 let truncated = if content.len() > MAX_TEE_BYTES_PER_FILE {
+                    let mut cut = MAX_TEE_BYTES_PER_FILE;
+                    while !content.is_char_boundary(cut) {
+                        cut -= 1;
+                    }
                     format!(
                         "{}\n... [truncated, original {} bytes] ...\n",
-                        &content[..MAX_TEE_BYTES_PER_FILE],
+                        &content[..cut],
                         content.len()
                     )
                 } else {

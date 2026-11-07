@@ -358,20 +358,11 @@ impl ParseHandler {
 
         // Handle standard format with tab indentation: "\tmodified:   path" or "\tnew file:   path"
         // Lines can start with tabs, have status, colon, then path
-        // We need to find the colon position using char_indices for UTF-8 safety
-        if line.contains(':') {
-            // Use char_indices for UTF-8 safe slicing
-            let char_indices: Vec<(usize, char)> = line.char_indices().collect();
-            let colon_char_idx = char_indices.iter().position(|(_, c)| *c == ':')?;
-
-            let before_colon = line[..colon_char_idx].trim();
+        if let Some(colon) = line.find(':') {
+            let before_colon = line[..colon].trim();
             // Remove leading tabs from status
             let status = before_colon.trim_start_matches('\t').trim();
-            let path_start = char_indices
-                .get(colon_char_idx + 1)
-                .map(|(i, _)| *i)
-                .unwrap_or(line.len());
-            let path = line[path_start..].trim();
+            let path = line[colon + 1..].trim();
 
             if path.is_empty() {
                 return None;
