@@ -1,4 +1,6 @@
-use super::common::{csv_row, tsv_row, CommandContext, CommandError, CommandResult, CommandStats};
+use super::common::{
+    check_root, csv_row, tsv_row, CommandContext, CommandError, CommandResult, CommandStats,
+};
 use super::types::CommandHandler;
 use crate::OutputFormat;
 
@@ -10,6 +12,9 @@ pub(crate) struct Replacement {
     /// Number of individual matches replaced in this line.
     match_count: usize,
 }
+
+/// Exit code for a run that could not finish, as grep's 2.
+const FAILED: i32 = 2;
 
 /// Handler for the `replace` command.
 pub(crate) struct ReplaceHandler;
@@ -42,20 +47,23 @@ impl ReplaceHandler {
     pub(crate) fn execute_replace(
         &self,
         input: &ReplaceInput,
-    ) -> CommandResult<Vec<(String, Vec<Replacement>)>> {
+    ) -> CommandResult<(Vec<(String, Vec<Replacement>)>, Vec<String>)> {
         use grep::matcher::Matcher;
         use grep::regex::RegexMatcher;
         use ignore::WalkBuilder;
+
+        check_root(&input.path)?;
 
         // Build the regex matcher
         let matcher =
             RegexMatcher::new(&input.search).map_err(|e| CommandError::ExecutionError {
                 message: format!("Invalid regex pattern '{}': {}", input.search, e),
-                exit_code: Some(2),
+                exit_code: Some(FAILED),
             })?;
 
         // Shared state for collecting replacements per file
         let mut file_replacements: Vec<(String, Vec<Replacement>)> = Vec::new();
+        let mut failures: Vec<String> = Vec::new();
 
         // Build the directory walker with ignore rules
         let mut walk_builder = WalkBuilder::new(&input.path);
@@ -75,16 +83,21 @@ impl ReplaceHandler {
         for entry_result in walk_builder.build() {
             let entry = match entry_result {
                 Ok(e) => e,
-                Err(_) => continue,
+                Err(e) => {
+                    failures.push(e.to_string());
+                    continue;
+                }
             };
 
-            // Skip directories
-            if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+            // Skip directories. Nested symlinks stay skipped; a named one is the target.
+            let is_file = entry.file_type().is_some_and(|ft| ft.is_file());
+            if !is_file && !(entry.depth() == 0 && entry.path().is_file()) {
                 continue;
             }
 
             // Skip files inside ignored directories
-            let should_skip = entry.path().components().any(|c| {
+            let below_root = entry.path().strip_prefix(&input.path);
+            let should_skip = below_root.unwrap_or(entry.path()).components().any(|c| {
                 if let std::path::Component::Normal(name) = c {
                     name.to_str()
                         .map(|s| ignore_dirs.contains(s))
@@ -108,9 +121,21 @@ impl ReplaceHandler {
             let path = entry.path().to_string_lossy().to_string();
 
             // Read file content
-            let content = match std::fs::read_to_string(entry.path()) {
-                Ok(c) => c,
-                Err(_) => continue, // Skip files we can't read
+            let bytes = match std::fs::read(entry.path()) {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    failures.push(format!("{path}: {e}"));
+                    continue;
+                }
+            };
+            let content = match String::from_utf8(bytes) {
+                Ok(content) => content,
+                Err(e) => {
+                    if matcher.is_match(e.as_bytes()).unwrap_or(false) {
+                        failures.push(format!("{path}: not UTF-8, not replaced"));
+                    }
+                    continue;
+                }
             };
 
             // Find all matches in this file
@@ -169,7 +194,7 @@ impl ReplaceHandler {
                         new_content.push('\n');
                     }
                     if let Err(e) = std::fs::write(entry.path(), new_content) {
-                        eprintln!("Warning: Failed to write {}: {}", path, e);
+                        failures.push(format!("{path}: {e}"));
                         continue;
                     }
                 }
@@ -177,7 +202,27 @@ impl ReplaceHandler {
             }
         }
 
-        Ok(file_replacements)
+        Ok((file_replacements, failures))
+    }
+
+    /// A failure must not read as "No changes made", so it reaches stdout too.
+    fn finish(output: &str, failures: &[String], format: OutputFormat) -> CommandResult {
+        if failures.is_empty() {
+            print!("{output}");
+            return Ok(());
+        }
+        if format == OutputFormat::Json {
+            let mut document: serde_json::Value = serde_json::from_str(output).unwrap_or_default();
+            document["failed"] = serde_json::json!(failures);
+            let json = crate::exec_verdict::json_document(&document.to_string(), FAILED, || None);
+            println!("{json}");
+        } else {
+            print!("{output}");
+            for failure in failures {
+                crate::exec_verdict::notice(format, &format!("failed: {failure}\n"));
+            }
+        }
+        Err(CommandError::Reported { exit_code: FAILED })
     }
 
     /// Format replace output based on the specified format.
@@ -363,7 +408,7 @@ impl CommandHandler for ReplaceHandler {
 
     fn execute(&self, input: &Self::Input, ctx: &CommandContext) -> CommandResult {
         // Execute the replace
-        let replacements = self.execute_replace(input)?;
+        let (replacements, failures) = self.execute_replace(input)?;
 
         let total_replacements: usize = replacements
             .iter()
@@ -391,8 +436,7 @@ impl CommandHandler for ReplaceHandler {
                     .with_extra("Dry run", input.dry_run.to_string());
                 stats.print();
             }
-            print!("{}", output);
-            return Ok(());
+            return Self::finish(&output, &failures, ctx.format);
         }
 
         // Format and print the output
@@ -410,7 +454,7 @@ impl CommandHandler for ReplaceHandler {
             stats.print();
         }
 
-        print!("{}", output);
+        let result = Self::finish(&output, &failures, ctx.format);
 
         if ctx.format.is_table() {
             eprintln!(
@@ -419,7 +463,7 @@ impl CommandHandler for ReplaceHandler {
             );
         }
 
-        Ok(())
+        result
     }
 }
 

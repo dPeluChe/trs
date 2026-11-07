@@ -131,16 +131,14 @@ fn test_html2md_nonexistent_file() {
 
 #[test]
 fn test_replace_nonexistent_directory() {
-    // Replace command succeeds with "No changes made" for non-existent directories
-    // since it's designed to be idempotent
     let mut cmd = Command::cargo_bin("trs").unwrap();
     cmd.arg("replace")
         .arg("nonexistent_dir_12345")
         .arg("pattern")
         .arg("replacement")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("No changes"));
+        .code(2)
+        .stderr(predicate::str::contains("cannot read"));
 }
 
 // ============================================================

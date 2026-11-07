@@ -135,6 +135,19 @@ pub(crate) fn estimate_tokens(bytes: usize) -> usize {
     bytes / 4
 }
 
+/// The walker skips a root it cannot read, which would read as "no matches".
+pub(crate) fn check_root(path: &std::path::Path) -> CommandResult {
+    let root = if path.is_dir() {
+        std::fs::read_dir(path).map(drop)
+    } else {
+        std::fs::metadata(path).map(drop)
+    };
+    root.map_err(|e| CommandError::ExecutionError {
+        message: format!("cannot read {}: {}", path.display(), e),
+        exit_code: Some(2),
+    })
+}
+
 fn quote_csv(field: &str) -> String {
     format!("\"{}\"", field.replace('"', "\"\""))
 }

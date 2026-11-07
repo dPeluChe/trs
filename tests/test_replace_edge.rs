@@ -96,14 +96,13 @@ fn test_replace_file_as_path() {
 #[test]
 fn test_replace_nonexistent_directory() {
     let mut cmd = Command::cargo_bin("trs").unwrap();
-    // Nonexistent directory should still succeed (empty results)
     cmd.arg("replace")
         .arg("/nonexistent/directory/xyz123")
         .arg("test")
         .arg("replacement")
         .arg("--dry-run")
         .assert()
-        .success();
+        .code(2);
 }
 
 // ============================================================
