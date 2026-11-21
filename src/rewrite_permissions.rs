@@ -167,14 +167,115 @@ fn skip_runner_opts<'a>(wrapper: &str, mut body: &'a str) -> &'a str {
     body
 }
 
+/// Whitespace-separated word cursor over a command string. `rest` is the
+/// tail after the last consumed word, trimmed — the inner command slice.
+struct Words<'a> {
+    s: &'a str,
+    pos: usize,
+}
+
+impl<'a> Words<'a> {
+    fn new(s: &'a str) -> Self {
+        Self { s, pos: 0 }
+    }
+    fn next(&mut self) -> Option<&'a str> {
+        let tail = self.s[self.pos..].trim_start();
+        let w = tail.split_whitespace().next()?;
+        self.pos = self.s.len() - tail.len() + w.len();
+        Some(w)
+    }
+    fn rest(&self) -> &'a str {
+        self.s[self.pos..].trim_start()
+    }
+}
+
+/// `nix develop -c 'rm -rf /'` quotes the whole inner command; rules are
+/// written against the unquoted text. Strip one layer only when the quotes
+/// are the sole pair (`'a' 'b'` stays untouched).
+fn unquote_inner(s: &str) -> &str {
+    let b = s.as_bytes();
+    if s.len() < 2 {
+        return s;
+    }
+    let q = b[0];
+    if !matches!(q, b'\'' | b'"') || b[b.len() - 1] != q {
+        return s;
+    }
+    let inner = &s[1..s.len() - 1];
+    if inner.contains(['\'', '"']) {
+        s
+    } else {
+        inner
+    }
+}
+
+/// `timeout [OPTS] DURATION cmd…`: mirrors `unwrap_timeout` — `-s`/`--signal`
+/// and `-k`/`--kill-after` take a value, the duration must start with a
+/// digit, whatever follows is the inner command.
+fn skip_timeout(seg: &str) -> Option<&str> {
+    let mut w = Words::new(seg);
+    let mut tok = w.next()?;
+    while tok.starts_with('-') && tok != "--" {
+        if matches!(tok, "-s" | "--signal" | "-k" | "--kill-after") {
+            w.next()?;
+        }
+        tok = w.next()?;
+    }
+    if tok == "--" {
+        tok = w.next()?;
+    }
+    if !tok.chars().next()?.is_ascii_digit() {
+        return None;
+    }
+    let inner = unquote_inner(w.rest());
+    (!inner.is_empty()).then_some(inner)
+}
+
+/// `nix develop|shell … -c cmd` / `--command cmd`: everything after the
+/// marker is the inner command (mirrors `unwrap_runner`).
+fn skip_nix_command(seg: &str) -> Option<&str> {
+    let mut w = Words::new(seg);
+    match w.next()? {
+        "develop" | "shell" => {}
+        _ => return None,
+    }
+    while let Some(tok) = w.next() {
+        if tok == "-c" || tok == "--command" {
+            let inner = unquote_inner(w.rest());
+            return (!inner.is_empty()).then_some(inner);
+        }
+    }
+    None
+}
+
+/// Exec wrappers the transparent list does not cover: the inner command is
+/// what rules are written against. Windows `timeout` is a different builtin
+/// (it never runs a command), so it is not unwrapped there.
+fn skip_exec_wrapper(seg: &str) -> Option<&str> {
+    let (first, rest) = seg.split_once(char::is_whitespace)?;
+    match first {
+        "nix" => skip_nix_command(rest),
+        "timeout" if !cfg!(windows) => skip_timeout(rest),
+        _ => None,
+    }
+}
+
 /// The command a rule is written against: `VAR=` words and the wrappers trs
 /// rewrites through (`time git push`) removed.
 pub(crate) fn strip_wrappers(seg: &str) -> &str {
     let mut rest = strip_env(seg);
-    while let Some((wrapper, inner)) = crate::rewrite_decide::strip_transparent_prefix(rest) {
-        rest = strip_env(skip_runner_opts(wrapper, inner.trim_start()));
+    loop {
+        let prev = rest;
+        while let Some((wrapper, inner)) = crate::rewrite_decide::strip_transparent_prefix(rest) {
+            rest = strip_env(skip_runner_opts(wrapper, inner.trim_start()));
+        }
+        if let Some(inner) = skip_exec_wrapper(rest) {
+            rest = strip_env(inner);
+        }
+        if rest == prev {
+            return rest;
+        }
     }
-    rest
 }
 
 /// Commands Claude approves without asking inside the working dir; anything
@@ -340,5 +441,35 @@ mod tests {
         assert_eq!(strip_wrappers("uv run --with x rm -rf d"), "rm -rf d");
         assert_eq!(strip_wrappers("poetry run --quiet rm -rf d"), "rm -rf d");
         assert_eq!(strip_wrappers("time -p rm"), "-p rm");
+    }
+
+    #[test]
+    fn a_rule_sees_through_exec_wrappers() {
+        assert_eq!(strip_wrappers("timeout 5 rm -rf d"), "rm -rf d");
+        assert_eq!(
+            strip_wrappers("timeout -s KILL 10s cargo test"),
+            "cargo test"
+        );
+        assert_eq!(
+            strip_wrappers("timeout --preserve-status --kill-after=2 5 rm"),
+            "rm"
+        );
+        assert_eq!(strip_wrappers("nix develop -c rm -rf d"), "rm -rf d");
+        assert_eq!(
+            strip_wrappers("nix develop ./flake#dev --command cargo test"),
+            "cargo test"
+        );
+        assert_eq!(strip_wrappers("nix develop -c 'rm -rf d'"), "rm -rf d");
+        assert_eq!(strip_wrappers("FOO=1 timeout 5 rm"), "rm");
+        assert_eq!(strip_wrappers("timeout 5 uv run --with x rm"), "rm");
+    }
+
+    #[test]
+    fn exec_wrappers_without_an_inner_command_stay() {
+        assert_eq!(strip_wrappers("timeout 5"), "timeout 5");
+        assert_eq!(strip_wrappers("timeout rm"), "timeout rm");
+        assert_eq!(strip_wrappers("nix develop"), "nix develop");
+        assert_eq!(strip_wrappers("nix flake check"), "nix flake check");
+        assert_eq!(strip_wrappers("nix develop -c"), "nix develop -c");
     }
 }

@@ -60,7 +60,6 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [-] **New parsers for Flutter, Terraform, kubectl, dotnet**: not building them: the author does not run these tools, so nothing here can be measured or verified. Reopen with a real user.
 - [ ] **Diff indent**: drop the two spaces trs adds before each change line (3.7% of compact diff output; all the rest of the output is the change itself).
 - [ ] **stderr policy through `timeout` and `bash -c`**: `timeout 300 cargo build` does not merge stderr; `stderr_owner` covers runners only.
-- [ ] **Deny rules through non-prefix wrappers**: `nix develop -c rm` and `timeout 5 rm` hide the inner program from `strip_wrappers`.
 - [ ] **`grep` on one file with `key:value` lines**: still grouped as files. Needs a decision from argv.
 - [ ] **`--json` on unread test output**: test runners keep the empty parsed shape on purpose; decide whether that contract changes.
 - [ ] **Docs auditor extensions**: recommend section-level split points; detect CLAUDE.md content duplicating README.md; SQL detection in language-less fences.
@@ -180,9 +179,13 @@ Every claim below was verified against trs source before filing.
 
 ### Already tracked, new evidence
 
-- [ ] **Deny rules through non-prefix wrappers** (`nix develop -c rm`,
+- [~] **Deny rules through non-prefix wrappers** (`nix develop -c rm`,
   `timeout 5 rm`): rtk #5157/#5062 confirm the class is active across tools.
-  `strip_wrappers` covers `uv run --with` only.
+  `strip_wrappers` now unwraps `timeout [opts] DURATION cmd` (GNU semantics,
+  skipped on Windows where `timeout` is a different builtin) and
+  `nix develop|shell … -c|--command cmd`, including one layer of outer quotes.
+  Still open: `env`, `nice`, `bash -c`/`sh -c`, `xargs`, `find -exec` hide
+  the inner program the same way.
 - [ ] **Token estimator bytes/4**: rtk #5135 measured billed tokens at
   1.7–4.1× the bytes/4 estimate (median 0.50 of billed) on 655 real
   requests. Strengthens the "est." label plan.
