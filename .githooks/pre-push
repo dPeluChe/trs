@@ -4,6 +4,10 @@
 
 set -e
 
+# A linked worktree exports GIT_DIR to hooks; tests that build temp repos
+# would then commit into this one and set core.bare in its config.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX
+
 echo "  [pre-push] cargo fmt -- --check"
 cargo fmt -- --check
 

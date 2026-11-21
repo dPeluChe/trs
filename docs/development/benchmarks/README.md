@@ -219,6 +219,76 @@ Read by eye before trusting a cell:
   PIDs in a list the agent rarely reads whole, and the full list is one path
   away.
 
+## Other approaches: images and token-oriented formats
+
+Two ideas from outside per-command compression, read on 2026-11-21. Their
+figures are their own claims and were not reproduced here. We list them
+because they are good work, and because saying why trs does or does not follow
+them is part of the measurement.
+
+### Context rendered as images (pxpipe)
+
+A local proxy redraws the bulky part of each request (system prompt, tool
+docs, old history) as PNG pages in a 5x8 bitmap font. An image is billed by
+pixel area, not by characters, so dense content packs about 3 characters per
+image token against about 1 per text token. It reports a 59-70% lower bill on
+`claude-fable-5`.
+
+Why trs does not do this:
+
+- **The reader decides.** By its own tables, `claude-opus-5-5` reads 3 of 15
+  exact hex IDs from the pages; `claude-sonnet-5-5` and `claude-haiku-5-5` are
+  listed as unsupported. Only some models read the pages reliably.
+- **Misreads are confident.** In that font `0` and `8` differ by one pixel, and
+  a weak reader answers with a plausible wrong ID instead of saying it cannot
+  read it. trs promises that its summary never contradicts the real output.
+- **Different layer.** It rewrites the whole request; trs shortens what one
+  command prints. The two can run together.
+
+What we take from it:
+
+- **Count with the provider, not an estimate.** It sends the uncompressed
+  request to the free `count_tokens` endpoint on every call and logs the
+  difference. These benchmarks count with `o200k_base` and `trs stats` uses
+  bytes/4; neither is the tokenizer that bills a Claude session.
+- **Characters per token depend on the content.** It fits a ratio per content
+  class (JSON, logs, code, prose) from its own log and falls back to a fixed
+  constant when the fit is not trustworthy. Its production data puts dense
+  content at about 1.2-1.5 characters per token, far from 4.
+- **Compress only where the numbers win, and publish where it fails.** It
+  leaves sparse prose as text, and its README has a per-model table of where
+  the approach breaks.
+
+### Token-oriented formats (TOON)
+
+TOON keeps YAML-style indentation for nested objects and writes a uniform
+array as a table with the field names once. Its published benchmark
+(`o200k_base`, 4 models, 244 retrieval questions):
+
+| compared with | uniform arrays | nested data |
+|---|---:|---:|
+| indented JSON | 42-61% fewer tokens | 15-35% fewer |
+| minified JSON | 23-37% fewer | 2-20% more |
+| CSV | 3-9% more | CSV cannot hold it |
+
+What that means for trs:
+
+- **The saving is naming the columns once.** trs has that already in `--csv`
+  and `--tsv`, and on flat data CSV beats TOON.
+- **The 40-60% headline is against indented JSON.** `trs --json` is already
+  minified, where TOON wins only on uniform arrays and loses on nested data.
+- **YAML is not the saving.** It spends more tokens than minified JSON
+  (3,487 against 2,892 in that benchmark).
+- **Inside agent loops the saving shrinks.** An end-to-end study on five
+  open-weight models (arXiv 2605.29676, "Notation Matters") measured up to 18%
+  fewer tokens with TOON at about 9 points less accuracy, plus parse failures
+  that carried across turns.
+
+`--json` stays JSON: scripts read it, and structured output is never
+rewritten. A header-once table for uniform arrays in `trs json` and
+`trs read`, which an agent reads to understand a file, is a candidate once it
+is measured (roadmap Phase 2.11).
+
 ## Facts, not literal text
 
 2026-11-05, v0.9.1 against the latest release of the closest similar tool, same
