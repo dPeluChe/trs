@@ -32,8 +32,11 @@ signal), `alexgreensh/token-optimizer`, `AgusRdz/chop` (0 open issues),
    bug three times (#5142 playwright `PASS (0) FAIL (0)`, #3588 jest,
    #3935 vitest, #4694/#4420 cargo nextest dropping `N failed`/`N skipped`).
    When the playwright parser lands (TASK_TODO Phase 2), flaky must be a
-   first-class count. Vitest/jest print `flaky` in the summary line;
-   nextest prints `FLAKY`.
+   first-class count. Correction (verified 2026-11-21 with real runs):
+   jest@30 `retryTimes` and vitest@3 `retry` emit NO retry signal in
+   default/verbose/json output, so there is nothing to preserve there;
+   pytest-rerunfailures DOES print `N rerun` (now parsed), and playwright /
+   nextest print retry markers.
 
 4. **Plugin PATH resolution.** `init_templates_plugins.rs` spawns bare
    `"trs"`; GUI-launched agents (OpenCode Desktop from Finder) may lack
@@ -179,3 +182,15 @@ Priority order: (1) git-status footer `contains()` bug, (2) flaky counts in
 test parsers + playwright-when-written, (3) plugin PATH fallback, (4) git
 diff `\r` marker, (5) `nix/timeout` deny-rule gap (already tracked), (6)
 ingest ignore/encoding audit, (7) output-token A/B for rewrite.
+
+## Resolution status (2026-11-21, PR #292)
+
+Shipped from this sweep: git-status footer ordering fix + phantom-hint
+guard, git-diff `\r` note, `ls -F`/`-p` classify markers, pytest `N rerun`
+counts, plugin install-dir fallback (JS + Hermes), JSON hook absolute-path
+embedding at `trs init`, ingest `core.quotepath=false` + non-UTF-8 files
+reported as unread. Verified N/A: jest/vitest emit no retry signal;
+`rg -l`/blob/show/argv-`--`/musl items stay as documented. Still open in
+TASK_TODO Phase 2.10: deny-rules through `nix`/`timeout` wrappers, token
+estimator bytes/4, Hermes live mutation check, Homebrew tap, output-token
+A/B and per-call work gate measurements.

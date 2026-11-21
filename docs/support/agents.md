@@ -286,7 +286,11 @@ install scope.
   CLI applied a user-level `*.instructions.md` even in a session that
   touched no file.
 - **Fail-closed:** a `preToolUse` command hook that errors denies the
-  tool call, so `trs` must be on the PATH Copilot CLI runs hooks with.
+  tool call. `trs init` embeds the absolute `trs` path in the hook
+  command when it was installed from a stable location (`~/.cargo/bin`,
+  `~/.local/bin`, Homebrew, `/usr/local/bin`, npm `node_modules`), so the
+  hook still fires when the agent's PATH lacks `trs`; unusual install
+  locations keep the bare `trs` name and need it on PATH.
 - **Checking it:** `trs doctor` warns when a hook is installed but no
   run has come through one. To see whether Copilot CLI loads the hook:
 

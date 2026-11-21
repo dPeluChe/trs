@@ -35,7 +35,9 @@ digest. It lists them as `failed:` lines on stderr, so stdout stays the path
 or the content, marks the digest `<!-- incomplete: ... -->`, and exits 2.
 `--fresh` regenerates such a digest instead of reusing it. Binary files and
 dangling symlinks are not failures, and neither is anything skipped or
-excluded.
+excluded. Text files that are not valid UTF-8 (Latin-1, Windows-1252, …)
+are not silently dropped either: they land in the same `failed:` list so
+the digest says what it could not read.
 
 **In-band budget warning (agent mode):** the oversized-digest warning normally
 goes to stderr, but agents run with `2>/dev/null`, so it never reaches them.
