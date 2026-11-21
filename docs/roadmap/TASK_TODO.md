@@ -149,21 +149,24 @@ Every claim below was verified against trs source before filing.
 
 ### Confirmed bugs to fix
 
-- [ ] **`git status` footer `contains()` drops real files.** `git_status.rs`
-  skips any line containing "nothing to commit"/"working tree clean"; a file
-  with that name (porcelain `??` or tab-indented long entry) is silently
-  dropped. Same class as rtk #5139. Match footers by position, not substring.
-- [ ] **`git diff` strips `\r`**: `str::lines()` eats `\r\n`, so a
-  line-ending-only change shows identical `-`/`+` lines (rtk #5084). Detect
-  `\r` in raw input and mark it.
-- [ ] **Flaky/retried counts in test parsers.** jest/vitest/pytest have no
-  `flaky` handling; rtk shipped this bug 3x (#5142, #3588, #3935) plus
-  nextest (#4694, #4420). Vitest/jest print `flaky` in summary; nextest
-  prints `FLAKY`. Required when the playwright parser lands (Phase 2).
-- [ ] **Plugin PATH fallback.** OpenCode/Kilo/Pi plugins `spawn("trs")`
-  bare; GUI-launched agents can lack `~/.local/bin` on PATH → silent
-  no-rewrite (rtk #4462). Resolve against install locations or have
-  `trs doctor` name the cause (it already warns hook-never-fired).
+- [x] **`git status` footer `contains()` drops real files.** Fixed: file
+  entries parse before the prose/footer skip, so a file named like a footer
+  survives in both porcelain and long formats. Regression tests in
+  `test_parser_git_status.rs`.
+- [x] **`git diff` strips `\r`**: fixed by flagging raw `\r` in the input
+  with a `(note: carriage returns in diff; …)` line on text formats
+  (rtk #5084).
+- [~] **Flaky/retried counts in test parsers.** pytest done: `reruns` field
+  on `TestSummary`, parsed from the `N rerun` summary token and surfaced in
+  compact/agent/JSON output. jest/vitest still open: no retry fixtures yet,
+  do not guess output formats. Playwright parser lands in Phase 2 and must
+  keep retried≠passed (rtk #5142, #3588, #3935; nextest #4694, #4420).
+- [x] **Plugin PATH fallback.** JS plugins (OpenCode, Kilo, Pi, OpenClaw)
+  and the Hermes Python plugin now try `~/.local/bin`, `/opt/homebrew/bin`,
+  `/usr/local/bin` when bare `trs` is not on PATH. Follow-up: shell-command
+  hooks (`"command": "trs rewrite"` in init_templates.rs) have the same
+  exposure; fix by resolving `current_exe` at `trs init` time, only when it
+  points outside `target/`.
 - [ ] **Verify `ls -F/-p/-i/-s` fixtures.** rtk #5061 mangled these flag
   outputs; trs's `parse_ls` is flag-agnostic. Pin `dir/`, `*`/`@` suffixes
   and leading inode/block columns with fixtures.
@@ -205,13 +208,19 @@ Every claim below was verified against trs source before filing.
 
 ### `trs ingest` signals from repomix issues
 
-- [ ] **Audit ignore-file fidelity**: repomix #1873 (`.git/info/exclude`
-  negations inert), #1870 (patterns only top-level), #1872 (ancestor
-  `.ignore` skipped for subdirectory targets). Check `ingest/collect*`
-  against git's real semantics.
-- [ ] **Legacy encodings**: repomix #1878/#1966 — Shift-JIS/EUC-KR/GBK files
-  dropped as "binary". Verify `trs ingest` doesn't silently skip
-  non-UTF-8 sources the same way.
+- [x] **Audit ignore-file fidelity**: audited 2026-11-21. trs uses the
+  `ignore` crate (same engine as ripgrep) with `.gitignore`, `.ignore`,
+  global gitignore and `.git/info/exclude` all enabled, so repomix's
+  #1873/#1870/#1872 bug classes do not apply. Two real gaps found and fixed
+  instead: `get_changed_files` now passes `-c core.quotepath=false` (non-ASCII
+  paths came back C-quoted and never matched `rel_path`, silently dropping
+  them from `ingest --changed`), and `config.exclude` is still a substring
+  match (documented limitation, revisit only with a real case).
+- [x] **Legacy encodings**: fixed. Non-UTF-8 files without NUL bytes are no
+  longer silently skipped as "binary"; they surface in the digest's
+  `unread` list ("incomplete: N paths could not be read"). UTF-16 and other
+  NUL-bearing encodings still classify as binary; transcoding them needs an
+  encoding dependency, deferred.
 - Entity-level packing (#1642) and graph-aware selection (#1682) stay
   deferred: both need AST/symbol graphs, same reason as symbol-level dead
   code (Phase 2.7).

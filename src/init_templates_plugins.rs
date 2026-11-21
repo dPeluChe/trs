@@ -8,19 +8,34 @@
 macro_rules! js_via_trs {
     () => {
         r#"import { spawnSync } from "node:child_process";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+// GUI-launched agents can have a PATH without the trs install dir; try the
+// usual locations when the bare name does not resolve (ENOENT).
+const TRS_CANDIDATES = [
+  "trs",
+  join(homedir(), ".local", "bin", "trs"),
+  "/opt/homebrew/bin/trs",
+  "/usr/local/bin/trs",
+];
 
 const runTrs = (args, cmd) => {
-  try {
-    const r = spawnSync("trs", args, {
-      input: cmd,
-      encoding: "utf8",
-      timeout: 3000,
-      shell: process.platform === "win32",
-    });
-    return r.status === 0 && typeof r.stdout === "string" ? r.stdout : "";
-  } catch {
-    return "";
+  for (const bin of TRS_CANDIDATES) {
+    try {
+      const r = spawnSync(bin, args, {
+        input: cmd,
+        encoding: "utf8",
+        timeout: 3000,
+        shell: process.platform === "win32",
+      });
+      if (r.error) continue;
+      return r.status === 0 && typeof r.stdout === "string" ? r.stdout : "";
+    } catch {
+      // try the next candidate
+    }
   }
+  return "";
 };
 
 const viaTrs = (cmd) => runTrs(["rewrite"], cmd).replace(/\r?\n$/, "") || cmd;
@@ -34,30 +49,43 @@ const viaTrs = (cmd) => runTrs(["rewrite"], cmd).replace(/\r?\n$/, "") || cmd;
 macro_rules! js_decide {
     () => {
         r#"import { spawn } from "node:child_process";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+const TRS_CANDIDATES = [
+  "trs",
+  join(homedir(), ".local", "bin", "trs"),
+  "/opt/homebrew/bin/trs",
+  "/usr/local/bin/trs",
+];
 
 const decide = (cmd) => new Promise((resolve) => {
-  let out = "";
-  try {
-    const p = spawn("trs", ["rewrite", "--json"], {
-      timeout: 3000,
-      shell: process.platform === "win32",
-    });
-    p.stdout.setEncoding("utf8");
-    p.stdout.on("data", (d) => { out += d; });
-    p.stdin.on("error", () => {});
-    p.on("error", () => resolve(null));
-    p.on("close", (code) => {
-      try {
-        const d = code === 0 ? JSON.parse(out) : null;
-        resolve(typeof d?.rewrite === "string" && d.rewrite !== cmd ? d : null);
-      } catch {
-        resolve(null);
-      }
-    });
-    p.stdin.end(cmd);
-  } catch {
-    resolve(null);
-  }
+  const tryBin = (i) => {
+    if (i >= TRS_CANDIDATES.length) return resolve(null);
+    let out = "";
+    try {
+      const p = spawn(TRS_CANDIDATES[i], ["rewrite", "--json"], {
+        timeout: 3000,
+        shell: process.platform === "win32",
+      });
+      p.stdout.setEncoding("utf8");
+      p.stdout.on("data", (d) => { out += d; });
+      p.stdin.on("error", () => {});
+      p.on("error", () => tryBin(i + 1));
+      p.on("close", (code) => {
+        try {
+          const d = code === 0 ? JSON.parse(out) : null;
+          resolve(typeof d?.rewrite === "string" && d.rewrite !== cmd ? d : null);
+        } catch {
+          resolve(null);
+        }
+      });
+      p.stdin.end(cmd);
+    } catch {
+      tryBin(i + 1);
+    }
+  };
+  tryBin(0);
 });
 "#
     };
@@ -269,20 +297,38 @@ def register(ctx):
     ctx.register_hook("pre_tool_call", _pre_tool_call)
 
 
+def _trs_bins():
+    # GUI launches can have a PATH without the trs install dir; try the usual
+    # locations when the bare name does not resolve.
+    yield "trs"
+    for p in (
+        os.path.join(os.path.expanduser("~"), ".local", "bin", "trs"),
+        "/opt/homebrew/bin/trs",
+        "/usr/local/bin/trs",
+    ):
+        if os.path.isfile(p):
+            yield p
+
+
 def _via_trs(command):
-    try:
-        r = subprocess.run(
-            ["trs", "rewrite"],
-            input=command,
-            capture_output=True,
-            text=True,
-            timeout=3,
-            shell=(os.name == "nt"),
-        )
-    except Exception:
+    for bin in _trs_bins():
+        try:
+            r = subprocess.run(
+                [bin, "rewrite"],
+                input=command,
+                capture_output=True,
+                text=True,
+                timeout=3,
+                shell=(os.name == "nt"),
+            )
+        except OSError:
+            continue
+        except Exception:
+            return command
+        if r.returncode == 0:
+            return r.stdout.rstrip("\r\n") or command
         return command
-    out = r.stdout.rstrip("\r\n") if r.returncode == 0 else ""
-    return out or command
+    return command
 
 
 def _pre_tool_call(tool_name=None, args=None, **_kwargs):

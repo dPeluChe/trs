@@ -53,6 +53,8 @@ pub(crate) struct TestSummary {
     pub(crate) xpassed: usize,
     /// Number of error tests.
     pub(crate) errors: usize,
+    /// Rerun attempts reported by pytest-rerunfailures (not distinct tests).
+    pub(crate) reruns: usize,
     /// Total number of tests.
     pub(crate) total: usize,
     /// Total duration in seconds.

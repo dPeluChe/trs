@@ -31,7 +31,23 @@ pub(super) fn read_and_compress(
     path: &Path,
     level: IngestLevel,
 ) -> std::io::Result<Option<CompressResult>> {
-    Ok(compress(path, std::fs::read_to_string(path)?, level))
+    let bytes = std::fs::read(path)?;
+    let content = match String::from_utf8(bytes) {
+        Ok(s) => s,
+        Err(e) => {
+            // NUL bytes mark binary; invalid UTF-8 without them is
+            // legacy-encoded text (Latin-1, Windows-1252, …) that used to be
+            // dropped silently as if it were a binary.
+            if e.as_bytes().iter().take(8192).any(|&b| b == 0) {
+                return Ok(None);
+            }
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                format!("non-UTF-8 text in {}", path.display()),
+            ));
+        }
+    };
+    Ok(compress(path, content, level))
 }
 
 /// Intelligently extract what matters from a file's text for LLM consumption.

@@ -162,11 +162,19 @@ pub(super) fn collect_files(
 
 /// Get list of changed files from git.
 pub(super) fn get_changed_files(root: &Path, since: Option<&str>) -> Option<Vec<String>> {
+    // core.quotepath=false: otherwise non-ASCII paths come back C-quoted
+    // ("pa\303\251th") and never match the walked rel_path in `only`.
     let args = if let Some(ref_spec) = since {
-        vec!["diff", "--name-only", ref_spec]
+        vec![
+            "-c",
+            "core.quotepath=false",
+            "diff",
+            "--name-only",
+            ref_spec,
+        ]
     } else {
         // Uncommitted changes (staged + unstaged + untracked)
-        vec!["status", "--porcelain"]
+        vec!["-c", "core.quotepath=false", "status", "--porcelain"]
     };
 
     let output = Command::new("git")

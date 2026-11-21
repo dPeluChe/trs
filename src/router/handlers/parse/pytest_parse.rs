@@ -368,6 +368,7 @@ impl ParseHandler {
         let has_xfailed = lower.contains("xfailed");
         let has_xpassed = lower.contains("xpassed");
         let has_warnings = lower.contains("warning");
+        let has_rerun = lower.contains("rerun");
 
         (starts_with_equals
             || line
@@ -382,7 +383,8 @@ impl ParseHandler {
                 || has_deselected
                 || has_xfailed
                 || has_xpassed
-                || has_warnings)
+                || has_warnings
+                || has_rerun)
     }
 
     /// Parse pytest summary line into TestSummary.
@@ -413,6 +415,7 @@ impl ParseHandler {
         summary.errors = extract_count(&lower, "error");
         summary.xfailed = extract_count(&lower, "xfailed");
         summary.xpassed = extract_count(&lower, "xpassed");
+        summary.reruns = extract_count(&lower, "rerun");
 
         // Calculate total
         summary.total = summary.passed

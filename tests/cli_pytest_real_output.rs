@@ -44,3 +44,26 @@ fn every_mode_names_the_real_failures_and_their_errors() {
         );
     }
 }
+
+// pytest-rerunfailures reports re-executions in the summary; dropping the
+// count renders a flaky suite as a clean pass (rtk #5142 class).
+#[test]
+fn rerun_counts_survive_in_every_mode() {
+    let input = "============================= test session starts ==============================\ncollected 3 items\n\ntest_app.py .R.F                                                            [100%]\n\n=================================== FAILURES ===================================\n______________________________ test_broken _______________________________\n\n    def test_broken():\n>       assert False\nE       assert False\n\ntest_app.py:12: AssertionError\n=========================== short test summary info ============================\nFAILED test_app.py::test_broken - assert False\n=================== 1 failed, 2 passed, 3 rerun in 0.12s ====================\n";
+    for args in [
+        vec!["parse", "test", "--runner", "pytest"],
+        vec!["--json", "parse", "test", "--runner", "pytest"],
+    ] {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .args(&args)
+            .write_stdin(input)
+            .output()
+            .unwrap();
+        let text = String::from_utf8_lossy(&out.stdout).into_owned();
+        assert!(
+            text.contains("rerun"),
+            "{args:?}: rerun count missing in\n{text}"
+        );
+    }
+}
