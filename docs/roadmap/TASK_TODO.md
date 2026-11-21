@@ -138,6 +138,86 @@ Do not name those projects in commits, docs or the changelog when shipping these
 
 ---
 
+## Phase 2.10: Competitor GitHub issue sweep, 2026-11-21
+
+Source: open + recently-closed issues on rtk-ai/rtk (~1,700 open, the dominant
+signal), token-optimizer, repomix, headroom, claw-compactor,
+codebase-memory-mcp, chop (0 open), pi (ecosystem only). Full catalog with
+issue numbers and per-repo analysis:
+[`docs/development/competitor-issues-research.md`](../development/competitor-issues-research.md).
+Every claim below was verified against trs source before filing.
+
+### Confirmed bugs to fix
+
+- [ ] **`git status` footer `contains()` drops real files.** `git_status.rs`
+  skips any line containing "nothing to commit"/"working tree clean"; a file
+  with that name (porcelain `??` or tab-indented long entry) is silently
+  dropped. Same class as rtk #5139. Match footers by position, not substring.
+- [ ] **`git diff` strips `\r`**: `str::lines()` eats `\r\n`, so a
+  line-ending-only change shows identical `-`/`+` lines (rtk #5084). Detect
+  `\r` in raw input and mark it.
+- [ ] **Flaky/retried counts in test parsers.** jest/vitest/pytest have no
+  `flaky` handling; rtk shipped this bug 3x (#5142, #3588, #3935) plus
+  nextest (#4694, #4420). Vitest/jest print `flaky` in summary; nextest
+  prints `FLAKY`. Required when the playwright parser lands (Phase 2).
+- [ ] **Plugin PATH fallback.** OpenCode/Kilo/Pi plugins `spawn("trs")`
+  bare; GUI-launched agents can lack `~/.local/bin` on PATH → silent
+  no-rewrite (rtk #4462). Resolve against install locations or have
+  `trs doctor` name the cause (it already warns hook-never-fired).
+- [ ] **Verify `ls -F/-p/-i/-s` fixtures.** rtk #5061 mangled these flag
+  outputs; trs's `parse_ls` is flag-agnostic. Pin `dir/`, `*`/`@` suffixes
+  and leading inode/block columns with fixtures.
+
+### Already tracked, new evidence
+
+- [ ] **Deny rules through non-prefix wrappers** (`nix develop -c rm`,
+  `timeout 5 rm`): rtk #5157/#5062 confirm the class is active across tools.
+  `strip_wrappers` covers `uv run --with` only.
+- [ ] **Token estimator bytes/4**: rtk #5135 measured billed tokens at
+  1.7–4.1× the bytes/4 estimate (median 0.50 of billed) on 655 real
+  requests. Strengthens the "est." label plan.
+- [ ] **Hermes plugin**: rtk #3797 found Hermes `pre_tool_call` ignores
+  in-place `args` mutation. Verify trs's mutation surface live before
+  claiming support (integration already pending validation).
+- [ ] **Homebrew tap** stays low priority: rtk #5194 shows tap upkeep cost
+  (`conflicts_with`, untrusted-tap formula).
+
+### Evaluated: current behavior correct, filed for the record
+
+- `rg -l`/`grep -l`/`--files-with-matches` → `has_unread` → raw passthrough.
+  The path list is the payload for the next command; rtk #5197 shows what
+  "compressing" it costs. Leave raw.
+- `git merge-base`/`rev-parse`/`describe`: tiny outputs, generic fallback.
+- pytest "collected 0 items" renders `no tests found` with `is_empty`; pin
+  one fixture for exit-code preservation (rtk #5016 was a different defect).
+- `trs rewrite` argv `--` bug (rtk #5127): N/A, command arrives on stdin.
+- musl SIGILL (rtk #5043/#5115): N/A, release matrix is gnu/apple/msvc only.
+
+### Measurements to add
+
+- [ ] **Output-token A/B for rewrite on/off.** rtk #582: compressed input →
+  model wrote +50% output tokens, +18% total cost. `transcript_output.py`
+  already measures output tokens for the output-saver; extend the same
+  harness to rewrite on/off before widening savings claims.
+- [ ] **Per-call work gate.** cbm #3005: hook-augment spawned per tool call
+  even with an empty index. trs rewrite ~4ms is fine; any future per-call
+  work needs a cheap "is there anything to do" gate first.
+
+### `trs ingest` signals from repomix issues
+
+- [ ] **Audit ignore-file fidelity**: repomix #1873 (`.git/info/exclude`
+  negations inert), #1870 (patterns only top-level), #1872 (ancestor
+  `.ignore` skipped for subdirectory targets). Check `ingest/collect*`
+  against git's real semantics.
+- [ ] **Legacy encodings**: repomix #1878/#1966 — Shift-JIS/EUC-KR/GBK files
+  dropped as "binary". Verify `trs ingest` doesn't silently skip
+  non-UTF-8 sources the same way.
+- Entity-level packing (#1642) and graph-aware selection (#1682) stay
+  deferred: both need AST/symbol graphs, same reason as symbol-level dead
+  code (Phase 2.7).
+
+---
+
 ## Exegol (our agent desktop app, github.com/dPeluChe/exegol)
 
 Found 2026-10-21 while auditing `trs stats --by-agent`: Exegol's `digest.ts` calls
