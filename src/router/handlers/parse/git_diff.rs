@@ -58,6 +58,13 @@ impl ParseHandler {
             if let Some(header) = commit_header(&input) {
                 output = format!("{}\n{}", header, output);
             }
+            // lines() ate the CR: a line-ending-only change renders as
+            // identical -/+ lines, so say the CRs were there.
+            if input.contains('\r') && !diff.is_empty {
+                output.push_str(
+                    "(note: carriage returns in diff; -/+ lines may differ only in line endings)\n",
+                );
+            }
         }
 
         // Print stats if requested

@@ -46,7 +46,8 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
-    if trimmed.starts_with("trs ") {
+    let first = trimmed.split_whitespace().next().unwrap_or("");
+    if first == "trs" || first.ends_with("/trs") {
         return None;
     }
 
@@ -166,8 +167,6 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         std::process::exit(2);
     }
 
-    let first = trimmed.split_whitespace().next().unwrap_or("");
-
     // Verbatim commands re-layout bytes; the generic catch-all below would
     // collapse the spacing that IS their output. Leave them unwrapped, and
     // see through `bash -c` too: wrapping there costs the child its tty, so
@@ -187,7 +186,16 @@ pub(crate) fn maybe_rewrite(cmd: &str) -> Option<String> {
         return None;
     }
 
-    Some(format!("trs {}", trimmed))
+    Some(format!("{} {trimmed}", trs_bin()))
+}
+
+/// What the rewritten command calls. A plugin that found trs outside PATH
+/// passes that path in `TRS_BIN`, so the agent's shell runs the same binary.
+pub(crate) fn trs_bin() -> String {
+    std::env::var("TRS_BIN")
+        .ok()
+        .filter(|b| b.starts_with('/') && b.ends_with("/trs") && !b.contains([' ', '\'', '"']))
+        .unwrap_or_else(|| "trs".to_string())
 }
 
 /// Split leading `NAME=value` tokens off a command. Heuristic: starts with

@@ -167,14 +167,56 @@ fn skip_runner_opts<'a>(wrapper: &str, mut body: &'a str) -> &'a str {
     body
 }
 
+/// `nix develop -c 'rm -rf /'` quotes the whole inner command; rules are
+/// written against the unquoted text. Strip one layer only when the quotes
+/// are the sole pair (`'a' 'b'` stays untouched).
+fn unquote_inner(s: &str) -> &str {
+    let b = s.as_bytes();
+    if s.len() < 2 {
+        return s;
+    }
+    let q = b[0];
+    if !matches!(q, b'\'' | b'"') || b[b.len() - 1] != q {
+        return s;
+    }
+    let inner = &s[1..s.len() - 1];
+    if inner.contains(['\'', '"']) {
+        s
+    } else {
+        inner
+    }
+}
+
+/// Exec wrappers the transparent list does not cover (`timeout`, `nix
+/// develop -c`, `mise exec --`, `direnv exec DIR`): rules are written against
+/// the inner command. The argv grammar is the classifier's. Windows `timeout`
+/// never runs a command, so it is not unwrapped there.
+fn skip_exec_wrapper(seg: &str) -> Option<&str> {
+    let words: Vec<&str> = seg.split_whitespace().collect();
+    let (&first, args) = words.split_first()?;
+    let at = match first {
+        "timeout" if !cfg!(windows) => crate::classifier_args::timeout_inner_at(args)?,
+        "nix" | "mise" | "direnv" => crate::classifier_args::runner_inner_at(first, args)?,
+        _ => return None,
+    };
+    let start = args[at].as_ptr() as usize - seg.as_ptr() as usize;
+    let inner = unquote_inner(seg[start..].trim_end());
+    (!inner.is_empty()).then_some(inner)
+}
+
 /// The command a rule is written against: `VAR=` words and the wrappers trs
 /// rewrites through (`time git push`) removed.
 pub(crate) fn strip_wrappers(seg: &str) -> &str {
     let mut rest = strip_env(seg);
-    while let Some((wrapper, inner)) = crate::rewrite_decide::strip_transparent_prefix(rest) {
-        rest = strip_env(skip_runner_opts(wrapper, inner.trim_start()));
+    loop {
+        if let Some((wrapper, inner)) = crate::rewrite_decide::strip_transparent_prefix(rest) {
+            rest = strip_env(skip_runner_opts(wrapper, inner.trim_start()));
+        } else if let Some(inner) = skip_exec_wrapper(rest) {
+            rest = strip_env(inner);
+        } else {
+            return rest;
+        }
     }
-    rest
 }
 
 /// Commands Claude approves without asking inside the working dir; anything
@@ -340,5 +382,42 @@ mod tests {
         assert_eq!(strip_wrappers("uv run --with x rm -rf d"), "rm -rf d");
         assert_eq!(strip_wrappers("poetry run --quiet rm -rf d"), "rm -rf d");
         assert_eq!(strip_wrappers("time -p rm"), "-p rm");
+    }
+
+    #[test]
+    fn a_rule_sees_through_exec_wrappers() {
+        if cfg!(windows) {
+            // Windows `timeout` is a different builtin that runs no command.
+            assert_eq!(strip_wrappers("timeout 5 rm -rf d"), "timeout 5 rm -rf d");
+        } else {
+            assert_eq!(strip_wrappers("timeout 5 rm -rf d"), "rm -rf d");
+            assert_eq!(
+                strip_wrappers("timeout -s KILL 10s cargo test"),
+                "cargo test"
+            );
+            assert_eq!(
+                strip_wrappers("timeout --preserve-status --kill-after=2 5 rm"),
+                "rm"
+            );
+            assert_eq!(strip_wrappers("FOO=1 timeout 5 rm"), "rm");
+            assert_eq!(strip_wrappers("timeout 5 uv run --with x rm"), "rm");
+        }
+        assert_eq!(strip_wrappers("nix develop -c rm -rf d"), "rm -rf d");
+        assert_eq!(strip_wrappers("mise exec node@20 -- rm -rf d"), "rm -rf d");
+        assert_eq!(strip_wrappers("direnv exec . rm -rf d"), "rm -rf d");
+        assert_eq!(
+            strip_wrappers("nix develop ./flake#dev --command cargo test"),
+            "cargo test"
+        );
+        assert_eq!(strip_wrappers("nix develop -c 'rm -rf d'"), "rm -rf d");
+    }
+
+    #[test]
+    fn exec_wrappers_without_an_inner_command_stay() {
+        assert_eq!(strip_wrappers("timeout 5"), "timeout 5");
+        assert_eq!(strip_wrappers("timeout rm"), "timeout rm");
+        assert_eq!(strip_wrappers("nix develop"), "nix develop");
+        assert_eq!(strip_wrappers("nix flake check"), "nix flake check");
+        assert_eq!(strip_wrappers("nix develop -c"), "nix develop -c");
     }
 }

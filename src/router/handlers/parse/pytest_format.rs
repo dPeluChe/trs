@@ -35,6 +35,7 @@ impl ParseHandler {
                 "xfailed": output.summary.xfailed,
                 "xpassed": output.summary.xpassed,
                 "errors": output.summary.errors,
+                "reruns": output.summary.reruns,
                 "total": output.summary.total,
                 "duration": output.summary.duration,
             },
@@ -83,6 +84,9 @@ impl ParseHandler {
             if output.summary.xpassed > 0 {
                 result.push_str(&format!(", {} xpassed", output.summary.xpassed));
             }
+            if output.summary.reruns > 0 {
+                result.push_str(&format!(", {} rerun", output.summary.reruns));
+            }
             if let Some(duration) = output.summary.duration {
                 result.push_str(&format!(" [{:.2}s]", duration));
             }
@@ -106,6 +110,9 @@ impl ParseHandler {
         }
         if output.summary.errors > 0 {
             result.push_str(&format!(", {} errors", output.summary.errors));
+        }
+        if output.summary.reruns > 0 {
+            result.push_str(&format!(", {} rerun", output.summary.reruns));
         }
         if let Some(duration) = output.summary.duration {
             result.push_str(&format!(" [{:.2}s]", duration));
@@ -183,6 +190,9 @@ impl ParseHandler {
         }
         if output.summary.errors > 0 {
             result.push_str(&format!("- Errors: {}\n", output.summary.errors));
+        }
+        if output.summary.reruns > 0 {
+            result.push_str(&format!("- Reruns: {}\n", output.summary.reruns));
         }
         if let Some(duration) = output.summary.duration {
             result.push_str(&format!("- Duration: {:.2}s\n", duration));

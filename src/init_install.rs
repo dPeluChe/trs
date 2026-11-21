@@ -80,6 +80,33 @@ pub(crate) fn ensure_parent(path: &Path) -> Result<(), String> {
 /// by older versions and refreshes them instead of erroring on "other config".
 const TRS_PLUGIN_MARKER: &str = "trs plugin";
 
+/// Embed the absolute path only for a known install channel (or a plain
+/// system/linuxbrew bin dir): a dev `target/` build keeps the bare `trs`.
+fn resolve_trs_invocation(content: &str) -> String {
+    let Ok(exe) = std::env::current_exe() else {
+        return content.to_string();
+    };
+    let path = exe.to_string_lossy();
+    let known = crate::upgrade::detect_install_method(Some(&exe))
+        != crate::upgrade::InstallMethod::Unknown
+        || ["/usr/local/bin/", "/home/linuxbrew/"]
+            .iter()
+            .any(|p| path.starts_with(p));
+    if !known || path.contains('\'') {
+        return content.to_string();
+    }
+    let bin = if path.contains(' ') {
+        format!("'{}'", path)
+    } else {
+        path.into_owned()
+    };
+    substitute_trs_invocation(content, &bin)
+}
+
+fn substitute_trs_invocation(content: &str, bin: &str) -> String {
+    content.replace("\"trs rewrite", &format!("\"{bin} rewrite"))
+}
+
 /// Route hook installs by file type. JSON → merge with existing user hooks;
 /// non-JSON (plugin .ts) → create, or refresh our own file on drift; never
 /// clobber foreign content.
@@ -133,6 +160,8 @@ pub(crate) fn merge_json_hook(
     template: &str,
     opts: InstallOpts,
 ) -> Result<String, String> {
+    // GUI-launched agents can lack the install dir on PATH.
+    let template = &resolve_trs_invocation(template);
     let replace = opts.replace;
     let template_value: serde_json::Value = serde_json::from_str(template)
         .map_err(|e| format!("internal: template JSON invalid: {}", e))?;

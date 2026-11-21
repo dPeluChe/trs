@@ -35,6 +35,25 @@ fn trs_rewrite_leaves_pipes_captures_and_trs_commands_alone() {
 }
 
 #[test]
+fn trs_bin_names_the_binary_a_plugin_found_off_path() {
+    let run = |cmd: &str, bin: &str| {
+        let out = Command::cargo_bin("trs")
+            .unwrap()
+            .arg("rewrite")
+            .env("TRS_BIN", bin)
+            .write_stdin(cmd)
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+    let bin = "/home/u/.local/bin/trs";
+    assert_eq!(run("git status", bin), format!("{bin} git status"));
+    assert_eq!(run(&format!("{bin} git status"), bin), "");
+    assert_eq!(run("git status", "/my dir/trs"), "trs git status");
+    assert_eq!(run("git status", "/usr/bin/rm"), "trs git status");
+}
+
+#[test]
 fn no_template_prefixes_trs_blindly() {
     for (name, text) in [
         ("opencode", &*trs_templates::OPENCODE),

@@ -28,7 +28,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] Maven (`mvn`, `./mvnw`): real fixtures from Maven 3.9, a multi-module reactor and Spring Boot tests
 - [x] Gradle (`gradle`, `./gradlew`): failed-test messages read from the JUnit XML report
 - [x] `gh run view`: done (v0.5.13): extracts title, conclusion, job counts, annotations, URL
-- [ ] `gh issue view`: follow-on from gh pr view
+- [ ] `gh issue view`: follow-on from gh pr view. **Next after PR #292**
 
 ### Improvements to existing parsers
 
@@ -44,7 +44,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] `git diff` full (not just --stat), reformat unified diff headers
 - [ ] **`find` with long paths**: audit shows ~48% reduction where the first path arg eats the display width. Parser could basename-collapse logged paths the way `stats --history` now does.
 - [ ] **`cargo fmt --check` diff output**: only 32% compression on failures. The unified diff block has a lot of repeat whitespace we could collapse.
-- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). Build handler catches errors/warnings but compile-command echoes, swift intermodule dependency checks, and "Write auxiliary file" blocks still bulk up the output.
+- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). Build handler catches errors/warnings but compile-command echoes, swift intermodule dependency checks, and "Write auxiliary file" blocks still bulk up the output. **Next after PR #292**
 - [ ] **`awk` / `sed`**, 0-3% compression. Decision: these print arbitrary user data; compressing would risk corrupting what the agent asked for. Leave as passthrough; `TRS_SKIP=1` is the escape hatch.
 
 ---
@@ -58,9 +58,8 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] **Lint rule grouping**: shipped in v0.5.8+, extended with `tsc` in v0.5.10
 - [-] **Read caching**: not building it. Same command with same output is 0.04% of tool output, and sed ranges already seen 0.15% at most (40 days, deduplicated by tool-use id; see benchmarks/README.md). A cache would also lie after compaction.
 - [-] **New parsers for Flutter, Terraform, kubectl, dotnet**: not building them: the author does not run these tools, so nothing here can be measured or verified. Reopen with a real user.
-- [ ] **Diff indent**: drop the two spaces trs adds before each change line (3.7% of compact diff output; all the rest of the output is the change itself).
+- [ ] **Diff indent**: drop the two spaces trs adds before each change line (3.7% of compact diff output; all the rest of the output is the change itself). **Next after PR #292**
 - [ ] **stderr policy through `timeout` and `bash -c`**: `timeout 300 cargo build` does not merge stderr; `stderr_owner` covers runners only.
-- [ ] **Deny rules through non-prefix wrappers**: `nix develop -c rm` and `timeout 5 rm` hide the inner program from `strip_wrappers`.
 - [ ] **`grep` on one file with `key:value` lines**: still grouped as files. Needs a decision from argv.
 - [ ] **`--json` on unread test output**: test runners keep the empty parsed shape on purpose; decide whether that contract changes.
 - [ ] **Docs auditor extensions**: recommend section-level split points; detect CLAUDE.md content duplicating README.md; SQL detection in language-less fences.
@@ -184,80 +183,99 @@ Not doing:
 
 ---
 
-## Phase 2.10: Competitor GitHub issue sweep, 2026-11-21
+## Phase 2.10: Issue sweep of similar tools, 2026-11-21
 
-Source: open + recently-closed issues on rtk-ai/rtk (~1,700 open, the dominant
-signal), token-optimizer, repomix, headroom, claw-compactor,
-codebase-memory-mcp, chop (0 open), pi (ecosystem only). Full catalog with
-issue numbers and per-repo analysis:
-[`docs/development/competitor-issues-research.md`](../development/competitor-issues-research.md).
-Every claim below was verified against trs source before filing.
+Source: the public issue trackers of similar tools and adjacent projects
+(open and recently closed issues). Every claim below was verified against trs
+source before filing.
 
 ### Confirmed bugs to fix
 
-- [ ] **`git status` footer `contains()` drops real files.** `git_status.rs`
-  skips any line containing "nothing to commit"/"working tree clean"; a file
-  with that name (porcelain `??` or tab-indented long entry) is silently
-  dropped. Same class as rtk #5139. Match footers by position, not substring.
-- [ ] **`git diff` strips `\r`**: `str::lines()` eats `\r\n`, so a
-  line-ending-only change shows identical `-`/`+` lines (rtk #5084). Detect
-  `\r` in raw input and mark it.
-- [ ] **Flaky/retried counts in test parsers.** jest/vitest/pytest have no
-  `flaky` handling; rtk shipped this bug 3x (#5142, #3588, #3935) plus
-  nextest (#4694, #4420). Vitest/jest print `flaky` in summary; nextest
-  prints `FLAKY`. Required when the playwright parser lands (Phase 2).
-- [ ] **Plugin PATH fallback.** OpenCode/Kilo/Pi plugins `spawn("trs")`
-  bare; GUI-launched agents can lack `~/.local/bin` on PATH → silent
-  no-rewrite (rtk #4462). Resolve against install locations or have
-  `trs doctor` name the cause (it already warns hook-never-fired).
-- [ ] **Verify `ls -F/-p/-i/-s` fixtures.** rtk #5061 mangled these flag
-  outputs; trs's `parse_ls` is flag-agnostic. Pin `dir/`, `*`/`@` suffixes
-  and leading inode/block columns with fixtures.
+- [x] **`git status` footer `contains()` drops real files.** Fixed: file
+  entries parse before the prose/footer skip, so a file named like a footer
+  survives in both porcelain and long formats. Regression tests in
+  `test_parser_git_status.rs`.
+- [x] **`git diff` strips `\r`**: fixed by flagging raw `\r` in the input
+  with a `(note: carriage returns in diff; …)` line on text formats.
+- [x] **Flaky/retried counts in test parsers.** pytest done: `reruns` field
+  on `TestSummary`, parsed from the `N rerun` summary token and surfaced in
+  compact/agent/JSON output. jest/vitest verified 2026-11-21 with real runs
+  (jest@30 `retryTimes`, vitest@3 `retry`): neither emits any retry signal in
+  default/verbose/json output, so there is nothing to preserve at parse level;
+  the bugs seen in a similar tool were playwright/nextest, which DO print
+  retry markers. The playwright parser (Phase 2) and a future nextest parser
+  must keep retried≠passed.
+- [x] **Plugin PATH fallback.** JS plugins (OpenCode, Kilo, Pi, OpenClaw)
+  and the Hermes Python plugin now try `~/.local/bin`, `~/.cargo/bin`,
+  `~/.trs/bin`, `/opt/homebrew/bin`, `/usr/local/bin` when bare `trs` is not
+  on PATH, once per plugin load, and pass the binary they found as `TRS_BIN`
+  so the rewritten command calls it too (a bare `trs` in the rewrite would
+  fail in that same shell). JSON shell-command hooks embed the absolute
+  `current_exe` path at `trs init` time when it is a known install channel
+  (`upgrade::detect_install_method`, plus `/usr/local/bin` and linuxbrew);
+  dev `target/` builds and unusual locations keep bare `trs`.
+- [x] **Verify `ls -F/-p/-i/-s` fixtures.** Verified against real macOS
+  output. `-F`/`-p` classify markers are now authoritative (an extensionless
+  file with no marker is a file, `@`→symlink, `*`→file); plain `ls` keeps the
+  extensionless→dir heuristic since short output cannot distinguish. `-i`/`-s`
+  keep their numeric columns glued to names (lossless) with the same
+  heuristic typing; documented limitation.
 
 ### Already tracked, new evidence
 
-- [ ] **Deny rules through non-prefix wrappers** (`nix develop -c rm`,
-  `timeout 5 rm`): rtk #5157/#5062 confirm the class is active across tools.
-  `strip_wrappers` covers `uv run --with` only.
-- [ ] **Token estimator bytes/4**: rtk #5135 measured billed tokens at
+- [~] **Deny rules through non-prefix wrappers** (`nix develop -c rm`,
+  `timeout 5 rm`): reports in similar tools confirm the class is active.
+  `strip_wrappers` now unwraps `timeout [opts] DURATION cmd` (GNU semantics,
+  skipped on Windows where `timeout` is a different builtin) and
+  the runners `nix develop|shell -c`, `mise exec --` and `direnv exec DIR`,
+  with the classifier's own argv grammar (`classifier_args`), including one
+  layer of outer quotes. Still open: `env`, `nice`, `bash -c`/`sh -c`, `xargs`, `find -exec` hide
+  the inner program the same way.
+- [ ] **Token estimator bytes/4**: a similar tool measured billed tokens at
   1.7–4.1× the bytes/4 estimate (median 0.50 of billed) on 655 real
   requests. Strengthens the "est." label plan.
-- [ ] **Hermes plugin**: rtk #3797 found Hermes `pre_tool_call` ignores
+- [ ] **Hermes plugin**: a report elsewhere says Hermes `pre_tool_call` ignores
   in-place `args` mutation. Verify trs's mutation surface live before
   claiming support (integration already pending validation).
-- [ ] **Homebrew tap** stays low priority: rtk #5194 shows tap upkeep cost
+- [ ] **Homebrew tap** stays low priority: tap upkeep has a real cost
   (`conflicts_with`, untrusted-tap formula).
 
 ### Evaluated: current behavior correct, filed for the record
 
 - `rg -l`/`grep -l`/`--files-with-matches` → `has_unread` → raw passthrough.
-  The path list is the payload for the next command; rtk #5197 shows what
-  "compressing" it costs. Leave raw.
+  The path list is the payload for the next command; compressing it breaks
+  the next step. Leave raw.
 - `git merge-base`/`rev-parse`/`describe`: tiny outputs, generic fallback.
 - pytest "collected 0 items" renders `no tests found` with `is_empty`; pin
-  one fixture for exit-code preservation (rtk #5016 was a different defect).
-- `trs rewrite` argv `--` bug (rtk #5127): N/A, command arrives on stdin.
-- musl SIGILL (rtk #5043/#5115): N/A, release matrix is gnu/apple/msvc only.
+  one fixture for exit-code preservation.
+- An argv `--` bug in a rewrite hook: N/A, the command arrives on stdin.
+- musl SIGILL: N/A, release matrix is gnu/apple/msvc only.
 
 ### Measurements to add
 
-- [ ] **Output-token A/B for rewrite on/off.** rtk #582: compressed input →
+- [ ] **Output-token A/B for rewrite on/off.** One report: compressed input →
   model wrote +50% output tokens, +18% total cost. `transcript_output.py`
   already measures output tokens for the output-saver; extend the same
   harness to rewrite on/off before widening savings claims.
-- [ ] **Per-call work gate.** cbm #3005: hook-augment spawned per tool call
+- [ ] **Per-call work gate.** One report: a hook spawned work per tool call
   even with an empty index. trs rewrite ~4ms is fine; any future per-call
   work needs a cheap "is there anything to do" gate first.
 
-### `trs ingest` signals from repomix issues
+### `trs ingest` signals from repo-packing tools
 
-- [ ] **Audit ignore-file fidelity**: repomix #1873 (`.git/info/exclude`
-  negations inert), #1870 (patterns only top-level), #1872 (ancestor
-  `.ignore` skipped for subdirectory targets). Check `ingest/collect*`
-  against git's real semantics.
-- [ ] **Legacy encodings**: repomix #1878/#1966 — Shift-JIS/EUC-KR/GBK files
-  dropped as "binary". Verify `trs ingest` doesn't silently skip
-  non-UTF-8 sources the same way.
+- [x] **Audit ignore-file fidelity**: audited 2026-11-21. trs uses the
+  `ignore` crate (same engine as ripgrep) with `.gitignore`, `.ignore`,
+  global gitignore and `.git/info/exclude` all enabled, so the ignore-file
+  bug classes reported for those tools do not apply. Two real gaps found and fixed
+  instead: `get_changed_files` now passes `-c core.quotepath=false` (non-ASCII
+  paths came back C-quoted and never matched `rel_path`, silently dropping
+  them from `ingest --changed`), and `config.exclude` is still a substring
+  match (documented limitation, revisit only with a real case).
+- [x] **Legacy encodings**: fixed. Non-UTF-8 files without NUL bytes are no
+  longer silently skipped as "binary"; they surface in the digest's
+  `unread` list ("incomplete: N paths could not be read"). UTF-16 and other
+  NUL-bearing encodings still classify as binary; transcoding them needs an
+  encoding dependency, deferred.
 - Entity-level packing (#1642) and graph-aware selection (#1682) stay
   deferred: both need AST/symbol graphs, same reason as symbol-level dead
   code (Phase 2.7).
@@ -284,7 +302,7 @@ See [`docs/development/agent-integrations.md`](../development/agent-integrations
 - [x] **Split `router/handlers/common.rs`**: shipped in v0.5.10. Extracted ANSI/emoji/control-char utilities to `router/handlers/ansi.rs` (168 LOC). `common.rs` down to 466 LOC.
 - [ ] **First-byte dispatch for SKIP_PREFIXES** (`src/rewrite.rs`). Current linear scan of ~20 `starts_with` checks. A first-char dispatch table would shave more than the `has_shell_op` byte-scan did on the non-operator path. Hot path, measurable.
 - [ ] **Watch `router/handlers/parse/extra_download.rs`** (463 LOC). Mixes two concepts: HTTP protocol tracer (`curl -v` / `curl -I`) and body-content compressor. Not a hard violation yet, but a clean split would be `extra_download.rs` (protocol) + `http_body.rs` (body / JSON / base64). Revisit if file crosses 500 LOC.
-- [ ] **Proactive `.zshenv` check in install.sh**. If `~/.local/bin` is in the user's interactive PATH but NOT in `~/.zshenv`, IDE subshells will still fail.
+- [ ] **Proactive `.zshenv` check in install.sh**. If `~/.local/bin` is in the user's interactive PATH but NOT in `~/.zshenv`, IDE subshells will still fail. JSON hook commands now embed the absolute `trs` path at init time (Phase 2.10), which covers the hook path; this item remains for manual `trs` use and plugin agents.
 - [ ] **OpenCode TUI DrizzleError root cause**. Installing our plugin crashed OpenCode's TUI on startup once with a SQLite WAL init error. Couldn't reproduce. If users report it, the plugin file is the likely cause.
 - [ ] **`HookEvent::Unknown` variant**. Today unknown `hook_event_name` values default to Claude format. Silent misroute if a 4th client ships its own envelope.
 - [x] **Wrap the whole command instead of editing its text: evaluated 2026-09-25, not worth it.** Measured on 49,286 real Bash results (45.8 MB, excluding the benchmark session). Multi-line scripts are 41% of bytes and pipelines 37%, but 89% of the script bytes change shell state (`cd`, `export`, heredocs), so wrapping would break cwd/env persistence. On what could be wrapped, the transforms safe for any output shape save 3.4% (scripts) and 1.7% (pipelines): about 0.5% of all bytes. Agents already filter their own pipes (`| tail`, `| grep`). Revisit only if a measured case shows `cmd | tail -N` cutting failures that a trs parser would have kept.

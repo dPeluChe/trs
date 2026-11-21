@@ -370,3 +370,51 @@ fn test_parse_git_status_porcelain() {
     // Should have parsed the porcelain format
     assert!(!json["is_clean"].as_bool().unwrap());
 }
+
+// A file named like the clean-tree footer is data, not the footer: the
+// prose skip must not eat entries that contain the phrase.
+#[test]
+fn test_parse_git_status_file_named_like_footer_porcelain() {
+    let input = "?? \"nothing to commit, working tree clean\"\n?? zz-after.txt\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("git-status")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
+    let untracked = json["untracked"].as_array().unwrap();
+    assert_eq!(untracked.len(), 2);
+    assert!(!json["is_clean"].as_bool().unwrap());
+}
+
+#[test]
+fn test_parse_git_status_file_named_like_footer_long() {
+    let input = "On branch main\nUntracked files:\n\t\n\tnothing to commit, working tree clean\n\tzz-after.txt\n\nnothing added to commit but untracked files present (use \"git add\" to track)\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    let output = cmd
+        .arg("--json")
+        .arg("parse")
+        .arg("git-status")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("Invalid JSON");
+    let untracked = json["untracked"].as_array().unwrap();
+    assert_eq!(untracked.len(), 2);
+    assert!(!json["is_clean"].as_bool().unwrap());
+}

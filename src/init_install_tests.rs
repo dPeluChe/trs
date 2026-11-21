@@ -62,3 +62,27 @@ fn scrub_legacy_codex_hook_dry_run_does_not_write() {
     let after = std::fs::read_to_string(tmp.path()).unwrap();
     assert_eq!(after, original, "dry-run must not modify file");
 }
+
+#[test]
+fn substitute_trs_invocation_rewrites_command_fields() {
+    let tpl = r#"{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"trs rewrite"}]}]}}"#;
+    let out = substitute_trs_invocation(tpl, "/Users/x/.cargo/bin/trs");
+    assert!(out.contains("\"command\":\"/Users/x/.cargo/bin/trs rewrite\""));
+    assert!(!out.contains("\"command\":\"trs rewrite\""));
+
+    let spaced = r#"{"command": "trs rewrite"}"#;
+    assert!(substitute_trs_invocation(spaced, "/x/trs").contains("\"command\": \"/x/trs rewrite\""));
+}
+
+#[test]
+fn substitute_trs_invocation_keeps_caller_flags() {
+    let tpl = r#"{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"trs rewrite --caller codex"}]}]}}"#;
+    let out = substitute_trs_invocation(tpl, "/opt/homebrew/bin/trs");
+    assert!(out.contains("/opt/homebrew/bin/trs rewrite --caller codex"));
+}
+
+#[test]
+fn substitute_trs_invocation_leaves_other_commands() {
+    let tpl = r#"{"hooks":{"SessionStart":[{"hooks":[{"command":"notify","type":"command"}]}]}}"#;
+    assert_eq!(substitute_trs_invocation(tpl, "/x/trs"), tpl);
+}

@@ -216,3 +216,16 @@ fn test_parse_git_diff_additions_deletions() {
     // Should have tracked additions
     assert!(json["total_additions"].as_u64().unwrap() > 0);
 }
+
+#[test]
+fn test_parse_git_diff_cr_note() {
+    let input = "diff --git a/x.txt b/x.txt\nindex 111..222 100644\n--- a/x.txt\n+++ b/x.txt\n@@ -1,3 +1,3 @@\n-a\r\n-b\r\n-c\r\n+a\r\n+b\r\n+c\r\n";
+
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("git-diff")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("carriage returns"));
+}

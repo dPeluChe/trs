@@ -233,19 +233,8 @@ impl ParseHandler {
                 continue;
             }
 
-            // Skip help text (lines starting with '(' or containing 'use "git')
-            if line.starts_with('(') || line.contains("use \"git") {
-                continue;
-            }
-
-            // Skip clean status lines and other non-file lines
-            if line.starts_with("no changes added")
-                || CLEAN_FOOTERS.iter().any(|f| line.contains(f))
-            {
-                continue;
-            }
-
-            // Parse file entries
+            // Entries first: a file named like a footer or a hint is data,
+            // and the substring skips below would eat it.
             if let Some(entry) = Self::parse_file_entry(line, current_section) {
                 match current_section {
                     GitStatusSection::Staged => status.staged.push(entry),
@@ -270,6 +259,15 @@ impl ParseHandler {
                         }
                     }
                 }
+                continue;
+            }
+
+            if line.starts_with('(')
+                || line.contains("use \"git")
+                || line.starts_with("no changes added")
+                || CLEAN_FOOTERS.iter().any(|f| line.contains(f))
+            {
+                continue;
             }
         }
 
@@ -425,9 +423,15 @@ impl ParseHandler {
         // Git indents entries with a tab; the unindented line after them is the
         // footer (`nothing added to commit...`, any language, with or without hints).
         if section == GitStatusSection::Untracked && line.starts_with(char::is_whitespace) {
+            let path = line.trim();
+            // The section's `(use "git add …"` hint is indented like an entry
+            // but is help text, not a file.
+            if path.starts_with("(use \"git") {
+                return None;
+            }
             return Some(GitStatusEntry {
                 status: "??".to_string(),
-                path: line.trim().to_string(),
+                path: path.to_string(),
                 new_path: None,
             });
         }

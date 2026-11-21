@@ -2,6 +2,9 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::super::types::*;
 use super::ParseHandler;
 
+/// Markers `ls -F` / `-p` append to a name (`/` dir, `*` exec, `@` link, …).
+const CLASSIFY_MARKERS: [char; 7] = ['/', '*', '@', '|', '=', '%', '>'];
+
 impl ParseHandler {
     /// Handle the ls subcommand.
     pub(crate) fn handle_ls(
@@ -39,6 +42,12 @@ impl ParseHandler {
     pub(crate) fn parse_ls(input: &str) -> CommandResult<LsOutput> {
         let mut ls_output = LsOutput::default();
         let mut current_entry: Option<LsEntry> = None;
+
+        // `ls -F`/`-p` appends a classify marker to every name; once any short
+        // line carries one, the marker is authoritative (no marker = file).
+        let classify_mode = input
+            .lines()
+            .any(|l| l.trim_end().ends_with(CLASSIFY_MARKERS));
 
         for line in input.lines() {
             let line = line.trim();
@@ -104,7 +113,11 @@ impl ParseHandler {
                 // Create entry from the filename
                 let name = line.to_string();
                 let is_hidden = name.starts_with('.');
-                let entry_type = Self::detect_entry_type_from_name(&name);
+                let entry_type = if classify_mode {
+                    Self::detect_entry_type_classified(&name)
+                } else {
+                    Self::detect_entry_type_from_name(&name)
+                };
 
                 current_entry = Some(LsEntry {
                     name,
@@ -327,6 +340,21 @@ impl ParseHandler {
             LsEntryType::File
         } else {
             LsEntryType::Directory
+        }
+    }
+
+    /// Type a short-format name when `ls -F`/`-p` markers are present.
+    /// `/` dir, `@` symlink, `*` executable, `|`/`=`/`%`/`>` special; anything
+    /// else is a regular file (the marker would have been there otherwise).
+    pub(crate) fn detect_entry_type_classified(name: &str) -> LsEntryType {
+        if name.ends_with('/') {
+            LsEntryType::Directory
+        } else if name.ends_with('@') {
+            LsEntryType::Symlink
+        } else if name.ends_with(['|', '=', '%', '>']) {
+            LsEntryType::Other
+        } else {
+            LsEntryType::File
         }
     }
 
