@@ -138,6 +138,51 @@ Do not name those projects in commits, docs or the changelog when shipping these
 
 ---
 
+## Phase 2.11: Token formats and real counts, 2026-11-21
+
+Source: pxpipe (context rendered as images) and the TOON format, read 2026-11-21;
+what each claims and what trs takes is in
+[`benchmarks/README.md`](../development/benchmarks/README.md#other-approaches-images-and-token-oriented-formats).
+Order: measure first, then build only what the numbers support.
+
+- [ ] **Real token counts in the benchmarks**: an opt-in mode that sends recorded
+  outputs to the provider's `count_tokens` endpoint (needs an API key and network,
+  so never in the runtime; trs stays offline). Compare compact, `--json`, `--tsv`
+  and the grouped-path variant per command. Today the benchmarks count with
+  `o200k_base` and `trs stats` with bytes/4; neither bills a Claude session.
+  Joins the bytes/4 items in Phase 2.9 P2 and 2.10.
+- [ ] **Characters per token per content class**: fit the ratio for JSON, logs,
+  code, diffs and prose from those counts, and use it in `trs stats` instead of
+  one bytes/4. Fall back to 4 when a class has too few samples or the fit is
+  out of range (a wrong ratio inflates the claim; a missing one changes nothing).
+- [ ] **Repeated paths**: `trs grep` / `trs search` print the full path on every
+  match (`src/router/handlers/common.rs:445:12:...`); also `git status`,
+  `git diff --stat` and compiler errors. A heading per file, as `rg --heading`
+  prints it, loses nothing. `trs find` already groups per directory. No aliases
+  or chained relative paths: the agent must rebuild the exact path to call Read.
+  Measure the saving per command first.
+- [ ] **Header-once table for uniform JSON arrays** in `trs json` and `trs read`
+  of `.json` files (both read to understand a file, not by scripts). Nested data
+  stays minified JSON, where a table loses. Never in `--json`.
+- [ ] **Numbers and dates, lossless only**: a date repeated on every line said
+  once, zero padding, an identical timezone suffix, `.000` milliseconds. Never
+  round a value or turn a timestamp into "2h ago": that changes a fact.
+
+Not doing:
+
+- Text rendered as images: by the tool's own tables the models this project
+  runs (`claude-opus-5-5`, `claude-sonnet-5-5`) misread exact IDs, and they do
+  it with confidence.
+- Encodings such as base64 or gzip+base64: base64 is 33% larger before
+  tokenizing, tokenizes worse than text, and a model cannot decompress gzip
+  reliably.
+- YAML or TOON in place of `--json`: scripts read it, and YAML costs more
+  tokens than minified JSON.
+- Pruning tokens with a small model: lossy, and a second model in the path.
+- Prompt caching: each provider manages it; nothing for trs to do.
+
+---
+
 ## Phase 2.10: Competitor GitHub issue sweep, 2026-11-21
 
 Source: open + recently-closed issues on rtk-ai/rtk (~1,700 open, the dominant

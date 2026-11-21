@@ -225,6 +225,8 @@ trs git status --raw           # unprocessed passthrough
 
 [Full format reference with side-by-side examples →](docs/features/formats.md)
 
+Why not YAML, TOON or text rendered as images for fewer tokens? [What we read and why →](docs/development/benchmarks/README.md#other-approaches-images-and-token-oriented-formats)
+
 ## Why
 
 <details>
