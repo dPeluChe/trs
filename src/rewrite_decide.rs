@@ -300,10 +300,7 @@ fn is_simple_command(cmd: &str) -> bool {
         return false;
     }
     let first = first.trim_end_matches(|c: char| c == '{' || c == '(');
-    if SHELL_KEYWORDS.contains(&first) {
-        return false;
-    }
-    true
+    !SHELL_KEYWORDS.contains(&first)
 }
 
 /// True when `needle` appears outside quotes — quoting is what separates an
