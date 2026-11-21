@@ -28,7 +28,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] Maven (`mvn`, `./mvnw`): real fixtures from Maven 3.9, a multi-module reactor and Spring Boot tests
 - [x] Gradle (`gradle`, `./gradlew`): failed-test messages read from the JUnit XML report
 - [x] `gh run view`: done (v0.5.13): extracts title, conclusion, job counts, annotations, URL
-- [ ] `gh issue view`: follow-on from gh pr view
+- [ ] `gh issue view`: follow-on from gh pr view. **Next after PR #292**
 
 ### Improvements to existing parsers
 
@@ -44,7 +44,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] `git diff` full (not just --stat), reformat unified diff headers
 - [ ] **`find` with long paths**: audit shows ~48% reduction where the first path arg eats the display width. Parser could basename-collapse logged paths the way `stats --history` now does.
 - [ ] **`cargo fmt --check` diff output**: only 32% compression on failures. The unified diff block has a lot of repeat whitespace we could collapse.
-- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). Build handler catches errors/warnings but compile-command echoes, swift intermodule dependency checks, and "Write auxiliary file" blocks still bulk up the output.
+- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). Build handler catches errors/warnings but compile-command echoes, swift intermodule dependency checks, and "Write auxiliary file" blocks still bulk up the output. **Next after PR #292**
 - [ ] **`awk` / `sed`**, 0-3% compression. Decision: these print arbitrary user data; compressing would risk corrupting what the agent asked for. Leave as passthrough; `TRS_SKIP=1` is the escape hatch.
 
 ---
@@ -58,7 +58,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] **Lint rule grouping**: shipped in v0.5.8+, extended with `tsc` in v0.5.10
 - [-] **Read caching**: not building it. Same command with same output is 0.04% of tool output, and sed ranges already seen 0.15% at most (40 days, deduplicated by tool-use id; see benchmarks/README.md). A cache would also lie after compaction.
 - [-] **New parsers for Flutter, Terraform, kubectl, dotnet**: not building them: the author does not run these tools, so nothing here can be measured or verified. Reopen with a real user.
-- [ ] **Diff indent**: drop the two spaces trs adds before each change line (3.7% of compact diff output; all the rest of the output is the change itself).
+- [ ] **Diff indent**: drop the two spaces trs adds before each change line (3.7% of compact diff output; all the rest of the output is the change itself). **Next after PR #292**
 - [ ] **stderr policy through `timeout` and `bash -c`**: `timeout 300 cargo build` does not merge stderr; `stderr_owner` covers runners only.
 - [ ] **`grep` on one file with `key:value` lines**: still grouped as files. Needs a decision from argv.
 - [ ] **`--json` on unread test output**: test runners keep the empty parsed shape on purpose; decide whether that contract changes.

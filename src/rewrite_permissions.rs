@@ -445,23 +445,28 @@ mod tests {
 
     #[test]
     fn a_rule_sees_through_exec_wrappers() {
-        assert_eq!(strip_wrappers("timeout 5 rm -rf d"), "rm -rf d");
-        assert_eq!(
-            strip_wrappers("timeout -s KILL 10s cargo test"),
-            "cargo test"
-        );
-        assert_eq!(
-            strip_wrappers("timeout --preserve-status --kill-after=2 5 rm"),
-            "rm"
-        );
+        if cfg!(windows) {
+            // Windows `timeout` is a different builtin that runs no command.
+            assert_eq!(strip_wrappers("timeout 5 rm -rf d"), "timeout 5 rm -rf d");
+        } else {
+            assert_eq!(strip_wrappers("timeout 5 rm -rf d"), "rm -rf d");
+            assert_eq!(
+                strip_wrappers("timeout -s KILL 10s cargo test"),
+                "cargo test"
+            );
+            assert_eq!(
+                strip_wrappers("timeout --preserve-status --kill-after=2 5 rm"),
+                "rm"
+            );
+            assert_eq!(strip_wrappers("FOO=1 timeout 5 rm"), "rm");
+            assert_eq!(strip_wrappers("timeout 5 uv run --with x rm"), "rm");
+        }
         assert_eq!(strip_wrappers("nix develop -c rm -rf d"), "rm -rf d");
         assert_eq!(
             strip_wrappers("nix develop ./flake#dev --command cargo test"),
             "cargo test"
         );
         assert_eq!(strip_wrappers("nix develop -c 'rm -rf d'"), "rm -rf d");
-        assert_eq!(strip_wrappers("FOO=1 timeout 5 rm"), "rm");
-        assert_eq!(strip_wrappers("timeout 5 uv run --with x rm"), "rm");
     }
 
     #[test]
