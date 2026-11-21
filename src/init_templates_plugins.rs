@@ -2,44 +2,55 @@
 //! OpenClaw (JS) / Hermes (Python). Split from init_templates.rs to keep
 //! both under the 500-LOC rule; re-exported there so callers are unchanged.
 
+// GUI-launched agents can have a PATH without the trs install dir: the bare
+// name first, then the install dirs that exist (passed on as `TRS_BIN` so the
+// rewrite calls the same binary). A missing one (ENOENT) is skipped for good.
+macro_rules! js_trs_bins {
+    () => {
+        r#"import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+const TRS_BINS = ["trs", ...[
+  join(homedir(), ".local", "bin", "trs"),
+  join(homedir(), ".cargo", "bin", "trs"),
+  join(homedir(), ".trs", "bin", "trs"),
+  "/opt/homebrew/bin/trs",
+  "/usr/local/bin/trs",
+].filter((p) => existsSync(p))];
+let trsAt = 0;
+"#
+    };
+}
+
 // Shared by the JS plugins. Pipes, redirects, chains and bypass prefixes are
 // decided by `trs rewrite` (rewrite_decide.rs), so every agent follows one
 // rule set. Fails open: a missing trs or any error keeps the command as is.
 macro_rules! js_via_trs {
     () => {
-        r#"import { spawnSync } from "node:child_process";
-import { homedir } from "node:os";
-import { join } from "node:path";
-
-// GUI-launched agents can have a PATH without the trs install dir; try the
-// usual locations when the bare name does not resolve (ENOENT).
-const TRS_CANDIDATES = [
-  "trs",
-  join(homedir(), ".local", "bin", "trs"),
-  "/opt/homebrew/bin/trs",
-  "/usr/local/bin/trs",
-];
-
+        concat!(
+            r#"import { spawnSync } from "node:child_process";
+"#,
+            js_trs_bins!(),
+            r#"
 const runTrs = (args, cmd) => {
-  for (const bin of TRS_CANDIDATES) {
-    try {
-      const r = spawnSync(bin, args, {
-        input: cmd,
-        encoding: "utf8",
-        timeout: 3000,
-        shell: process.platform === "win32",
-      });
-      if (r.error) continue;
-      return r.status === 0 && typeof r.stdout === "string" ? r.stdout : "";
-    } catch {
-      // try the next candidate
-    }
+  for (; trsAt < TRS_BINS.length; trsAt++) {
+    const r = spawnSync(TRS_BINS[trsAt], args, {
+      env: trsAt ? { ...process.env, TRS_BIN: TRS_BINS[trsAt] } : process.env,
+      input: cmd,
+      encoding: "utf8",
+      timeout: 3000,
+      shell: process.platform === "win32",
+    });
+    if (r.error?.code === "ENOENT") continue;
+    return !r.error && r.status === 0 && typeof r.stdout === "string" ? r.stdout : "";
   }
   return "";
 };
 
 const viaTrs = (cmd) => runTrs(["rewrite"], cmd).replace(/\r?\n$/, "") || cmd;
 "#
+        )
     };
 }
 
@@ -48,46 +59,46 @@ const viaTrs = (cmd) => runTrs(["rewrite"], cmd).replace(/\r?\n$/, "") || cmd;
 // the event loop is not blocked while trs runs. Fails open like `runTrs`.
 macro_rules! js_decide {
     () => {
-        r#"import { spawn } from "node:child_process";
-import { homedir } from "node:os";
-import { join } from "node:path";
-
-const TRS_CANDIDATES = [
-  "trs",
-  join(homedir(), ".local", "bin", "trs"),
-  "/opt/homebrew/bin/trs",
-  "/usr/local/bin/trs",
-];
-
+        concat!(
+            r#"import { spawn } from "node:child_process";
+"#,
+            js_trs_bins!(),
+            r#"
 const decide = (cmd) => new Promise((resolve) => {
-  const tryBin = (i) => {
-    if (i >= TRS_CANDIDATES.length) return resolve(null);
-    let out = "";
-    try {
-      const p = spawn(TRS_CANDIDATES[i], ["rewrite", "--json"], {
-        timeout: 3000,
-        shell: process.platform === "win32",
-      });
-      p.stdout.setEncoding("utf8");
-      p.stdout.on("data", (d) => { out += d; });
-      p.stdin.on("error", () => {});
-      p.on("error", () => tryBin(i + 1));
-      p.on("close", (code) => {
-        try {
-          const d = code === 0 ? JSON.parse(out) : null;
-          resolve(typeof d?.rewrite === "string" && d.rewrite !== cmd ? d : null);
-        } catch {
-          resolve(null);
-        }
-      });
-      p.stdin.end(cmd);
-    } catch {
-      tryBin(i + 1);
+  if (trsAt >= TRS_BINS.length) return resolve(null);
+  let out = "";
+  let p;
+  try {
+    p = spawn(TRS_BINS[trsAt], ["rewrite", "--json"], {
+      env: trsAt ? { ...process.env, TRS_BIN: TRS_BINS[trsAt] } : process.env,
+      timeout: 3000,
+      shell: process.platform === "win32",
+    });
+  } catch {
+    return resolve(null);
+  }
+  p.stdout.setEncoding("utf8");
+  p.stdout.on("data", (d) => { out += d; });
+  p.stdin.on("error", () => {});
+  p.on("error", (e) => {
+    if (e?.code === "ENOENT") {
+      trsAt++;
+      return resolve(decide(cmd));
     }
-  };
-  tryBin(0);
+    resolve(null);
+  });
+  p.on("close", (code) => {
+    try {
+      const d = code === 0 ? JSON.parse(out) : null;
+      resolve(typeof d?.rewrite === "string" && d.rewrite !== cmd ? d : null);
+    } catch {
+      resolve(null);
+    }
+  });
+  p.stdin.end(cmd);
 });
 "#
+        )
     };
 }
 
@@ -288,6 +299,7 @@ TRS_AGENT for attribution. Fails open on any error.
 """
 
 import os
+import shutil
 import subprocess
 
 
@@ -297,38 +309,50 @@ def register(ctx):
     ctx.register_hook("pre_tool_call", _pre_tool_call)
 
 
-def _trs_bins():
-    # GUI launches can have a PATH without the trs install dir; try the usual
-    # locations when the bare name does not resolve.
-    yield "trs"
-    for p in (
-        os.path.join(os.path.expanduser("~"), ".local", "bin", "trs"),
-        "/opt/homebrew/bin/trs",
-        "/usr/local/bin/trs",
-    ):
-        if os.path.isfile(p):
-            yield p
+_TRS_BIN = None
+
+
+def _trs_bin():
+    # GUI launches can have a PATH without the trs install dir; resolved once.
+    global _TRS_BIN
+    if _TRS_BIN is None:
+        home = os.path.expanduser("~")
+        found = shutil.which("trs") and "trs" or next(
+            (
+                p
+                for p in (
+                    os.path.join(home, ".local", "bin", "trs"),
+                    os.path.join(home, ".cargo", "bin", "trs"),
+                    os.path.join(home, ".trs", "bin", "trs"),
+                    "/opt/homebrew/bin/trs",
+                    "/usr/local/bin/trs",
+                )
+                if os.path.isfile(p)
+            ),
+            "",
+        )
+        _TRS_BIN = found
+    return _TRS_BIN
 
 
 def _via_trs(command):
-    for bin in _trs_bins():
-        try:
-            r = subprocess.run(
-                [bin, "rewrite"],
-                input=command,
-                capture_output=True,
-                text=True,
-                timeout=3,
-                shell=(os.name == "nt"),
-            )
-        except OSError:
-            continue
-        except Exception:
-            return command
-        if r.returncode == 0:
-            return r.stdout.rstrip("\r\n") or command
+    bin = _trs_bin()
+    if not bin:
         return command
-    return command
+    try:
+        env = os.environ if bin == "trs" else dict(os.environ, TRS_BIN=bin)
+        r = subprocess.run(
+            [bin, "rewrite"],
+            env=env,
+            input=command,
+            capture_output=True,
+            text=True,
+            timeout=3,
+            shell=(os.name == "nt"),
+        )
+    except Exception:
+        return command
+    return (r.returncode == 0 and r.stdout.rstrip("\r\n")) or command
 
 
 def _pre_tool_call(tool_name=None, args=None, **_kwargs):

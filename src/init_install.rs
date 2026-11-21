@@ -80,27 +80,19 @@ pub(crate) fn ensure_parent(path: &Path) -> Result<(), String> {
 /// by older versions and refreshes them instead of erroring on "other config".
 const TRS_PLUGIN_MARKER: &str = "trs plugin";
 
-/// Install prefixes stable enough to embed in a hook command. Anything else
-/// (dev `target/` builds, random paths) keeps the bare `trs` name so PATH
-/// resolution stays the fallback.
-const STABLE_BIN_PREFIXES: &[&str] = &[
-    "/.cargo/bin/",
-    "/.local/bin/",
-    "/usr/local/bin/",
-    "/opt/homebrew/bin/",
-    "/home/linuxbrew/",
-    "/node_modules/",
-];
-
+/// Embed the absolute path only for a known install channel (or a plain
+/// system/linuxbrew bin dir): a dev `target/` build keeps the bare `trs`.
 fn resolve_trs_invocation(content: &str) -> String {
     let Ok(exe) = std::env::current_exe() else {
         return content.to_string();
     };
     let path = exe.to_string_lossy();
-    if path.contains("/target/")
-        || path.contains('\'')
-        || !STABLE_BIN_PREFIXES.iter().any(|p| path.contains(p))
-    {
+    let known = crate::upgrade::detect_install_method(Some(&exe))
+        != crate::upgrade::InstallMethod::Unknown
+        || ["/usr/local/bin/", "/home/linuxbrew/"]
+            .iter()
+            .any(|p| path.starts_with(p));
+    if !known || path.contains('\'') {
         return content.to_string();
     }
     let bin = if path.contains(' ') {
@@ -112,15 +104,7 @@ fn resolve_trs_invocation(content: &str) -> String {
 }
 
 fn substitute_trs_invocation(content: &str, bin: &str) -> String {
-    content
-        .replace(
-            "\"command\": \"trs rewrite",
-            &format!("\"command\": \"{} rewrite", bin),
-        )
-        .replace(
-            "\"command\":\"trs rewrite",
-            &format!("\"command\":\"{} rewrite", bin),
-        )
+    content.replace("\"trs rewrite", &format!("\"{bin} rewrite"))
 }
 
 /// Route hook installs by file type. JSON → merge with existing user hooks;
@@ -176,15 +160,8 @@ pub(crate) fn merge_json_hook(
     template: &str,
     opts: InstallOpts,
 ) -> Result<String, String> {
-    // JSON hooks run `trs rewrite` through the agent's shell; GUI launches can
-    // lack the install dir on PATH. Embed the absolute path when trs runs from
-    // a stable install location (dev `target/` builds keep the bare name, so
-    // tests and `cargo run` installs are unaffected).
-    let resolved;
-    let template = {
-        resolved = resolve_trs_invocation(template);
-        resolved.as_str()
-    };
+    // GUI-launched agents can lack the install dir on PATH.
+    let template = &resolve_trs_invocation(template);
     let replace = opts.replace;
     let template_value: serde_json::Value = serde_json::from_str(template)
         .map_err(|e| format!("internal: template JSON invalid: {}", e))?;

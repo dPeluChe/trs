@@ -372,7 +372,7 @@ fn test_parse_git_status_porcelain() {
 }
 
 // A file named like the clean-tree footer is data, not the footer: the
-// prose skip must not eat entries that contain the phrase (rtk #5139 class).
+// prose skip must not eat entries that contain the phrase.
 #[test]
 fn test_parse_git_status_file_named_like_footer_porcelain() {
     let input = "?? \"nothing to commit, working tree clean\"\n?? zz-after.txt\n";

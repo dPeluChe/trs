@@ -128,15 +128,15 @@ pub(crate) const RUNNER_VALUE_OPTS: &[&str] = &[
     "--index",
 ];
 
-/// The argv from the first non-option on. `npx -c` takes a shell string, which
+/// Index of the first non-option word. `npx -c` takes a shell string, which
 /// has no single program to route by.
-fn after_runner_opts(args: &[String]) -> Option<&[String]> {
+fn runner_opts_end<S: AsRef<str>>(args: &[S]) -> Option<usize> {
     let mut i = 0;
-    while let Some(a) = args.get(i).map(String::as_str) {
+    while let Some(a) = args.get(i).map(AsRef::as_ref) {
         match a {
-            "--" => return args.get(i + 1..).filter(|rest| !rest.is_empty()),
+            "--" => return (i + 1 < args.len()).then_some(i + 1),
             "-c" | "--call" => return None,
-            _ if !a.starts_with('-') => return Some(&args[i..]),
+            _ if !a.starts_with('-') => return Some(i),
             _ if RUNNER_VALUE_OPTS.contains(&a) => i += 2,
             _ => i += 1,
         }
@@ -147,18 +147,23 @@ fn after_runner_opts(args: &[String]) -> Option<&[String]> {
 /// The command a runner executes: its output is that command's, so the same
 /// parser applies. `just` and `task` are absent: a recipe name says nothing.
 pub(crate) fn unwrap_runner<'a>(cmd: &str, args: &'a [String]) -> Option<&'a [String]> {
-    let (sub, rest) = args.split_first()?;
+    runner_inner_at(cmd, args).map(|i| &args[i..])
+}
+
+/// Where the inner command starts in a runner's argv (see `unwrap_runner`).
+pub(crate) fn runner_inner_at<S: AsRef<str>>(cmd: &str, args: &[S]) -> Option<usize> {
+    let sub = args.first()?.as_ref();
     let after = |marks: &[&str]| {
-        let at = rest.iter().position(|a| marks.contains(&a.as_str()))?;
-        rest.get(at + 1..).filter(|inner| !inner.is_empty())
+        let at = args[1..].iter().position(|a| marks.contains(&a.as_ref()))? + 2;
+        (at < args.len()).then_some(at)
     };
-    match (cmd, sub.as_str()) {
-        ("uv" | "poetry" | "pdm" | "pipenv", "run") => after_runner_opts(rest),
-        ("npx" | "bunx", _) => after_runner_opts(args),
-        ("pnpm" | "yarn", "exec" | "dlx") => after_runner_opts(rest),
+    match (cmd, sub) {
+        ("uv" | "poetry" | "pdm" | "pipenv", "run") => runner_opts_end(&args[1..]).map(|i| i + 1),
+        ("npx" | "bunx", _) => runner_opts_end(args),
+        ("pnpm" | "yarn", "exec" | "dlx") => runner_opts_end(&args[1..]).map(|i| i + 1),
         ("nix", "develop" | "shell") => after(&["-c", "--command"]),
         ("mise", "exec" | "x") => after(&["--"]),
-        ("direnv", "exec") => rest.get(1..).filter(|inner| !inner.is_empty()),
+        ("direnv", "exec") => (args.len() > 2).then_some(2),
         _ => None,
     }
 }
@@ -175,34 +180,34 @@ pub(crate) fn stderr_owner<'a>(name: &'a str, args: &'a [String]) -> (&'a str, S
 }
 
 /// Unwrap `timeout [OPTS] DURATION CMD [ARGS…]` to the inner command argv
-/// so it reaches the right parser, like `bash -c`. Skips leading flags (and
-/// the value of `-s/--signal/-k/--kill-after` when given as a separate
-/// token), then the DURATION, returning `[CMD, ARGS…]`. Returns None when
-/// the shape doesn't match (no digit-leading duration, or no inner command).
+/// so it reaches the right parser, like `bash -c`.
 pub(crate) fn unwrap_timeout(args: &[String]) -> Option<Vec<String>> {
+    timeout_inner_at(args).map(|i| args[i..].to_vec())
+}
+
+/// Where CMD starts in `timeout [OPTS] [--] DURATION CMD…`. The duration must
+/// start with a digit, so `timeout --help` stays passthrough.
+pub(crate) fn timeout_inner_at<S: AsRef<str>>(args: &[S]) -> Option<usize> {
     let mut i = 0;
-    while let Some(a) = args.get(i).map(|s| s.as_str()) {
+    while let Some(a) = args.get(i).map(AsRef::as_ref) {
+        if a == "--" {
+            i += 1;
+            break;
+        }
         if !a.starts_with('-') {
             break;
         }
-        // Options that take a separate value token.
         i += if matches!(a, "-s" | "--signal" | "-k" | "--kill-after") {
             2
         } else {
             1
         };
     }
-    // args[i] is DURATION (e.g. `10`, `5s`, `1.5m`); guard on a leading
-    // digit so `timeout --help` and friends stay passthrough.
-    let dur = args.get(i)?;
-    if !dur.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+    let dur = args.get(i)?.as_ref();
+    if !dur.starts_with(|c: char| c.is_ascii_digit()) {
         return None;
     }
-    let inner = args.get(i + 1..)?;
-    if inner.is_empty() {
-        return None;
-    }
-    Some(inner.to_vec())
+    (i + 1 < args.len()).then_some(i + 1)
 }
 
 /// Programs where `-h` is a real option (human-readable sizes, no filename).

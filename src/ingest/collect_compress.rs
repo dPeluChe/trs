@@ -38,7 +38,7 @@ pub(super) fn read_and_compress(
             // NUL bytes mark binary; invalid UTF-8 without them is
             // legacy-encoded text (Latin-1, Windows-1252, …) that used to be
             // dropped silently as if it were a binary.
-            if e.as_bytes().iter().take(8192).any(|&b| b == 0) {
+            if looks_binary(e.as_bytes()) {
                 return Ok(None);
             }
             return Err(std::io::Error::new(
@@ -50,11 +50,15 @@ pub(super) fn read_and_compress(
     Ok(compress(path, content, level))
 }
 
+fn looks_binary(bytes: &[u8]) -> bool {
+    bytes.iter().take(8192).any(|&b| b == 0)
+}
+
 /// Intelligently extract what matters from a file's text for LLM consumption.
 /// Returns a `CompressResult` with the compressed content plus metadata
 /// (raw imports, module-level docstring, exported symbol names).
 fn compress(path: &Path, content: String, level: IngestLevel) -> Option<CompressResult> {
-    if content.chars().take(512).any(|c| c == '\0') {
+    if looks_binary(content.as_bytes()) {
         return None;
     }
 

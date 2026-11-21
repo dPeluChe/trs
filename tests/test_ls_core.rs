@@ -361,7 +361,7 @@ fn test_ls_stats_long_format_json_larger() {
 }
 
 // `ls -F`/`-p` classify markers are authoritative: an extensionless file
-// with no marker is a file, not a directory (rtk #5061 class).
+// with no marker is a file, not a directory.
 #[test]
 fn test_ls_classify_suffixes() {
     let input = "docs/\nempty_dir/\nsrc/\nlink.rs@\nempty_dir_marker\nrun.sh*\n";

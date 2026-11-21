@@ -137,14 +137,11 @@ Do not name those projects in commits, docs or the changelog when shipping these
 
 ---
 
-## Phase 2.10: Competitor GitHub issue sweep, 2026-11-21
+## Phase 2.10: Issue sweep of similar tools, 2026-11-21
 
-Source: open + recently-closed issues on rtk-ai/rtk (~1,700 open, the dominant
-signal), token-optimizer, repomix, headroom, claw-compactor,
-codebase-memory-mcp, chop (0 open), pi (ecosystem only). Full catalog with
-issue numbers and per-repo analysis:
-[`docs/development/competitor-issues-research.md`](../development/competitor-issues-research.md).
-Every claim below was verified against trs source before filing.
+Source: the public issue trackers of similar tools and adjacent projects
+(open and recently closed issues). Every claim below was verified against trs
+source before filing.
 
 ### Confirmed bugs to fix
 
@@ -153,22 +150,23 @@ Every claim below was verified against trs source before filing.
   survives in both porcelain and long formats. Regression tests in
   `test_parser_git_status.rs`.
 - [x] **`git diff` strips `\r`**: fixed by flagging raw `\r` in the input
-  with a `(note: carriage returns in diff; …)` line on text formats
-  (rtk #5084).
+  with a `(note: carriage returns in diff; …)` line on text formats.
 - [x] **Flaky/retried counts in test parsers.** pytest done: `reruns` field
   on `TestSummary`, parsed from the `N rerun` summary token and surfaced in
   compact/agent/JSON output. jest/vitest verified 2026-11-21 with real runs
   (jest@30 `retryTimes`, vitest@3 `retry`): neither emits any retry signal in
   default/verbose/json output, so there is nothing to preserve at parse level;
-  the rtk bugs (#5142, #3588, #3935) were playwright/nextest, which DO print
+  the bugs seen in a similar tool were playwright/nextest, which DO print
   retry markers. The playwright parser (Phase 2) and a future nextest parser
   must keep retried≠passed.
 - [x] **Plugin PATH fallback.** JS plugins (OpenCode, Kilo, Pi, OpenClaw)
-  and the Hermes Python plugin now try `~/.local/bin`, `/opt/homebrew/bin`,
-  `/usr/local/bin` when bare `trs` is not on PATH. JSON shell-command hooks
-  (`"command": "trs rewrite"` in init_templates.rs) now embed the absolute
-  `current_exe` path at `trs init` time when it lives under a stable prefix
-  (`.cargo/bin`, `.local/bin`, homebrew, `/usr/local/bin`, `node_modules`);
+  and the Hermes Python plugin now try `~/.local/bin`, `~/.cargo/bin`,
+  `~/.trs/bin`, `/opt/homebrew/bin`, `/usr/local/bin` when bare `trs` is not
+  on PATH, once per plugin load, and pass the binary they found as `TRS_BIN`
+  so the rewritten command calls it too (a bare `trs` in the rewrite would
+  fail in that same shell). JSON shell-command hooks embed the absolute
+  `current_exe` path at `trs init` time when it is a known install channel
+  (`upgrade::detect_install_method`, plus `/usr/local/bin` and linuxbrew);
   dev `target/` builds and unusual locations keep bare `trs`.
 - [x] **Verify `ls -F/-p/-i/-s` fixtures.** Verified against real macOS
   output. `-F`/`-p` classify markers are now authoritative (an extensionless
@@ -180,48 +178,49 @@ Every claim below was verified against trs source before filing.
 ### Already tracked, new evidence
 
 - [~] **Deny rules through non-prefix wrappers** (`nix develop -c rm`,
-  `timeout 5 rm`): rtk #5157/#5062 confirm the class is active across tools.
+  `timeout 5 rm`): reports in similar tools confirm the class is active.
   `strip_wrappers` now unwraps `timeout [opts] DURATION cmd` (GNU semantics,
   skipped on Windows where `timeout` is a different builtin) and
-  `nix develop|shell … -c|--command cmd`, including one layer of outer quotes.
-  Still open: `env`, `nice`, `bash -c`/`sh -c`, `xargs`, `find -exec` hide
+  the runners `nix develop|shell -c`, `mise exec --` and `direnv exec DIR`,
+  with the classifier's own argv grammar (`classifier_args`), including one
+  layer of outer quotes. Still open: `env`, `nice`, `bash -c`/`sh -c`, `xargs`, `find -exec` hide
   the inner program the same way.
-- [ ] **Token estimator bytes/4**: rtk #5135 measured billed tokens at
+- [ ] **Token estimator bytes/4**: a similar tool measured billed tokens at
   1.7–4.1× the bytes/4 estimate (median 0.50 of billed) on 655 real
   requests. Strengthens the "est." label plan.
-- [ ] **Hermes plugin**: rtk #3797 found Hermes `pre_tool_call` ignores
+- [ ] **Hermes plugin**: a report elsewhere says Hermes `pre_tool_call` ignores
   in-place `args` mutation. Verify trs's mutation surface live before
   claiming support (integration already pending validation).
-- [ ] **Homebrew tap** stays low priority: rtk #5194 shows tap upkeep cost
+- [ ] **Homebrew tap** stays low priority: tap upkeep has a real cost
   (`conflicts_with`, untrusted-tap formula).
 
 ### Evaluated: current behavior correct, filed for the record
 
 - `rg -l`/`grep -l`/`--files-with-matches` → `has_unread` → raw passthrough.
-  The path list is the payload for the next command; rtk #5197 shows what
-  "compressing" it costs. Leave raw.
+  The path list is the payload for the next command; compressing it breaks
+  the next step. Leave raw.
 - `git merge-base`/`rev-parse`/`describe`: tiny outputs, generic fallback.
 - pytest "collected 0 items" renders `no tests found` with `is_empty`; pin
-  one fixture for exit-code preservation (rtk #5016 was a different defect).
-- `trs rewrite` argv `--` bug (rtk #5127): N/A, command arrives on stdin.
-- musl SIGILL (rtk #5043/#5115): N/A, release matrix is gnu/apple/msvc only.
+  one fixture for exit-code preservation.
+- An argv `--` bug in a rewrite hook: N/A, the command arrives on stdin.
+- musl SIGILL: N/A, release matrix is gnu/apple/msvc only.
 
 ### Measurements to add
 
-- [ ] **Output-token A/B for rewrite on/off.** rtk #582: compressed input →
+- [ ] **Output-token A/B for rewrite on/off.** One report: compressed input →
   model wrote +50% output tokens, +18% total cost. `transcript_output.py`
   already measures output tokens for the output-saver; extend the same
   harness to rewrite on/off before widening savings claims.
-- [ ] **Per-call work gate.** cbm #3005: hook-augment spawned per tool call
+- [ ] **Per-call work gate.** One report: a hook spawned work per tool call
   even with an empty index. trs rewrite ~4ms is fine; any future per-call
   work needs a cheap "is there anything to do" gate first.
 
-### `trs ingest` signals from repomix issues
+### `trs ingest` signals from repo-packing tools
 
 - [x] **Audit ignore-file fidelity**: audited 2026-11-21. trs uses the
   `ignore` crate (same engine as ripgrep) with `.gitignore`, `.ignore`,
-  global gitignore and `.git/info/exclude` all enabled, so repomix's
-  #1873/#1870/#1872 bug classes do not apply. Two real gaps found and fixed
+  global gitignore and `.git/info/exclude` all enabled, so the ignore-file
+  bug classes reported for those tools do not apply. Two real gaps found and fixed
   instead: `get_changed_files` now passes `-c core.quotepath=false` (non-ASCII
   paths came back C-quoted and never matched `rel_path`, silently dropping
   them from `ingest --changed`), and `config.exclude` is still a substring

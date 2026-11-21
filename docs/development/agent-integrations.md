@@ -234,8 +234,10 @@ Output envelope is identical to Claude Code.
   `trs ${cmd}` made `ls | wc -l` read compressed text). It fails open: no
   `trs` on PATH, a timeout or an error keeps the original command. When the
   bare name does not resolve, the plugin tries the usual install locations
-  (`~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`) before giving up,
-  which covers GUI launches whose PATH lacks the install dir. Kilo, Pi,
+  (`~/.local/bin`, `~/.cargo/bin`, `~/.trs/bin`, `/opt/homebrew/bin`,
+  `/usr/local/bin`) once per load and passes the one it found as `TRS_BIN`,
+  so the rewritten command calls that binary too. This covers GUI launches
+  whose PATH lacks the install dir. Kilo, Pi,
   OpenClaw and Hermes use the same helper; `tests/cli_plugin_templates.rs`
   runs it. `trs doctor` flags a plugin written before this.
 - 2.x env hook: `shell.create.before` fires for every shell, including the

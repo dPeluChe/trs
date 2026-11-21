@@ -2,6 +2,9 @@ use super::super::common::{CommandContext, CommandResult, CommandStats};
 use super::super::types::*;
 use super::ParseHandler;
 
+/// Markers `ls -F` / `-p` append to a name (`/` dir, `*` exec, `@` link, …).
+const CLASSIFY_MARKERS: [char; 7] = ['/', '*', '@', '|', '=', '%', '>'];
+
 impl ParseHandler {
     /// Handle the ls subcommand.
     pub(crate) fn handle_ls(
@@ -42,16 +45,9 @@ impl ParseHandler {
 
         // `ls -F`/`-p` appends a classify marker to every name; once any short
         // line carries one, the marker is authoritative (no marker = file).
-        let classify_mode = input.lines().any(|l| {
-            let t = l.trim_end();
-            t.ends_with('/')
-                || t.ends_with('*')
-                || t.ends_with('@')
-                || t.ends_with('|')
-                || t.ends_with('=')
-                || t.ends_with('%')
-                || t.ends_with('>')
-        });
+        let classify_mode = input
+            .lines()
+            .any(|l| l.trim_end().ends_with(CLASSIFY_MARKERS));
 
         for line in input.lines() {
             let line = line.trim();
@@ -355,13 +351,7 @@ impl ParseHandler {
             LsEntryType::Directory
         } else if name.ends_with('@') {
             LsEntryType::Symlink
-        } else if name.ends_with('*') {
-            LsEntryType::File
-        } else if name.ends_with('|')
-            || name.ends_with('=')
-            || name.ends_with('%')
-            || name.ends_with('>')
-        {
+        } else if name.ends_with(['|', '=', '%', '>']) {
             LsEntryType::Other
         } else {
             LsEntryType::File

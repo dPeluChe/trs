@@ -358,33 +358,22 @@ impl ParseHandler {
         // "2 passed, 1 failed, 3 skipped in 0.01s"
         // "1 failed, 2 passed in 0.01s"
         // "=== 2 passed in 0.01s ==="
+        if !(line.starts_with("===") || line.starts_with(|c: char| c.is_ascii_digit())) {
+            return false;
+        }
+        // xfailed/xpassed contain failed/passed, so they need no entry here.
         let lower = line.to_lowercase();
-        let starts_with_equals = line.starts_with("===");
-        let has_passed = lower.contains("passed");
-        let has_failed = lower.contains("failed");
-        let has_skipped = lower.contains("skipped");
-        let has_error = lower.contains("error");
-        let has_deselected = lower.contains("deselected");
-        let has_xfailed = lower.contains("xfailed");
-        let has_xpassed = lower.contains("xpassed");
-        let has_warnings = lower.contains("warning");
-        let has_rerun = lower.contains("rerun");
-
-        (starts_with_equals
-            || line
-                .chars()
-                .next()
-                .map(|c| c.is_ascii_digit())
-                .unwrap_or(false))
-            && (has_passed
-                || has_failed
-                || has_skipped
-                || has_error
-                || has_deselected
-                || has_xfailed
-                || has_xpassed
-                || has_warnings
-                || has_rerun)
+        [
+            "passed",
+            "failed",
+            "skipped",
+            "error",
+            "deselected",
+            "warning",
+            "rerun",
+        ]
+        .iter()
+        .any(|w| lower.contains(w))
     }
 
     /// Parse pytest summary line into TestSummary.

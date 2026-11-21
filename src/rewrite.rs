@@ -361,7 +361,9 @@ fn tag_with_agent_for(cmd: &str, agent: &str, is_windows: bool) -> String {
     cmd.split(" && ")
         .map(|seg| {
             let t = seg.trim_start();
-            let invokes_trs = t.starts_with("trs ") || t.contains(" trs ");
+            let invokes_trs = t.starts_with("trs ")
+                || t.contains(" trs ")
+                || t.starts_with(&format!("{} ", crate::rewrite_decide::trs_bin()));
             if invokes_trs && !t.starts_with("TRS_AGENT=") {
                 format!("TRS_AGENT={} {}", agent, t)
             } else {

@@ -233,10 +233,8 @@ impl ParseHandler {
                 continue;
             }
 
-            // Parse file entries before the prose skips: footers and help
-            // text never parse as entries, but a file named like one
-            // ("nothing to commit, working tree clean", 'use "git …') is
-            // data and must not be eaten by a substring match.
+            // Entries first: a file named like a footer or a hint is data,
+            // and the substring skips below would eat it.
             if let Some(entry) = Self::parse_file_entry(line, current_section) {
                 match current_section {
                     GitStatusSection::Staged => status.staged.push(entry),
@@ -264,8 +262,6 @@ impl ParseHandler {
                 continue;
             }
 
-            // Skip help text (lines starting with '(' or containing 'use "git')
-            // and clean status lines.
             if line.starts_with('(')
                 || line.contains("use \"git")
                 || line.starts_with("no changes added")
