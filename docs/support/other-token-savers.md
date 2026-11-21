@@ -30,6 +30,22 @@ update it as new tools appear.
 - **Pi Coding Agent**: agent-side rules/prompt compression, not a
   shell wrapper.
 
+## Other approaches we track
+
+Not shell compressors, but they aim at the same bill:
+
+- **pxpipe**: a local proxy that redraws the system prompt, tool docs and old
+  history as images, since an image is billed by pixels and not by
+  characters. It works on models that read dense pixel text well and its own
+  tables show it fails on others (exact IDs misread).
+- **TOON** (Token-Oriented Object Notation): a JSON replacement for prompts
+  that writes uniform arrays as a table with the field names once. Large
+  savings against indented JSON, small or negative against minified JSON on
+  nested data.
+
+What we read in both, and what trs takes from it:
+[benchmarks, "Other approaches"](../development/benchmarks/README.md#other-approaches-images-and-token-oriented-formats).
+
 ## How trs positions itself
 
 - **Rewrites input and output.** Input hooks compress what the agent
