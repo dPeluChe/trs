@@ -360,6 +360,34 @@ fn test_ls_stats_long_format_json_larger() {
     );
 }
 
+// `ls -F`/`-p` classify markers are authoritative: an extensionless file
+// with no marker is a file, not a directory (rtk #5061 class).
+#[test]
+fn test_ls_classify_suffixes() {
+    let input = "docs/\nempty_dir/\nsrc/\nlink.rs@\nempty_dir_marker\nrun.sh*\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[2 files, 3 dirs, 1 symlinks]"))
+        .stdout(predicate::str::contains("empty_dir_marker\n"))
+        .stdout(predicate::str::contains("link.rs@"));
+}
+
+#[test]
+fn test_ls_dash_p_markers() {
+    let input = "docs/\nempty_dir/\nsrc/\nempty_dir_marker\nlink.rs\nrun.sh\n";
+    let mut cmd = Command::cargo_bin("trs").unwrap();
+    cmd.arg("parse")
+        .arg("ls")
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[3 files, 3 dirs]"));
+}
+
 /// Helper function to extract byte count from stats output
 fn extract_bytes(stderr: &str, prefix: &str) -> Option<usize> {
     for line in stderr.lines() {

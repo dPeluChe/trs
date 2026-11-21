@@ -156,20 +156,27 @@ Every claim below was verified against trs source before filing.
 - [x] **`git diff` strips `\r`**: fixed by flagging raw `\r` in the input
   with a `(note: carriage returns in diff; …)` line on text formats
   (rtk #5084).
-- [~] **Flaky/retried counts in test parsers.** pytest done: `reruns` field
+- [x] **Flaky/retried counts in test parsers.** pytest done: `reruns` field
   on `TestSummary`, parsed from the `N rerun` summary token and surfaced in
-  compact/agent/JSON output. jest/vitest still open: no retry fixtures yet,
-  do not guess output formats. Playwright parser lands in Phase 2 and must
-  keep retried≠passed (rtk #5142, #3588, #3935; nextest #4694, #4420).
+  compact/agent/JSON output. jest/vitest verified 2026-11-21 with real runs
+  (jest@30 `retryTimes`, vitest@3 `retry`): neither emits any retry signal in
+  default/verbose/json output, so there is nothing to preserve at parse level;
+  the rtk bugs (#5142, #3588, #3935) were playwright/nextest, which DO print
+  retry markers. The playwright parser (Phase 2) and a future nextest parser
+  must keep retried≠passed.
 - [x] **Plugin PATH fallback.** JS plugins (OpenCode, Kilo, Pi, OpenClaw)
   and the Hermes Python plugin now try `~/.local/bin`, `/opt/homebrew/bin`,
-  `/usr/local/bin` when bare `trs` is not on PATH. Follow-up: shell-command
-  hooks (`"command": "trs rewrite"` in init_templates.rs) have the same
-  exposure; fix by resolving `current_exe` at `trs init` time, only when it
-  points outside `target/`.
-- [ ] **Verify `ls -F/-p/-i/-s` fixtures.** rtk #5061 mangled these flag
-  outputs; trs's `parse_ls` is flag-agnostic. Pin `dir/`, `*`/`@` suffixes
-  and leading inode/block columns with fixtures.
+  `/usr/local/bin` when bare `trs` is not on PATH. JSON shell-command hooks
+  (`"command": "trs rewrite"` in init_templates.rs) now embed the absolute
+  `current_exe` path at `trs init` time when it lives under a stable prefix
+  (`.cargo/bin`, `.local/bin`, homebrew, `/usr/local/bin`, `node_modules`);
+  dev `target/` builds and unusual locations keep bare `trs`.
+- [x] **Verify `ls -F/-p/-i/-s` fixtures.** Verified against real macOS
+  output. `-F`/`-p` classify markers are now authoritative (an extensionless
+  file with no marker is a file, `@`→symlink, `*`→file); plain `ls` keeps the
+  extensionless→dir heuristic since short output cannot distinguish. `-i`/`-s`
+  keep their numeric columns glued to names (lossless) with the same
+  heuristic typing; documented limitation.
 
 ### Already tracked, new evidence
 
