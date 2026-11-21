@@ -140,8 +140,9 @@ Do not name those projects in commits, docs or the changelog when shipping these
 
 ## Phase 2.11: Token formats and real counts, 2026-11-21
 
-Source: pxpipe (context rendered as images) and the TOON format, read 2026-11-21;
-what each claims and what trs takes is in
+Source: two approaches outside per-command compression (context rendered as
+images, token-oriented formats), read 2026-11-21; what each claims and what trs
+takes is in
 [`benchmarks/README.md`](../development/benchmarks/README.md#other-approaches-images-and-token-oriented-formats).
 Order: measure first, then build only what the numbers support.
 
@@ -170,7 +171,7 @@ Order: measure first, then build only what the numbers support.
 
 Not doing:
 
-- Text rendered as images: by the tool's own tables the models this project
+- Text rendered as images: by the published tables the models this project
   runs (`claude-opus-5-5`, `claude-sonnet-5-5`) misread exact IDs, and they do
   it with confidence.
 - Encodings such as base64 or gzip+base64: base64 is 33% larger before
