@@ -56,10 +56,7 @@ impl ParseHandler {
             }
         }
         // Single underscore var
-        if key == "_" {
-            return true;
-        }
-        false
+        key == "_"
     }
 
     /// Detect env var keys that typically hold secrets.
