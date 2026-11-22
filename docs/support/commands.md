@@ -141,7 +141,7 @@ comment stripped from an edit target breaks the next edit.
 | Command | Subcommands parsed |
 |---|---|
 | `docker` | `ps`, `logs`, `build` |
-| `gh` | `pr list`, `pr view`, `pr diff`, `pr checks`, `issue list`, `run list`, `run view`, `api` |
+| `gh` | `pr list`, `pr view`, `pr diff`, `pr checks`, `issue list`, `issue view`, `run list`, `run view`, `api` |
 
 `gh api` responses arrive minified, so there is no whitespace left to
 squeeze. What trs drops instead is GitHub's link boilerplate: every
@@ -163,8 +163,12 @@ the number, state, title and labels; `gh run list` the run id (what
 duration. A state every row shares (`gh pr list` defaults to OPEN) is said once
 in the header. Dates and the triggering event are dropped (`--json` has them).
 
-`gh pr view` extracts title, state, author, url, labels, and a
-3-line body preview. `gh pr diff` routes to the git-diff parser
+`gh pr view` and `gh issue view` keep the title, state, author, url, the
+header fields that have a value (labels, reviewers, assignees, comment count,
+parent and blocking issues) and the whole body, minus template `<!-- -->`
+comments; the empty fields `gh` prints on every view are dropped. With
+`--comments` they keep each comment's author, role, review state and body,
+one `@author (role, state)` line per comment. `gh pr diff` routes to the git-diff parser
 (~90% reduction). `gh pr checks` summarises pass/fail/pending
 counts and lists only non-passing checks with duration. `gh run view`
 extracts title, conclusion, job counts, up to 3 annotations, and

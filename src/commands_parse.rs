@@ -365,6 +365,15 @@ pub enum ParseCommands {
         file: Option<PathBuf>,
     },
 
+    /// Parse gh issue view output (with or without --comments)
+    ///
+    /// Example: gh issue view 42 | trs parse gh-issue-view
+    GhIssueView {
+        /// Input file (stdin if not specified)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
+
     /// Parse cargo test output
     ///
     /// Example: cargo test 2>&1 | trs parse cargo-test

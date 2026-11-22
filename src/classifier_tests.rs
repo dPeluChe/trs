@@ -211,3 +211,16 @@ fn git_show_blob_form_is_not_a_diff() {
     assert!(!blob(&["show", "HEAD"]));
     assert!(!blob(&["show", "--stat", "HEAD~2"]));
 }
+
+#[test]
+fn gh_issue_view_routes_to_parser() {
+    assert!(matches!(
+        classify_command("gh", &argv("issue view 42 --comments")),
+        Some(ParseCommands::GhIssueView { .. })
+    ));
+    assert!(matches!(
+        classify_command("gh", &argv("issue list")),
+        Some(ParseCommands::GhIssue { .. })
+    ));
+    assert!(classify_command("gh", &argv("issue create")).is_none());
+}

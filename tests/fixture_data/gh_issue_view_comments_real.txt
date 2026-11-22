@@ -1,0 +1,28 @@
+author:	dPeluChe
+association:	owner
+edited:	false
+status:	none
+--
+Fixed in **v0.6.8** 🎉
+
+**Root cause:** two Windows issues. The OpenCode/Kilo plugins emitted `TRS_AGENT=opencode trs <cmd>` — POSIX `VAR=value` syntax that PowerShell/cmd read as a command name ("not recognized as a cmdlet"), and a weak idempotency guard let retries snowball. Underneath, trs also spawned commands directly, so on Windows it couldn't run `.cmd`/`.bat` shims (npm/yarn/…), `.ps1` scripts, or builtins.
+
+**What changed:**
+- Attribution now uses OpenCode's cross-platform `shell.env` hook; the command is just `trs <cmd>` (runs in PowerShell/cmd/bash). Guard hardened against the snowball.
+- trs routes execution through the shell on Windows (`cmd /C`, and `powershell -File` for `.ps1`) so shims/scripts resolve.
+- Hook agents (Claude/Codex/Cursor/Gemini) drop the POSIX prefix on Windows too.
+
+**To upgrade:**
+```
+npm install -g @dpeluche/trs@latest    # or: trs upgrade
+```
+Then refresh the plugin so the old buggy one is replaced:
+```
+trs init opencode --global             # (and: trs init kilo --global)
+```
+Restart OpenCode afterwards. If you still see a snowballed command from before, it'll clear on the next fresh command.
+
+Thanks a lot for the detailed report — the `.ps1` example pointed straight at the deeper execution bug. 🙏
+
+(Note: a separate, pre-existing Windows crash in our test parser is tracked in #58; it doesn't affect this fix.)
+--

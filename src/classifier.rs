@@ -369,9 +369,11 @@ pub(crate) fn classify_command(cmd: &str, args: &[String]) -> Option<ParseComman
                 Some("checks") => Some(ParseCommands::GhPrChecks { file: None }),
                 _ => None,
             },
-            "issue" if args.get(1).map(|s| s.as_str()) == Some("list") => {
-                Some(ParseCommands::GhIssue { file: None })
-            }
+            "issue" => match args.get(1).map(|s| s.as_str()) {
+                Some("list") => Some(ParseCommands::GhIssue { file: None }),
+                Some("view") => Some(ParseCommands::GhIssueView { file: None }),
+                _ => None,
+            },
             "run" => match args.get(1).map(|s| s.as_str()) {
                 Some("list") => Some(ParseCommands::GhRun { file: None }),
                 Some("view") => Some(ParseCommands::GhRunView { file: None }),
