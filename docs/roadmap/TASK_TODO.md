@@ -58,7 +58,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] **Lint rule grouping**: shipped in v0.5.8+, extended with `tsc` in v0.5.10
 - [-] **Read caching**: not building it. Same command with same output is 0.04% of tool output, and sed ranges already seen 0.15% at most (40 days, deduplicated by tool-use id; see benchmarks/README.md). A cache would also lie after compaction.
 - [-] **New parsers for Flutter, Terraform, kubectl, dotnet**: not building them: the author does not run these tools, so nothing here can be measured or verified. Reopen with a real user.
-- [ ] **Diff indent**: drop the two spaces trs adds before each change line (3.7% of compact diff output; all the rest of the output is the change itself). **Next after PR #292**
+- [x] **Diff indent**: compact diffs no longer indent change lines or the omitted-lines marker. Measured on three real merged diffs: 3.5% to 4.1% fewer bytes, nothing dropped.
 - [ ] **stderr policy through `timeout` and `bash -c`**: `timeout 300 cargo build` does not merge stderr; `stderr_owner` covers runners only.
 - [ ] **`grep` on one file with `key:value` lines**: still grouped as files. Needs a decision from argv.
 - [ ] **`--json` on unread test output**: test runners keep the empty parsed shape on purpose; decide whether that contract changes.

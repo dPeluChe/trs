@@ -163,13 +163,14 @@ impl ParseHandler {
             for (lines, share) in hunks.iter().zip(shares(&lengths, budget)) {
                 let kept = crate::passthrough_cut::fit(lines.iter().map(String::as_str), share);
                 for line in &lines[..kept] {
-                    output.push_str(&format!("  {}\n", line));
+                    output.push_str(line);
+                    output.push('\n');
                 }
                 omitted += lines.len() - kept;
             }
             if omitted > 0 {
                 crate::parse_out::mark_dropped();
-                output.push_str(&format!("  [trs: {omitted} lines omitted]\n"));
+                output.push_str(&format!("[trs: {omitted} lines omitted]\n"));
             }
         }
 
