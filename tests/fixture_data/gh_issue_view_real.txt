@@ -1,0 +1,48 @@
+title:	Claude Code hook: trs consumes `--json` meant for the wrapped command (breaks `gh --json`)
+state:	CLOSED
+author:	cheetahbyte (Leonhard Breuer)
+labels:	
+comments:	1
+assignees:	
+projects:	
+milestone:	
+issue-type:	
+parent:	
+sub-issues:	
+sub-issues-completed:	
+blocked-by:	
+blocking:	
+number:	204
+--
+## What happened
+
+With the Claude Code hook installed (`trs rewrite`), any `gh` command that uses `--json <fields>` fails. `trs rewrite` prefixes the command with `trs`, and `trs` then consumes `--json` as its own output-format flag. The field list is passed to `gh` as a bare positional argument.
+
+## Reproduce
+
+```sh
+echo '{"tool_name":"Bash","tool_input":{"command":"gh pr view 9 --json state,title -q .state"}}' | trs rewrite
+# => updatedInput.command: "TRS_AGENT=claude trs gh pr view 9 --json state,title -q .state"
+
+TRS_AGENT=claude trs gh pr view 9 -R <owner>/<repo> --json state,title -q .state
+# accepts at most 1 arg(s), received 2
+# [trs] exit 1
+
+gh pr view 9 -R <owner>/<repo> --json state,title -q .state
+# MERGED
+```
+
+`trs history` confirms the flag is stripped. The command recorded there is `gh pr view 9 -R <owner>/<repo> state,title -q .state`.
+
+The same thing happens with `gh run list`, `gh run view`, `gh pr list`, `gh issue view` and `gh release view` with `--json`. Over a few days of agent sessions this caused about 23 failed tool calls, plus retries.
+
+## Expected
+
+Flags after the wrapped command name belong to the wrapped command. `trs` should only parse its own format flags when they come before the command, or the rewrite should skip commands that pass `--json`.
+
+## Environment
+
+- trs 0.8.5 (`~/.local/bin/trs`)
+- macOS, aarch64
+- Hook: Claude Code `PreToolUse` on `Bash`, `trs rewrite`
+

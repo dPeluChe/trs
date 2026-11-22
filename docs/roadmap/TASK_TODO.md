@@ -28,7 +28,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [x] Maven (`mvn`, `./mvnw`): real fixtures from Maven 3.9, a multi-module reactor and Spring Boot tests
 - [x] Gradle (`gradle`, `./gradlew`): failed-test messages read from the JUnit XML report
 - [x] `gh run view`: done (v0.5.13): extracts title, conclusion, job counts, annotations, URL
-- [ ] `gh issue view`: follow-on from gh pr view. **Next after PR #292**
+- [x] `gh issue view`: shares the `gh pr view` parser (labeled Issue), drops the empty header fields, and reads `--comments` (PR or issue) as one `@author (role, state)` line plus body per comment. 5% to 27% fewer bytes on real views; the body is the rest.
 
 ### Improvements to existing parsers
 

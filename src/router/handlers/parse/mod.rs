@@ -19,6 +19,7 @@ pub(crate) mod fmt;
 pub(crate) mod gh_api;
 pub(crate) mod gh_pr;
 pub(crate) mod gh_run;
+pub(crate) mod gh_view;
 pub(crate) mod git_branch;
 pub(crate) mod git_commit;
 pub(crate) mod git_diff;
@@ -244,7 +245,12 @@ impl CommandHandler for ParseHandler {
             ParseCommands::GhRun { file } => Self::handle_gh_run(file, ctx),
             ParseCommands::GhPrChecks { file } => Self::handle_gh_pr_checks(file, ctx),
             ParseCommands::GhRunView { file } => Self::handle_gh_run_view(file, ctx),
-            ParseCommands::GhPrView { file } => Self::handle_gh_pr_view(file, ctx),
+            ParseCommands::GhPrView { file } => {
+                Self::handle_gh_view(file, ctx, gh_view::ViewKind::Pr)
+            }
+            ParseCommands::GhIssueView { file } => {
+                Self::handle_gh_view(file, ctx, gh_view::ViewKind::Issue)
+            }
             ParseCommands::CargoTest { file } => Self::handle_cargo_test(file, ctx),
             ParseCommands::GoTest { file } => Self::handle_go_test(file, ctx),
             ParseCommands::Maven { file } => Self::handle_maven(file, ctx),
