@@ -372,6 +372,27 @@ there, because the file itself is the way back.
 `git branch -a` drops nothing to gain ground. The tool that cuts more here prints
 `... +20 more` and hides real branches, so trs only nests repeated prefixes.
 
+## trs alone on main after v0.10.3
+
+2026-11-22, same corpus and command as below, main at 031dc0a (v0.10.3 plus
+unindented diff lines and `gh issue view`). Checks that the post-release fixes
+kept every pipeline and fact.
+`truth.py`: 9/9 pipelines match, 0 RISK rows, 0 SILENT rows, 1 BLIND row
+(`find src -name '*.rs'`). `compare.py`: 1 RISK row (`ps aux`). `chain-rewrite.sh`: 43/43.
+
+| | tokens cut | anchors kept | facts kept |
+|---|---:|---:|---:|
+| all 38 commands (token-weighted) | 87% | 57% | 66% |
+| mean per command | 34% | | 93% |
+| median command | 31% | | |
+
+The BLIND row is the repo, not the compressor: v0.10.0 built and run on this
+same state prints the same `find` output byte for byte. Since v0.10.0, 36 files
+left `src/` and 5 arrived (273 to 242), so different names land in the middle,
+which the per-folder cap (12 names, then `+N more` and the path to the full
+output) hides. `git diff HEAD~5` is 29,567 raw tokens in this run (12,687 on v0.10.0),
+which pulls the pooled anchor and fact scores down and the pooled cut up.
+
 ## trs alone on v0.10.0
 
 2026-11-05, same corpus and command as below. This is what usetrs.dev shows.

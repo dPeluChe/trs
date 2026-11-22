@@ -44,7 +44,7 @@ Binary: `trs` | Language: Rust | Status: **Active development**
 - [ ] `git diff` full (not just --stat), reformat unified diff headers
 - [ ] **`find` with long paths**: audit shows ~48% reduction where the first path arg eats the display width. Parser could basename-collapse logged paths the way `stats --history` now does.
 - [ ] **`cargo fmt --check` diff output**: only 32% compression on failures. The unified diff block has a lot of repeat whitespace we could collapse.
-- [ ] **`xcodebuild`** (13.9% compression, 473KB total traffic). Build handler catches errors/warnings but compile-command echoes, swift intermodule dependency checks, and "Write auxiliary file" blocks still bulk up the output. **Next after PR #292**
+- [x] **`xcodebuild`**: the 13.9% came from April-July runs, when trs logged exactly half the bytes of every build. Since 2026-09, 22 of the 26 real runs in the history cut 90% or more (the rest are `-version` and other tiny runs), and a real IdeaBooks simulator build on 2026-11-22 went from 159,642 bytes to 55 (`build: ok`, `** BUILD SUCCEEDED **`), with no error or warning dropped. The one `warning:` line in it is appintentsmetadataprocessor's "Metadata extraction skipped", which Xcode does not count either. No code change.
 - [ ] **`awk` / `sed`**, 0-3% compression. Decision: these print arbitrary user data; compressing would risk corrupting what the agent asked for. Leave as passthrough; `TRS_SKIP=1` is the escape hatch.
 
 ---
