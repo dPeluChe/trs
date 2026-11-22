@@ -137,3 +137,15 @@ fn a_stat_table_prints_as_a_stat_table() {
         "{out}"
     );
 }
+
+#[test]
+fn change_lines_are_not_indented() {
+    let out = compact(
+        "diff --git a/a.rs b/a.rs\nindex 1..2 100644\n--- a/a.rs\n+++ b/a.rs\n\
+         @@ -1,2 +1,2 @@\n-    old();\n+    new();\n",
+    );
+    assert!(
+        out.contains("\n@@ -1,2 +1,2 @@\n-    old();\n+    new();\n"),
+        "{out}"
+    );
+}
